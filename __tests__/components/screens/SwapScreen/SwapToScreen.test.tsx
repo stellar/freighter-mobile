@@ -285,7 +285,7 @@ describe("SwapToScreen", () => {
     );
 
     expect(
-      getByText(/Soroban contract tokens aren't supported for swaps yet/),
+      getByText(/This Soroban token isn't available for swaps yet/),
     ).toBeTruthy();
   });
 
@@ -372,7 +372,9 @@ describe("SwapToScreen", () => {
     // Spinner must be visible
     expect(getByTestId("search-loading-spinner")).toBeTruthy();
     // Neither the Soroban message nor the no-results message should appear
-    expect(queryByText(/Soroban contract tokens aren't supported/)).toBeNull();
+    expect(
+      queryByText(/This Soroban token isn't available for swaps/),
+    ).toBeNull();
     expect(queryByText(/No tokens match/i)).toBeNull();
     // The Results section header must not appear while still loading
     expect(queryByText("Results")).toBeNull();

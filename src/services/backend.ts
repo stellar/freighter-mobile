@@ -16,6 +16,7 @@
 /* eslint-disable arrow-body-style */
 import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
+import BigNumber from "bignumber.js";
 import {
   mapNetworkToNetworkDetails,
   NATIVE_TOKEN_CODE,
@@ -1176,23 +1177,74 @@ export const submitTransaction = async (body: SubmitTransactionBody) => {
   return data;
 };
 
+/** The venue that quoted a swap. The values are the backend's wire values. */
+export enum SwapQuoteSource {
+  HORIZON = "horizon",
+  XOXNO = "xoxno",
+  LIFI = "lifi",
+}
+
 /**
- * Response from the protocols API
- * @interface ProtocolsResponse
- * @property {Object} data - Response data container
- * @property {Object[]} data.protocols - Array of protocol objects
- * @property {string} data.protocols[].description - Protocol description. Rendered via
- * LinkedText (components/LinkedText): supports markdown-style `[text](https://...)` links
- * and bare `https://` URLs, which render as tappable links. No other markdown/HTML is parsed.
- * @property {string} data.protocols[].icon_url - Protocol icon URL
- * @property {string} data.protocols[].name - Protocol name
- * @property {string} data.protocols[].website_url - Protocol website URL
- * @property {string[]} data.protocols[].tags - Protocol tags/categories
- * @property {string} [data.protocols[].background_url] - Protocol background image URL for cards/carousels
- * @property {boolean} [data.protocols[].is_blacklisted] - Whether protocol is blacklisted
- * @property {boolean} [data.protocols[].is_wc_not_supported] - Whether protocol supports WalletConnect
- * @property {boolean} [data.protocols[].is_trending] - Whether protocol is featured in the trending carousel
+ * The best swap route across the classic DEX and the XOXNO aggregator, as chosen
+ * by the backend. Amounts are decimal strings in whole-token units.
+ * `transaction` is an unsigned Soroban transaction, present only for the
+ * aggregator route once the sender can receive the destination asset;
+ * `requiresTrustline` marks an aggregator route that needs the destination
+ * trustline first. `networkFeeXlm` is the full fee of `transaction`.
  */
+export interface SwapQuote {
+  source: SwapQuoteSource;
+  sourceAmount: string;
+  destinationAmount: string;
+  destinationAmountMin: string;
+  destinationDecimals: number;
+  conversionRate: string;
+  path?: string[];
+  transaction?: {
+    envelopeXdr: string;
+    feeStroops?: string;
+    resourceFeeStroops?: string;
+    expiresAt?: number;
+  };
+  networkFeeXlm?: string;
+  requiresTrustline?: boolean;
+}
+
+/**
+ * Asks the backend for the best swap route. Assets are "XLM" or "CODE:ISSUER".
+ * Pass `sourceAmount` for what the user sells, or `destAmount` for what the user
+ * wants to receive; the backend then sizes the input and returns it as
+ * `sourceAmount`. Rejects with an ApiError; status 404 means no route exists.
+ */
+export const fetchSwapQuote = async ({
+  network,
+  signal,
+  ...body
+}: {
+  network: NETWORKS;
+  signal?: AbortSignal;
+  sourceAsset: string;
+  destAsset: string;
+  sourceAmount?: string;
+  destAmount?: string;
+  /** Decimals of each token; the backend needs them to read a Soroban token's amount. */
+  sourceDecimals: number;
+  destDecimals: number;
+  sender: string;
+  slippagePercent: number;
+  timeoutSeconds: number;
+}): Promise<SwapQuote> => {
+  const { data } = await freighterBackendV2.post<{ data: SwapQuote }>(
+    "/swap/quote",
+    body,
+    { params: { network }, signal },
+  );
+
+  return data.data;
+};
+
+/** The kind of a listed token. The values are the backend's wire values. */
+
 interface ProtocolsResponse {
   data: {
     protocols: {

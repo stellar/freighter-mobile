@@ -10,16 +10,18 @@ import type { SecurityWarning } from "services/blockaid/helper";
  * list). No synthetic balance required.
  */
 export type DestinationTokenDescriptor = {
-  /** "XLM" for native, "CODE:ISSUER" for classic. */
+  /** "XLM" for native, "CODE:ISSUER" for classic, "SYMBOL:CONTRACT" for a Soroban token. */
   id: string;
   tokenCode: string;
-  /** Omitted for native XLM. */
+  /** Omitted for native XLM. A Soroban token's contract id takes the issuer's place. */
   issuer?: string;
   /** Defaults to 7 for classic; tomlInfo.decimals if present. */
   decimals: number;
   tokenType: TokenTypeWithCustomToken;
-  /** `false` when the user already has a trustline; `true` for new tokens. */
+  /** `false` when the user already has a trustline; `true` for new classic tokens. Soroban tokens need none. */
   requiresTrustline: boolean;
+  /** USD price of one whole token, when the picker already knows it. Used until the prices store has one. */
+  priceUsd?: number;
   /**
    * Blockaid security level for the destination token, when known. Carried on
    * the descriptor so the Receive-icon badge renders without a separate scan

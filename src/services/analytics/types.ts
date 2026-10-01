@@ -38,8 +38,8 @@ export interface SwapVolume extends PaymentVolume {
   toAmountQuoted?: number;
   /**
    * The catalog also allows `not_observed` for a destination leg, but mobile
-   * cannot produce it: the settled amount is read from the submit response,
-   * which is already in hand at the emit site.
+   * cannot produce it: a settled amount that cannot be read (no meta, or none
+   * from Stellar Expert within its retries) reports `error`.
    */
   toAmountUsdStatus: LegUsdStatus;
   toAmountUsd?: number;

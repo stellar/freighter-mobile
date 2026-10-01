@@ -1,7 +1,10 @@
+import BigNumber from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { DEFAULT_DECIMALS, NATIVE_TOKEN_CODE } from "config/constants";
 import {
   FormattedSearchTokenRecord,
+  PricedBalance,
+  TokenPricesMap,
   TokenTypeWithCustomToken,
 } from "config/types";
 import { isNativeAssetId } from "helpers/assetIdentity";
@@ -42,7 +45,7 @@ export const descriptorFromBalance = (
     };
   }
 
-  // "USDC:GA5Z..." or contract id for Soroban (we filter Soroban out upstream)
+  // "USDC:GA5Z..." for classic, "SYMBOL:CONTRACT" for a Soroban token
   const [tokenCode, issuer] = id.includes(":")
     ? id.split(":")
     : [balance.tokenCode ?? "", ""];
@@ -106,6 +109,7 @@ export const descriptorFromSearchRecord = (
         ? TokenTypeWithCustomToken.CREDIT_ALPHANUM4
         : TokenTypeWithCustomToken.CREDIT_ALPHANUM12),
     requiresTrustline: !record.hasTrustline,
+    priceUsd: record.price,
     securityLevel: record.securityLevel,
     // Real Blockaid warnings from the search record's bulk scan — needed
     // because the destination side has no PricedBalance for non-held
@@ -119,4 +123,45 @@ export const descriptorFromSearchRecord = (
     // 2-letter fallback in that case, matching the picker row).
     iconUrl: record.iconUrl,
   };
+};
+
+/**
+ * The prices map with a listed token's own USD price added, when the map has
+ * none for it (a Soroban token the price source does not know). Returns the same
+ * map when nothing was added.
+ *
+ * @param prices - The prices map to start from
+ * @param token - The token's id and the price its picker row carried
+ */
+export const withDescriptorPrice = (
+  prices: TokenPricesMap,
+  token: { id: string; priceUsd?: number } | null | undefined,
+): TokenPricesMap =>
+  token?.priceUsd === undefined || prices[token.id]?.currentPrice != null
+    ? prices
+    : {
+        ...prices,
+        [token.id]: {
+          ...prices[token.id],
+          currentPrice: new BigNumber(token.priceUsd),
+        },
+      };
+
+/** First nonzero price: held balance, then the caller's picker/catalog-enriched map. */
+export const resolveDestinationDisplayPrice = ({
+  balance,
+  prices,
+  descriptor,
+}: {
+  balance: PricedBalance | undefined;
+  prices: TokenPricesMap;
+  descriptor: DestinationTokenDescriptor | null;
+}): BigNumber | undefined => {
+  if (balance?.currentPrice && !balance.currentPrice.isZero()) {
+    return balance.currentPrice;
+  }
+
+  const price = descriptor && prices[descriptor.id]?.currentPrice;
+
+  return price && !price.isZero() ? price : undefined;
 };

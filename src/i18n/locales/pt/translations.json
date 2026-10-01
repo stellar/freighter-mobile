@@ -324,6 +324,10 @@
       }
     },
     "transactionDetails": {
+      "baseUnits": "unidades base",
+      "receiptUnavailable": "Valor indisponível",
+      "retryReceipt": "Tentar novamente",
+
       "viewOnStellarExpert": "Ver no stellar.expert",
       "fee": "Taxa",
       "status": "Status",
@@ -602,11 +606,16 @@
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
       "noPathFound": "Nenhum caminho encontrado entre estes tokens",
       "pathFindFailed": "Não foi possível buscar o caminho de troca. Tente novamente.",
-      "customTokenSwapNotSupported": "Troca de tokens customizados ainda não é suportada",
+      "trustlineAddedSwapUnavailable": "A trustline foi adicionada, mas a rota de troca não está mais disponível. Tente a troca novamente.",
+      "trustlineAddedPriceMoved": "A trustline foi adicionada, mas o preço variou além da sua tolerância. Tente a troca novamente.",
+      "trustlineAddedSwapMalicious": "A trustline foi adicionada, mas a troca foi bloqueada porque a verificação de segurança a classificou como maliciosa. Nada foi trocado.",
+      "trustlineAddedSwapSuspicious": "A trustline foi adicionada, mas a troca foi bloqueada porque a verificação de segurança a classificou como suspeita. Nada foi trocado. Revise a troca e tente novamente.",
+      "trustlineSubmitFailed": "Não foi possível adicionar a trustline. Tente novamente.",
+      "prepareSwapFailed": "Não foi possível preparar a troca. Tente novamente.",
       "quoteExpired": "A cotação expirou, tente novamente para obter uma nova cotação"
     },
     "stellarExpertDown": "A descoberta de tokens está temporariamente indisponível. Você ainda pode trocar entre tokens que já possui.",
-    "sorobanEmptyState": "Tokens de contrato Soroban não são suportados para trocas ainda. Tente buscar por um token Clássico.",
+    "sorobanEmptyState": "Este token Soroban ainda não está disponível para trocas. Tente um token Soroban da lista ou um token Clássico.",
     "noResults": "Nenhum token corresponde a {{term}}",
     "yourTokenSection": "Seu token",
     "yourTokensSection": "Seus tokens",
@@ -637,6 +646,7 @@
       "confirm": "Entendi"
     },
     "trustlineBanner": "Isso adicionará uma trustline para {{tokenCode}}",
+    "trustlineTwoStepBanner": "Isso adicionará primeiro uma trustline para {{tokenCode}} e depois fará a troca em uma segunda transação",
     "xlmReserve": {
       "title": "Você precisa de XLM para criar uma trustline",
       "bodyPrefix": "Para receber {{tokenCode}}, sua carteira precisa de uma trustline na Stellar. ",

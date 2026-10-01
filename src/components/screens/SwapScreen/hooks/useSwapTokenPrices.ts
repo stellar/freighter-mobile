@@ -3,6 +3,7 @@ import { FormattedSearchTokenRecord, TokenPricesMap } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { usePricesForNetwork, usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { isContractId } from "helpers/soroban";
 import { useCallback, useEffect, useMemo } from "react";
 
 /**
@@ -48,7 +49,12 @@ export const useSwapTokenPrices = ({
   // render when the caller passes a fresh literal.
   const extraTokenIdsKey = (extraTokenIds ?? []).join("|");
   const stableExtraTokenIds = useMemo(
-    () => extraTokenIds ?? [],
+    // The price endpoint knows classic assets; a Soroban token's price comes from
+    // the swap token list instead.
+    () =>
+      (extraTokenIds ?? []).filter(
+        (id) => !isContractId(id.split(":")[1] ?? ""),
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [extraTokenIdsKey],
   );

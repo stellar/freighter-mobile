@@ -1,13 +1,28 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
 /**
  * Tests for stellar service, focusing on submitTx retry logic with exponential backoff
  * and buildChangeTrustOperation helper.
  * This test uses the actual functions from stellar.ts
  */
-import { Asset as SdkToken, Operation } from "@stellar/stellar-sdk";
-import { MIN_TRANSACTION_FEE } from "config/constants";
+import {
+  Account,
+  Asset as SdkToken,
+  Horizon,
+  Keypair,
+  Networks,
+  Operation,
+  Transaction,
+  TransactionBuilder,
+} from "@stellar/stellar-sdk";
+import {
+  DEFAULT_TRANSACTION_TIMEOUT,
+  MIN_TRANSACTION_FEE,
+  NETWORKS,
+} from "config/constants";
 import { FeePriority, NetworkCongestion } from "config/types";
 import {
   buildChangeTrustOperation,
+  buildChangeTrustTx,
   calculateBackoffDelay,
   getNetworkFees,
   isHorizonError,
@@ -207,5 +222,85 @@ describe("buildChangeTrustOperation", () => {
     expect(parseFloat((decoded as any).limit)).toBe(0);
     expect((decoded as any).line.code).toBe("USDC");
     expect((decoded as any).line.issuer).toBe(ISSUER);
+  });
+});
+
+describe("buildChangeTrustTx", () => {
+  const ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+  const publicKey = Keypair.random().publicKey();
+  const baseParams = {
+    network: NETWORKS.PUBLIC,
+    publicKey,
+    tokenIdentifier: `USDC:${ISSUER}`,
+  };
+
+  const feeStats = jest.spyOn(Horizon.Server.prototype, "feeStats");
+  const fetchTimebounds = jest.spyOn(
+    Horizon.Server.prototype,
+    "fetchTimebounds",
+  );
+
+  const decode = (xdrString: string) =>
+    TransactionBuilder.fromXdr(xdrString, Networks.PUBLIC) as Transaction;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest
+      .spyOn(Horizon.Server.prototype, "loadAccount")
+      .mockResolvedValue(
+        new Account(publicKey, "100") as unknown as Horizon.AccountResponse,
+      );
+    feeStats.mockResolvedValue({
+      ledger_capacity_usage: "0.2",
+      max_fee: { p10: "300", p50: "1000", p90: "10000" },
+    } as unknown as Horizon.HorizonApi.FeeStatsResponse);
+  });
+
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("builds one changeTrust op with the network's recommended fee and the default timeout", async () => {
+    const before = Math.floor(Date.now() / 1000);
+
+    const tx = decode(await buildChangeTrustTx(baseParams));
+
+    expect(tx.operations).toHaveLength(1);
+    expect(tx.operations[0].type).toBe("changeTrust");
+    expect((tx.operations[0] as Operation.ChangeTrust).line).toMatchObject({
+      code: "USDC",
+      issuer: ISSUER,
+    });
+    expect(tx.fee).toBe("300");
+    expect(Number(tx.timeBounds?.maxTime)).toBeGreaterThanOrEqual(
+      before + DEFAULT_TRANSACTION_TIMEOUT,
+    );
+    expect(fetchTimebounds).not.toHaveBeenCalled();
+  });
+
+  it("uses the given fee and the network's clock for the given timeout", async () => {
+    fetchTimebounds.mockResolvedValueOnce({ minTime: 0, maxTime: 1234567 });
+
+    const tx = decode(
+      await buildChangeTrustTx({
+        ...baseParams,
+        fee: "5000",
+        timeoutSeconds: 60,
+      }),
+    );
+
+    expect(tx.operations).toHaveLength(1);
+    expect(tx.fee).toBe("5000");
+    expect(fetchTimebounds).toHaveBeenCalledWith(60);
+    expect(tx.timeBounds).toEqual({ minTime: "0", maxTime: "1234567" });
+    expect(feeStats).not.toHaveBeenCalled();
+  });
+
+  it("removes the trustline with a zero limit", async () => {
+    const tx = decode(
+      await buildChangeTrustTx({ ...baseParams, isRemove: true }),
+    );
+
+    expect(Number((tx.operations[0] as Operation.ChangeTrust).limit)).toBe(0);
   });
 });

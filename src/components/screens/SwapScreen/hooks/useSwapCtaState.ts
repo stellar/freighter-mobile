@@ -1,19 +1,11 @@
 import BigNumber from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { PricedBalance } from "config/types";
-import { SwapPathResult } from "ducks/swap";
+import { SwapInputSide, SwapPathResult } from "ducks/swap";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useMemo } from "react";
 
-/**
- * CTA state-machine.
- *
- *   select       either side empty  ──► navigate to the missing picker
- *   enter        sides set, amount == 0  ──► focus the Sell input
- *   insufficient amount exceeds spendable  ──► disabled
- *   loading      path-finding in flight  ──► spinner
- *   review       path resolved, amount valid  ──► open Review sheet
- */
+/** Select missing token, enter amount, check funds, await quote, then review. */
 export type SwapCtaState =
   | { kind: "select"; missingSide: "source" | "destination" }
   | { kind: "enter" }
@@ -36,6 +28,8 @@ export const useSwapCtaState = ({
   sourceBalance,
   destinationTokenDescriptor,
   sourceAmount,
+  inputSide,
+  destinationInputAmount,
   spendableAmount,
   isLoadingPath,
   isBuilding,
@@ -46,6 +40,8 @@ export const useSwapCtaState = ({
   sourceBalance: PricedBalance | undefined;
   destinationTokenDescriptor: DestinationTokenDescriptor | null;
   sourceAmount: string;
+  inputSide: SwapInputSide;
+  destinationInputAmount: string;
   spendableAmount: BigNumber | null;
   isLoadingPath: boolean;
   isBuilding: boolean;
@@ -65,10 +61,19 @@ export const useSwapCtaState = ({
       return { kind: "select", missingSide: "destination" };
     }
 
-    const amountBN = new BigNumber(sourceAmount || "0");
-    if (amountBN.isZero() || amountBN.isNaN()) return { kind: "enter" };
+    // When the user types in the receive card the source amount is derived
+    // from the quote, so the typed amount is the receive amount and the source
+    // amount is stale until the quote returns.
+    const isExactOut = inputSide === SwapInputSide.DESTINATION;
+    const typedBN = new BigNumber(
+      (isExactOut ? destinationInputAmount : sourceAmount) || "0",
+    );
+    if (typedBN.isZero() || typedBN.isNaN()) return { kind: "enter" };
 
-    if (spendableAmount && amountBN.gt(spendableAmount)) {
+    if (isExactOut && (isLoadingPath || isBuilding)) return { kind: "loading" };
+
+    const sourceBN = new BigNumber(sourceAmount || "0");
+    if (spendableAmount && sourceBN.gt(spendableAmount)) {
       return { kind: "insufficient" };
     }
 
@@ -84,6 +89,8 @@ export const useSwapCtaState = ({
     sourceBalance,
     destinationTokenDescriptor,
     sourceAmount,
+    inputSide,
+    destinationInputAmount,
     spendableAmount,
     isLoadingPath,
     isBuilding,

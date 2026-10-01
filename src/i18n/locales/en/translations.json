@@ -358,6 +358,10 @@
       }
     },
     "transactionDetails": {
+      "baseUnits": "base units",
+      "receiptUnavailable": "Amount unavailable",
+      "retryReceipt": "Retry",
+
       "viewOnStellarExpert": "View on stellar.expert",
       "fee": "Fee",
       "status": "Status",
@@ -636,11 +640,16 @@
       "insufficientXlmForFees": "Insufficient XLM for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
       "noPathFound": "No path found between these tokens",
       "pathFindFailed": "Couldn't fetch swap path. Please try again.",
-      "customTokenSwapNotSupported": "Swapping custom tokens is not supported yet",
+      "trustlineAddedSwapUnavailable": "The trustline was added, but the swap route is no longer available. Please try the swap again.",
+      "trustlineAddedPriceMoved": "The trustline was added, but the price moved beyond your slippage. Please try the swap again.",
+      "trustlineAddedSwapMalicious": "The trustline was added, but the swap was blocked because its security scan flagged it as malicious. Nothing was swapped.",
+      "trustlineAddedSwapSuspicious": "The trustline was added, but the swap was blocked because its security scan flagged it as suspicious. Nothing was swapped. Please review the swap and try again.",
+      "trustlineSubmitFailed": "Couldn't add the trustline. Please try again.",
+      "prepareSwapFailed": "Couldn't prepare the swap. Please try again.",
       "quoteExpired": "Quote has expired, please try again to get a new quote"
     },
     "stellarExpertDown": "Token discovery is temporarily unavailable. You can still swap between tokens you already hold.",
-    "sorobanEmptyState": "Soroban contract tokens aren't supported for swaps yet. Try searching for a Classic token instead.",
+    "sorobanEmptyState": "This Soroban token isn't available for swaps yet. Try a listed Soroban token or a Classic token instead.",
     "noResults": "No tokens match {{term}}",
     "yourTokenSection": "Your token",
     "yourTokensSection": "Your tokens",
@@ -671,6 +680,7 @@
       "confirm": "Got it"
     },
     "trustlineBanner": "This will add a trustline to {{tokenCode}}",
+    "trustlineTwoStepBanner": "This will add a trustline to {{tokenCode}} first, then swap in a second transaction",
     "xlmReserve": {
       "title": "You need XLM to create a trustline",
       "bodyPrefix": "To receive {{tokenCode}}, your wallet needs a trustline on Stellar. ",

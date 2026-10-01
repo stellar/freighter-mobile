@@ -7,12 +7,21 @@ import {
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { useDebugStore } from "ducks/debug";
-import { stroopToXlm } from "helpers/formatAmount";
+import {
+  getPerOperationBaseFeeStroops,
+  stroopToXlm,
+} from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { isMuxedAccount } from "helpers/stellar";
 import { t } from "i18next";
 import { SimulationTransactionType } from "services/analytics/types";
-import { isHorizonError, signTransaction, submitTx } from "services/stellar";
+import { SwapQuote } from "services/backend";
+import {
+  buildChangeTrustTx,
+  isHorizonError,
+  signTransaction,
+  submitTx,
+} from "services/stellar";
 import {
   buildPaymentTransaction,
   buildSendCollectibleTransaction,
@@ -82,6 +91,7 @@ const FAILED_SUBMIT_OUTCOME: SubmitTransactionOutcome = {
 
 interface TransactionBuilderState {
   transactionXDR: string | null;
+  transactionExpiresAt: number | null;
   signedTransactionXDR: string | null;
   isBuilding: boolean;
   isSubmitting: boolean;
@@ -124,6 +134,21 @@ interface TransactionBuilderState {
     includeTrustline?: { tokenCode: string; issuer: string };
   }) => Promise<string | null>;
 
+  /** Builds a transaction that only opens a trustline (the first step of an aggregator swap into a new asset). */
+  buildTrustlineTransaction: (params: {
+    tokenCode: string;
+    issuer: string;
+    transactionFee: string;
+    transactionTimeout: number;
+    network: NETWORKS;
+    senderAddress: string;
+  }) => Promise<string | null>;
+
+  /** Adopts a backend-validated envelope and its normalized signing metadata. */
+  prepareAggregatorSwap: (params: {
+    transaction: SwapQuote["transaction"];
+  }) => string | null;
+
   buildSendCollectibleTransaction: (params: {
     collectionAddress: string;
     destinationAccount: string;
@@ -142,6 +167,13 @@ interface TransactionBuilderState {
 
   submitTransaction: (params: {
     network: NETWORKS;
+    /**
+     * A step that is not the flow's own transaction (the trustline sent ahead
+     * of an aggregator swap). Its hash is returned on the outcome but never
+     * published to the store, so a screen watching `transactionHash` does not
+     * report the flow as settled.
+     */
+    isIntermediate?: boolean;
   }) => Promise<SubmitTransactionOutcome>;
 
   resetTransaction: () => void;
@@ -151,12 +183,15 @@ const initialState: Omit<
   TransactionBuilderState,
   | "buildTransaction"
   | "buildSwapTransaction"
+  | "buildTrustlineTransaction"
+  | "prepareAggregatorSwap"
   | "buildSendCollectibleTransaction"
   | "signTransaction"
   | "submitTransaction"
   | "resetTransaction"
 > = {
   transactionXDR: null,
+  transactionExpiresAt: null,
   signedTransactionXDR: null,
   isBuilding: false,
   isSubmitting: false,
@@ -195,6 +230,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       set({
         isBuilding: true,
         error: null,
+        transactionExpiresAt: null,
         requestId: newRequestId,
         isSoroban: isSorobanTx,
         sorobanResourceFeeXlm: null,
@@ -342,6 +378,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       set({
         isBuilding: true,
         error: null,
+        transactionExpiresAt: null,
         requestId: newRequestId,
         isSoroban: false,
         sorobanResourceFeeXlm: null,
@@ -410,6 +447,128 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       }
     },
 
+    buildTrustlineTransaction: async ({
+      tokenCode,
+      issuer,
+      transactionFee,
+      transactionTimeout,
+      network,
+      senderAddress,
+    }) => {
+      const newRequestId = createRequestId();
+
+      set({
+        isBuilding: true,
+        error: null,
+        transactionExpiresAt: null,
+        requestId: newRequestId,
+        isSoroban: false,
+        sorobanResourceFeeXlm: null,
+        sorobanInclusionFeeXlm: null,
+      });
+
+      try {
+        const trustlineXdr = await buildChangeTrustTx({
+          network,
+          publicKey: senderAddress,
+          tokenIdentifier: `${tokenCode}:${issuer}`,
+          fee: getPerOperationBaseFeeStroops(transactionFee, 1),
+          timeoutSeconds: transactionTimeout,
+        });
+
+        if (get().requestId === newRequestId) {
+          set({
+            transactionXDR: trustlineXdr,
+            isBuilding: false,
+            signedTransactionXDR: null,
+            transactionHash: null,
+          });
+        }
+
+        return trustlineXdr;
+      } catch (error) {
+        logger.error(
+          "TransactionBuilderStore",
+          "Failed to build trustline transaction",
+          error,
+        );
+
+        if (get().requestId === newRequestId) {
+          set({
+            error: `Failed to build trustline transaction: ${extractErrorMessage(error)}`,
+            isBuilding: false,
+            transactionXDR: null,
+          });
+        }
+
+        return null;
+      }
+    },
+
+    prepareAggregatorSwap: ({ transaction }) => {
+      const newRequestId = createRequestId();
+
+      try {
+        if (
+          !transaction?.envelopeXdr ||
+          !/^[1-9]\d{0,7}$/.test(transaction.feeStroops ?? "") ||
+          !/^(0|[1-9]\d{0,7})$/.test(transaction.resourceFeeStroops ?? "") ||
+          !Number.isSafeInteger(transaction.expiresAt) ||
+          (transaction.expiresAt ?? 0) <= Date.now() / 1000 + 20
+        ) {
+          throw new Error(
+            "Swap transaction metadata missing or expired; refresh quote",
+          );
+        }
+        const { envelopeXdr } = transaction;
+        const feeStroops = BigInt(transaction.feeStroops!);
+        const resourceFeeStroops = BigInt(transaction.resourceFeeStroops!);
+        if (feeStroops > 20_000_000n || resourceFeeStroops > feeStroops) {
+          throw new Error("Invalid swap transaction fees");
+        }
+        const inclusionFeeStroops = feeStroops - resourceFeeStroops;
+
+        set({
+          transactionXDR: envelopeXdr,
+          isBuilding: false,
+          error: null,
+          transactionExpiresAt: transaction?.expiresAt ?? null,
+          requestId: newRequestId,
+          signedTransactionXDR: null,
+          transactionHash: null,
+          isSoroban: true,
+          sorobanResourceFeeXlm: stroopToXlm(
+            new BigNumber(resourceFeeStroops.toString()),
+          ).toFixed(7),
+          sorobanInclusionFeeXlm: stroopToXlm(
+            new BigNumber(inclusionFeeStroops.toString()),
+          ).toFixed(7),
+        });
+
+        return envelopeXdr;
+      } catch (error) {
+        logger.error(
+          "TransactionBuilderStore",
+          "Aggregator swap transaction rejected",
+          error,
+        );
+
+        set({
+          error: extractErrorMessage(error),
+          isBuilding: false,
+          transactionXDR: null,
+          signedTransactionXDR: null,
+          transactionHash: null,
+          sorobanResourceFeeXlm: null,
+          sorobanInclusionFeeXlm: null,
+          transactionExpiresAt: null,
+          requestId: newRequestId,
+        });
+
+        return null;
+      }
+    },
+
     buildSendCollectibleTransaction: async (params) => {
       const newRequestId = createRequestId();
 
@@ -419,6 +578,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       set({
         isBuilding: true,
         error: null,
+        transactionExpiresAt: null,
         requestId: newRequestId,
         isSoroban: true,
         sorobanResourceFeeXlm: null,
@@ -589,10 +749,11 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         // Only update with success if this submit is still the latest one.
         // Guards against late responses from previous submits showing wrong hash.
         if (get().requestId === currentRequestId) {
-          set({
-            transactionHash: hash,
-            isSubmitting: false,
-          });
+          set(
+            params.isIntermediate
+              ? { isSubmitting: false }
+              : { transactionHash: hash, isSubmitting: false },
+          );
         }
 
         // Returned per-attempt, not read back from the store: the writes above

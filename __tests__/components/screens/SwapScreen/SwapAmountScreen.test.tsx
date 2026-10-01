@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { fireEvent } from "@testing-library/react-native";
+import { fireEvent, within } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
 import Icon from "components/sds/Icon";
@@ -34,6 +34,7 @@ const mockResetToDefaults = jest.fn();
 const mockSaveSwapFee = jest.fn();
 const mockExecuteSwap = jest.fn().mockResolvedValue(undefined);
 const mockSetupSwapTransaction = jest.fn().mockResolvedValue(undefined);
+let mockBuilderXdr = "prepared-xdr";
 
 mockGestureHandler();
 mockUseColors();
@@ -52,6 +53,7 @@ type SheetRefSpy = {
    * Returns true when the sheet had an onChange handler.
    */
   fireDismiss: () => boolean;
+  fireSettingsChange: () => boolean;
 };
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace, vars-on-top, no-var, no-underscore-dangle
@@ -68,10 +70,16 @@ jest.mock("components/BottomSheet", () => {
   const NoopSheet = (props: {
     modalRef?: React.RefObject<unknown>;
     bottomSheetModalProps?: { onChange?: (index: number) => void };
+    customContent?: React.ReactElement<{ onSettingsChange?: () => void }>;
   }) => {
-    const { modalRef, bottomSheetModalProps } = props;
+    const { modalRef, bottomSheetModalProps, customContent } = props;
     ReactModule.useImperativeHandle(modalRef, () => {
       const spy: SheetRefSpy = {
+        fireSettingsChange: () => {
+          const callback = customContent?.props.onSettingsChange;
+          callback?.();
+          return Boolean(callback);
+        },
         present: jest.fn(),
         dismiss: jest.fn(),
         fireDismiss: () => {
@@ -107,6 +115,8 @@ type SwapStoreState = {
   sourceAmount: string;
   sourceAmountDisplay: string;
   destinationAmount: string;
+  inputSide: "source" | "destination";
+  destinationInputAmount: string;
   pathResult: null | { destinationAmount: string };
   isLoadingPath: boolean;
   pathError: string | null;
@@ -114,6 +124,8 @@ type SwapStoreState = {
   setDestinationToken: jest.Mock;
   setSourceAmount: jest.Mock;
   setSourceAmountDisplay: jest.Mock;
+  setInputSide: jest.Mock;
+  setDestinationInputAmount: jest.Mock;
   resetSwap: jest.Mock;
 };
 
@@ -132,6 +144,8 @@ const makeDefaultSwapState = (): SwapStoreState => ({
   sourceAmount: "1",
   sourceAmountDisplay: "1",
   destinationAmount: "2",
+  inputSide: "source",
+  destinationInputAmount: "0",
   pathResult: null,
   isLoadingPath: false,
   pathError: null,
@@ -139,10 +153,13 @@ const makeDefaultSwapState = (): SwapStoreState => ({
   setDestinationToken: mockSetDestinationToken,
   setSourceAmount: mockSetSourceAmount,
   setSourceAmountDisplay: mockSetSourceAmountDisplay,
+  setInputSide: jest.fn(),
+  setDestinationInputAmount: jest.fn(),
   resetSwap: mockResetSwap,
 });
 
 jest.mock("ducks/swap", () => ({
+  SwapInputSide: jest.requireActual("ducks/swap").SwapInputSide,
   useSwapStore: jest.fn(),
   // Pass-through adapter — tests can inspect the call by passing in a
   // descriptor that doesn't match any held balance and asserting that the
@@ -172,17 +189,22 @@ const setSwapStoreState = (patch: Partial<SwapStoreState>): void => {
   const mock = useSwapStore as unknown as jest.Mock & {
     getState: () => SwapStoreState;
   };
-  mock.mockImplementation(() => state);
+  mock.mockImplementation((select?: (s: SwapStoreState) => unknown) =>
+    select ? select(state) : state,
+  );
   // The scan-stamping callback reads the destination synchronously via
   // useSwapStore.getState(), so mirror the hook-call state there too.
   mock.getState = () => state;
 };
 
 jest.mock("ducks/transactionBuilder", () => ({
-  useTransactionBuilderStore: jest.fn(() => ({
-    isBuilding: false,
-    resetTransaction: mockResetTransaction,
-  })),
+  useTransactionBuilderStore: Object.assign(
+    jest.fn(() => ({
+      isBuilding: false,
+      resetTransaction: mockResetTransaction,
+    })),
+    { getState: () => ({ transactionXDR: mockBuilderXdr }) },
+  ),
 }));
 jest.mock("ducks/swapSettings", () => ({
   useSwapSettingsStore: jest.fn(() => ({
@@ -382,6 +404,25 @@ const mockBalancesListReturn = (
 };
 
 describe("SwapAmountScreen", () => {
+  it("shows the quoted receive value and follows the sell-card fiat toggle", () => {
+    setSwapStoreState({ destinationAmount: "2" });
+
+    const { getByTestId } = renderWithProviders(
+      <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+    );
+    const receive = () => within(getByTestId("swap-receive-card"));
+
+    expect(receive().getByText("2.00")).toBeTruthy();
+    expect(receive().getByText("$0.60")).toBeTruthy();
+    expect(receive().queryByText("$0.00")).toBeNull();
+
+    fireEvent.press(getByTestId("swap-amount-fiat-toggle"));
+
+    expect(receive().getByText("$0.60")).toBeTruthy();
+    expect(receive().getByText("2.00 FTT")).toBeTruthy();
+    expect(receive().queryByText("$0.00")).toBeNull();
+  });
+
   beforeEach(() => {
     // Only clear call history; clearAllMocks would also drop the mock impls
     // set in the top-level jest.mock factories.
@@ -393,7 +434,8 @@ describe("SwapAmountScreen", () => {
     mockResetTransaction.mockClear();
     mockResetToDefaults.mockClear();
     mockExecuteSwap.mockClear();
-    mockSetupSwapTransaction.mockClear();
+    mockSetupSwapTransaction.mockReset().mockResolvedValue(undefined);
+    mockBuilderXdr = "prepared-xdr";
     mockShowToast.mockClear();
     mockSaveSwapFee.mockClear();
     setSwapStoreState({});
@@ -850,62 +892,133 @@ describe("SwapAmountScreen", () => {
       expect(mockSetupSwapTransaction).toHaveBeenCalled();
     });
 
-    it("dismisses the keyboard AND waits for keyboardDidHide before opening the Review sheet", async () => {
-      // Regression: the system keyboard previously stayed up when the user
-      // tapped "Review swap", squishing the bottom sheet content. Now we
-      // also wait for keyboardDidHide so the sheet animates in at its
-      // final position rather than jumping after the keyboard slides away.
-      const RN = jest.requireActual("react-native");
-      const dismissSpy = jest.spyOn(RN.Keyboard, "dismiss");
-      const isVisibleSpy = jest
-        .spyOn(RN.Keyboard, "isVisible")
-        .mockReturnValue(true);
-      // Stub addListener so the test can synchronously fire the
-      // keyboardDidHide callback after press, resolving the wait promise.
-      let hideCallback: (() => void) | null = null;
-      const addListenerSpy = jest
-        .spyOn(RN.Keyboard, "addListener")
-        .mockImplementation((...args: unknown[]) => {
-          const event = args[0] as string;
-          const cb = args[1] as () => void;
-          if (event === "keyboardDidHide") hideCallback = cb;
-          return { remove: jest.fn() } as any;
+    it.each([
+      "ready",
+      "scanning",
+      "quote changed",
+      "builder changed",
+      "settings changed",
+      "unmounted",
+    ])(
+      "prepares during keyboard dismissal and guards presentation: %s",
+      async (mode) => {
+        const RN = jest.requireActual("react-native");
+        const dismissSpy = jest.spyOn(RN.Keyboard, "dismiss");
+        const isVisibleSpy = jest
+          .spyOn(RN.Keyboard, "isVisible")
+          .mockReturnValue(true);
+        // Stub addListener so the test can synchronously fire the
+        // keyboardDidHide callback after press, resolving the wait promise.
+        let hideCallback: (() => void) | null = null;
+        const addListenerSpy = jest
+          .spyOn(RN.Keyboard, "addListener")
+          .mockImplementation((...args: unknown[]) => {
+            const event = args[0] as string;
+            const cb = args[1] as () => void;
+            if (event === "keyboardDidHide") hideCallback = cb;
+            return { remove: jest.fn() } as any;
+          });
+
+        // eslint-disable-next-line no-underscore-dangle
+        globalThis.__mockSheetRefs = [];
+        const quote = { destinationAmount: "2" };
+        const prepared = {
+          scanResult: { validation: { result_type: "Benign" } },
+          quote,
+          transactionXDR: mockBuilderXdr,
+        };
+        let resolveSetup: (value: typeof prepared) => void = () => {};
+        if (mode === "scanning" || mode === "settings changed") {
+          mockSetupSwapTransaction.mockReturnValueOnce(
+            new Promise((resolve) => {
+              resolveSetup = resolve;
+            }),
+          );
+        } else {
+          mockSetupSwapTransaction.mockResolvedValueOnce(prepared);
+        }
+        mockBalancesListReturn(
+          Object.fromEntries(
+            mockBalances.map((balance) => [
+              balance.id.replace(":", "-"),
+              { result_type: "Benign" },
+            ]),
+          ),
+        );
+        setSwapStoreState({
+          sourceAmount: "1",
+          pathResult: quote,
         });
 
-      setSwapStoreState({
-        sourceAmount: "1",
-        pathResult: { destinationAmount: "2" },
-      });
+        const { getByTestId, unmount } = renderWithProviders(
+          <SwapAmountScreen
+            navigation={makeNavigation()}
+            route={makeRoute()}
+          />,
+        );
 
-      const { getByTestId } = renderWithProviders(
-        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
-      );
+        await act(async () => {
+          fireEvent.press(getByTestId("swap-continue-button"));
+          await Promise.resolve();
+        });
 
-      await act(async () => {
-        fireEvent.press(getByTestId("swap-continue-button"));
-        await Promise.resolve();
-      });
+        // Keyboard.dismiss must have fired, and the listener must have been
+        // registered to wait for keyboardDidHide.
+        expect(dismissSpy).toHaveBeenCalled();
+        expect(addListenerSpy).toHaveBeenCalledWith(
+          "keyboardDidHide",
+          expect.any(Function),
+        );
+        expect(mockSetupSwapTransaction).toHaveBeenCalledTimes(1);
+        // eslint-disable-next-line no-underscore-dangle
+        const sheets = globalThis.__mockSheetRefs;
+        sheets.forEach((sheet) => expect(sheet.present).not.toHaveBeenCalled());
 
-      // Keyboard.dismiss must have fired, and the listener must have been
-      // registered to wait for keyboardDidHide.
-      expect(dismissSpy).toHaveBeenCalled();
-      expect(addListenerSpy).toHaveBeenCalledWith(
-        "keyboardDidHide",
-        expect.any(Function),
-      );
+        if (mode === "quote changed") {
+          setSwapStoreState({ pathResult: { destinationAmount: "3" } });
+        } else if (mode === "builder changed") {
+          mockBuilderXdr = "another-flow-xdr";
+        } else if (mode === "settings changed") {
+          await act(async () => {
+            sheets.forEach((sheet) => sheet.fireSettingsChange());
+            await Promise.resolve();
+          });
+          expect(mockSetupSwapTransaction).toHaveBeenCalledTimes(2);
+          expect(
+            getByTestId("swap-continue-button").props.accessibilityState
+              ?.disabled,
+          ).toBe(false);
+        } else if (mode === "unmounted") {
+          unmount();
+        }
 
-      // Fire the keyboardDidHide callback to resolve the wait, then the
-      // sheet presentation (mockSetupSwapTransaction) is reachable.
-      await act(async () => {
-        hideCallback?.();
-        await Promise.resolve();
-      });
-      expect(mockSetupSwapTransaction).toHaveBeenCalled();
+        await act(async () => {
+          hideCallback?.();
+          await Promise.resolve();
+        });
+        if (mode === "scanning" || mode === "settings changed") {
+          sheets.forEach((sheet) =>
+            expect(sheet.present).not.toHaveBeenCalled(),
+          );
+          await act(async () => {
+            resolveSetup(prepared);
+            await Promise.resolve();
+          });
+        }
+        if (mode === "ready" || mode === "scanning") {
+          expect(sheets[0].present).toHaveBeenCalledTimes(1);
+          expect(sheets[1].present).not.toHaveBeenCalled();
+        } else {
+          sheets.forEach((sheet) =>
+            expect(sheet.present).not.toHaveBeenCalled(),
+          );
+        }
 
-      dismissSpy.mockRestore();
-      isVisibleSpy.mockRestore();
-      addListenerSpy.mockRestore();
-    });
+        dismissSpy.mockRestore();
+        isVisibleSpy.mockRestore();
+        addListenerSpy.mockRestore();
+      },
+    );
 
     it("does NOT dismiss the keyboard on the 'Enter an amount' CTA (it focuses the input)", () => {
       const RN = jest.requireActual("react-native");
@@ -1107,6 +1220,46 @@ describe("SwapAmountScreen", () => {
         (spy) => spy.present.mock.calls.length > 0,
       );
       expect(presentedSheets.length).toBeGreaterThan(0);
+    });
+
+    it("scales a Soroban source's raw balance by its decimals for MAX and the percentage buttons", async () => {
+      const XAUM = "CC2RBGYNCFBCVENIDL5BFBWPH4OUZM2UA3OD2K2N54GLMWCC4KWPVAGO";
+      const sorobanSource = {
+        id: `XAUM:${XAUM}`,
+        token: { code: "XAUM", issuer: { key: XAUM } },
+        tokenCode: "XAUM",
+        contractId: XAUM,
+        decimals: 9,
+        total: new BigNumber("1608622"),
+        available: new BigNumber("1608622"),
+      };
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: [...mockBalances, sorobanSource],
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+      setSwapStoreState({ sourceTokenId: sorobanSource.id });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await act(async () => {
+        fireEvent.press(getByTestId("percentage-100"));
+        await Promise.resolve();
+      });
+      expect(mockSetSourceAmount).toHaveBeenLastCalledWith("0.001608622");
+
+      await act(async () => {
+        fireEvent.press(getByTestId("percentage-50"));
+        await Promise.resolve();
+      });
+      expect(mockSetSourceAmount).toHaveBeenLastCalledWith("0.000804311");
     });
 
     it("reserves BASE_RESERVE from spendable when swapping XLM → a new token", () => {

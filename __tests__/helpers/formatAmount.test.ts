@@ -16,6 +16,9 @@ import {
   parseDisplayNumber,
   parseDisplayNumberToBigNumber,
   formatBalanceAmount,
+  getBalanceDecimalTotal,
+  getBalanceDecimals,
+  toDecimalAmount,
   getPerOperationBaseFeeStroops,
 } from "helpers/formatAmount";
 
@@ -883,5 +886,51 @@ describe("formatAmount helpers", () => {
       // 0.0000301 XLM = 301 stroops; 2 ops => floor(150.5) = 150/op.
       expect(getPerOperationBaseFeeStroops("0.0000301", 2)).toBe("150");
     });
+  });
+});
+
+describe("getBalanceDecimalTotal and toDecimalAmount", () => {
+  it.each([
+    [
+      "scales a Soroban token's raw amount by its decimals",
+      9,
+      "1608622",
+      "0.001608622",
+    ],
+    [
+      "scales a Soroban figure, such as the spendable amount",
+      9,
+      "804311",
+      "0.000804311",
+    ],
+    ["leaves a zero-decimals token's amount as it is", 0, "42", "42"],
+    ["leaves a classic amount as it is", undefined, "2.3156637", "2.3156637"],
+  ])("%s", (_title, decimals, raw, expected) => {
+    const balance = {
+      total: new BigNumber(raw),
+      ...(decimals !== undefined && { decimals }),
+    } as unknown as SorobanBalance;
+
+    expect(getBalanceDecimalTotal(balance).toString()).toBe(expected);
+    expect(toDecimalAmount(balance, new BigNumber(raw)).toString()).toBe(
+      expected,
+    );
+  });
+});
+
+describe("getBalanceDecimals", () => {
+  it("returns a Soroban token's own decimals, including zero", () => {
+    expect(
+      getBalanceDecimals({ decimals: 9 } as unknown as SorobanBalance),
+    ).toBe(9);
+    expect(
+      getBalanceDecimals({ decimals: 0 } as unknown as SorobanBalance),
+    ).toBe(0);
+  });
+
+  it("falls back to 7 for classic balances and when nothing is selected", () => {
+    expect(getBalanceDecimals({} as unknown as ClassicBalance)).toBe(7);
+    expect(getBalanceDecimals(null)).toBe(7);
+    expect(getBalanceDecimals(undefined)).toBe(7);
   });
 });

@@ -3,6 +3,7 @@ import { userEvent } from "@testing-library/react-native";
 import { TokenIcon } from "components/TokenIcon";
 import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
 import { useSwapStore } from "ducks/swap";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { SecurityLevel } from "services/blockaid/constants";
@@ -117,8 +118,38 @@ describe("SwapReviewBottomSheet", () => {
     destinationSecurityAssessment: safe,
   };
 
+  const baseSwapState = {
+    sourceAmount: "10",
+    destinationAmount: "5",
+    pathResult: {
+      sourceAmount: "10",
+      destinationAmount: "5",
+      conversionRate: 0.5,
+    },
+    sourceTokenSymbol: "XLM",
+    sourceTokenId: "XLM",
+    destinationToken: null,
+  };
+
+  const usdcDest = (
+    requiresTrustline: boolean,
+    issuer = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
+  ) => ({
+    id: `USDC:${issuer}`,
+    tokenCode: "USDC",
+    issuer,
+    decimals: 7,
+    tokenType: "credit_alphanum4",
+    requiresTrustline,
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
+    (useTransactionBuilderStore as unknown as jest.Mock).mockReturnValue({
+      transactionXDR: "mock-xdr",
+      isBuilding: false,
+      isSoroban: false,
+    });
   });
 
   describe("Basic layout", () => {
@@ -346,18 +377,6 @@ describe("SwapReviewBottomSheet", () => {
   });
 
   describe("non-held destination token icon", () => {
-    const baseSwapState = {
-      sourceAmount: "10",
-      destinationAmount: "5",
-      pathResult: {
-        sourceAmount: "10",
-        destinationAmount: "5",
-        conversionRate: 0.5,
-      },
-      sourceTokenSymbol: "XLM",
-      sourceTokenId: "XLM",
-    };
-
     it("renders the USDC token icon (not XLM) when the destination is a non-held USDC", () => {
       // Use an issuer that is NOT present in mockBalances so destinationBalance
       // resolves to undefined — this is the exact bug scenario.
@@ -365,14 +384,7 @@ describe("SwapReviewBottomSheet", () => {
         "GCOIN000000000000000000000000000000000000000000000000000NOT";
       (useSwapStore as unknown as jest.Mock).mockReturnValue({
         ...baseSwapState,
-        destinationToken: {
-          id: `USDC:${nonHeldUsdcIssuer}`,
-          tokenCode: "USDC",
-          issuer: nonHeldUsdcIssuer,
-          decimals: 7,
-          tokenType: "credit_alphanum4",
-          requiresTrustline: true,
-        },
+        destinationToken: usdcDest(true, nonHeldUsdcIssuer),
       });
 
       // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -392,30 +404,36 @@ describe("SwapReviewBottomSheet", () => {
     });
   });
 
-  describe("trustline banner", () => {
-    const baseSwapState = {
-      sourceAmount: "10",
-      destinationAmount: "5",
-      pathResult: {
-        sourceAmount: "10",
-        destinationAmount: "5",
-        conversionRate: 0.5,
-      },
-      sourceTokenSymbol: "XLM",
-      sourceTokenId: "XLM",
-    };
+  describe("fee row", () => {
+    it("shows the verified envelope fee even when the quote understates it", () => {
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        ...baseSwapState,
+        pathResult: {
+          ...baseSwapState.pathResult,
+          source: "xoxno",
+          networkFeeXlm: "0.00001",
+        },
+      });
+      (useTransactionBuilderStore as unknown as jest.Mock).mockReturnValue({
+        transactionXDR: "mock-xdr",
+        isSoroban: true,
+        sorobanResourceFeeXlm: "0.0097924",
+        sorobanInclusionFeeXlm: "0.00001",
+      });
 
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(getByText(/0\.0098024/)).toBeTruthy();
+    });
+  });
+
+  describe("trustline banner", () => {
     it("renders the purple banner when destinationToken.requiresTrustline is true", () => {
       (useSwapStore as unknown as jest.Mock).mockReturnValue({
         ...baseSwapState,
-        destinationToken: {
-          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
-          tokenCode: "USDC",
-          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
-          decimals: 7,
-          tokenType: "credit_alphanum4",
-          requiresTrustline: true,
-        },
+        destinationToken: usdcDest(true),
       });
 
       const { getByText } = renderWithProviders(
@@ -425,17 +443,30 @@ describe("SwapReviewBottomSheet", () => {
       expect(getByText(/This will add a trustline to USDC/)).toBeTruthy();
     });
 
+    it("says the swap follows in a second transaction when the aggregator route needs the trustline first", () => {
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        ...baseSwapState,
+        pathResult: {
+          ...baseSwapState.pathResult,
+          source: "xoxno",
+          requiresTrustlineFirst: true,
+        },
+        destinationToken: usdcDest(true),
+      });
+
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(
+        getByText(/trustline to USDC first, then swap in a second transaction/),
+      ).toBeTruthy();
+    });
+
     it("does NOT render the banner when destinationToken.requiresTrustline is false", () => {
       (useSwapStore as unknown as jest.Mock).mockReturnValue({
         ...baseSwapState,
-        destinationToken: {
-          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
-          tokenCode: "USDC",
-          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
-          decimals: 7,
-          tokenType: "credit_alphanum4",
-          requiresTrustline: false,
-        },
+        destinationToken: usdcDest(false),
       });
 
       const { queryByText } = renderWithProviders(

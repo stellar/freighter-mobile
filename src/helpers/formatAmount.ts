@@ -842,6 +842,44 @@ export const hasDecimals = (
   balance.decimals >= 0;
 
 /**
+ * Converts a raw balance figure (`total` or `available`) to a decimal token
+ * amount. A Soroban token's figures are raw integers that its `decimals`
+ * scale; every other balance already holds decimal amounts. Use it wherever a
+ * balance figure is multiplied by a price or compared with a typed amount.
+ *
+ * @param {Balance | PricedBalance} balance - The balance the figure belongs to
+ * @param {BigNumber} amount - The raw `total` or `available` figure
+ * @returns {BigNumber} The decimal amount
+ */
+export const toDecimalAmount = (
+  balance: Balance | PricedBalance,
+  amount: BigNumber,
+): BigNumber =>
+  hasDecimals(balance) ? amount.shiftedBy(-balance.decimals) : amount;
+
+/**
+ * The balance total as a decimal token amount.
+ *
+ * @param {Balance | PricedBalance} balance - The balance to read
+ * @returns {BigNumber} The decimal amount held
+ */
+export const getBalanceDecimalTotal = (
+  balance: Balance | PricedBalance,
+): BigNumber => toDecimalAmount(balance, balance.total);
+
+/**
+ * The number of decimals an amount of this balance's token can carry: the
+ * token's own for a Soroban token, the classic 7 otherwise.
+ *
+ * @param {Balance | PricedBalance} [balance] - The balance, if one is selected
+ * @returns {number} The decimals to format an amount with
+ */
+export const getBalanceDecimals = (
+  balance?: Balance | PricedBalance | null,
+): number =>
+  balance && hasDecimals(balance) ? balance.decimals : DEFAULT_DECIMALS;
+
+/**
  * Formats a balance amount for display, handling custom tokens with decimals
  *
  * This function intelligently formats balance amounts by:

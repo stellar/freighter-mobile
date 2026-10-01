@@ -5,6 +5,7 @@ import { isRequestCanceled } from "services/apiFactory";
 import {
   fetchBalances,
   fetchCollectibles,
+  fetchSwapQuote,
   fetchTokenPrices,
   freighterBackendV1,
   freighterBackendV2,
@@ -13,6 +14,8 @@ import {
   submitTransaction,
   SimulateTransactionParams,
   SubmitTransactionBody,
+  SwapQuote,
+  SwapQuoteSource,
 } from "services/backend";
 import { scanBulkTokens } from "services/blockaid/api";
 import { dataStorage } from "services/storage/storageFactory";
@@ -1412,6 +1415,64 @@ describe("Backend Service - handleContractLookup", () => {
       isNative: false,
       domain: "",
       tokenCode: "USDC",
+    });
+  });
+});
+
+describe("Backend Service - swap routes", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe("fetchSwapQuote", () => {
+    const { network, ...quoteBody } = {
+      network: NETWORKS.TESTNET,
+      sourceAsset: "XLM",
+      destAsset: "USDC:GISSUER",
+      sourceAmount: "10",
+      sourceDecimals: 7,
+      destDecimals: 7,
+      sender: "GSENDER",
+      slippagePercent: 1,
+      timeoutSeconds: 180,
+    };
+    const quote: SwapQuote = {
+      source: SwapQuoteSource.XOXNO,
+      sourceAmount: "10",
+      destinationAmount: "1.2345678",
+      destinationAmountMin: "1.2",
+      destinationDecimals: 7,
+      conversionRate: "0.12345678",
+    };
+
+    it("posts the request to /swap/quote and unwraps the quote", async () => {
+      (freighterBackendV2.post as jest.Mock).mockResolvedValueOnce({
+        data: { data: quote },
+      });
+
+      await expect(fetchSwapQuote({ network, ...quoteBody })).resolves.toEqual(
+        quote,
+      );
+
+      expect(freighterBackendV2.post).toHaveBeenCalledTimes(1);
+      expect(freighterBackendV2.post).toHaveBeenCalledWith(
+        "/swap/quote",
+        quoteBody,
+        { params: { network } },
+      );
+    });
+
+    it("passes quote cancellation in the HTTP config, not the request body", async () => {
+      const { signal } = new AbortController();
+      (freighterBackendV2.post as jest.Mock).mockResolvedValueOnce({
+        data: { data: quote },
+      });
+      await fetchSwapQuote({ network, ...quoteBody, signal });
+      expect(freighterBackendV2.post).toHaveBeenCalledWith(
+        "/swap/quote",
+        quoteBody,
+        { params: { network }, signal },
+      );
     });
   });
 });

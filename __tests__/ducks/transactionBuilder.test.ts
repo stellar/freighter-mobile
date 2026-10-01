@@ -46,6 +46,7 @@ describe("transactionBuilder Duck", () => {
   const mockSignedXDR = "mockSignedXDR";
   const mockTxHash = "mockTxHash";
   const mockResultXdr = "mockResultXdr";
+  const mockResultMetaXdr = "mockResultMetaXdr";
   const mockNetwork = NETWORKS.TESTNET;
 
   beforeEach(() => {
@@ -80,6 +81,7 @@ describe("transactionBuilder Duck", () => {
     (stellarServices.submitTx as jest.Mock).mockResolvedValue({
       hash: mockTxHash,
       result_xdr: mockResultXdr,
+      result_meta_xdr: mockResultMetaXdr,
     });
     (sorobanHelpers.isContractId as jest.Mock).mockImplementation((addr) =>
       addr?.startsWith("C"),
@@ -282,6 +284,8 @@ describe("transactionBuilder Duck", () => {
     expect(outcome!.hash).toBe(mockTxHash);
     // The attempt's own result, so a mid-submit store reset can't strip it.
     expect(outcome!.resultXdr).toBe(mockResultXdr);
+    // The meta rides on the outcome too: an aggregator swap's settled amount
+    // is read from its contract events.
     expect(state.isSubmitting).toBe(false);
     expect(state.transactionHash).toBe(mockTxHash);
     expect(state.error).toBeNull();
@@ -289,6 +293,74 @@ describe("transactionBuilder Duck", () => {
       tx: mockSignedXDR,
       network: mockNetwork,
     });
+  });
+
+  it("returns the hash of an intermediate submit without publishing it to the store", async () => {
+    act(() => {
+      store.setState({ signedTransactionXDR: mockSignedXDR });
+    });
+
+    let outcome: SubmitTransactionOutcome | null = null;
+    await act(async () => {
+      outcome = await store
+        .getState()
+        .submitTransaction({ network: mockNetwork, isIntermediate: true });
+    });
+
+    const state = store.getState();
+    expect(outcome!.hash).toBe(mockTxHash);
+    expect(outcome!.resultXdr).toBe(mockResultXdr);
+    expect(state.transactionHash).toBeNull();
+    expect(state.isSubmitting).toBe(false);
+    expect(state.error).toBeNull();
+  });
+
+  it("publishes the hash once, for the flow's own transaction that follows an intermediate one", async () => {
+    const publishedHashes: (string | null)[] = [];
+    const unsubscribe = store.subscribe((state) => {
+      publishedHashes.push(state.transactionHash);
+    });
+    (stellarServices.submitTx as jest.Mock)
+      .mockResolvedValueOnce({ hash: "trustline-hash", result_xdr: "r1" })
+      .mockResolvedValueOnce({ hash: "swap-hash", result_xdr: "r2" });
+
+    await act(async () => {
+      store.setState({ signedTransactionXDR: "signed-trustline" });
+      await store
+        .getState()
+        .submitTransaction({ network: mockNetwork, isIntermediate: true });
+    });
+    expect(store.getState().transactionHash).toBeNull();
+
+    await act(async () => {
+      store.setState({ signedTransactionXDR: "signed-swap" });
+      await store.getState().submitTransaction({ network: mockNetwork });
+    });
+    unsubscribe();
+
+    expect(store.getState().transactionHash).toBe("swap-hash");
+    expect(publishedHashes.filter((hash) => hash !== null)).toEqual([
+      "swap-hash",
+    ]);
+  });
+
+  it("still surfaces an intermediate submit's failure in the store", async () => {
+    (stellarServices.submitTx as jest.Mock).mockRejectedValue(
+      new Error("Submit failed"),
+    );
+    act(() => {
+      store.setState({ signedTransactionXDR: mockSignedXDR });
+    });
+
+    let outcome: SubmitTransactionOutcome | null = null;
+    await act(async () => {
+      outcome = await store
+        .getState()
+        .submitTransaction({ network: mockNetwork, isIntermediate: true });
+    });
+
+    expect(outcome!.hash).toBeNull();
+    expect(store.getState().error).toBe("Submit failed");
   });
 
   it("should handle errors during submitTransaction (no signed XDR)", async () => {

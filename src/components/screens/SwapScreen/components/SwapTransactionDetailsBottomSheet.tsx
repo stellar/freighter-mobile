@@ -15,6 +15,7 @@ import { THEME } from "config/theme";
 import { NonNativeToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { usePricesForNetwork } from "ducks/prices";
+import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
@@ -138,10 +139,15 @@ const SwapTransactionDetailsBottomSheet: React.FC<
     [actualSourceAmount, actualDestinationAmount],
   );
 
+  // The quote's own floor is what the transaction enforces; recomputing it from
+  // the slippage setting can round differently in the last decimal.
+  const pathResult = useSwapStore((state) => state.pathResult);
   const displayMinimumReceived = calculateMinimumReceived({
     destinationAmount: actualDestinationAmount,
     allowedSlippage: swapSlippage.toString(),
-    minimumReceived: undefined,
+    minimumReceived: pathResult
+      ? formatTokenForDisplay(pathResult.destinationAmountMin)
+      : undefined,
   });
 
   // Thread the live prices map so non-held destinations resolve their

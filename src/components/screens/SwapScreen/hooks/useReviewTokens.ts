@@ -1,6 +1,7 @@
 import {
   calculateTokenFiatAmount,
   getTokenFromBalance,
+  withDescriptorPrice,
 } from "components/screens/SwapScreen/helpers";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { NATIVE_TOKEN_CODE } from "config/constants";
@@ -99,7 +100,14 @@ export const useReviewTokens = ({
   // review sheet renders "--" instead of the dollar amount for any
   // token the user doesn't already hold.
   const network = useAuthenticationStore((state) => state.network);
-  const prices = usePricesForNetwork(network);
+  const storePrices = usePricesForNetwork(network);
+  // A token the picker priced but the prices store does not know (a Soroban token)
+  // is valued at the picker's price, then at the XOXNO catalog's.
+  const pickerPrices = useMemo(
+    () => withDescriptorPrice(storePrices, destinationTokenDescriptor),
+    [storePrices, destinationTokenDescriptor],
+  );
+  const prices = pickerPrices;
 
   const sourceTokenFiatAmountValue = calculateTokenFiatAmount({
     token: sourceToken,

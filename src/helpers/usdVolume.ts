@@ -187,11 +187,16 @@ export interface AssetIdentity {
  * asset the account actually holds (so its classic form is findable in
  * `balances`), or on `balances` being fresh — a SAC-wrapped classic asset the
  * account does NOT hold, passed as a raw `C…` issuer, is misreported as
- * `soroban` with no signal that anything went wrong. Today's callers satisfy
- * this: the source leg is always drawn from a held-balance picker, and the
- * swap destination leg is always pre-normalized to a classic `G…` issuer
- * before it reaches this function (the destination picker's classic-only
- * filter).
+ * `soroban` with no signal that anything went wrong. The source leg is drawn
+ * from a held-balance picker. The swap destination leg is NOT normalized to a
+ * classic `G…` issuer: a Soroban destination arrives with its `C…` contract as
+ * the issuer by design (the `descriptorAsPathBalance` shim and the listed
+ * records carry it), and classifies as follows.
+ *
+ * - A genuine Soroban token (no classic form among `balances`): `soroban`, with
+ *   the `C…` contract as the issuer.
+ * - The native asset's SAC: collapses to `native`, with no issuer.
+ * - A listed classic token: keeps its `G…` issuer and classifies as `classic`.
  */
 export const classifyAssetIdentity = (
   code: string,
@@ -277,7 +282,16 @@ export enum FailureCategory {
   UNKNOWN = "unknown",
 }
 
+/**
+ * The reason code of a router swap that the router rejected for slippage. It is
+ * not a Horizon code (Horizon reports any trapped Soroban call as
+ * `function_trapped`): the submit flow sets it after reading the failed
+ * transaction's meta, and it buckets as `slippage`.
+ */
+export const ROUTER_SLIPPAGE_REASON_CODE = "SlippageExceeded";
+
 const REASON_CODE_TO_FAILURE_CATEGORY: Record<string, FailureCategory> = {
+  [ROUTER_SLIPPAGE_REASON_CODE]: FailureCategory.SLIPPAGE,
   op_under_dest_min: FailureCategory.SLIPPAGE,
   op_too_few_offers: FailureCategory.SLIPPAGE,
   tx_insufficient_fee: FailureCategory.FEE,

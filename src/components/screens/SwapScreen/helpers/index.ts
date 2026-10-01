@@ -22,3 +22,5 @@ export {
   getQuoteExpiredOperationCodes,
   isQuoteExpiredResultCodes,
 } from "./quoteErrors";
+export { isAggregatorQuoteSource, isStaleAggregatorQuote } from "ducks/swap";
+export { reportSettledSwap } from "./swapSettlement";

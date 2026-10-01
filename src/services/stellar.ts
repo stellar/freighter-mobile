@@ -66,6 +66,13 @@ export type BuildChangeTrustTxParams = {
   // composed by tokenCode:tokenIssuer
   tokenIdentifier: string;
   isRemove?: boolean;
+  /** Base fee per operation, in stroops. Defaults to the network's recommended fee. */
+  fee?: string;
+  /**
+   * Seconds the transaction stays valid, counted on the network's clock. Defaults
+   * to `DEFAULT_TRANSACTION_TIMEOUT`, counted on the device's clock.
+   */
+  timeoutSeconds?: number;
 };
 
 export type SignTxParams = {
@@ -265,23 +272,41 @@ export const buildChangeTrustOperation = ({
     ...(isRemove && { limit: "0" }),
   });
 
+/**
+ * Builds an unsigned transaction that opens (or, with `isRemove`, removes) a
+ * trustline, and returns its XDR.
+ */
 export const buildChangeTrustTx = async (input: BuildChangeTrustTxParams) => {
-  const { network, publicKey, tokenIdentifier, isRemove = false } = input;
+  const {
+    network,
+    publicKey,
+    tokenIdentifier,
+    isRemove = false,
+    fee,
+    timeoutSeconds,
+  } = input;
   const { tokenCode, issuer } = formatTokenIdentifier(tokenIdentifier);
   const { networkUrl, networkPassphrase } = mapNetworkToNetworkDetails(network);
 
   const server = stellarSdkServer(networkUrl);
   const account = await server.loadAccount(publicKey);
-  const { recommendedFee } = await getNetworkFees(server);
+  const baseFee =
+    fee ?? xlmToStroop((await getNetworkFees(server)).recommendedFee).toFixed();
 
   const txBuilder = new TransactionBuilder(account, {
-    fee: xlmToStroop(recommendedFee).toFixed(),
+    fee: baseFee,
     networkPassphrase,
+    ...(timeoutSeconds !== undefined && {
+      timebounds: await server.fetchTimebounds(timeoutSeconds),
+    }),
   });
 
-  txBuilder
-    .addOperation(buildChangeTrustOperation({ tokenCode, issuer, isRemove }))
-    .setTimeout(DEFAULT_TRANSACTION_TIMEOUT);
+  txBuilder.addOperation(
+    buildChangeTrustOperation({ tokenCode, issuer, isRemove }),
+  );
+  if (timeoutSeconds === undefined) {
+    txBuilder.setTimeout(DEFAULT_TRANSACTION_TIMEOUT);
+  }
 
   return txBuilder.build().toXdr();
 };

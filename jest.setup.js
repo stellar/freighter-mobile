@@ -182,6 +182,7 @@ jest.mock("services/stellarExpert", () => ({
       records: [],
     },
   })),
+  fetchTransactionMeta: jest.fn(),
 }));
 
 // Mock react-native-bootsplash

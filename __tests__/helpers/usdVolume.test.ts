@@ -1,3 +1,4 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
 import { Asset as SdkToken, Keypair } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { TESTNET_NETWORK_DETAILS } from "config/constants";
@@ -13,9 +14,12 @@ import {
   deriveLegUsd,
   getFailureCategory,
   LegUsdStatus,
+  ROUTER_SLIPPAGE_REASON_CODE,
   pickReasonCode,
   roundHalfUp2dp,
 } from "helpers/usdVolume";
+
+import { CONTRACT as XAUM_CONTRACT } from "../../__mocks__/swapFixtures";
 
 const { networkPassphrase } = TESTNET_NETWORK_DETAILS;
 
@@ -258,6 +262,46 @@ describe("classifyAssetIdentity", () => {
   });
 });
 
+describe("classifyAssetIdentity, swap destination leg", () => {
+  // The destination is not pre-normalized to a classic issuer: a Soroban token
+  // reaches the classifier with its own contract as the issuer.
+  const heldUsdc = {
+    token: { code: "USDC", issuer: { key: Keypair.random().publicKey() } },
+    total: new BigNumber(0),
+    available: new BigNumber(0),
+  } as unknown as Balance;
+
+  it("classifies an unheld Soroban token as soroban, issued by its contract", () => {
+    const contractId = XAUM_CONTRACT;
+
+    expect(
+      classifyAssetIdentity("XAUM", contractId, TESTNET_NETWORK_DETAILS, [
+        heldUsdc,
+      ]),
+    ).toEqual({ code: "XAUM", issuer: contractId, type: AssetKind.SOROBAN });
+  });
+
+  it("keeps a listed classic token classic, with its G issuer", () => {
+    const issuer = Keypair.random().publicKey();
+
+    expect(
+      classifyAssetIdentity("EURC", issuer, TESTNET_NETWORK_DETAILS, [
+        heldUsdc,
+      ]),
+    ).toEqual({ code: "EURC", issuer, type: AssetKind.CLASSIC });
+  });
+
+  it("collapses the native asset's contract to native, with no issuer", () => {
+    const nativeSac = SdkToken.native().contractId(networkPassphrase);
+
+    expect(
+      classifyAssetIdentity("XLM", nativeSac, TESTNET_NETWORK_DETAILS, [
+        heldUsdc,
+      ]),
+    ).toEqual({ code: "XLM", type: AssetKind.NATIVE });
+  });
+});
+
 describe("canonicalIdFromIdentity", () => {
   it("is the bare code for native", () => {
     expect(
@@ -267,9 +311,9 @@ describe("canonicalIdFromIdentity", () => {
 
   it("does not resolve an issuerless non-native code to the native id", () => {
     // Otherwise the degenerate identity above would be priced as lumens.
-    expect(
-      canonicalIdFromIdentity({ code: "", type: AssetKind.CLASSIC }),
-    ).toBe("");
+    expect(canonicalIdFromIdentity({ code: "", type: AssetKind.CLASSIC })).toBe(
+      "",
+    );
   });
 
   it("is CODE:ISSUER for a classic or soroban asset", () => {
@@ -311,6 +355,15 @@ describe("pickReasonCode", () => {
     ).toBe("op_underfunded");
   });
 
+  it("picks the router slippage code ahead of the Horizon code it stands in for", () => {
+    expect(
+      pickReasonCode({
+        transaction: "tx_failed",
+        operations: [ROUTER_SLIPPAGE_REASON_CODE, "function_trapped"],
+      }),
+    ).toBe("SlippageExceeded");
+  });
+
   it("falls back to the transaction code when every operation code is a no-op marker", () => {
     expect(
       pickReasonCode({
@@ -325,6 +378,16 @@ describe("getFailureCategory", () => {
   it("maps slippage-related op codes (also covers quote-expired-at-submit)", () => {
     expect(getFailureCategory(true, 400, "op_under_dest_min")).toBe("slippage");
     expect(getFailureCategory(true, 400, "op_too_few_offers")).toBe("slippage");
+  });
+
+  it("maps the router's SlippageExceeded to slippage", () => {
+    expect(getFailureCategory(true, 400, ROUTER_SLIPPAGE_REASON_CODE)).toBe(
+      "slippage",
+    );
+    // Horizon's own code for a trapped call stays protocol_other.
+    expect(getFailureCategory(true, 400, "function_trapped")).toBe(
+      "protocol_other",
+    );
   });
 
   it("maps balance, trustline, destination, sequence, auth, and fee codes", () => {

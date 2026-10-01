@@ -57,7 +57,14 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
     isSubmitting,
   } = useTransactionBuilderStore();
 
-  const [status, setStatus] = useState<SwapStatus>(SwapStatus.SWAPPING);
+  // The final hash comes from Horizon's synchronous successful submission.
+  // Follow-up transaction details enrich the receipt without delaying success.
+  let status = SwapStatus.SWAPPING;
+  if (transactionError) {
+    status = SwapStatus.FAILED;
+  } else if (transactionHash && !isSubmitting) {
+    status = SwapStatus.SWAPPED;
+  }
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetail | null>(null);
   const hasEmittedSuccess = useRef(false);
@@ -77,21 +84,15 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   // This one screen also renders the terminal success state, so emit the
   // success stage once the swap settles. Completes confirm -> processing ->
   // success for swap, matching send. Guarded to fire at most once per mount.
-  //
-  // Keyed on the transaction hash rather than the SWAPPED status. The status
-  // waits for the follow-up details request as well, and that request only
-  // logs when it fails. A settled swap whose details never arrive would
-  // therefore drop out of the funnel. The hash is set only after submission
-  // succeeds, so it alone marks settlement.
   useEffect(() => {
-    if (transactionHash && !transactionError && !hasEmittedSuccess.current) {
+    if (status === SwapStatus.SWAPPED && !hasEmittedSuccess.current) {
       hasEmittedSuccess.current = true;
       track(
         AnalyticsEvent.SCREEN_VIEWED,
         buildScreenViewedProps(AnalyticsEvent.VIEW_SWAP_SUCCESS),
       );
     }
-  }, [transactionHash, transactionError]);
+  }, [status]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -107,19 +108,13 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
     [navigation],
   );
 
-  useEffect(() => {
-    if (transactionError) {
-      setStatus(SwapStatus.FAILED);
-    } else if (transactionHash && transactionDetails) {
-      setStatus(SwapStatus.SWAPPED);
-    } else if (isSubmitting) {
-      setStatus(SwapStatus.SWAPPING);
-    }
-  }, [transactionHash, transactionError, isSubmitting, transactionDetails]);
-
   // Fetch actual transaction details when we have a hash
   useEffect(() => {
-    if (transactionHash && !transactionDetails) {
+    if (
+      status === SwapStatus.SWAPPED &&
+      transactionHash &&
+      !transactionDetails
+    ) {
       getTransactionDetails(transactionHash, network)
         .then((details) => {
           if (details) {
@@ -135,7 +130,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
           );
         });
     }
-  }, [transactionHash, network, transactionDetails]);
+  }, [status, transactionHash, network, transactionDetails]);
 
   const getStatusText = () => {
     switch (status) {
@@ -271,16 +266,18 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 
         {status === SwapStatus.SWAPPED ? (
           <View className="gap-[16px]">
-            <Button
-              secondary
-              xl
-              onPress={() =>
-                transactionDetailsBottomSheetModalRef.current?.present()
-              }
-              testID="swap-processing-view-transaction-button"
-            >
-              {t("swapProcessingScreen.viewTransaction")}
-            </Button>
+            {transactionDetails && (
+              <Button
+                secondary
+                xl
+                onPress={() =>
+                  transactionDetailsBottomSheetModalRef.current?.present()
+                }
+                testID="swap-processing-view-transaction-button"
+              >
+                {t("swapProcessingScreen.viewTransaction")}
+              </Button>
+            )}
             <Button
               tertiary
               xl
