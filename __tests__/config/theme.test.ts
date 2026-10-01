@@ -19,6 +19,7 @@ import {
 } from "config/theme";
 import fs from "fs";
 import path from "path";
+import sharp from "sharp";
 
 /**
  * Collects the nested key structure of an object, ignoring the values. Used to
@@ -355,11 +356,13 @@ describe("android window background", () => {
 });
 
 describe("splash screen dark mode", () => {
-  // react-native-bootsplash only generates the light assets: its dark mode
-  // options are a paid add-on. scripts/generate-splashscreen-dark.js derives
-  // the rest and runs as part of `yarn generate-splashscreen`, because a
-  // regeneration rewrites the iOS Contents.json and renames the asset catalogs
-  // after the source's content hash. Without these assertions, dark mode could
+  // react-native-bootsplash only generates the light assets, and generates
+  // them with a logo: its dark mode options are a paid add-on, and it has no
+  // way to express a logoless splash. scripts/finalize-splashscreen.js derives
+  // the dark assets and blanks the logo, and runs as part of
+  // `yarn generate-splashscreen`, because a regeneration rewrites the iOS
+  // Contents.json and renames the asset catalogs after the source's content
+  // hash. Without these assertions, dark mode or the blank launch screen could
   // disappear on the next regeneration without any error.
   const ROOT = path.join(__dirname, "..", "..");
   const ANDROID_RES = path.join(ROOT, "android", "app", "src", "main", "res");
@@ -381,19 +384,52 @@ describe("splash screen dark mode", () => {
       { appearances?: unknown }[]
     >;
 
-  it("has an android night logo at every density", () => {
-    const missing = DENSITIES.filter(
-      (density) =>
-        !fs.existsSync(
-          path.join(
-            ANDROID_RES,
-            `drawable-night-${density}`,
-            "bootsplash_logo.png",
-          ),
-        ),
+  // The launch screen carries no logo in either scheme, so there is nothing
+  // to pair with a night variant -- Android falls back to these. What has to
+  // survive a regeneration is their blankness.
+  it("keeps the android splash logo blank at every density", async () => {
+    // Decode the image instead of reading the file's bytes. The generator
+    // writes palette PNGs, filters every row, and splits larger images across
+    // several IDAT chunks, so the alpha channel only exists after a real decode.
+    const hasInk = async (file: string): Promise<boolean> => {
+      const { data, info } = await sharp(file)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+      for (let i = 3; i < data.length; i += info.channels) {
+        if (data[i] !== 0) return true;
+      }
+
+      return false;
+    };
+
+    const notBlank = await Promise.all(
+      DENSITIES.map(async (density) => {
+        const file = path.join(
+          ANDROID_RES,
+          `drawable-${density}`,
+          "bootsplash_logo.png",
+        );
+
+        return !fs.existsSync(file) || (await hasInk(file)) ? density : null;
+      }),
     );
 
-    expect(missing).toEqual([]);
+    expect(notBlank.filter(Boolean)).toEqual([]);
+  });
+
+  it("keeps the ios storyboard free of the splash logo", () => {
+    const [storyboard] = fs
+      .readdirSync(path.join(ROOT, "ios", "freighter-mobile"))
+      .filter((name) => name === "BootSplash.storyboard");
+    const xml = fs.readFileSync(
+      path.join(ROOT, "ios", "freighter-mobile", storyboard),
+      "utf8",
+    );
+
+    expect(xml).not.toMatch(/imageView/);
+    expect(xml).toMatch(/namedColor name="BootSplashBackground/);
   });
 
   it("has an android night background matching the dark page color", () => {

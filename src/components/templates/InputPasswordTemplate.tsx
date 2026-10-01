@@ -29,6 +29,8 @@ interface InputPasswordTemplateProps {
   title?: string;
   description?: string;
   showLogo?: boolean;
+  /** Whether to focus the password field on mount. Defaults to true. */
+  autoFocus?: boolean;
   insets?: BaseLayoutInsets;
   testID?: string;
   continueButtonTestID?: string;
@@ -46,6 +48,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   description,
   insets,
   showLogo = true,
+  autoFocus = true,
   testID,
   continueButtonTestID,
   forgotPasswordButtonTestID,
@@ -103,7 +106,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
                 value={passwordValue}
                 onChangeText={handlePasswordChange}
                 error={error}
-                autoFocus
+                autoFocus={autoFocus}
                 rightElement={
                   showPassword ? (
                     <Icon.EyeOff

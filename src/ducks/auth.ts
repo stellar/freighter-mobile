@@ -2203,7 +2203,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             if (navigationRef && navigationRef.isReady()) {
               navigationRef.resetRoot({
                 index: 0,
-                routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
+                routes: [
+                  {
+                    name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN,
+                    params: { autoFocus: true },
+                  },
+                ],
               });
             }
           } else {
@@ -2926,7 +2931,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       // Use resetRoot instead of navigate to avoid warnings with conditional navigators
       navigationRef.resetRoot({
         index: 0,
-        routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
+        routes: [
+          {
+            name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN,
+            params: { autoFocus: true },
+          },
+        ],
       });
     }
   },

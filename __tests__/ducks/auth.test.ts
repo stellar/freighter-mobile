@@ -294,6 +294,8 @@ describe("auth duck", () => {
     signIn: useAuthenticationStore.getState().signIn,
     initializeNetwork: useAuthenticationStore.getState().initializeNetwork,
     softLock: useAuthenticationStore.getState().softLock,
+    navigateToLockScreen:
+      useAuthenticationStore.getState().navigateToLockScreen,
   };
 
   beforeEach(() => {
@@ -721,6 +723,31 @@ describe("auth duck", () => {
   });
 
   describe("navigateToLockScreen", () => {
+    it("resets to a lock screen that focuses its password field", () => {
+      act(() => {
+        useAuthenticationStore.setState({
+          navigateToLockScreen: originalStoreMethods.navigateToLockScreen,
+          navigationRef: mockNavigationRef,
+          isSoftLocked: false,
+        });
+      });
+      (mockNavigationRef.getCurrentRoute as jest.Mock).mockReturnValueOnce({
+        name: "Home",
+      });
+
+      useAuthenticationStore.getState().navigateToLockScreen();
+
+      expect(mockNavigationRef.resetRoot).toHaveBeenCalledWith({
+        index: 0,
+        routes: [
+          {
+            name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN,
+            params: { autoFocus: true },
+          },
+        ],
+      });
+    });
+
     it("should reset navigation to lock screen", () => {
       const { result } = renderHook(() => useAuthenticationStore());
 
@@ -1492,6 +1519,18 @@ describe("auth duck", () => {
         expect(
           useAuthenticationStore.getState().suppressBiometricAutoPrompt,
         ).toBe(true);
+
+        // The lock screen is navigated to, not launched into, so it focuses
+        // its password field
+        expect(mockNavigationRef.resetRoot).toHaveBeenCalledWith({
+          index: 0,
+          routes: [
+            {
+              name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN,
+              params: { autoFocus: true },
+            },
+          ],
+        });
       });
 
       it("should wipe all data on logout when shouldWipeAllData is true", async () => {

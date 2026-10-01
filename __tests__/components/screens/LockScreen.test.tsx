@@ -94,9 +94,9 @@ describe("LockScreen", () => {
       previousAppState;
   });
 
-  const renderLockScreen = () =>
+  const renderLockScreen = (route: LockScreenRouteProp = mockRoute) =>
     renderWithProviders(
-      <LockScreen navigation={mockNavigation} route={mockRoute} />,
+      <LockScreen navigation={mockNavigation} route={route} />,
     );
 
   it("auto-prompts biometrics on mount and unlocks with the stored password", async () => {
@@ -207,6 +207,34 @@ describe("LockScreen", () => {
 
     await waitFor(() => {
       expect(mockVerifyActionWithBiometrics).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("password field focus", () => {
+    beforeEach(() => {
+      usePreferencesStore.setState({ isBiometricsEnabled: false });
+      useAuthenticationStore.setState({ signInMethod: LoginType.PASSWORD });
+    });
+
+    it("does not auto-focus when the app launches into it", () => {
+      // The navigator's initial route carries no params, and on a cold start
+      // it mounts under the launch splash.
+      const { getByPlaceholderText } = renderLockScreen();
+
+      expect(getByPlaceholderText("Type your password").props.autoFocus).toBe(
+        false,
+      );
+    });
+
+    it("auto-focuses when navigated to (e.g. logout)", () => {
+      const { getByPlaceholderText } = renderLockScreen({
+        ...mockRoute,
+        params: { autoFocus: true },
+      });
+
+      expect(getByPlaceholderText("Type your password").props.autoFocus).toBe(
+        true,
+      );
     });
   });
 

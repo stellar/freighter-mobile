@@ -34,6 +34,8 @@ interface LockScreenContentProps {
    * because it simply unmounts when the unlock flips the auth status.
    */
   onUnlocked?: () => void;
+  /** Whether to focus the password field on mount. Defaults to true. */
+  autoFocus?: boolean;
 }
 
 /**
@@ -44,6 +46,7 @@ interface LockScreenContentProps {
  */
 export const LockScreenContent: React.FC<LockScreenContentProps> = ({
   onUnlocked,
+  autoFocus,
 }) => {
   const {
     signIn,
@@ -270,6 +273,7 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
         publicKey={publicKey}
         error={inlineError}
         isLoading={isSigningIn}
+        autoFocus={autoFocus}
         handleContinue={handleUnlock}
         handleLogout={handleForgotPassword}
         testID="lock-screen"
@@ -285,10 +289,22 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
   );
 };
 
-export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
+export const LockScreen: React.FC<LockScreenProps> = ({
+  navigation,
+  route,
+}) => {
   const handleUnlocked = useCallback(() => {
     navigation.replace(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
   }, [navigation]);
 
-  return <LockScreenContent onUnlocked={handleUnlocked} />;
+  // Every navigation to this screen asks for the field to be focused. The one
+  // arrival that doesn't is the app launching into it, as the navigator's
+  // initial route: it mounts under the launch splash, where focusing the field
+  // would bring the keyboard up on the thread drawing the animation.
+  return (
+    <LockScreenContent
+      onUnlocked={handleUnlocked}
+      autoFocus={route.params?.autoFocus ?? false}
+    />
+  );
 };

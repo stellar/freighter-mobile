@@ -10,6 +10,13 @@
           values-night counterpart, so this follows the device.
         -->
         <item name="android:windowBackground">@color/app_background</item>
+        <!--
+          The recents screen shows a placeholder for this window rather than a
+          screenshot, since it is FLAG_SECURE, and paints the placeholder's
+          body with this. MainActivity sets it directly on API 33+; this covers
+          older releases, where there is no public API to do so.
+        -->
+        <item name="android:colorBackground">@color/app_background</item>
     </style>
 
     <style name="BootTheme" parent="Theme.BootSplash">

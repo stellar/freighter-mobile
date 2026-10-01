@@ -23,6 +23,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     reactNativeFactory = factory
 
     window = UIWindow(frame: UIScreen.main.bounds)
+    // A fresh UIWindow has a nil background, which renders black. That black
+    // shows for a frame when RNBootSplash removes the splash view before React
+    // has painted, giving a flash between the native splash and the JS one.
+    // systemBackground is white in light and black in dark, matching the page
+    // colour both the splash and the app paint, so any such gap is invisible
+    // in either scheme.
+    window?.backgroundColor = .systemBackground
 
     factory.startReactNative(
       withModuleName: "freighter-mobile",
@@ -54,7 +61,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     return RCTLinkingManager.application(app, open: url, options: options)
   }
 
-  // Privacy shield: cover wallet content with the BootSplash when the app is
+  // Privacy shield: cover wallet content with the Varial lockup when the app is
   // backgrounded, so the OS app-switcher snapshot never reveals it. Uses
   // didEnterBackground (not willResignActive) so it does NOT trigger for the
   // Face ID prompt / control center, which only make the app inactive — the
@@ -71,6 +78,36 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   private var privacyShieldFallbackTimer: Timer?
   private static let privacyShieldFallbackTimeout: TimeInterval = 1.0
 
+  /// The shield's own view: the Varial lockup on the page colour, built in
+  /// code rather than reusing BootSplash.storyboard. That storyboard is a
+  /// plain page-colour screen so the JS splash animation owns the launch
+  /// sequence, and the shield must not follow it into being blank.
+  ///
+  /// PrivacyShieldLogo carries its own dark variant and systemBackground
+  /// follows the scheme, so the shield tracks the device like everything else.
+  private static func makePrivacyShieldViewController() -> UIViewController {
+    let controller = UIViewController()
+    controller.view.backgroundColor = .systemBackground
+
+    guard let logo = UIImage(named: "PrivacyShieldLogo") else {
+      return controller
+    }
+
+    let imageView = UIImageView(image: logo)
+    imageView.contentMode = .scaleAspectFit
+    imageView.translatesAutoresizingMaskIntoConstraints = false
+    controller.view.addSubview(imageView)
+
+    NSLayoutConstraint.activate([
+      imageView.centerXAnchor.constraint(equalTo: controller.view.centerXAnchor),
+      imageView.centerYAnchor.constraint(equalTo: controller.view.centerYAnchor),
+      imageView.widthAnchor.constraint(equalToConstant: 128),
+      imageView.heightAnchor.constraint(equalToConstant: 151),
+    ])
+
+    return controller
+  }
+
   func applicationDidEnterBackground(_ application: UIApplication) {
     // Cancel any fallback timer pending from a previous resume so it can't fire
     // during this new background period and tear down the shield we just want
@@ -81,8 +118,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     guard privacyWindow == nil else { return }
     let overlay = UIWindow(frame: UIScreen.main.bounds)
     overlay.windowLevel = .alert + 1
-    overlay.rootViewController = UIStoryboard(name: "BootSplash", bundle: nil)
-      .instantiateInitialViewController()
+    overlay.rootViewController = Self.makePrivacyShieldViewController()
     overlay.isHidden = false
     privacyWindow = overlay
   }
@@ -126,6 +162,9 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
 
   override func customize(_ rootView: RCTRootView) {
     super.customize(rootView)
+    // Same reason as the window's background: the root view must not be
+    // see-through while the JS splash is still coming up.
+    rootView.backgroundColor = .systemBackground
     RNBootSplash.initWithStoryboard("BootSplash", rootView: rootView)
   }
 }

@@ -150,7 +150,11 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK]: NavigatorScreenParams<ManageTokensStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK]: undefined;
-  [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]:
+    | {
+        autoFocus?: boolean;
+      }
+    | undefined;
   [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN]: {
     source?: QRCodeSource;
