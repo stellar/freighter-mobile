@@ -16,6 +16,7 @@ import { Dimensions, StyleSheet } from "react-native";
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => key,
 }));
+jest.mock("hooks/useIsReduceMotionEnabled", () => () => false);
 
 const props = (overrides: Record<string, unknown>) =>
   ({

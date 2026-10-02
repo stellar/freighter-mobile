@@ -7,6 +7,7 @@ import { Text } from "react-native";
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => key,
 }));
+jest.mock("hooks/useIsReduceMotionEnabled", () => () => false);
 
 /**
  * The token detail screen puts its ENTIRE page in `ListHeaderComponent`, so a
