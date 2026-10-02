@@ -650,7 +650,7 @@ describe("axis label measurements survive their own edge cases", () => {
 
   // Restored in `afterAll`, not inline: a failed assertion aborts the body,
   // and an un-restored window cascades into every test appended after this
-  // one. Same hazard `TokenPriceChartGhost.test.tsx` guards against.
+  // one.
   let original: {
     window: ReturnType<typeof Dimensions.get>;
     screen: ReturnType<typeof Dimensions.get>;

@@ -12,7 +12,7 @@ import {
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChart";
 import TokenPriceHistorySection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection";
 import { getThemeColors } from "config/colors";
-import { NETWORKS } from "config/constants";
+import { DEFAULT_PADDING, NETWORKS } from "config/constants";
 import { PRICE_HISTORY_RANGES, TokenPriceHistory } from "config/types";
 import {
   usePriceHistoryStore,
@@ -20,6 +20,7 @@ import {
 } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { formatDate } from "helpers/date";
+import { pxValue } from "helpers/dimensions";
 import {
   getPlottedRangeEnd,
   getPlottedRangeStart,
@@ -30,7 +31,7 @@ import {
   renderWithProviders,
 } from "helpers/testUtils";
 import React from "react";
-import { StyleSheet, useWindowDimensions } from "react-native";
+import { Dimensions, StyleSheet, useWindowDimensions } from "react-native";
 import { analytics } from "services/analytics";
 import { fetchTokenPriceHistory } from "services/backend";
 
@@ -394,7 +395,7 @@ describe("TokenPriceHistorySection", () => {
     expect(queryByTestId("price-history-chart")).toBeNull();
   });
 
-  describe("loading state (blurred chart ghost)", () => {
+  describe("loading state (hairline shimmer)", () => {
     beforeEach(() => {
       mockFetchHistory.mockImplementation(() => new Promise(() => {}));
     });
@@ -403,46 +404,41 @@ describe("TokenPriceHistorySection", () => {
       const { getByTestId } = renderSection();
 
       const skeleton = getByTestId("price-history-skeleton");
-      expect(skeleton).toBeTruthy();
-      // Same total block height the loaded chart lays out to, so swapping
-      // the ghost for the real chart never moves the selector below it.
       expect(StyleSheet.flatten(skeleton.props.style).height).toBe(
         expectedChartHeight(),
       );
     });
 
-    it("renders the blurred ghost artwork, not a flat block", () => {
+    it("draws a hairline shimmer across the measured width, centred in the block", () => {
       const { getByTestId } = renderSection();
 
-      const ghost = getByTestId("price-history-chart-ghost", {
+      const line = getByTestId("price-history-chart-shimmer", {
         includeHiddenElements: true,
       });
-      expect(ghost).toBeTruthy();
-      // The ghost occupies the whole chart block; the old placeholder was a
-      // flat tinted View with no artwork inside it.
-      expect(StyleSheet.flatten(ghost.props.style).height).toBe(
-        expectedChartHeight(),
+      const style = StyleSheet.flatten(line.props.style);
+      expect(style.height).toBe(1);
+      // DEFAULT_CHART_WIDTH before layout: the window minus the page padding.
+      expect(style.width).toBe(
+        Dimensions.get("window").width - 2 * pxValue(DEFAULT_PADDING),
       );
-      expect(getByTestId("price-history-skeleton").props.className).not.toMatch(
-        /bg-background-tertiary/,
+      // Centred: the skeleton is a flex column that centres its child.
+      expect(getByTestId("price-history-skeleton").props.className).toMatch(
+        /justify-center/,
       );
     });
 
-    it("hides the ghost from assistive tech and reports busy on the container", () => {
+    it("hides the shimmer from assistive tech and reports busy on the container", () => {
       const { getByTestId, queryByTestId } = renderSection();
 
       const skeleton = getByTestId("price-history-skeleton");
       expect(skeleton.props.accessibilityState).toEqual({ busy: true });
       expect(skeleton.props.accessibilityLabel).toBe("Loading price chart");
-
-      // The ghost is decorative: it resolves only when hidden elements are
-      // included, i.e. it is absent from the accessibility tree.
-      expect(queryByTestId("price-history-chart-ghost")).toBeNull();
-      const ghost = getByTestId("price-history-chart-ghost", {
-        includeHiddenElements: true,
-      });
-      expect(ghost.props.accessibilityElementsHidden).toBe(true);
-      expect(ghost.props.importantForAccessibility).toBe("no-hide-descendants");
+      expect(queryByTestId("price-history-chart-shimmer")).toBeNull();
+      expect(
+        queryByTestId("price-history-chart-ghost", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
     });
 
     it("keeps the timeframe selector present and enabled while loading", () => {
@@ -816,19 +812,6 @@ describe("TokenPriceHistorySection", () => {
         expect(getByTestId("price-history-chart")).toBeTruthy();
       });
       expect(lineColor(toJSON())).toBe(themeColors.text.secondary);
-    });
-
-    it("leaves the loading ghost's colour alone — it is decorative", () => {
-      mockFetchHistory.mockImplementation(() => new Promise(() => {}));
-
-      const { getByTestId, toJSON } = renderSection();
-
-      expect(
-        getByTestId("price-history-chart-ghost", {
-          includeHiddenElements: true,
-        }),
-      ).toBeTruthy();
-      expect(lineColor(toJSON())).toBe(themeColors.status.success);
     });
   });
 });
