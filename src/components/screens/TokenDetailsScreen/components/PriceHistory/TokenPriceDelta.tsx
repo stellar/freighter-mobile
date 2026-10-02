@@ -1,9 +1,10 @@
 import BigNumber from "bignumber.js";
+import Shimmer from "components/sds/Shimmer";
 import { Text, TEXT_SIZES } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import { PriceHistoryRange, TokenIdentifier } from "config/types";
 import { useSelectedPriceHistoryRange } from "ducks/priceHistory";
-import { fsValue } from "helpers/dimensions";
+import { fsValue, pxValue } from "helpers/dimensions";
 import { formatPercentageAmount } from "helpers/formatAmount";
 import {
   formatPriceHistoryRangeDelta,
@@ -150,15 +151,14 @@ const TokenPriceDelta: React.FC<TokenPriceDeltaProps> = ({
 
   const renderContent = () => {
     if (isPlaceholder) {
-      // The loading pill. Decorative — the row announces the loading state —
-      // and deliberately not a stale number: a 1D delta under a 1Y selector
-      // would be a wrong, confident-looking figure.
+      // The loading pill from the Figma frame. Decorative — the row announces
+      // the loading state — and deliberately not a stale number: a 1D delta
+      // under a 1Y selector would be a wrong, confident-looking figure.
       return (
-        <View
+        <Shimmer
           testID="token-price-delta-skeleton"
-          className="h-[14px] w-[120px] rounded-full bg-background-tertiary"
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
+          width={pxValue(146)}
+          height={deltaRowHeight(fontScale)}
         />
       );
     }

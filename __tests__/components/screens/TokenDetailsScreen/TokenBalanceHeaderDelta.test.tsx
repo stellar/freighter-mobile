@@ -1,5 +1,6 @@
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
+import { deltaRowHeight } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceDelta";
 import TokenPriceHistorySection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection";
 import TokenBalanceHeader from "components/screens/TokenDetailsScreen/components/TokenBalanceHeader";
 import { TEXT_SIZES } from "components/sds/Typography";
@@ -12,7 +13,7 @@ import {
   resetInFlightRequests,
 } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
-import { fsValue } from "helpers/dimensions";
+import { fsValue, pxValue } from "helpers/dimensions";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import {
@@ -369,6 +370,31 @@ describe("TokenBalanceHeader range delta", () => {
       const row = getByTestId("token-price-delta-row");
       expect(row.props.accessibilityState).toEqual({ busy: true });
       expect(row.props.accessibilityLabel).toBe("Loading price change");
+    });
+
+    it("draws the loading pill at the frame's 146pt width and the row's live height", () => {
+      // Review focus 5: the pill must grow with the OS text size like the row.
+      const window = Dimensions.get("window");
+      const screen = Dimensions.get("screen");
+      act(() => {
+        Dimensions.set({ window: { ...window, fontScale: 2 }, screen });
+      });
+      try {
+        mockFetchHistory.mockImplementation(() => new Promise(() => {}));
+        const { getByTestId } = renderDetailView();
+
+        const pill = getByTestId("token-price-delta-skeleton", {
+          includeHiddenElements: true,
+        });
+        expect(StyleSheet.flatten(pill.props.style)).toEqual({
+          width: pxValue(146),
+          height: deltaRowHeight(2),
+        });
+      } finally {
+        act(() => {
+          Dimensions.set({ window, screen });
+        });
+      }
     });
 
     it("shows no number when a non-1D range fails — a 24h figure is the wrong timeframe", async () => {
