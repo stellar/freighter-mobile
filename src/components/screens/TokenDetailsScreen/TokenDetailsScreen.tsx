@@ -281,6 +281,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
         <HistoryList
           ignoreTopInset
           noHorizontalPadding
+          loadingPlaceholder="skeleton"
           historyData={historyData}
           isLoading={isLoading}
           error={error}

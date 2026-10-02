@@ -5,14 +5,13 @@ import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
-jest.mock("components/screens/HistoryScreen/HistoryList", () => {
-  const MockHistoryList = ({
-    ListHeaderComponent,
-  }: {
-    ListHeaderComponent?: React.ReactElement;
-  }) => <div data-testid="history-list">{ListHeaderComponent}</div>;
-  return MockHistoryList;
-});
+jest.mock("components/screens/HistoryScreen/HistoryList", () =>
+  jest.fn(
+    ({ ListHeaderComponent }: { ListHeaderComponent?: React.ReactElement }) => (
+      <div data-testid="history-list">{ListHeaderComponent}</div>
+    ),
+  ),
+);
 
 jest.mock("components/screens/TokenDetailsScreen/components", () => ({
   TokenBalanceHeader: () => <div data-testid="token-balance-header" />,
@@ -183,5 +182,16 @@ describe("TokenDetailsScreen", () => {
     expect(
       actions.find((a: { title: string }) => a.title === "Remove").destructive,
     ).toBe(true);
+  });
+
+  it("opts the history list into the skeleton loading placeholder", () => {
+    renderWithProviders(
+      <TokenDetailsScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+    const HistoryListMock = jest.requireMock(
+      "components/screens/HistoryScreen/HistoryList",
+    );
+    const callArgs = HistoryListMock.mock.calls[0];
+    expect(callArgs[0]).toMatchObject({ loadingPlaceholder: "skeleton" });
   });
 });
