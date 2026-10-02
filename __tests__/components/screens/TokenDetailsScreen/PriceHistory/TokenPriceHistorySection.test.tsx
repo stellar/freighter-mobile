@@ -52,6 +52,8 @@ jest.mock("config/logger", () => ({
   },
 }));
 
+jest.mock("hooks/useIsReduceMotionEnabled", () => () => false);
+
 const mockFetchHistory = fetchTokenPriceHistory as jest.MockedFunction<
   typeof fetchTokenPriceHistory
 >;
