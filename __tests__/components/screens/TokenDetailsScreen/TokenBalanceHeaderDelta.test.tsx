@@ -125,6 +125,7 @@ describe("TokenBalanceHeader range delta", () => {
     });
     useBalancesStore.setState({
       pricedBalances: { native: nativeBalance },
+      isLoading: false,
     });
     mockFetchHistory.mockResolvedValue(makeHistory());
   });
@@ -651,7 +652,9 @@ describe("TokenBalanceHeader range delta", () => {
       }
     });
 
-    it("shows the pills while the balance is in but its price is still loading", () => {
+    it("shows the amount, not pills, for a balance that settled unpriced, even while isLoading is true (a refresh)", () => {
+      // H1: the store sets isLoading on every fetch, and a token that already
+      // settled unpriced keeps no price — the pills must not replace it.
       useBalancesStore.setState({
         pricedBalances: {
           native: {
@@ -663,18 +666,20 @@ describe("TokenBalanceHeader range delta", () => {
         isLoading: true,
       });
 
-      const { getByTestId } = renderDetailView();
+      const { getByText, queryByTestId } = renderDetailView();
 
+      expect(queryByTestId("token-price-header-loading")).toBeNull();
       expect(
-        getByTestId("token-price-header-price-skeleton", {
+        queryByTestId("token-price-header-price-skeleton", {
           includeHiddenElements: true,
         }),
-      ).toBeTruthy();
+      ).toBeNull();
       expect(
-        getByTestId("token-price-header-delta-skeleton", {
+        queryByTestId("token-price-header-delta-skeleton", {
           includeHiddenElements: true,
         }),
-      ).toBeTruthy();
+      ).toBeNull();
+      expect(getByText("100.00 XLM")).toBeTruthy();
     });
 
     it("falls back to the amount once loading ends unpriced", () => {
@@ -777,7 +782,9 @@ describe("TokenBalanceDetails loading placeholders", () => {
     }
   });
 
-  it("shows only the Value pill while the balance is in but its price is pending", () => {
+  it("shows the Balance row only for a balance that settled unpriced, even while isLoading is true (a refresh)", () => {
+    // H1: the store sets isLoading on every fetch, and a token that already
+    // settled unpriced keeps no price — the Value pill must not reappear.
     useBalancesStore.setState({
       pricedBalances: {
         native: {
@@ -788,14 +795,14 @@ describe("TokenBalanceDetails loading placeholders", () => {
       } as never,
       isLoading: true,
     });
-    const { getByTestId, queryByTestId, getByText } = renderDetails();
+    const { queryByTestId, queryByText, getByText } = renderDetails();
 
+    expect(queryByTestId("token-balance-details-loading")).toBeNull();
     expect(
-      queryByTestId("token-balance-skeleton", { includeHiddenElements: true }),
+      queryByTestId("token-value-skeleton", { includeHiddenElements: true }),
     ).toBeNull();
-    expect(
-      getByTestId("token-value-skeleton", { includeHiddenElements: true }),
-    ).toBeTruthy();
+    expect(queryByText("Value")).toBeNull();
+    expect(getByText("Balance")).toBeTruthy();
     expect(getByText(/XLM/)).toBeTruthy(); // the real amount
   });
 

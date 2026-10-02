@@ -75,9 +75,10 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const { fontScale } = useWindowDimensions();
 
   // Loading placeholders, from the Figma "Data loading" frame: one pill at the
-  // price line and one at the delta row, while balances (which carry the
-  // price) are in flight. Once the store settles, a missing price falls back
-  // to the amount, as before — a token with no price feed never shimmers.
+  // price line and one at the delta row, while there is no balance at all. A
+  // balance that is present but unpriced always shows the amount instead (see
+  // `hasPrice` below) — the store reports loading on every refresh, and a
+  // token that settled without a price must not flash back to pills.
   const renderLoadingPriceInfo = () => (
     <View
       testID="token-price-header-loading"
@@ -171,16 +172,6 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
     </Display>
   );
 
-  const isPricePending = !hasPrice && isLoadingBalances;
-
-  const renderPriceSection = () => {
-    if (hasPrice) {
-      return renderPriceInfo();
-    }
-
-    return isPricePending ? renderLoadingPriceInfo() : renderBalanceInfo();
-  };
-
   // Icon, name, price, delta — and nothing else. The Balance/Value rows are
   // {@link TokenBalanceDetails}, which the screen renders BELOW the chart, as
   // the extension does: the chart belongs to the price above it, not under
@@ -193,7 +184,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
         <Text md medium secondary>
           {name}
         </Text>
-        {renderPriceSection()}
+        {hasPrice ? renderPriceInfo() : renderBalanceInfo()}
       </View>
     </View>
   );
@@ -221,8 +212,11 @@ export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
   // falsy together — but the rows and the header must agree about what counts
   // as "priced", and only one of them reading both fields invites drift.
   const hasPrice = !!tokenBalance?.currentPrice && !!tokenBalance?.fiatTotal;
-  const isPricePending = !hasPrice && isLoadingBalances;
-  const isAnyPending = !tokenBalance || isPricePending;
+  // Loading pills show only while there is no balance at all (the guard
+  // above already returned null for "no balance, not loading"). A present
+  // but unpriced balance keeps the plain list, even mid-refresh — see the
+  // header's own comment for why.
+  const isAnyPending = !tokenBalance;
 
   const balanceCell = tokenBalance ? (
     <Text md>{formatBalanceAmount(tokenBalance, tokenBalance.tokenCode)}</Text>
@@ -246,7 +240,9 @@ export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
         <Text md>{formatFiatAmount(tokenBalance.fiatTotal ?? "0")}</Text>
       ),
     };
-  } else if (isPricePending) {
+  } else if (!tokenBalance) {
+    // The guard above already returned null for "no balance, not loading",
+    // so reaching here with no balance means isLoadingBalances is true.
     valueRow = {
       titleComponent: (
         <Text md secondary>
