@@ -2,7 +2,9 @@ import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import { deltaRowHeight } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceDelta";
 import TokenPriceHistorySection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection";
-import TokenBalanceHeader from "components/screens/TokenDetailsScreen/components/TokenBalanceHeader";
+import TokenBalanceHeader, {
+  priceRowHeight,
+} from "components/screens/TokenDetailsScreen/components/TokenBalanceHeader";
 import { TEXT_SIZES } from "components/sds/Typography";
 import { getThemeColors } from "config/colors";
 import { NETWORKS } from "config/constants";
@@ -595,6 +597,135 @@ describe("TokenBalanceHeader range delta", () => {
       const delta = getByTestId("token-price-delta");
       expect(delta.props.children).toBe("-1.23%");
       expect(deltaColor(delta)).toBe(themeColors.text.secondary);
+    });
+  });
+
+  describe("loading placeholders", () => {
+    beforeEach(() => {
+      // Deterministic chart section: these tests assert on the header's own
+      // pills, not the price-history delta, so the history fetch is left
+      // hanging rather than resolving mid-assertion.
+      mockFetchHistory.mockImplementation(() => new Promise(() => {}));
+    });
+
+    it("shows the price and delta pills while balances load and none exists yet", () => {
+      // Pinned to fontScale 1 (the RN jest preset defaults to 2) so this is
+      // the unscaled baseline; the 2x case is the dedicated test below.
+      const window = Dimensions.get("window");
+      const screen = Dimensions.get("screen");
+      act(() => {
+        Dimensions.set({ window: { ...window, fontScale: 1 }, screen });
+      });
+      try {
+        useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+
+        const { getByTestId, getByText, queryByTestId } = renderDetailView();
+
+        const wrapper = getByTestId("token-price-header-loading");
+        expect(wrapper.props.accessibilityState).toEqual({ busy: true });
+        expect(wrapper.props.accessibilityLabel).toBe("Loading price");
+        // Name still renders from the route symbol; there is no icon without a balance.
+        expect(getByText("XLM")).toBeTruthy();
+        const price = getByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        });
+        expect(StyleSheet.flatten(price.props.style)).toEqual({
+          width: pxValue(146),
+          height: priceRowHeight(1),
+        });
+        const delta = getByTestId("token-price-header-delta-skeleton", {
+          includeHiddenElements: true,
+        });
+        expect(StyleSheet.flatten(delta.props.style)).toEqual({
+          width: pxValue(146),
+          height: deltaRowHeight(1),
+        });
+        expect(queryByTestId("token-price-header-price")).toBeNull();
+      } finally {
+        act(() => {
+          Dimensions.set({ window, screen });
+        });
+      }
+    });
+
+    it("shows the pills while the balance is in but its price is still loading", () => {
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            currentPrice: undefined,
+            fiatTotal: undefined,
+          },
+        } as never,
+        isLoading: true,
+      });
+
+      const { getByTestId } = renderDetailView();
+
+      expect(
+        getByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeTruthy();
+      expect(
+        getByTestId("token-price-header-delta-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeTruthy();
+    });
+
+    it("falls back to the amount once loading ends unpriced", () => {
+      // Review focus 4: the 3 s price timeout, or a token with no price feed.
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            currentPrice: undefined,
+            fiatTotal: undefined,
+          },
+        } as never,
+        isLoading: false,
+      });
+
+      const { queryByTestId, getByText } = renderDetailView();
+
+      expect(queryByTestId("token-price-header-loading")).toBeNull();
+      expect(
+        queryByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+      expect(getByText("100.00 XLM")).toBeTruthy();
+      expect(queryByTestId("token-price-delta-row")).toBeNull();
+    });
+
+    it("renders nothing while nothing is loading and there is no balance", () => {
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: false });
+      const { toJSON, queryByTestId } = renderDetailView();
+      expect(queryByTestId("token-price-header-loading")).toBeNull();
+      expect(toJSON()).not.toBeNull(); // the section beside it still renders
+    });
+
+    it("scales the price pill with the OS text size", () => {
+      const window = Dimensions.get("window");
+      const screen = Dimensions.get("screen");
+      act(() => {
+        Dimensions.set({ window: { ...window, fontScale: 2 }, screen });
+      });
+      try {
+        useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+        const { getByTestId } = renderDetailView();
+        const price = getByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        });
+        expect(StyleSheet.flatten(price.props.style).height).toBe(
+          priceRowHeight(2),
+        );
+      } finally {
+        act(() => {
+          Dimensions.set({ window, screen });
+        });
+      }
     });
   });
 });

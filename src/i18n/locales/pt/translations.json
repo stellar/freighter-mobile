@@ -339,6 +339,7 @@
     "sorobanToken": "Token Soroban",
     "balance": "Saldo",
     "value": "Valor",
+    "loadingPriceA11yLabel": "Carregando o preço",
     "listHeader": "Sua atividade de {{tokenName}}",
     "swap": "Trocar",
     "send": "Enviar"

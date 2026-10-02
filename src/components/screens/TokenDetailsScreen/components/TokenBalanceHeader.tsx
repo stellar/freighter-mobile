@@ -1,17 +1,21 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
-import TokenPriceDelta from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceDelta";
-import { Display, Text } from "components/sds/Typography";
+import TokenPriceDelta, {
+  deltaRowHeight,
+} from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceDelta";
+import Shimmer from "components/sds/Shimmer";
+import { Display, DISPLAY_SIZES, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { useBalancesStore } from "ducks/balances";
 import { isNativeAssetId } from "helpers/assetIdentity";
+import { fsValue, pxValue } from "helpers/dimensions";
 import { formatBalanceAmount, formatFiatAmount } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -48,6 +52,10 @@ const useTokenDetailBalance = (tokenId: string) => {
   return pricedBalances[tokenId];
 };
 
+/** The price line (`Display xs`) at the live text scale, for its placeholder. */
+export const priceRowHeight = (fontScale: number): number =>
+  fsValue(DISPLAY_SIZES.xs.lineHeight) * fontScale;
+
 const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   tokenId,
   tokenSymbol,
@@ -58,10 +66,51 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const { t } = useAppTranslation();
   const isSorobanToken = isContractId(tokenId);
   const tokenBalance = useTokenDetailBalance(tokenId);
+  const isLoadingBalances = useBalancesStore((state) => state.isLoading);
+  const { fontScale } = useWindowDimensions();
 
-  // Early return if tokenBalance is not available
+  // Loading placeholders, from the Figma "Data loading" frame: one pill at the
+  // price line and one at the delta row, while balances (which carry the
+  // price) are in flight. Once the store settles, a missing price falls back
+  // to the amount, as before — a token with no price feed never shimmers.
+  const renderLoadingPriceInfo = () => (
+    <View
+      testID="token-price-header-loading"
+      className="gap-1"
+      accessible
+      accessibilityState={{ busy: true }}
+      accessibilityLabel={t("tokenDetailsScreen.loadingPriceA11yLabel")}
+    >
+      <Shimmer
+        testID="token-price-header-price-skeleton"
+        width={pxValue(146)}
+        height={priceRowHeight(fontScale)}
+      />
+      <Shimmer
+        testID="token-price-header-delta-skeleton"
+        width={pxValue(146)}
+        height={deltaRowHeight(fontScale)}
+      />
+    </View>
+  );
+
   if (!tokenBalance) {
-    return null;
+    if (!isLoadingBalances) {
+      return null;
+    }
+
+    // No balance yet, so no icon (TokenIcon needs the balance); the name
+    // comes from the route, the rest is placeholder.
+    return (
+      <View className="gap-2">
+        <View className="gap-2">
+          <Text md medium secondary>
+            {tokenName ?? tokenSymbol}
+          </Text>
+          {renderLoadingPriceInfo()}
+        </View>
+      </View>
+    );
   }
 
   const getTokenDisplayInfo = (): TokenDisplayInfo => {
@@ -100,7 +149,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   // beneath it follows the chart's selected range (§7.3).
   const renderPriceInfo = () => (
     <View className="gap-1">
-      <Display xs medium>
+      <Display xs medium testID="token-price-header-price">
         {formatFiatAmount(tokenBalance.currentPrice ?? "0")}
       </Display>
       <TokenPriceDelta
@@ -117,6 +166,16 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
     </Display>
   );
 
+  const isPricePending = !hasPrice && isLoadingBalances;
+
+  const renderPriceSection = () => {
+    if (hasPrice) {
+      return renderPriceInfo();
+    }
+
+    return isPricePending ? renderLoadingPriceInfo() : renderBalanceInfo();
+  };
+
   // Icon, name, price, delta — and nothing else. The Balance/Value rows are
   // {@link TokenBalanceDetails}, which the screen renders BELOW the chart, as
   // the extension does: the chart belongs to the price above it, not under
@@ -129,7 +188,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
         <Text md medium secondary>
           {name}
         </Text>
-        {hasPrice ? renderPriceInfo() : renderBalanceInfo()}
+        {renderPriceSection()}
       </View>
     </View>
   );
