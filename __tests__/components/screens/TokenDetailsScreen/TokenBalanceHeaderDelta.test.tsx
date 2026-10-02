@@ -4,6 +4,7 @@ import { deltaRowHeight } from "components/screens/TokenDetailsScreen/components
 import TokenPriceHistorySection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection";
 import TokenBalanceHeader, {
   priceRowHeight,
+  TokenBalanceDetails,
 } from "components/screens/TokenDetailsScreen/components/TokenBalanceHeader";
 import { TEXT_SIZES } from "components/sds/Typography";
 import { getThemeColors } from "config/colors";
@@ -727,5 +728,99 @@ describe("TokenBalanceHeader range delta", () => {
         });
       }
     });
+  });
+});
+
+describe("TokenBalanceDetails loading placeholders", () => {
+  const renderDetails = () =>
+    renderWithProviders(<TokenBalanceDetails tokenId="native" />);
+  const rowHeight = (fontScale: number) =>
+    fsValue(TEXT_SIZES.md.lineHeight) * fontScale;
+
+  it("shows both pills while balances load and none exists yet", () => {
+    // Pinned to fontScale 1 (the RN jest preset defaults to 2) so this is the
+    // unscaled baseline, matching the header's own pinned-scale test above.
+    const window = Dimensions.get("window");
+    const screen = Dimensions.get("screen");
+    act(() => {
+      Dimensions.set({ window: { ...window, fontScale: 1 }, screen });
+    });
+    try {
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+      const { getByTestId, getByText } = renderDetails();
+
+      const wrapper = getByTestId("token-balance-details-loading");
+      expect(wrapper.props.accessibilityState).toEqual({ busy: true });
+      expect(wrapper.props.accessibilityLabel).toBe("Loading balance");
+      expect(getByText("Balance")).toBeTruthy();
+      expect(getByText("Value")).toBeTruthy();
+      expect(
+        StyleSheet.flatten(
+          getByTestId("token-balance-skeleton", {
+            includeHiddenElements: true,
+          }).props.style,
+        ),
+      ).toEqual({ width: pxValue(102), height: rowHeight(1) });
+      expect(
+        StyleSheet.flatten(
+          getByTestId("token-value-skeleton", {
+            includeHiddenElements: true,
+          }).props.style,
+        ),
+      ).toEqual({ width: pxValue(64), height: rowHeight(1) });
+    } finally {
+      act(() => {
+        Dimensions.set({ window, screen });
+      });
+    }
+  });
+
+  it("shows only the Value pill while the balance is in but its price is pending", () => {
+    useBalancesStore.setState({
+      pricedBalances: {
+        native: {
+          ...nativeBalance,
+          currentPrice: undefined,
+          fiatTotal: undefined,
+        },
+      } as never,
+      isLoading: true,
+    });
+    const { getByTestId, queryByTestId, getByText } = renderDetails();
+
+    expect(
+      queryByTestId("token-balance-skeleton", { includeHiddenElements: true }),
+    ).toBeNull();
+    expect(
+      getByTestId("token-value-skeleton", { includeHiddenElements: true }),
+    ).toBeTruthy();
+    expect(getByText(/XLM/)).toBeTruthy(); // the real amount
+  });
+
+  it("omits the Value row once loading ends unpriced, as before", () => {
+    useBalancesStore.setState({
+      pricedBalances: {
+        native: {
+          ...nativeBalance,
+          currentPrice: undefined,
+          fiatTotal: undefined,
+        },
+      } as never,
+      isLoading: false,
+    });
+    const { queryByTestId, queryByText } = renderDetails();
+
+    expect(queryByTestId("token-balance-details-loading")).toBeNull();
+    expect(queryByText("Value")).toBeNull();
+  });
+
+  it("renders nothing with no balance and nothing loading", () => {
+    // `renderWithProviders` always wraps with the Toast overlay, so `toJSON()`
+    // is never literally null; assert the component's own output is absent.
+    useBalancesStore.setState({ pricedBalances: {}, isLoading: false });
+    const { queryByTestId, queryByText } = renderDetails();
+
+    expect(queryByTestId("token-balance-details-loading")).toBeNull();
+    expect(queryByText("Balance")).toBeNull();
   });
 });

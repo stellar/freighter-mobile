@@ -341,6 +341,7 @@
     "balance": "Saldo",
     "value": "Valor",
     "loadingPriceA11yLabel": "Carregando o preço",
+    "loadingBalanceA11yLabel": "Carregando o saldo",
     "listHeader": "Sua atividade de {{tokenName}}",
     "swap": "Trocar",
     "send": "Enviar"

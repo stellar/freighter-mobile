@@ -5,7 +5,12 @@ import TokenPriceDelta, {
   deltaRowHeight,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceDelta";
 import Shimmer from "components/sds/Shimmer";
-import { Display, DISPLAY_SIZES, Text } from "components/sds/Typography";
+import {
+  Display,
+  DISPLAY_SIZES,
+  Text,
+  TEXT_SIZES,
+} from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { useBalancesStore } from "ducks/balances";
 import { isNativeAssetId } from "helpers/assetIdentity";
@@ -203,8 +208,11 @@ export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
 }) => {
   const { t } = useAppTranslation();
   const tokenBalance = useTokenDetailBalance(tokenId);
+  const isLoadingBalances = useBalancesStore((state) => state.isLoading);
+  const { fontScale } = useWindowDimensions();
+  const rowHeight = fsValue(TEXT_SIZES.md.lineHeight) * fontScale;
 
-  if (!tokenBalance) {
+  if (!tokenBalance && !isLoadingBalances) {
     return null;
   }
 
@@ -212,7 +220,49 @@ export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
   // `ducks/balances` derives `fiatTotal` from `currentPrice`, so the two are
   // falsy together — but the rows and the header must agree about what counts
   // as "priced", and only one of them reading both fields invites drift.
-  const hasPrice = !!tokenBalance.currentPrice && !!tokenBalance.fiatTotal;
+  const hasPrice = !!tokenBalance?.currentPrice && !!tokenBalance?.fiatTotal;
+  const isPricePending = !hasPrice && isLoadingBalances;
+  const isAnyPending = !tokenBalance || isPricePending;
+
+  const balanceCell = tokenBalance ? (
+    <Text md>{formatBalanceAmount(tokenBalance, tokenBalance.tokenCode)}</Text>
+  ) : (
+    <Shimmer
+      testID="token-balance-skeleton"
+      width={pxValue(102)}
+      height={rowHeight}
+    />
+  );
+
+  let valueRow = null;
+  if (hasPrice) {
+    valueRow = {
+      titleComponent: (
+        <Text md secondary>
+          {t("tokenDetailsScreen.value")}
+        </Text>
+      ),
+      trailingContent: (
+        <Text md>{formatFiatAmount(tokenBalance.fiatTotal ?? "0")}</Text>
+      ),
+    };
+  } else if (isPricePending) {
+    valueRow = {
+      titleComponent: (
+        <Text md secondary>
+          {t("tokenDetailsScreen.value")}
+        </Text>
+      ),
+      trailingContent: (
+        <Shimmer
+          testID="token-value-skeleton"
+          width={pxValue(64)}
+          height={rowHeight}
+        />
+      ),
+    };
+  }
+
   const rows = [
     {
       titleComponent: (
@@ -220,29 +270,29 @@ export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
           {t("tokenDetailsScreen.balance")}
         </Text>
       ),
-      trailingContent: (
-        <Text md>
-          {formatBalanceAmount(tokenBalance, tokenBalance.tokenCode)}
-        </Text>
-      ),
+      trailingContent: balanceCell,
     },
-    ...(hasPrice
-      ? [
-          {
-            titleComponent: (
-              <Text md secondary>
-                {t("tokenDetailsScreen.value")}
-              </Text>
-            ),
-            trailingContent: (
-              <Text md>{formatFiatAmount(tokenBalance.fiatTotal ?? "0")}</Text>
-            ),
-          },
-        ]
-      : []),
+    ...(valueRow ? [valueRow] : []),
   ];
 
-  return <List variant="secondary" items={rows} />;
+  const list = <List variant="secondary" items={rows} />;
+
+  if (!isAnyPending) {
+    return list;
+  }
+
+  // While anything is pending the card announces once; the pills inside it
+  // are decorative, matching the header's own loading wrapper above.
+  return (
+    <View
+      testID="token-balance-details-loading"
+      accessible
+      accessibilityState={{ busy: true }}
+      accessibilityLabel={t("tokenDetailsScreen.loadingBalanceA11yLabel")}
+    >
+      {list}
+    </View>
+  );
 };
 
 export default TokenBalanceHeader;

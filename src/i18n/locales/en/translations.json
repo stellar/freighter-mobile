@@ -375,6 +375,7 @@
     "balance": "Balance",
     "value": "Value",
     "loadingPriceA11yLabel": "Loading price",
+    "loadingBalanceA11yLabel": "Loading balance",
     "listHeader": "Your {{tokenName}} activity",
     "swap": "Swap",
     "send": "Send"
