@@ -5,6 +5,7 @@ import {
   Address,
   Asset,
   BASE_FEE,
+  nativeToScVal,
   Networks,
   Operation,
   OperationRecord,
@@ -16,6 +17,7 @@ import { render } from "@testing-library/react-native";
 import Operations from "components/screens/SignTransactionDetails/components/Operations";
 import { truncateAddress } from "helpers/stellar";
 import React from "react";
+import { getContractSpecs } from "services/backend";
 
 // Render i18n keys verbatim so assertions target the value rows, not labels.
 jest.mock("react-i18next", () => ({
@@ -50,6 +52,11 @@ jest.mock("hooks/useClipboard", () => ({
 
 jest.mock("services/blockaid/api", () => ({
   scanToken: jest.fn().mockResolvedValue(undefined),
+}));
+
+// The contract spec is the only source of parameter names; stub it per test.
+jest.mock("services/backend", () => ({
+  getContractSpecs: jest.fn().mockRejectedValue(new Error("no spec")),
 }));
 
 // Use the real number/asset formatting.
@@ -527,5 +534,164 @@ describe("SignTransactionDetails > Operations: hash-based signer keys", () => {
     expect(
       await findByText(truncateAddress(HASH_UPPER), {}, FIND),
     ).toBeTruthy();
+  });
+});
+
+describe("SignTransactionDetails > Operations: contract argument labels", () => {
+  const CONTRACT = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4";
+  // gauge_schedule_reward(router, distributor, gauge, start_at: Option<u64>,
+  // duration, tps) as `Spec.jsonSchema()` emits it: `required` omits the
+  // Option, so indexing it positionally slid every later label up one row.
+  const GAUGE_SPEC = {
+    definitions: {
+      gauge_schedule_reward: {
+        properties: {
+          args: {
+            properties: {
+              router: {},
+              distributor: {},
+              gauge: {},
+              start_at: {},
+              duration: {},
+              tps: {},
+            },
+            required: ["router", "distributor", "gauge", "duration", "tps"],
+          },
+        },
+      },
+    },
+  };
+  const ALL_OPTIONAL_SPEC = {
+    definitions: {
+      maybe: {
+        properties: { args: { properties: { first: {}, second: {} } } },
+      },
+    },
+  };
+
+  const invokeContract = (fnName: string, args: xdr.ScVal[]) =>
+    operationsFor(
+      Operation.invokeContractFunction({
+        contract: CONTRACT,
+        function: fnName,
+        args,
+      }),
+    );
+
+  const getContractSpecsMock = getContractSpecs as jest.MockedFunction<
+    typeof getContractSpecs
+  >;
+
+  beforeEach(() => {
+    getContractSpecsMock.mockReset();
+  });
+
+  it("keeps every label on its own value when a middle parameter is optional", async () => {
+    const START_AT = "1750000000";
+    const DURATION = "604800";
+    const TPS = "42";
+    getContractSpecsMock.mockResolvedValue(GAUGE_SPEC);
+
+    const { findAllByTestId, getAllByTestId, getByTestId } = render(
+      <Operations
+        operations={invokeContract("gauge_schedule_reward", [
+          new Address(CONTRACT).toScVal(),
+          new Address(SOURCE).toScVal(),
+          new Address(CONTRACT).toScVal(),
+          nativeToScVal(BigInt(START_AT), { type: "u64" }),
+          nativeToScVal(BigInt(DURATION), { type: "u64" }),
+          nativeToScVal(BigInt(TPS), { type: "i128" }),
+        ])}
+      />,
+    );
+
+    await findAllByTestId("ParameterKey", {}, FIND);
+    const keys = getAllByTestId("ParameterKey").map(
+      (node) => node.props.children,
+    );
+    const values = getAllByTestId("ParameterValue").map(
+      (node) => node.props.children,
+    );
+
+    expect(keys).toEqual([
+      "router",
+      "distributor",
+      "gauge",
+      "start_at",
+      "duration",
+      "tps",
+    ]);
+    // The timestamp must sit under start_at, not under duration.
+    expect(values[3]).toBe(START_AT);
+    expect(values[4]).toBe(DURATION);
+    expect(values[5]).toBe(TPS);
+
+    // Names came from the spec, so they are qualified as the contract's own
+    // claim rather than presented as verified.
+    expect(getByTestId("ContractSpecNote")).toBeTruthy();
+  });
+
+  it("labels a function whose parameters are all optional instead of throwing", async () => {
+    // `required` is absent entirely here -- reading it positionally threw and
+    // took the whole signing view down with it.
+    getContractSpecsMock.mockResolvedValue(ALL_OPTIONAL_SPEC);
+
+    const { findAllByTestId, getAllByTestId } = render(
+      <Operations
+        operations={invokeContract("maybe", [
+          nativeToScVal(1, { type: "u32" }),
+          nativeToScVal(2, { type: "u32" }),
+        ])}
+      />,
+    );
+
+    await findAllByTestId("ParameterKey", {}, FIND);
+    expect(
+      getAllByTestId("ParameterKey").map((node) => node.props.children),
+    ).toEqual(["first", "second"]);
+  });
+
+  it("renders rows unlabelled, and no spec note, when the spec is unavailable", async () => {
+    getContractSpecsMock.mockRejectedValue(new Error("no spec"));
+
+    const { findAllByTestId, getAllByTestId, queryByTestId } = render(
+      <Operations
+        operations={invokeContract("transfer", [
+          new Address(SOURCE).toScVal(),
+          new Address(CONTRACT).toScVal(),
+          nativeToScVal(BigInt(100), { type: "i128" }),
+        ])}
+      />,
+    );
+
+    await findAllByTestId("ParameterValue", {}, FIND);
+    const keys = getAllByTestId("ParameterKey");
+
+    expect(keys).toHaveLength(3);
+    // No spec means no trustworthy names, so rows render unlabelled rather
+    // than borrowing a label from somewhere else.
+    keys.forEach((node) => expect(node.props.children).toBeUndefined());
+    // Nothing was labelled, so there is no claim to disclaim.
+    expect(queryByTestId("ContractSpecNote")).toBeNull();
+  });
+
+  it("renders rows unlabelled when the spec names a different number of parameters", async () => {
+    getContractSpecsMock.mockResolvedValue(GAUGE_SPEC);
+
+    const { findAllByTestId, getAllByTestId, queryByTestId } = render(
+      <Operations
+        operations={invokeContract("gauge_schedule_reward", [
+          new Address(CONTRACT).toScVal(),
+          new Address(SOURCE).toScVal(),
+        ])}
+      />,
+    );
+
+    await findAllByTestId("ParameterValue", {}, FIND);
+
+    getAllByTestId("ParameterKey").forEach((node) =>
+      expect(node.props.children).toBeUndefined(),
+    );
+    expect(queryByTestId("ContractSpecNote")).toBeNull();
   });
 });

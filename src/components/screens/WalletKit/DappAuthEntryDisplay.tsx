@@ -148,11 +148,15 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
             </View>
           </View>
           {detail.args.length > 0 && (
+            /* isAuthEntry suppresses contract-spec labels: an auth's args
+            need not be the function's declared parameters. See
+            stellar/freighter#2196. */
             <KeyValueInvokeHostFnArgs
               args={detail.args}
               contractId={detail.contractId}
               fnName={detail.fnName}
               variant="tertiary"
+              isAuthEntry
             />
           )}
         </View>

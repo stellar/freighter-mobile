@@ -21,7 +21,8 @@ Mobile.
 - **Android Studio**: SDK 36, Build-Tools 36.0.0, NDK 28.2.13676358
 
 For the full list of prerequisites, environment variable setup, and LLM-assisted
-quick setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
+quick setup, see [DEVELOPMENT.md](DEVELOPMENT.md). Before opening a pull request,
+read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Platform Specific Setup
 
@@ -55,14 +56,14 @@ guide for iOS and Android.
        cp .env.example .env
        ```
 
-       See [CONTRIBUTING.md](CONTRIBUTING.md#environment-variables) for the full
+       See [DEVELOPMENT.md](DEVELOPMENT.md#environment-variables) for the full
        list of required variables and how to obtain each value.
 
     **Important:**
 
     - Never commit the `.env` file to version control
     - Keep `.env.example` updated with any new environment variables
-    - See [CONTRIBUTING.md](CONTRIBUTING.md#environment-variables) for how to
+    - See [DEVELOPMENT.md](DEVELOPMENT.md#environment-variables) for how to
       obtain each variable (public endpoints, WalletConnect dashboard, keystore
       generation)
 

@@ -1,7 +1,14 @@
-import { Address, hash, Networks, xdr } from "@stellar/stellar-sdk";
+import {
+  Address,
+  hash,
+  nativeToScVal,
+  Networks,
+  xdr,
+} from "@stellar/stellar-sdk";
 import { DappAuthEntryDisplay } from "components/screens/WalletKit/DappAuthEntryDisplay";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { getContractSpecs } from "services/backend";
 
 jest.mock("hooks/useAppTranslation", () => ({
   __esModule: true,
@@ -10,6 +17,15 @@ jest.mock("hooks/useAppTranslation", () => ({
 
 jest.mock("hooks/useClipboard", () => ({
   useClipboard: () => ({ copyToClipboard: jest.fn() }),
+}));
+
+jest.mock("ducks/auth", () => ({
+  useAuthenticationStore: () => ({ network: "PUBLIC" }),
+}));
+
+// A resolvable spec, so a fetch that happened would visibly label the rows.
+jest.mock("services/backend", () => ({
+  getContractSpecs: jest.fn(),
 }));
 
 const OWNER_CONTRACT =
@@ -25,6 +41,33 @@ const buildEntryXdr = (
     function:
       xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractHostFn(
         new xdr.CreateContractArgs({ contractIdPreimage, executable }),
+      ),
+    subInvocations: [],
+  });
+  return xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
+    new xdr.HashIdPreimageSorobanAuthorization({
+      networkId: new xdr.Hash(hash(Buffer.from(Networks.TESTNET))),
+      nonce: BigInt(1),
+      signatureExpirationLedger: 1000,
+      invocation,
+    }),
+  ).toXdr("base64");
+};
+
+/** Wraps a contract-function invocation in a Soroban auth preimage. */
+const buildContractFnEntryXdr = (
+  contractId: string,
+  fnName: string,
+  args: xdr.ScVal[],
+) => {
+  const invocation = new xdr.SorobanAuthorizedInvocation({
+    function:
+      xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+        new xdr.InvokeContractArgs({
+          contractAddress: new Address(contractId).toScAddress(),
+          functionName: fnName,
+          args,
+        }),
       ),
     subInvocations: [],
   });
@@ -94,5 +137,51 @@ describe("DappAuthEntryDisplay", () => {
       getByText("signTransactionDetails.authorizations.unrecognizedInvocation"),
     ).toBeTruthy();
     expect(getByTestId("UnrecognizedInvocationWarning")).toBeTruthy();
+  });
+
+  // An auth entry's args are not the function's declared parameters:
+  // `require_auth_for_args` can substitute an arbitrary list under the same
+  // contract and function name, at the same arity, so the length check in
+  // `getContractFnArgNames` cannot catch the mismatch. The spec is therefore
+  // never consulted here. See stellar/freighter#2196.
+  it("never labels auth-entry args from the contract spec", async () => {
+    const getContractSpecsMock = getContractSpecs as jest.MockedFunction<
+      typeof getContractSpecs
+    >;
+    // Would label all three rows if it were ever fetched.
+    getContractSpecsMock.mockReset();
+    getContractSpecsMock.mockResolvedValue({
+      definitions: {
+        transfer: {
+          properties: {
+            args: {
+              properties: { from: {}, to: {}, amount: {} },
+              required: ["from", "to", "amount"],
+            },
+          },
+        },
+      },
+    });
+
+    const entryXdr = buildContractFnEntryXdr(OWNER_CONTRACT, "transfer", [
+      new Address(DEPLOYER).toScVal(),
+      new Address(OWNER_CONTRACT).toScVal(),
+      nativeToScVal(BigInt(100), { type: "i128" }),
+    ]);
+
+    const { findAllByTestId, getAllByTestId, queryByTestId } =
+      renderWithProviders(
+        <DappAuthEntryDisplay entryXdr={entryXdr} expandAll />,
+      );
+
+    const keys = await findAllByTestId("ParameterKey", {}, { timeout: 3000 });
+
+    expect(getContractSpecsMock).not.toHaveBeenCalled();
+    expect(keys).toHaveLength(3);
+    keys.forEach((node) => expect(node.props.children).toBeUndefined());
+    // Nothing was labelled, so there is no spec claim to disclaim.
+    expect(queryByTestId("ContractSpecNote")).toBeNull();
+    // The values themselves still render.
+    expect(getAllByTestId("ParameterValue")).toHaveLength(3);
   });
 });

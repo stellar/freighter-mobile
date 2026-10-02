@@ -105,10 +105,14 @@ const SignTransactionAuthorizations = ({
                 <Text>{detail.fnName}</Text>
               </View>
             </View>
+            {/* isAuthEntry suppresses contract-spec labels: an auth's args
+            need not be the function's declared parameters. See
+            stellar/freighter#2196. */}
             <KeyValueInvokeHostFnArgs
               args={detail.args}
               contractId={detail.contractId}
               fnName={detail.fnName}
+              isAuthEntry
             />
           </View>
         );
