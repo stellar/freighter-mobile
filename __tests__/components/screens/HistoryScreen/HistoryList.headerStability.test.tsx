@@ -77,6 +77,52 @@ describe("HistoryList header stability", () => {
     expect(mounts.count).toBe(1);
   });
 
+  it("keeps one header instance across loading, empty and loaded with the skeleton placeholder", () => {
+    mounts.count = 0;
+
+    const { rerender, getByTestId } = renderWithProviders(
+      <HistoryList
+        {...props({
+          historyData: null,
+          isLoading: true,
+          error: null,
+          loadingPlaceholder: "skeleton",
+        })}
+      />,
+    );
+    expect(getByTestId("stable-header")).toBeTruthy();
+    expect(mounts.count).toBe(1);
+
+    // Loading -> empty.
+    rerender(
+      <HistoryList
+        {...props({
+          historyData: { history: [] },
+          isLoading: false,
+          error: null,
+          loadingPlaceholder: "skeleton",
+        })}
+      />,
+    );
+    expect(mounts.count).toBe(1);
+
+    // Empty -> has transactions. This is the transition that used to swap a
+    // ScrollView for a SectionList and rebuild the whole subtree.
+    rerender(
+      <HistoryList
+        {...props({
+          historyData: {
+            history: [{ monthYear: "September 2026", operations: [] }],
+          },
+          isLoading: false,
+          error: null,
+          loadingPlaceholder: "skeleton",
+        })}
+      />,
+    );
+    expect(mounts.count).toBe(1);
+  });
+
   /**
    * A failed refresh keeps `rawHistoryData`, so the list stays non-empty and
    * `ListEmptyComponent` is never consulted. Routing every state through that

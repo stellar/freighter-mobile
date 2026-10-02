@@ -7,13 +7,15 @@ import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { TransactionDetails } from "components/screens/HistoryScreen";
 import HistoryItem from "components/screens/HistoryScreen/HistoryItem";
+import HistorySkeletonRows from "components/screens/HistoryScreen/HistorySkeletonRows";
 import HistoryWrapper from "components/screens/HistoryScreen/HistoryWrapper";
 import MonthHeader from "components/screens/HistoryScreen/MonthHeader";
 import {
   TransactionDetailsBottomSheetCustomContent,
   TransactionDetailsFooter,
 } from "components/screens/HistoryScreen/TransactionDetailsBottomSheetCustomContent";
-import { NetworkDetails } from "config/constants";
+import { DEFAULT_PADDING, NetworkDetails } from "config/constants";
+import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HistorySection, HistoryData } from "hooks/useGetHistoryData";
 import React, { useCallback, useRef, useState } from "react";
@@ -48,6 +50,8 @@ interface HistoryListProps {
   noHorizontalPadding?: boolean;
   className?: string;
   refreshActionPosition: "start" | "center" | "end";
+  /** The token-detail screen opts into the Figma skeleton rows; the History screen keeps its spinner. */
+  loadingPlaceholder?: "spinner" | "skeleton";
 }
 
 /**
@@ -67,9 +71,10 @@ const HistoryList: React.FC<HistoryListProps> = ({
   noHorizontalPadding = false,
   className,
   refreshActionPosition = "center",
+  loadingPlaceholder = "spinner",
 }) => {
   const { t } = useAppTranslation();
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetails | null>(null);
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -191,6 +196,15 @@ const HistoryList: React.FC<HistoryListProps> = ({
    */
   const listEmptyComponent = (() => {
     if (isLoading) {
+      if (loadingPlaceholder === "skeleton") {
+        // Both layouts leave the page padding on each side: the outer
+        // BaseLayout's when `noHorizontalPadding`, this list's own otherwise.
+        return (
+          <HistorySkeletonRows
+            width={windowWidth - 2 * pxValue(DEFAULT_PADDING)}
+          />
+        );
+      }
       return (
         <HistoryWrapper>
           <Spinner size="large" testID="spinner" />

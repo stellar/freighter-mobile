@@ -298,6 +298,7 @@
       "title": "Nenhuma transação para mostrar"
     },
     "error": "Erro ao carregar o histórico",
+    "loadingA11yLabel": "Carregando o histórico",
     "refresh": "Atualizar",
     "refreshing": "Atualizando...",
     "transactionHistory": {

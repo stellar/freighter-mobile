@@ -332,6 +332,7 @@
       "title": "No transactions to show"
     },
     "error": "Error loading history",
+    "loadingA11yLabel": "Loading history",
     "refresh": "Refresh",
     "refreshing": "Refreshing...",
     "transactionHistory": {
