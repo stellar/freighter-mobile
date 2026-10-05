@@ -112,30 +112,13 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
     </View>
   );
 
-  if (!tokenBalance) {
-    if (!isLoadingBalances) {
-      return null;
-    }
-
-    // No balance yet, so no icon (TokenIcon needs the balance); the name
-    // comes from the route, the rest is placeholder.
-    return (
-      <View className="gap-2">
-        <View className="gap-2">
-          <Text md medium secondary>
-            {tokenName ?? tokenSymbol}
-          </Text>
-          {renderLoadingPriceInfo()}
-        </View>
-      </View>
-    );
-  }
-
+  // Before the no-balance branch so a loading header names the token as the
+  // loaded one will.
   const getTokenDisplayInfo = (): TokenDisplayInfo => {
     if (isNativeAssetId(tokenId)) {
       return {
         symbol: NATIVE_TOKEN_CODE,
-        name: tokenBalance.displayName || tokenSymbol,
+        name: tokenBalance?.displayName || tokenSymbol,
       };
     }
 
@@ -156,11 +139,31 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
 
     return {
       symbol: tokenSymbol,
-      name: tokenBalance.displayName || tokenSymbol,
+      name: tokenBalance?.displayName || tokenSymbol,
     };
   };
 
   const { name } = getTokenDisplayInfo();
+
+  if (!tokenBalance) {
+    if (!isLoadingBalances) {
+      return null;
+    }
+
+    // No balance yet, so no icon (TokenIcon needs the balance); the rest is
+    // placeholder.
+    return (
+      <View className="gap-2">
+        <View className="gap-2">
+          <Text md medium secondary>
+            {name}
+          </Text>
+          {renderLoadingPriceInfo()}
+        </View>
+      </View>
+    );
+  }
+
   const hasPrice = tokenBalance.currentPrice && tokenBalance.fiatTotal;
 
   // The price is live spot and does NOT vary by timeframe; only the delta

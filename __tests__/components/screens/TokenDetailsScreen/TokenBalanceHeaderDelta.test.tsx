@@ -738,6 +738,22 @@ describe("TokenBalanceHeader range delta", () => {
       ).toBeNull();
     });
 
+    it("names a Soroban token by the loaded name's rules, not its contract ID", () => {
+      const contractId =
+        "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+      const { getByText, queryByText } = renderWithProviders(
+        <TokenBalanceHeader
+          tokenId={contractId}
+          tokenSymbol={contractId}
+          network={NETWORKS.PUBLIC}
+        />,
+      );
+
+      expect(getByText("Soroban Token")).toBeTruthy();
+      expect(queryByText(contractId)).toBeNull();
+    });
+
     it("renders nothing while nothing is loading and there is no balance", () => {
       useBalancesStore.setState({ pricedBalances: {}, isLoading: false });
       const { toJSON, queryByTestId } = renderDetailView();
