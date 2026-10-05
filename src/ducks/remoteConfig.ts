@@ -21,11 +21,8 @@ const BOOLEAN_FLAGS = [
   "discover_enabled",
   "onramp_enabled",
   "use_token_prices_v2",
-  // Token price chart + stats on TokenDetailsScreen. Remotely controlled,
-  // with an OFF production default until /token-price-history and
-  // /token-stats are deployed (see INITIAL_REMOTE_CONFIG_STATE below); it is
-  // also the §11 kill switch once live. Name matches the extension's flag for
-  // cross-platform operability.
+  // Token price chart + stats on TokenDetailsScreen: the §11 kill switch.
+  // Defaults ON in every build, like the extension's flag of the same name.
   "use_token_price_history",
   "use_balances_v2",
 ] as const;
@@ -107,13 +104,11 @@ const INITIAL_REMOTE_CONFIG_STATE =
         discover_enabled: isAndroid,
         onramp_enabled: isAndroid,
         use_token_prices_v2: true,
-        // Ships OFF and is flipped on once the endpoints are live, like
-        // use_balances_v2 below. Shipped before its backend it would fire
-        // seven failing requests per mainnet token-detail open, and
-        // `isInitialized` is set on a failed flag fetch too, so an
-        // unreachable Amplitude could not hold it back. Dev keeps it on: no
-        // Amplitude keys there, so previews would never see the feature.
-        use_token_price_history: false,
+        // ON, matching the extension: a kill switch, not launch choreography.
+        // A release must not reach users before /token-price-history and
+        // /token-stats are live, since `isInitialized` is also set on a
+        // failed flag fetch and nothing else would hold the feature back.
+        use_token_price_history: true,
         // Defaults to v1 until the wallet-backend indexer is deployed for
         // every network; Amplitude flips this on to roll out v2 balances
         // without a release.
