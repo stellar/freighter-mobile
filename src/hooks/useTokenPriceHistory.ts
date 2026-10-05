@@ -15,7 +15,7 @@ import {
 } from "ducks/priceHistory";
 import { PRICE_HISTORY_WARM_ORDER } from "helpers/priceHistoryChart";
 import useDebounce from "hooks/useDebounce";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -81,6 +81,8 @@ interface UseTokenPriceHistoryReturn {
   retry: () => void;
   /** False off-mainnet or when the caller disabled the feature */
   isEnabled: boolean;
+  /** True once this token's warm pass has settled every range */
+  rangesSettled: boolean;
 }
 
 /**
@@ -157,6 +159,8 @@ const useTokenPriceHistory = ({
    * cost six requests.
    */
   const warmGenerationRef = useRef(0);
+  const scope = `${network}/${tokenId}`;
+  const [settledScope, setSettledScope] = useState<string | null>(null);
   useEffect(
     () => () => {
       warmGenerationRef.current += 1;
@@ -223,8 +227,11 @@ const useTokenPriceHistory = ({
         }
       }
       /* eslint-enable no-await-in-loop */
+      if (warmGenerationRef.current === generation) {
+        setSettledScope(scope);
+      }
     },
-    [warmPriceHistory, tokenId, network],
+    [warmPriceHistory, tokenId, network, scope],
   );
 
   const debouncedFetch = useDebounce((fetchRange: PriceHistoryRange) => {
@@ -350,6 +357,7 @@ const useTokenPriceHistory = ({
     error,
     retry,
     isEnabled,
+    rangesSettled: settledScope === scope,
   };
 };
 

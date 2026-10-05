@@ -22,6 +22,9 @@ interface GetNoticeVariantParams {
   isSparse: boolean;
   /** Whether the token's age explains the sparseness */
   isNewlyTraded: boolean;
+  /** False while other ranges are still loading: the first-trade bound can
+   * still move, so limited-data could flip to newly-traded on screen. */
+  rangesSettled: boolean;
 }
 
 /**
@@ -33,9 +36,11 @@ export const getPriceHistoryNoticeVariant = ({
   lowVolume,
   isSparse,
   isNewlyTraded,
+  rangesSettled,
 }: GetNoticeVariantParams): PriceHistoryNoticeVariant | null => {
   if (lowVolume === true) return "lowVolume";
   if (lowVolume === null) return "verdictUnavailable";
+  if (isSparse && !rangesSettled) return null;
   if (isSparse) return isNewlyTraded ? "newlyTraded" : "limitedData";
 
   return null;

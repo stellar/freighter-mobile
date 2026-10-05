@@ -135,14 +135,22 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
     analytics.trackTokenChartRangeChanged(settledRange);
   }, []);
 
-  const { range, setRange, data, isLoading, error, retry, isEnabled } =
-    useTokenPriceHistory({
-      tokenId,
-      network,
-      enabled: isFeatureEnabled,
-      onLoaded: handleLoaded,
-      onRangeSettled: handleRangeSettled,
-    });
+  const {
+    range,
+    setRange,
+    data,
+    isLoading,
+    error,
+    retry,
+    isEnabled,
+    rangesSettled,
+  } = useTokenPriceHistory({
+    tokenId,
+    network,
+    enabled: isFeatureEnabled,
+    onLoaded: handleLoaded,
+    onRangeSettled: handleRangeSettled,
+  });
 
   // The chart snaps a drag position to an INDEX; this section knows which
   // series that index indexes into and publishes both, so the header can
@@ -284,6 +292,7 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
               ? getFirstTradeLowerBound(cachedByRange, nowSeconds)
               : undefined,
           ),
+          rangesSettled,
         })
       : null;
 

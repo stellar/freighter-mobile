@@ -442,6 +442,27 @@ describe("useTokenPriceHistory", () => {
       expect(mockFetchHistory).toHaveBeenCalledTimes(6);
     });
 
+    it("reports the warm pass settled only once every range has settled", async () => {
+      const { result, rerender } = renderChart();
+      await flush();
+      await settle("1D");
+      expect(result.current.rangesSettled).toBe(false);
+
+      await settle("ALL");
+      await fail("1H");
+      await settle("1W");
+      await settle("1M");
+      expect(result.current.rangesSettled).toBe(false);
+
+      await settle("1Y");
+      expect(result.current.rangesSettled).toBe(true);
+
+      // A new token starts unsettled again.
+      rerender({ tokenId: "USDC:GA5Z" });
+      await flush();
+      expect(result.current.rangesSettled).toBe(false);
+    });
+
     it("stops the queue when the component unmounts mid-warm", async () => {
       const { unmount } = renderChart();
       await flush();

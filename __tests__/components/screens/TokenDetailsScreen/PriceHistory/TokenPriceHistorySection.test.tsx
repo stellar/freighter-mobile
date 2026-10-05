@@ -1204,6 +1204,28 @@ describe("TokenPriceHistorySection", () => {
       ).toBeTruthy();
     });
 
+    it("shows no sparse notice while a range is still loading", async () => {
+      answerLaunchedToday({ failAll: false });
+      const answer = mockFetchHistory.getMockImplementation()!;
+      // ALL is first in the warm queue, so the pass parks on it.
+      mockFetchHistory.mockImplementation((params) =>
+        params.range === "ALL"
+          ? new Promise<TokenPriceHistory>(() => {})
+          : answer(params),
+      );
+
+      const { getByTestId, queryByTestId } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+      await waitFor(() => {
+        expect(mockFetchHistory).toHaveBeenCalledTimes(2);
+      });
+      expect(queryByTestId("price-history-notice-limitedData")).toBeNull();
+      expect(queryByTestId("price-history-notice-newlyTraded")).toBeNull();
+    });
+
     it("stays limited-data when ALL never loads", async () => {
       answerLaunchedToday({ failAll: true });
 
