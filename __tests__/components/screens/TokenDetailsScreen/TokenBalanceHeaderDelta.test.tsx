@@ -707,6 +707,37 @@ describe("TokenBalanceHeader range delta", () => {
       expect(queryByTestId("token-price-delta-row")).toBeNull();
     });
 
+    it("shows no delta pill off mainnet, where no delta row renders", () => {
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+      const { getByTestId, queryByTestId } = renderDetailView(NETWORKS.TESTNET);
+
+      expect(
+        getByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeTruthy();
+      expect(
+        queryByTestId("token-price-header-delta-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+    });
+
+    it("shows no delta pill on mainnet with the price-history kill switch off", () => {
+      useRemoteConfigStore.setState({
+        isInitialized: true,
+        use_token_price_history: false,
+      });
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+      const { queryByTestId } = renderDetailView();
+
+      expect(
+        queryByTestId("token-price-header-delta-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+    });
+
     it("renders nothing while nothing is loading and there is no balance", () => {
       useBalancesStore.setState({ pricedBalances: {}, isLoading: false });
       const { toJSON, queryByTestId } = renderDetailView();
@@ -739,8 +770,10 @@ describe("TokenBalanceHeader range delta", () => {
 });
 
 describe("TokenBalanceDetails loading placeholders", () => {
-  const renderDetails = () =>
-    renderWithProviders(<TokenBalanceDetails tokenId="native" />);
+  const renderDetails = (network: NETWORKS = NETWORKS.PUBLIC) =>
+    renderWithProviders(
+      <TokenBalanceDetails tokenId="native" network={network} />,
+    );
   const rowHeight = (fontScale: number) =>
     fsValue(TEXT_SIZES.md.lineHeight) * fontScale;
 
@@ -812,6 +845,21 @@ describe("TokenBalanceDetails loading placeholders", () => {
     expect(
       queryByTestId("token-value-skeleton", { includeHiddenElements: true }),
     ).toBeTruthy();
+  });
+
+  it("shows no Value pill off mainnet, where no Value row can render", () => {
+    useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+    const { getByTestId, queryByTestId, queryByText } = renderDetails(
+      NETWORKS.TESTNET,
+    );
+
+    expect(
+      getByTestId("token-balance-skeleton", { includeHiddenElements: true }),
+    ).toBeTruthy();
+    expect(
+      queryByTestId("token-value-skeleton", { includeHiddenElements: true }),
+    ).toBeNull();
+    expect(queryByText("Value")).toBeNull();
   });
 
   it("shows the Balance row only for a balance that settled unpriced, even while isLoading is true (a refresh)", () => {

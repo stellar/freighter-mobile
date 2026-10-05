@@ -20,6 +20,7 @@ import { formatBalanceAmount, formatFiatAmount } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
+import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import React from "react";
 import { useWindowDimensions, View } from "react-native";
 
@@ -80,6 +81,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const tokenBalance = useTokenDetailBalance(tokenId);
   const isLoadingBalances = useBalancesStore((state) => state.isLoading);
   const { fontScale } = useWindowDimensions();
+  const isPriceHistoryEnabled = usePriceHistoryEnabled(network);
 
   // Loading placeholders, from the Figma "Data loading" frame: one pill at the
   // price line and one at the delta row, while there is no balance at all. A
@@ -99,11 +101,14 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
         width={pxValue(146)}
         height={priceRowHeight(fontScale)}
       />
-      <Shimmer
-        testID="token-price-header-delta-skeleton"
-        width={pxValue(146)}
-        height={deltaRowHeight(fontScale)}
-      />
+      {/* Only where TokenPriceDelta reserves a row to hand over to. */}
+      {isPriceHistoryEnabled && (
+        <Shimmer
+          testID="token-price-header-delta-skeleton"
+          width={pxValue(146)}
+          height={deltaRowHeight(fontScale)}
+        />
+      )}
     </View>
   );
 
@@ -201,9 +206,10 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
  * The Balance / Value rows. Rendered below the chart so the screen reads
  * icon -> name -> price -> delta -> chart -> holdings, matching the extension.
  */
-export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
-  tokenId,
-}) => {
+export const TokenBalanceDetails: React.FC<{
+  tokenId: string;
+  network: NETWORKS;
+}> = ({ tokenId, network }) => {
   const { t } = useAppTranslation();
   const tokenBalance = useTokenDetailBalance(tokenId);
   // Raw balances land before prices do; the amount needs no price.
@@ -267,9 +273,11 @@ export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
         <Text md>{formatFiatAmount(tokenBalance.fiatTotal ?? "0")}</Text>
       ),
     };
-  } else if (!tokenBalance) {
+  } else if (!tokenBalance && network === NETWORKS.PUBLIC) {
     // The guard above already returned null for "no balance, not loading",
-    // so reaching here with no balance means isLoadingBalances is true.
+    // so reaching here with no balance means isLoadingBalances is true. Only
+    // mainnet is priced (PRICE_NETWORK_PARAMS in services/backend), so only
+    // there can a Value row replace the pill.
     valueRow = {
       titleComponent: (
         <Text md secondary>
