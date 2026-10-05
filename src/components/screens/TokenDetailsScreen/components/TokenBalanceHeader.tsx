@@ -3,14 +3,10 @@ import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import TokenPriceDelta, {
   deltaRowHeight,
+  PRICE_PILL_WIDTH,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceDelta";
 import Shimmer from "components/sds/Shimmer";
-import {
-  Display,
-  DISPLAY_SIZES,
-  Text,
-  TEXT_SIZES,
-} from "components/sds/Typography";
+import { Display, DISPLAY_SIZES, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { Balance } from "config/types";
 import { useBalancesStore } from "ducks/balances";
@@ -98,14 +94,14 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
     >
       <Shimmer
         testID="token-price-header-price-skeleton"
-        width={pxValue(146)}
+        width={PRICE_PILL_WIDTH}
         height={priceRowHeight(fontScale)}
       />
       {/* Only where TokenPriceDelta reserves a row to hand over to. */}
       {isPriceHistoryEnabled && (
         <Shimmer
           testID="token-price-header-delta-skeleton"
-          width={pxValue(146)}
+          width={PRICE_PILL_WIDTH}
           height={deltaRowHeight(fontScale)}
         />
       )}
@@ -221,7 +217,7 @@ export const TokenBalanceDetails: React.FC<{
   );
   const isLoadingBalances = useBalancesStore((state) => state.isLoading);
   const { fontScale } = useWindowDimensions();
-  const rowHeight = fsValue(TEXT_SIZES.md.lineHeight) * fontScale;
+  const rowHeight = deltaRowHeight(fontScale);
 
   if (!tokenBalance && !isLoadingBalances) {
     return null;

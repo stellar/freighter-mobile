@@ -790,8 +790,6 @@ describe("TokenBalanceDetails loading placeholders", () => {
     renderWithProviders(
       <TokenBalanceDetails tokenId="native" network={network} />,
     );
-  const rowHeight = (fontScale: number) =>
-    fsValue(TEXT_SIZES.md.lineHeight) * fontScale;
 
   beforeEach(() => {
     useBalancesStore.setState({ balances: {} });
@@ -820,14 +818,14 @@ describe("TokenBalanceDetails loading placeholders", () => {
             includeHiddenElements: true,
           }).props.style,
         ),
-      ).toEqual({ width: pxValue(102), height: rowHeight(1) });
+      ).toEqual({ width: pxValue(102), height: deltaRowHeight(1) });
       expect(
         StyleSheet.flatten(
           getByTestId("token-value-skeleton", {
             includeHiddenElements: true,
           }).props.style,
         ),
-      ).toEqual({ width: pxValue(64), height: rowHeight(1) });
+      ).toEqual({ width: pxValue(64), height: deltaRowHeight(1) });
     } finally {
       act(() => {
         Dimensions.set({ window, screen });

@@ -29,6 +29,9 @@ import { useWindowDimensions, View } from "react-native";
  */
 const FALLBACK_RANGE: PriceHistoryRange = "1D";
 
+/** The frame's width for the price and delta pills; the header's pill hands over to this one, so they must match. */
+export const PRICE_PILL_WIDTH = pxValue(146);
+
 /**
  * Reserved in every state — number, placeholder or nothing — so a range
  * switch never moves the price above it or the chart below it. Scaled with
@@ -157,7 +160,7 @@ const TokenPriceDelta: React.FC<TokenPriceDeltaProps> = ({
       return (
         <Shimmer
           testID="token-price-delta-skeleton"
-          width={pxValue(146)}
+          width={PRICE_PILL_WIDTH}
           height={deltaRowHeight(fontScale)}
         />
       );
