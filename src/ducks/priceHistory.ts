@@ -203,6 +203,12 @@ interface PriceHistoryState {
   clearSelectedRange: (params: TokenScopeParams) => void;
   /** The inspected point, if a drag is in progress. Never persisted. */
   inspectedPoint: InspectedPoint | null;
+  /**
+   * Records the point a live drag has snapped to: `index` into the cached
+   * series for `range` under the (network, token) scope. A no-op when the
+   * key, range and index are unchanged, so a pointer move that lands on the
+   * same point re-renders nothing.
+   */
   setInspectedPoint: (
     params: TokenScopeParams & { range: PriceHistoryRange; index: number },
   ) => void;
