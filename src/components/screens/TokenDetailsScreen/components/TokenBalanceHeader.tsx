@@ -12,6 +12,7 @@ import {
   TEXT_SIZES,
 } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import { Balance } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { fsValue, pxValue } from "helpers/dimensions";
@@ -45,16 +46,22 @@ interface TokenDisplayInfo {
  * rather than looked up directly. Shared by the header and the balance rows,
  * which the screen renders on either side of the chart.
  */
-const useTokenDetailBalance = (tokenId: string) => {
-  const { pricedBalances } = useBalancesStore();
-
+const findTokenDetailBalance = <T extends Balance>(
+  balances: Record<string, T>,
+  tokenId: string,
+): T | undefined => {
   if (isContractId(tokenId)) {
-    return Object.values(pricedBalances).find(
+    return Object.values(balances).find(
       (balance) => "contractId" in balance && balance.contractId === tokenId,
     );
   }
 
-  return pricedBalances[tokenId];
+  return balances[tokenId];
+};
+
+const useTokenDetailBalance = (tokenId: string) => {
+  const { pricedBalances } = useBalancesStore();
+  return findTokenDetailBalance(pricedBalances, tokenId);
 };
 
 /** The price line (`Display xs`) at the live text scale, for its placeholder. */
@@ -199,6 +206,10 @@ export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
 }) => {
   const { t } = useAppTranslation();
   const tokenBalance = useTokenDetailBalance(tokenId);
+  // Raw balances land before prices do; the amount needs no price.
+  const rawBalance = useBalancesStore((state) =>
+    findTokenDetailBalance(state.balances, tokenId),
+  );
   const isLoadingBalances = useBalancesStore((state) => state.isLoading);
   const { fontScale } = useWindowDimensions();
   const rowHeight = fsValue(TEXT_SIZES.md.lineHeight) * fontScale;
@@ -218,15 +229,31 @@ export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
   // header's own comment for why.
   const isAnyPending = !tokenBalance;
 
-  const balanceCell = tokenBalance ? (
-    <Text md>{formatBalanceAmount(tokenBalance, tokenBalance.tokenCode)}</Text>
-  ) : (
-    <Shimmer
-      testID="token-balance-skeleton"
-      width={pxValue(102)}
-      height={rowHeight}
-    />
-  );
+  let balanceCell;
+  if (tokenBalance) {
+    balanceCell = (
+      <Text md>
+        {formatBalanceAmount(tokenBalance, tokenBalance.tokenCode)}
+      </Text>
+    );
+  } else if (rawBalance) {
+    balanceCell = (
+      <Text md>
+        {formatBalanceAmount(
+          rawBalance,
+          "token" in rawBalance ? rawBalance.token.code : undefined,
+        )}
+      </Text>
+    );
+  } else {
+    balanceCell = (
+      <Shimmer
+        testID="token-balance-skeleton"
+        width={pxValue(102)}
+        height={rowHeight}
+      />
+    );
+  }
 
   let valueRow = null;
   if (hasPrice) {

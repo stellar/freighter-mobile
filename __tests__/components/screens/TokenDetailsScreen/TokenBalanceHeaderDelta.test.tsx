@@ -744,6 +744,10 @@ describe("TokenBalanceDetails loading placeholders", () => {
   const rowHeight = (fontScale: number) =>
     fsValue(TEXT_SIZES.md.lineHeight) * fontScale;
 
+  beforeEach(() => {
+    useBalancesStore.setState({ balances: {} });
+  });
+
   it("shows both pills while balances load and none exists yet", () => {
     // Pinned to fontScale 1 (the RN jest preset defaults to 2) so this is the
     // unscaled baseline, matching the header's own pinned-scale test above.
@@ -780,6 +784,34 @@ describe("TokenBalanceDetails loading placeholders", () => {
         Dimensions.set({ window, screen });
       });
     }
+  });
+
+  it("shows the amount from the raw balances while prices are still in flight", () => {
+    // The store publishes raw balances before the price fetch (or its 3 s
+    // timeout) fills pricedBalances.
+    const rawNative = {
+      token: { type: "native", code: "XLM" },
+      total: new BigNumber("100"),
+      available: new BigNumber("99"),
+      minimumBalance: new BigNumber("1"),
+      buyingLiabilities: "0",
+      sellingLiabilities: "0",
+    };
+    useBalancesStore.setState({
+      balances: { native: rawNative } as never,
+      pricedBalances: {},
+      isLoading: true,
+    });
+    const { getByText, queryByTestId } = renderDetails();
+
+    expect(getByText("100.00 XLM")).toBeTruthy();
+    expect(
+      queryByTestId("token-balance-skeleton", { includeHiddenElements: true }),
+    ).toBeNull();
+    // The price is genuinely pending, so the Value pill stays.
+    expect(
+      queryByTestId("token-value-skeleton", { includeHiddenElements: true }),
+    ).toBeTruthy();
   });
 
   it("shows the Balance row only for a balance that settled unpriced, even while isLoading is true (a refresh)", () => {
