@@ -1,7 +1,10 @@
+import { act } from "@testing-library/react-native";
 import Shimmer, { SHIMMER_PILL_RADIUS } from "components/sds/Shimmer";
+import { shimmerProgress } from "components/sds/Shimmer/clock";
 import { getThemeColors } from "config/colors";
 import { findAllRenderedByType, renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import * as RN from "react-native";
 import { StyleSheet } from "react-native";
 
 // `useColorScheme` reports "light" under the react-native jest preset.
@@ -51,6 +54,47 @@ describe("Shimmer", () => {
     ]);
     expect(gradients[1].props.positions).toEqual([0, 0.3, 0.5, 0.7, 1]);
     expect(findAllRenderedByType(tree, "skRect")).toHaveLength(1);
+  });
+
+  it("draws the dark base from gray 5 to the page base, as the dark frame does", () => {
+    const scheme = jest.spyOn(RN, "useColorScheme").mockReturnValue("dark");
+    try {
+      const dark = getThemeColors("dark");
+      const { toJSON } = render();
+      const gradients = findAllRenderedByType(toJSON(), "skLinearGradient");
+      expect(gradients[0].props.colors).toEqual([dark.gray[5], dark.base[0]]);
+    } finally {
+      scheme.mockRestore();
+    }
+  });
+
+  it("sweeps the highlight from -width to +width as the clock runs 0 to 1", () => {
+    // The derived transform recomputes on the next frame, which only fake
+    // timers can step.
+    jest.useFakeTimers();
+    try {
+      const { toJSON } = render();
+      const highlight = findAllRenderedByType(toJSON(), "skGroup").find(
+        (group) => group.props.transform,
+      );
+      const { transform } = highlight!.props as {
+        transform: { value: unknown };
+      };
+
+      act(() => {
+        shimmerProgress.value = 0;
+        jest.advanceTimersByTime(20);
+      });
+      expect(transform.value).toEqual([{ translateX: -146 }]);
+
+      act(() => {
+        shimmerProgress.value = 1;
+        jest.advanceTimersByTime(20);
+      });
+      expect(transform.value).toEqual([{ translateX: 146 }]);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("uses the stronger highlight and the border colour for the hairline", () => {
