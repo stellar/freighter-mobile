@@ -674,6 +674,19 @@ describe("TokenBalanceHeader range delta", () => {
         }),
       );
 
+      // Spot with more than two decimals, so the release assertion can tell
+      // the fiat format ("$0.28") from the chart's ("$0.2813").
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            currentPrice: new BigNumber("0.2813"),
+            fiatTotal: new BigNumber("28.13"),
+          },
+        } as never,
+        isLoading: false,
+      });
+
       const { getByTestId } = renderDetailView();
 
       await waitFor(() => {
@@ -700,7 +713,7 @@ describe("TokenBalanceHeader range delta", () => {
       });
 
       expect(getByTestId("token-price-header-price")).toHaveTextContent(
-        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
+        formatFiatAmount("0.2813"),
       );
     });
 
