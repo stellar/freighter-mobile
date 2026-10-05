@@ -123,7 +123,7 @@ describe("Shimmer", () => {
   });
 
   it("renders no canvas at width 0", () => {
-    // Review focus 1: a parent that has not measured yet.
+    // A parent that has not measured yet.
     const { toJSON } = render({ width: 0 });
     const tree = toJSON();
     expect(findAllRenderedByType(tree, "skRRect")).toHaveLength(0);

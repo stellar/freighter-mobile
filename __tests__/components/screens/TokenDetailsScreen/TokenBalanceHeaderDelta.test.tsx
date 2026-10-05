@@ -379,7 +379,7 @@ describe("TokenBalanceHeader range delta", () => {
     });
 
     it("draws the loading pill at the frame's 146pt width and the row's live height", () => {
-      // Review focus 5: the pill must grow with the OS text size like the row.
+      // The pill must grow with the OS text size like the row.
       const window = Dimensions.get("window");
       const screen = Dimensions.get("screen");
       act(() => {
@@ -653,7 +653,7 @@ describe("TokenBalanceHeader range delta", () => {
     });
 
     it("shows the amount, not pills, for a balance that settled unpriced, even while isLoading is true (a refresh)", () => {
-      // H1: the store sets isLoading on every fetch, and a token that already
+      // The store sets isLoading on every fetch, and a token that already
       // settled unpriced keeps no price — the pills must not replace it.
       useBalancesStore.setState({
         pricedBalances: {
@@ -682,8 +682,7 @@ describe("TokenBalanceHeader range delta", () => {
       expect(getByText("100.00 XLM")).toBeTruthy();
     });
 
-    it("falls back to the amount once loading ends unpriced", () => {
-      // Review focus 4: the 3 s price timeout, or a token with no price feed.
+    it("shows the amount for an unpriced balance once loading settles", () => {
       useBalancesStore.setState({
         pricedBalances: {
           native: {
@@ -877,7 +876,7 @@ describe("TokenBalanceDetails loading placeholders", () => {
   });
 
   it("shows the Balance row only for a balance that settled unpriced, even while isLoading is true (a refresh)", () => {
-    // H1: the store sets isLoading on every fetch, and a token that already
+    // The store sets isLoading on every fetch, and a token that already
     // settled unpriced keeps no price — the Value pill must not reappear.
     useBalancesStore.setState({
       pricedBalances: {

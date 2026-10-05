@@ -49,19 +49,19 @@ export const PRICE_CHART_LINE_HEIGHT = 152;
  * small device, more on a large one — and the OS text-size setting scales it
  * again on top. A flat 20 matched none of those. Where it was too small the
  * labels spilled out of the row over the plot, since they are absolutely
- * positioned; where it was too large the block carried dead space the ghost
- * had to match.
+ * positioned; where it was too large the block carried dead space the
+ * skeleton had to match.
  *
  * Takes the scale explicitly, with no default: a caller that forgets to pass
- * the live one would silently lay the real chart out shorter than the ghost
- * it replaces, which no test can see but every user would.
+ * the live one would silently lay the real chart out shorter than the
+ * skeleton it replaces, which no test can see but every user would.
  */
 export const priceChartLabelHeight = (fontScale: number): number =>
   fsValue(TEXT_SIZES.sm.lineHeight) * fontScale;
 
 /**
- * Total chart block height — also the skeleton and ghost height (§7.3), which
- * is why it is one function they all call: the placeholder has to match the
+ * Total chart block height — also the skeleton, error and empty-state height
+ * (§7.3), which is why it is one function they all call: the placeholder has to match the
  * real chart exactly or swapping them in shifts the page.
  */
 export const priceChartHeight = (fontScale: number): number =>
@@ -174,8 +174,8 @@ interface TokenPriceChartProps {
  * A timeframe switch MORPHS the line: the y values tween at the incoming
  * series' own x positions, so the tween settles on real geometry rather than
  * an approximation. Only the line moves — colour and labels describe the
- * selected range and update at once. A switch that must fetch shows the ghost
- * instead, so the previous range's line never sits under another range's tab.
+ * selected range and update at once. A switch that must fetch shows the
+ * skeleton instead, so the previous range's line never sits under another range's tab.
  */
 const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
   points,

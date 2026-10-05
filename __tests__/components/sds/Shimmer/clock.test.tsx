@@ -19,7 +19,7 @@ describe("shimmer clock", () => {
     expect(getShimmerClockState()).toEqual({ consumers: 2, running: true });
 
     a.unmount();
-    // Review focus 3: one consumer left, still running.
+    // One consumer left, still running.
     expect(getShimmerClockState()).toEqual({ consumers: 1, running: true });
 
     b.unmount();
@@ -34,7 +34,7 @@ describe("shimmer clock", () => {
   });
 
   it("starts when reduced motion turns off after mount, and stops when it turns back on", () => {
-    // Review focus 2: the OS answers the reduce-motion query after mount.
+    // The OS answers the reduce-motion query after mount.
     const { rerender, unmount } = renderHook(
       ({ enabled }: { enabled: boolean }) => useShimmerClock(enabled),
       { initialProps: { enabled: false } },

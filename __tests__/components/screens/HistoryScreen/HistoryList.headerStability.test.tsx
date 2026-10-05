@@ -107,8 +107,7 @@ describe("HistoryList header stability", () => {
     );
     expect(mounts.count).toBe(1);
 
-    // Empty -> has transactions. This is the transition that used to swap a
-    // ScrollView for a SectionList and rebuild the whole subtree.
+    // Empty -> has transactions: the list must keep its subtree across it.
     rerender(
       <HistoryList
         {...props({
