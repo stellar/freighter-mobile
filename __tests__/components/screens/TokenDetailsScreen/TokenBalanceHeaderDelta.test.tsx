@@ -14,7 +14,10 @@ import {
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { fsValue } from "helpers/dimensions";
 import { formatFiatAmount } from "helpers/formatAmount";
-import { formatPriceHistoryRangeDelta } from "helpers/priceHistoryChart";
+import {
+  formatPriceHistoryLabel,
+  formatPriceHistoryRangeDelta,
+} from "helpers/priceHistoryChart";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import {
@@ -658,7 +661,7 @@ describe("TokenBalanceHeader range delta", () => {
       );
     });
 
-    it("while inspecting a sub-dollar point, the header keeps the app's fiat format", async () => {
+    it("while inspecting a sub-dollar point, the header price uses the chart's precision", async () => {
       const subDollarPoints = [
         { t: densePoints[0].t, p: "0.2196" },
         { t: densePoints[1].t, p: "0.2213" },
@@ -687,7 +690,7 @@ describe("TokenBalanceHeader range delta", () => {
       });
 
       expect(getByTestId("token-price-header-price")).toHaveTextContent(
-        formatFiatAmount("0.2213"),
+        formatPriceHistoryLabel("0.2213"),
       );
 
       act(() => {
@@ -701,7 +704,7 @@ describe("TokenBalanceHeader range delta", () => {
       );
     });
 
-    it("while inspecting a sub-cent point, the header keeps the app's fiat format", async () => {
+    it("while inspecting a sub-cent point, the header price keeps significant digits instead of rounding to zero", async () => {
       const subCentPoints = [
         { t: densePoints[0].t, p: "0.00001200" },
         { t: densePoints[1].t, p: "0.00001234" },
@@ -730,7 +733,7 @@ describe("TokenBalanceHeader range delta", () => {
       });
 
       expect(getByTestId("token-price-header-price")).toHaveTextContent(
-        formatFiatAmount("0.00001234"),
+        formatPriceHistoryLabel("0.00001234"),
       );
     });
 
@@ -976,7 +979,7 @@ describe("TokenBalanceHeader range delta", () => {
       );
 
       expect(getByTestId("token-price-header-price")).toHaveTextContent(
-        formatFiatAmount("0.22"),
+        formatPriceHistoryLabel("0.22"),
       );
       expect(getByTestId("token-price-delta")).toBeTruthy();
 
