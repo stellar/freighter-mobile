@@ -1,4 +1,14 @@
-const CanvasKitInit = require("canvaskit-wasm/bin/full/canvaskit");
+const path = require("path");
+
+// Resolved from Skia's own location: canvaskit-wasm is Skia's dependency, not
+// this app's, so a hoisting change must not break the lookup.
+const CanvasKitInit = require(
+  require.resolve("canvaskit-wasm/bin/full/canvaskit", {
+    paths: [
+      path.dirname(require.resolve("@shopify/react-native-skia/package.json")),
+    ],
+  }),
+);
 const ReactNativeEnv = require("react-native/jest/react-native-env");
 
 /**
