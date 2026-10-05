@@ -12,6 +12,7 @@ import { useWindowDimensions, View } from "react-native";
 export type PriceHistoryNoticeVariant =
   | "lowVolume"
   | "limitedData"
+  | "newlyTraded"
   | "verdictUnavailable";
 
 interface GetNoticeVariantParams {
@@ -19,6 +20,8 @@ interface GetNoticeVariantParams {
   lowVolume: boolean | null;
   /** Whether the drawable series is below the sparse threshold */
   isSparse: boolean;
+  /** Whether the token's age explains the sparseness */
+  isNewlyTraded: boolean;
 }
 
 /**
@@ -29,10 +32,11 @@ interface GetNoticeVariantParams {
 export const getPriceHistoryNoticeVariant = ({
   lowVolume,
   isSparse,
+  isNewlyTraded,
 }: GetNoticeVariantParams): PriceHistoryNoticeVariant | null => {
   if (lowVolume === true) return "lowVolume";
   if (lowVolume === null) return "verdictUnavailable";
-  if (isSparse) return "limitedData";
+  if (isSparse) return isNewlyTraded ? "newlyTraded" : "limitedData";
 
   return null;
 };
@@ -59,7 +63,7 @@ export const iconOffsetFromFirstLine = (fontScale: number) =>
   );
 
 /**
- * Three copy variants, styled after the Blockaid token banners. Real text, so
+ * Four copy variants, styled after the Blockaid token banners. Real text, so
  * screen readers announce it.
  */
 const PriceHistoryNotice: React.FC<PriceHistoryNoticeProps> = ({ variant }) => {

@@ -1139,6 +1139,86 @@ describe("TokenPriceHistorySection", () => {
       expect(getByTestId("price-history-chart")).toBeTruthy();
     });
   });
+  describe("newly-traded notice from the warmed cache", () => {
+    const HOUR = 3600;
+    const DAY = 86400;
+
+    /** A token that first traded 6 hours ago; each range answers with its
+     * own first bucket, and `failAll` makes the ALL request fail. */
+    const answerLaunchedToday = ({ failAll }: { failAll: boolean }) => {
+      const now = Math.floor(Date.now() / 1000);
+      const launch = now - 6 * HOUR;
+      const series = (count: number, startT: number, step: number) =>
+        Array.from({ length: count }, (_, i) => ({
+          t: startT + i * step,
+          p: "1",
+        }));
+      const byRange: Record<string, TokenPriceHistory> = {
+        "1D": makeHistory({ points: series(24, launch, 900) }),
+        "1H": makeHistory({
+          range: "1H",
+          resolutionSeconds: 300,
+          points: series(12, now - HOUR, 300),
+        }),
+        "1W": makeHistory({
+          range: "1W",
+          resolutionSeconds: 3600,
+          points: series(6, launch, 3600),
+        }),
+        "1M": makeHistory({
+          range: "1M",
+          resolutionSeconds: 14400,
+          points: series(2, now - 8 * HOUR, 14400),
+        }),
+        "1Y": makeHistory({
+          range: "1Y",
+          resolutionSeconds: 259200,
+          points: [{ t: now - 2 * DAY, p: "1" }],
+        }),
+        ALL: makeHistory({
+          range: "ALL",
+          resolutionSeconds: 1209600,
+          points: [{ t: now - 12 * DAY, p: "1" }],
+        }),
+      };
+      mockFetchHistory.mockImplementation(({ range }) =>
+        range === "ALL" && failAll
+          ? Promise.reject(new Error("boom"))
+          : Promise.resolve(byRange[range]),
+      );
+    };
+
+    it("shows newly-traded on 1D once the warmed ranges pin the first trade", async () => {
+      answerLaunchedToday({ failAll: false });
+
+      const { getByTestId, getByText } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-notice-newlyTraded")).toBeTruthy();
+      });
+      expect(getByText("Newly traded token")).toBeTruthy();
+      expect(
+        getByText(
+          "Price history is limited because this token started trading recently.",
+        ),
+      ).toBeTruthy();
+    });
+
+    it("stays limited-data when ALL never loads", async () => {
+      answerLaunchedToday({ failAll: true });
+
+      const { getByTestId } = renderSection();
+
+      // Every other range warms; without ALL the first trade stays unknown.
+      await waitFor(() => {
+        expect(mockFetchHistory).toHaveBeenCalledTimes(6);
+      });
+      await waitFor(() => {
+        expect(getByTestId("price-history-notice-limitedData")).toBeTruthy();
+      });
+    });
+  });
+
   describe("direction colours (the chart is red when the range is down)", () => {
     // `useColorScheme` reports "light" under the react-native jest preset, so
     // the components resolve their palette through the light theme. The two

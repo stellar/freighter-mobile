@@ -401,7 +401,7 @@ describe("useTokenPriceHistory", () => {
 
       await settle("1D");
 
-      expect(requestedRanges()).toEqual(["1D", "1H"]);
+      expect(requestedRanges()).toEqual(["1D", "ALL"]);
     });
 
     it("does not warm when the selected range's own load failed", async () => {
@@ -418,23 +418,23 @@ describe("useTokenPriceHistory", () => {
       expect(requestedRanges()).toEqual(["1D"]);
     });
 
-    it("warms the remaining five one at a time, in selector order", async () => {
+    it("warms the remaining five one at a time, ALL first", async () => {
       renderChart();
       await flush();
       await settle("1D");
 
-      // One at a time: after 1D only 1H is in flight, never all five.
-      expect(requestedRanges()).toEqual(["1D", "1H"]);
-
-      await settle("1H");
-      expect(requestedRanges()).toEqual(["1D", "1H", "1W"]);
-
-      await settle("1W");
-      await settle("1M");
-      await settle("1Y");
-      expect(requestedRanges()).toEqual(["1D", "1H", "1W", "1M", "1Y", "ALL"]);
+      // One at a time: after 1D only ALL is in flight, never all five.
+      expect(requestedRanges()).toEqual(["1D", "ALL"]);
 
       await settle("ALL");
+      expect(requestedRanges()).toEqual(["1D", "ALL", "1H"]);
+
+      await settle("1H");
+      await settle("1W");
+      await settle("1M");
+      expect(requestedRanges()).toEqual(["1D", "ALL", "1H", "1W", "1M", "1Y"]);
+
+      await settle("1Y");
 
       // Exactly one pass: six ranges, six requests, nothing periodic.
       jest.advanceTimersByTime(PRICE_HISTORY_RANGE_DEBOUNCE_MS * 20);
@@ -449,9 +449,9 @@ describe("useTokenPriceHistory", () => {
       expect(mockFetchHistory).toHaveBeenCalledTimes(2);
 
       unmount();
-      await settle("1H");
+      await settle("ALL");
 
-      // The in-flight 1H settled but 1W was never started.
+      // The in-flight ALL settled but 1H was never started.
       expect(mockFetchHistory).toHaveBeenCalledTimes(2);
     });
 
@@ -459,16 +459,16 @@ describe("useTokenPriceHistory", () => {
       const { rerender } = renderChart();
       await flush();
       await settle("1D");
-      expect(requestedRangesFor("native")).toEqual(["1D", "1H"]);
+      expect(requestedRangesFor("native")).toEqual(["1D", "ALL"]);
 
       rerender({ tokenId: "USDC:GA5Z" });
       await flush();
 
-      await settle("1H");
+      await settle("ALL");
 
       // The outgoing token's queue is dead; the incoming token fetched its own
       // selected range and nothing else yet.
-      expect(requestedRangesFor("native")).toEqual(["1D", "1H"]);
+      expect(requestedRangesFor("native")).toEqual(["1D", "ALL"]);
       expect(requestedRangesFor("USDC:GA5Z")).toEqual(["1D"]);
     });
 
@@ -488,8 +488,9 @@ describe("useTokenPriceHistory", () => {
       renderChart();
       await flush();
       await settle("1D");
+      await settle("ALL");
 
-      expect(requestedRanges()).toEqual(["1D", "1M"]);
+      expect(requestedRanges()).toEqual(["1D", "ALL", "1M"]);
     });
 
     it("emits no loaded and no range_changed for warmed ranges", async () => {
@@ -503,11 +504,11 @@ describe("useTokenPriceHistory", () => {
       // The one user-visible load.
       expect(onLoaded).toHaveBeenCalledTimes(1);
 
+      await settle("ALL");
       await settle("1H");
       await settle("1W");
       await settle("1M");
       await settle("1Y");
-      await settle("ALL");
 
       // A full warm pass added nothing: six token_chart.loaded events per
       // screen-open would destroy the empty-state rate.
@@ -520,11 +521,11 @@ describe("useTokenPriceHistory", () => {
       await flush();
       await settle("1D", makeHistory({ range: "1D" }));
 
+      await settle("ALL");
       await settle("1H", makeHistory({ range: "1H", points: [] }));
       await settle("1W");
       await settle("1M");
       await settle("1Y");
-      await settle("ALL");
 
       expect(result.current.range).toBe("1D");
       expect(result.current.data?.range).toBe("1D");
@@ -537,6 +538,7 @@ describe("useTokenPriceHistory", () => {
       const { result } = renderChart();
       await flush();
       await settle("1D");
+      await settle("ALL");
       await settle("1H");
       await settle("1W", makeHistory({ range: "1W" }));
 
@@ -565,6 +567,7 @@ describe("useTokenPriceHistory", () => {
       const { result } = renderChart();
       await flush();
       await settle("1D");
+      await settle("ALL");
 
       await fail("1H");
 
@@ -572,7 +575,7 @@ describe("useTokenPriceHistory", () => {
       expect(result.current.error).toBeNull();
       expect(logger.error).not.toHaveBeenCalled();
       // ...and the queue carried on to the next range.
-      expect(requestedRanges()).toEqual(["1D", "1H", "1W"]);
+      expect(requestedRanges()).toEqual(["1D", "ALL", "1H", "1W"]);
 
       act(() => {
         result.current.setRange("1H");

@@ -1,6 +1,5 @@
 import { NETWORKS } from "config/constants";
 import {
-  PRICE_HISTORY_RANGES,
   PriceHistoryRange,
   TokenIdentifier,
   TokenPriceHistory,
@@ -14,6 +13,7 @@ import {
   usePriceHistoryStore,
   useSelectedPriceHistoryRange,
 } from "ducks/priceHistory";
+import { PRICE_HISTORY_WARM_ORDER } from "helpers/priceHistoryChart";
 import useDebounce from "hooks/useDebounce";
 import { useCallback, useEffect, useRef } from "react";
 
@@ -210,8 +210,8 @@ const useTokenPriceHistory = ({
 
       /* eslint-disable no-await-in-loop -- sequential is the requirement:
          each range starts only once the previous one has settled. */
-      for (let i = 0; i < PRICE_HISTORY_RANGES.length; i += 1) {
-        const warmRange = PRICE_HISTORY_RANGES[i];
+      for (let i = 0; i < PRICE_HISTORY_WARM_ORDER.length; i += 1) {
+        const warmRange = PRICE_HISTORY_WARM_ORDER[i];
 
         // Cancelled by unmount, or by a token / network / gate change.
         if (warmGenerationRef.current !== generation) {

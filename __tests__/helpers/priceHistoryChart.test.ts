@@ -13,6 +13,8 @@ import {
   getPriceChangeColor,
   getPriceChangeDirection,
   interpolateChartCoordinates,
+  getFirstTradeLowerBound,
+  isNewlyTradedSeries,
   isSparseSeries,
   SPARSE_SERIES_RATIO,
   hasChartData,
@@ -312,6 +314,155 @@ describe("isSparseSeries", () => {
       "1Y": 122,
       ALL: 277,
     });
+  });
+});
+
+describe("getFirstTradeLowerBound", () => {
+  const NOW = 1790000000;
+  const HOUR = 3600;
+  const DAY = 86400;
+  const cached = (range: string, firstT: number, updatedAtSeconds = NOW) => ({
+    data: {
+      token: "native",
+      range,
+      resolutionSeconds: 900,
+      currency: "USD",
+      lowVolume: false,
+      change: null,
+      points: [{ t: firstT, p: "1" }],
+    },
+    updatedAt: updatedAtSeconds * 1000,
+  });
+
+  it("is unknown until ALL is cached", () => {
+    expect(
+      getFirstTradeLowerBound({ "1D": cached("1D", NOW - 6 * HOUR) }, NOW),
+    ).toBeUndefined();
+  });
+
+  it("is ALL's first bucket start when nothing finer covers it", () => {
+    expect(
+      getFirstTradeLowerBound({ ALL: cached("ALL", NOW - 400 * DAY) }, NOW),
+    ).toBe(NOW - 400 * DAY);
+  });
+
+  it("narrows a launch hours ago down to the 1D bucket", () => {
+    // ALL's two-week bucket alone starts before the 1D window.
+    expect(
+      getFirstTradeLowerBound(
+        {
+          ALL: cached("ALL", NOW - 12 * DAY),
+          "1Y": cached("1Y", NOW - 2 * DAY),
+          "1M": cached("1M", NOW - 8 * HOUR),
+          "1W": cached("1W", NOW - 7 * HOUR),
+          "1D": cached("1D", NOW - 6 * HOUR),
+        },
+        NOW,
+      ),
+    ).toBe(NOW - 6 * HOUR);
+  });
+
+  it("does not narrow through a range whose window starts after the bound", () => {
+    // 1W's window starts 7 days back, after the 8.5-day bound, so trades
+    // before it are invisible to 1W — its later first point proves nothing.
+    expect(
+      getFirstTradeLowerBound(
+        {
+          ALL: cached("ALL", NOW - 10 * DAY),
+          "1M": cached("1M", NOW - 8.5 * DAY),
+          "1W": cached("1W", NOW - 1 * DAY),
+        },
+        NOW,
+      ),
+    ).toBe(NOW - 8.5 * DAY);
+  });
+
+  it("measures a cached range's window from when it was fetched", () => {
+    // 1W fetched 3 days ago reached back 10 days, past the 9-day bound.
+    expect(
+      getFirstTradeLowerBound(
+        {
+          ALL: cached("ALL", NOW - 9 * DAY),
+          "1W": cached("1W", NOW - 8 * DAY, NOW - 3 * DAY),
+        },
+        NOW,
+      ),
+    ).toBe(NOW - 8 * DAY);
+  });
+});
+
+describe("isNewlyTradedSeries", () => {
+  const NOW = 1790000000;
+  const THREE_DAYS = 259200;
+  const FIFTEEN_MIN = 900;
+  /** `count` consecutive buckets of `resolution`, the last one ending at NOW. */
+  const series = (count: number, resolution: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      t: NOW - (count - i) * resolution,
+      p: "1",
+    }));
+  // USDT0 on 1Y: 12 three-day buckets, unbroken, from its first trade.
+  const youngOneYear = series(12, THREE_DAYS);
+  const firstTradeInWindow = NOW - 13 * THREE_DAYS;
+
+  it("is true when the first trade is inside the window and coverage since is dense", () => {
+    expect(
+      isNewlyTradedSeries(
+        "1Y",
+        youngOneYear,
+        THREE_DAYS,
+        NOW,
+        firstTradeInWindow,
+      ),
+    ).toBe(true);
+  });
+
+  it("is false while the token's first trade is unknown", () => {
+    expect(
+      isNewlyTradedSeries("1Y", youngOneYear, THREE_DAYS, NOW, undefined),
+    ).toBe(false);
+  });
+
+  it("is false for an old token that only traded late in the window", () => {
+    // The backend returns only buckets that traded, so this series alone is
+    // indistinguishable from a young token: 8 dense buckets in the last 2h.
+    expect(
+      isNewlyTradedSeries(
+        "1D",
+        series(8, FIFTEEN_MIN),
+        FIFTEEN_MIN,
+        NOW,
+        NOW - 2 * 365 * 86400,
+      ),
+    ).toBe(false);
+  });
+
+  it("is false when the first trade is only known to fall before the window", () => {
+    expect(
+      isNewlyTradedSeries("1W", series(40, 3600), 3600, NOW, NOW - 10 * 86400),
+    ).toBe(false);
+  });
+
+  it("is false for a young token with gaps since its first trade", () => {
+    const gappy = [
+      { t: NOW - 12 * THREE_DAYS, p: "1" },
+      ...series(2, THREE_DAYS),
+    ];
+    expect(
+      isNewlyTradedSeries("1Y", gappy, THREE_DAYS, NOW, firstTradeInWindow),
+    ).toBe(false);
+  });
+
+  it("is never true on ALL, which is already lifetime-relative", () => {
+    expect(
+      isNewlyTradedSeries(
+        "ALL",
+        series(3, 1209600),
+        1209600,
+        NOW,
+        NOW - 3 * 1209600,
+      ),
+    ).toBe(false);
   });
 });
 

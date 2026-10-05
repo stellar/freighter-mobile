@@ -25,7 +25,9 @@ import { formatDate } from "helpers/date";
 import { pxValue } from "helpers/dimensions";
 import {
   formatPriceHistoryRangeDelta,
+  getFirstTradeLowerBound,
   getPriceChangeDirection,
+  isNewlyTradedSeries,
   isSparseSeries,
   hasChartData,
   getPlottedRangeStart,
@@ -216,6 +218,13 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
   const inspectedIndex =
     inspected && inspected.range === plottedRange ? inspected.index : null;
 
+  // Every cached range for this token, read past the cache's freshness
+  // window on purpose: a first trade never moves, so an aged-out entry still
+  // bounds it.
+  const cachedByRange = usePriceHistoryStore(
+    (state) => state.historyByNetwork[network]?.[tokenId],
+  );
+
   /**
    * One event per (token, range) SHOWN, cache hits included — `loaded` skips
    * those, and warming means an opened range is usually already cached. Keyed
@@ -255,6 +264,7 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
   const isErrorState = !!error && !data;
   const isSkeleton = isLoading && !data && !isErrorState;
 
+  const nowSeconds = Math.floor(Date.now() / 1000);
   const noticeVariant =
     data && hasChart
       ? getPriceHistoryNoticeVariant({
@@ -263,7 +273,16 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
             range,
             points,
             data.resolutionSeconds,
-            Math.floor(Date.now() / 1000),
+            nowSeconds,
+          ),
+          isNewlyTraded: isNewlyTradedSeries(
+            range,
+            points,
+            data.resolutionSeconds,
+            nowSeconds,
+            cachedByRange
+              ? getFirstTradeLowerBound(cachedByRange, nowSeconds)
+              : undefined,
           ),
         })
       : null;
