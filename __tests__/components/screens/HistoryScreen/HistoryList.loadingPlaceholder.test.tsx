@@ -12,6 +12,7 @@ import { pxValue } from "helpers/dimensions";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { Dimensions, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => key,
@@ -56,6 +57,25 @@ describe("HistoryList loading placeholder", () => {
       width: Dimensions.get("window").width - 2 * pxValue(DEFAULT_PADDING),
       height: pxValue(HISTORY_SKELETON_ROW_HEIGHT),
     });
+  });
+
+  it("narrows the rows by the left and right safe-area insets BaseLayout pads", () => {
+    const insets = jest.mocked(useSafeAreaInsets);
+    const original = insets.getMockImplementation();
+    insets.mockReturnValue({ top: 0, bottom: 0, left: 11, right: 13 });
+    try {
+      const { getAllByTestId } = renderWithProviders(
+        <HistoryList {...props({ loadingPlaceholder: "skeleton" })} />,
+      );
+      const rows = getAllByTestId("history-skeleton-row", {
+        includeHiddenElements: true,
+      });
+      expect(StyleSheet.flatten(rows[0].props.style).width).toBe(
+        Dimensions.get("window").width - 2 * pxValue(DEFAULT_PADDING) - 24,
+      );
+    } finally {
+      insets.mockImplementation(original);
+    }
   });
 
   it("drops the skeleton once sections arrive", () => {

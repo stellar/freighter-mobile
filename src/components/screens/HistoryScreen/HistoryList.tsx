@@ -26,6 +26,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { analytics } from "services/analytics";
 
 /**
@@ -75,6 +76,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const safeAreaInsets = useSafeAreaInsets();
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetails | null>(null);
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -197,11 +199,17 @@ const HistoryList: React.FC<HistoryListProps> = ({
   const listEmptyComponent = (() => {
     if (isLoading) {
       if (loadingPlaceholder === "skeleton") {
-        // Both layouts leave the page padding on each side: the outer
-        // BaseLayout's when `noHorizontalPadding`, this list's own otherwise.
+        // Both layouts leave the page padding plus the safe-area inset on
+        // each side: the outer BaseLayout's when `noHorizontalPadding`, this
+        // list's own otherwise.
         return (
           <HistorySkeletonRows
-            width={windowWidth - 2 * pxValue(DEFAULT_PADDING)}
+            width={
+              windowWidth -
+              2 * pxValue(DEFAULT_PADDING) -
+              safeAreaInsets.left -
+              safeAreaInsets.right
+            }
           />
         );
       }
