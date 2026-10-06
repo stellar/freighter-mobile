@@ -10,12 +10,14 @@ on:
         type: string
       branch_from:
         description:
-          Branch this release from (Default is `main`. For emergency releases,
-          enter the tag version to branch from, e.g. 1.9.24. Available tag
-          versions will be shown in the workflow logs if validation fails.)
+          Branch this release from (Default is `rebrand/varial`. For emergency
+          releases, enter the tag version to branch from, e.g. 1.9.24. Available
+          tag versions will be shown in the workflow logs if validation fails.)
         required: true
         type: string
-        default: "main"
+        # MIRROR-ONLY: must match BASE_BRANCH below. Revert to "main" during the
+        # launch-day hygiene pass, before pushing this branch public.
+        default: "rebrand/varial"
 
 permissions:
   actions: write
@@ -28,6 +30,11 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      # MIRROR-ONLY: regular releases are cut from, and the version bump lands
+      # on, the rebrand branch. This mirror's "main" is a fast-forward copy of
+      # the public repo and must never receive commits. Revert to "main" during
+      # the launch-day hygiene pass, before pushing this branch public.
+      BASE_BRANCH: rebrand/varial
       BRANCH_FROM: ${{ inputs.branch_from }}
 
     steps:
@@ -60,7 +67,9 @@ jobs:
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           # It's preferable to hardcode "stellar" here for security reasons instead of "github.repository_owner"
           owner: stellar
-          repositories: freighter-mobile
+          # MIRROR-ONLY: scope the token to this repo. Revert to
+          # "freighter-mobile" during the launch-day hygiene pass.
+          repositories: freighter-mobile-private
 
       - name: Checkout repository
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
@@ -86,6 +95,7 @@ jobs:
         uses: ./.github/actions/validate-branch-from
         with:
           branch_from: ${{ env.BRANCH_FROM }}
+          base_branch: ${{ env.BASE_BRANCH }}
 
       - name: Determine branch names
         id: set_branches
@@ -98,7 +108,7 @@ jobs:
           BRANCH_FROM="$VALIDATED_BRANCH_FROM"
           APP_VERSION="$NORMALIZED_APP_VERSION"
 
-          if [ "$BRANCH_FROM" = "main" ]; then
+          if [ "$BRANCH_FROM" = "$BASE_BRANCH" ]; then
             RELEASE_BRANCH="release"
           else
             RELEASE_BRANCH="emergency-release"
@@ -122,9 +132,9 @@ jobs:
           BRANCH_FROM="$VALIDATED_BRANCH_FROM"
           RELEASE_BRANCH="$STEP_RELEASE_BRANCH"
 
-          if [ "$BRANCH_FROM" = "main" ]; then
-            git checkout main
-            git pull origin main
+          if [ "$BRANCH_FROM" = "$BASE_BRANCH" ]; then
+            git checkout "$BASE_BRANCH"
+            git pull origin "$BASE_BRANCH"
           else
             # For tags, checkout the tag directly
             git checkout "$BRANCH_FROM"
@@ -168,8 +178,8 @@ jobs:
 
           OUTPUT_DELIM="__RELEASE_DESCRIPTION__"
 
-          # For emergency releases (not from main), use simpler release notes
-          if [ "$BRANCH_FROM" != "main" ]; then
+          # For emergency releases (not from the base branch), use simpler release notes
+          if [ "$BRANCH_FROM" != "$BASE_BRANCH" ]; then
             release_notes="Use this branch to push the emergency fix. Please replace this PR description with a description of the fix after it has been pushed."
 
             {
@@ -186,7 +196,7 @@ jobs:
             exit 0
           fi
 
-          # For regular releases from main, generate release notes from commits
+          # For regular releases from the base branch, generate release notes from commits
           # Find the latest version tag (e.g., v1.8.24)
           # Use --sort=-version:refname to sort tags by version in descending order
           last_release_tag=$(git tag --list 'v*' --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)
@@ -256,7 +266,7 @@ jobs:
             const releaseBranch = process.env.RELEASE_BRANCH;
             const versionBranch = process.env.VERSION_BRANCH;
             const branchFrom = process.env.BRANCH_FROM;
-            const isEmergencyRelease = branchFrom !== "main";
+            const isEmergencyRelease = branchFrom !== process.env.BASE_BRANCH;
             const title = isEmergencyRelease 
               ? `[Emergency Release] v${process.env.APP_VERSION}`
               : `v${process.env.APP_VERSION}`;
@@ -302,13 +312,13 @@ jobs:
               }
             }
 
-      # Bump version on main only for regular releases (not emergency)
-      # to avoid inconsistencies on the main branch
+      # Bump version on the base branch only for regular releases (not
+      # emergency) to avoid inconsistencies on the base branch
       - name: Create bump-version branch
-        if: env.BRANCH_FROM == 'main'
+        if: env.BRANCH_FROM == env.BASE_BRANCH
         run: |
-          git checkout main
-          git pull origin main
+          git checkout "$BASE_BRANCH"
+          git pull origin "$BASE_BRANCH"
 
           if git ls-remote --heads origin bump-version | grep -q bump-version; then
             echo "❌ Error: Branch 'bump-version' already exists on remote."
@@ -319,7 +329,7 @@ jobs:
           git checkout -b bump-version
 
       - name: Update app version on bump-version branch
-        if: env.BRANCH_FROM == 'main'
+        if: env.BRANCH_FROM == env.BASE_BRANCH
         env:
           NORMALIZED_APP_VERSION:
             ${{ steps.normalize_version.outputs.app_version }}
@@ -328,7 +338,7 @@ jobs:
           node ./scripts/set-app-version "$APP_VERSION"
 
       - name: Commit version bump on bump-version branch
-        if: env.BRANCH_FROM == 'main'
+        if: env.BRANCH_FROM == env.BASE_BRANCH
         env:
           NORMALIZED_APP_VERSION:
             ${{ steps.normalize_version.outputs.app_version }}
@@ -343,12 +353,12 @@ jobs:
           git commit -m "chore: bump app version to v${APP_VERSION}"
 
       - name: Push bump-version branch
-        if: env.BRANCH_FROM == 'main'
+        if: env.BRANCH_FROM == env.BASE_BRANCH
         run: |
           git push --set-upstream origin bump-version
 
       - name: Create bump-version pull request
-        if: env.BRANCH_FROM == 'main'
+        if: env.BRANCH_FROM == env.BASE_BRANCH
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
@@ -357,9 +367,10 @@ jobs:
           github-token: ${{ steps.release-token.outputs.token }}
           script: |
             const version = process.env.APP_VERSION;
+            const baseBranch = process.env.BASE_BRANCH;
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
             const title = `Bump version to v${version} [merge now]`;
-            const body = `Bumping version on \`main\` branch to \`v${version}\`.`;
+            const body = `Bumping version on \`${baseBranch}\` branch to \`v${version}\`.`;
 
             async function setOutputs(pr) {
               core.notice(`Bump version pull request ready: ${pr.html_url}`);
@@ -372,7 +383,7 @@ jobs:
                 owner,
                 repo,
                 head: "bump-version",
-                base: "main",
+                base: baseBranch,
                 title,
                 body
               });
@@ -384,7 +395,7 @@ jobs:
                   owner,
                   repo,
                   head: `${owner}:bump-version`,
-                  base: "main",
+                  base: baseBranch,
                   state: "open"
                 });
 
@@ -398,11 +409,11 @@ jobs:
               }
             }
 
-      # Only trigger dev builds for regular releases from main branch
+      # Only trigger dev builds for regular releases from the base branch
       # Emergency releases branching from previous release skip initial QA builds
       # as they should be manually triggered after the emergency fixes are pushed
       - name: Trigger dev builds (initial QA)
-        if: env.BRANCH_FROM == 'main'
+        if: env.BRANCH_FROM == env.BASE_BRANCH
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}

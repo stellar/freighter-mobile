@@ -1,22 +1,27 @@
 name: "Validate Branch From"
 description:
-  "Validates that branch_from is 'main' or a vX.Y.Z tag and provides available
-  version tags"
+  "Validates that branch_from is the base branch or a vX.Y.Z tag and provides
+  available version tags"
 
 inputs:
   branch_from:
     description:
-      "The source ref to branch from: either 'main' or a version tag of the form
-      vX.Y.Z"
+      "The source ref to branch from: either the base branch or a version tag of
+      the form vX.Y.Z"
     required: true
+  base_branch:
+    description: "The branch regular releases are cut from"
+    required: false
+    default: "main"
 
 outputs:
   is_valid:
     description:
-      "Whether the branch_from input is a valid 'main' ref or vX.Y.Z tag"
+      "Whether the branch_from input is the base branch or a valid vX.Y.Z tag"
     value: ${{ steps.validate.outputs.is_valid }}
   branch_or_tag:
-    description: "The validated source ref name ('main' or a vX.Y.Z tag)"
+    description:
+      "The validated source ref name (the base branch or a vX.Y.Z tag)"
     value: ${{ steps.validate.outputs.branch_or_tag }}
 
 runs:
@@ -53,16 +58,17 @@ runs:
       shell: bash
       env:
         RAW_BRANCH_FROM: ${{ inputs.branch_from }}
+        BASE_BRANCH: ${{ inputs.base_branch }}
         FETCHED_TAGS: ${{ steps.fetch_tags.outputs.tags_list }}
       run: |
         BRANCH_FROM="$RAW_BRANCH_FROM"
         TAGS="$FETCHED_TAGS"
 
-        # Check if it's "main"
-        if [ "$BRANCH_FROM" = "main" ]; then
-          echo "✓ Using main branch as base"
+        # Check if it's the base branch
+        if [ "$BRANCH_FROM" = "$BASE_BRANCH" ]; then
+          echo "✓ Using $BASE_BRANCH branch as base"
           echo "is_valid=true" >> $GITHUB_OUTPUT
-          echo "branch_or_tag=main" >> $GITHUB_OUTPUT
+          echo "branch_or_tag=$BASE_BRANCH" >> $GITHUB_OUTPUT
           exit 0
         fi
 
@@ -75,7 +81,7 @@ runs:
 
         # Check if it's a valid tag format (with "v" prefix)
         if [[ ! "$BRANCH_FROM" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "❌ Error: Invalid format. Must be 'main' or a version tag like 'v1.9.24' or '1.9.24'"
+          echo "❌ Error: Invalid format. Must be '$BASE_BRANCH' or a version tag like 'v1.9.24' or '1.9.24'"
           echo ""
           echo "Available tags (last 10):"
           echo "$TAGS" | while read tag; do
