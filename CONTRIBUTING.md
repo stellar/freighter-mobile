@@ -1,307 +1,106 @@
-# Contributing to Freighter Mobile
-
-Non-custodial Stellar wallet for iOS and Android. Built with React Native,
-Zustand, and React Navigation.
-
-For the Stellar organization's general contribution guidelines, see the
-[Stellar Contribution Guide](https://github.com/stellar/.github/blob/master/CONTRIBUTING.md).
-
-## Prerequisites
-
-| Tool           | Version       | Install                                                                                     |
-| -------------- | ------------- | ------------------------------------------------------------------------------------------- |
-| Node.js        | >= 22         | [nodejs.org](https://nodejs.org) or `nvm install 22` — team runs v22 locally                |
-| Yarn           | 4.10.0        | `corepack enable && corepack prepare yarn@4.10.0 --activate`                                |
-| Ruby           | 3.1.4         | [rbenv](https://github.com/rbenv/rbenv) or [rvm](https://rvm.io/) — team runs 3.1.4 locally |
-| CocoaPods      | 1.15.2        | `gem install cocoapods -v 1.15.2` — must match `Podfile.lock` version                       |
-| Watchman       | Latest        | `brew install watchman`                                                                     |
-| JDK            | 17            | [Adoptium](https://adoptium.net/) or Android Studio                                         |
-| Xcode          | Latest stable | Mac App Store (iOS only)                                                                    |
-| Android Studio | Latest stable | [developer.android.com](https://developer.android.com/studio)                               |
-| Maestro CLI    | Latest        | `brew install mobile-dev-inc/tap/maestro` (e2e tests only)                                  |
-
-**Android SDK requirements** (install via Android Studio SDK Manager):
-
-- SDK Platform API 36, Build-Tools 36.0.0, NDK 28.2.13676358
-
-**Shell environment** — add to `~/.zshrc` or `~/.bashrc` (choose the
-`ANDROID_HOME` line for your OS, comment out the others):
-
-```bash
-# macOS
-export ANDROID_HOME=$HOME/Library/Android/sdk
-# Linux
-# export ANDROID_HOME=$HOME/Android/Sdk
-# Windows (Git Bash / WSL)
-# export ANDROID_HOME=$HOME/AppData/Local/Android/Sdk
-export PATH=$PATH:$ANDROID_HOME/emulator
-export PATH=$PATH:$ANDROID_HOME/tools
-export PATH=$PATH:$ANDROID_HOME/platform-tools
-```
-
-For full platform setup, see the
-[React Native Environment Setup](https://reactnative.dev/docs/set-up-your-environment)
-guide.
-
-## Getting Started
-
-### Quick Setup with an LLM
-
-If you use an LLM-powered coding assistant, you can automate the setup. The repo
-includes a quick start guide ([`quick-start-guide.md`](quick-start-guide.md))
-that checks your environment, installs missing tools, configures `.env`, and
-verifies the build.
-
-Point your coding assistant at `quick-start-guide.md` and ask it to follow the
-steps.
-
-For detailed best practices and coding guidelines when working with an LLM, see
-[`docs/skills/freighter-mobile-best-practices`](docs/skills/freighter-mobile-best-practices/).
-
-The skill will:
-
-1. Check all prerequisites (Node, Yarn, Ruby, JDK, Xcode, Android SDK, etc.)
-2. Install what it can automatically (with your confirmation)
-3. Produce a list of manual steps for anything it couldn't install
-4. Guide you through setting up `.env` — what each variable is and how to obtain
-   it (WalletConnect dashboard, your own backend instances, etc.)
-5. Run verification to confirm the build works
-
-If you don't use an LLM assistant, follow the manual setup below.
-
-### Manual Setup
-
-```bash
-git clone https://github.com/stellar/freighter-mobile.git
-cd freighter-mobile
-bundle install        # Ruby deps (Fastlane, CocoaPods)
-yarn install          # Node deps + auto-runs postinstall (Husky, polyfills, pods)
-cp .env.example .env  # Then fill in values (see below)
-```
-
-### Environment Variables
-
-Copy `.env.example` to `.env` and fill in the values. The `.env` file must
-**never** be committed.
-
-**Required — app won't build or function without these:**
-
-| Variable                            | How to set up                                                                                                                                                   |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FREIGHTER_BACKEND_V1_DEV_URL`      | Run your own backend from [stellar/freighter-backend](https://github.com/stellar/freighter-backend)                                                             |
-| `FREIGHTER_BACKEND_V2_DEV_URL`      | Run your own backend-v2 from [stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2)                                                    |
-| `WALLET_KIT_PROJECT_ID_DEV`         | Create a free project at [dashboard.walletconnect.com](https://dashboard.walletconnect.com) — sign up, create a new project (type: Wallet), copy the Project ID |
-| `WALLET_KIT_MT_NAME_DEV`            | Your project name from the WalletConnect dashboard                                                                                                              |
-| `WALLET_KIT_MT_DESCRIPTION_DEV`     | Your project description                                                                                                                                        |
-| `WALLET_KIT_MT_URL_DEV`             | Your project URL                                                                                                                                                |
-| `WALLET_KIT_MT_ICON_DEV`            | Your project icon URL                                                                                                                                           |
-| `WALLET_KIT_MT_REDIRECT_NATIVE_DEV` | Deep link matching what you've configured on the WalletConnect dashboard                                                                                        |
-| `ANDROID_DEBUG_KEYSTORE_PASSWORD`   | Android Studio's default: `android`                                                                                                                             |
-| `ANDROID_DEBUG_KEYSTORE_ALIAS`      | Android Studio's default: `androiddebugkey`                                                                                                                     |
-
-**Optional — features degrade gracefully without these:**
-
-| Variable                                     | Notes                                                                                                                                                                                                                                        |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AMPLITUDE_API_KEY`                          | Auto-disabled in `__DEV__` mode — not needed for local dev                                                                                                                                                                                   |
-| `SENTRY_DSN`                                 | Leave empty — errors log to console instead                                                                                                                                                                                                  |
-| `FREIGHTER_BACKEND_*_STG_URL` / `*_PROD_URL` | Only needed for staging/prod builds. Run your own backend from [stellar/freighter-backend](https://github.com/stellar/freighter-backend) and backend-v2 from [stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2) |
-| `WALLET_KIT_*_PROD` (6 vars)                 | Only needed for prod builds — same setup as dev vars above                                                                                                                                                                                   |
-| `ANDROID_PROD_KEYSTORE_*`                    | Only needed for release builds — generate a separate keystore                                                                                                                                                                                |
-| `MP_COLLECTIONS_ADDRESSES`                   | Comma-separated list — leave empty if not working on collectibles                                                                                                                                                                            |
-
-**E2E testing only:**
-
-> ⚠️ **Security warning**: The recovery phrase used for E2E tests must be from a
-> wallet with **no real funds**. Never use a mainnet-funded wallet for automated
-> testing.
-
-| Variable                          | Notes                                                                                                                                                                                                                                                                                                                                           |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `IS_E2E_TEST`                     | Set to `true` when running Maestro                                                                                                                                                                                                                                                                                                              |
-| `E2E_TEST_RECOVERY_PHRASE`        | Generate a new wallet via any Stellar wallet and copy the 12/24-word phrase (used by `CreateWallet`/`ImportWallet` flows)                                                                                                                                                                                                                       |
-| `E2E_TEST_FUNDED_RECOVERY_PHRASE` | Recovery phrase for a **dedicated low-balance mainnet test wallet only**. **Never use a personal wallet or any wallet holding meaningful funds.** Required by `SendClassicTokenMainnet` and `SwapClassicTokenMainnet` flows which execute real transactions on mainnet. Fund the account with a small amount of XLM before running these tests. |
-
-See `.env.example` for the full list with inline comments.
-
-### Run the App
-
-```bash
-yarn ios              # iOS simulator (dev)
-yarn android          # Android emulator (dev)
-yarn start            # Metro bundler only (starts automatically with above)
-```
-
-Dev and prod builds use separate bundle IDs (`org.stellar.freighterdev` /
-`org.stellar.freighterwallet`) and can coexist on the same device. See
-`package.json` for all run commands including device and release variants.
-
-## Key Commands
-
-```bash
-yarn test             # Jest unit tests
-yarn check            # All checks (TypeScript + ESLint + Prettier)
-yarn fix              # Auto-fix lint + format
-yarn lint:translations  # Check for missing i18n keys
-yarn test:e2e:ios <flow>     # Maestro e2e (iOS)
-yarn test:e2e:android <flow> # Maestro e2e (Android)
-```
-
-**Cleaning builds** (escalation order):
-
-```bash
-yarn start-c          # Clear Metro cache
-yarn pod-install      # Reinstall CocoaPods
-yarn gradle-clean     # Clean Gradle build cache (Android)
-yarn node-c-install   # Remove node_modules + reinstall
-yarn c-install        # Full clean (Gradle + node_modules + reinstall)
-yarn r-install        # Nuclear: reset env + rebuild everything
-```
-
-See `package.json` for the complete list of scripts.
-
-## Repository Structure
-
-```
-freighter-mobile/
-├── src/
-│   ├── components/       # React Native components (screens, templates, primitives)
-│   ├── ducks/            # Zustand state stores
-│   ├── hooks/            # Custom React hooks
-│   ├── helpers/          # Utility functions
-│   ├── services/         # Business logic & API calls
-│   ├── navigators/       # React Navigation stack/tab definitions
-│   ├── providers/        # Context providers
-│   ├── config/           # App configuration
-│   ├── types/            # TypeScript type definitions
-│   └── i18n/             # Translations (i18next)
-├── __tests__/            # Jest unit tests (mirrors src/)
-├── e2e/                  # Maestro e2e tests + docs
-├── ios/ / android/       # Native projects
-└── scripts/              # Build and setup scripts
-```
-
-## Code Conventions
-
-- **Formatting:** Double quotes, 2-space indent, trailing commas, 80-char width,
-  semicolons. Enforced by Prettier (`.prettierrc.json`).
-- **Linting:** Airbnb + TypeScript strict + custom translations plugin. Config
-  in `eslint.config.mjs`.
-- **Absolute imports:** Always from `src/` root — no relative paths. Enforced by
-  ESLint.
-- **Arrow functions:** Required for React components. Enforced by ESLint.
-- **Import sorting:** Auto-handled by `@trivago/prettier-plugin-sort-imports`.
-- **JSDoc:** Required on all new/modified public functions (see
-  [PR template](.github/pull_request_template.md)).
-- **Translations:** All user-facing strings through `i18next`. Use
-  `useAppTranslation` hook. The custom ESLint plugin flags missing translations.
-
-### Pre-commit Hooks
-
-Husky runs on every commit:
-
-1. `lint-staged` — ESLint fix + Prettier on staged files
-2. `yarn test` — full unit test suite
-3. `yarn lint:ts` — TypeScript type check
-
-All must pass before the commit succeeds.
-
-## Testing
-
-**Unit tests:** Jest with `@testing-library/react-native`. Tests in
-`__tests__/`, mocks in `__mocks__/`.
-
-**E2E tests:** Maestro flows in `e2e/flows/` — see the [e2e docs](e2e/docs/) for
-setup, writing tests, and debugging.
-
-**Before submitting a PR:** `yarn test` + `yarn lint:ts` must pass. Test on both
-iOS and Android, including small screens.
-
-## Adding Features
-
-### Adding a new screen
-
-1. Create the screen component in `src/components/screens/`
-2. Add the route to `src/config/routes.ts`
-3. Register in the appropriate navigator in `src/navigators/`
-4. Add translations for all user-facing strings in `src/i18n/`
-5. Add tests in `__tests__/`
-
-### Adding a new Zustand store
-
-1. Create the store file in `src/ducks/` (e.g., `src/ducks/myFeature.ts`)
-2. Define the store using Zustand's `create` with typed state and actions
-3. Export a hook for consuming the store (e.g., `useMyFeatureStore`)
-4. Add tests in `__tests__/ducks/`
-
-### Platform-specific code
-
-- Use the existing `isIOS` and `isAndroid` helpers for platform checks
-- Use `.ios.tsx` / `.android.tsx` file extensions for larger divergences
-- Test on **both platforms** — especially native module interactions, gestures,
-  and keyboard behavior
-
-## Running the Backend Locally
-
-The app connects to two separate backend services:
-
-- **V1**
-  ([stellar/freighter-backend](https://github.com/stellar/freighter-backend),
-  TypeScript) — balances, token prices, token details, account history, contract
-  specs, transaction simulation, transaction submission
-- **V2**
-  ([stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2),
-  Go) — protocols (Discovery screen), collectibles
-
-To run your own:
-
-1. Clone the repo for the backend you need (V1, V2, or both)
-2. Follow its README for setup
-3. Point `FREIGHTER_BACKEND_V1_DEV_URL` and/or `FREIGHTER_BACKEND_V2_DEV_URL` in
-   your `.env` at your local instance
-
-## Pull Requests
-
-- Branch from `main` using your initials + description: `lf-feature-name`,
-  `cg-fix-token-display`
-- Commit messages: start with action verb (`Add`, `Fix`, `Update`, `Improve`)
-- No mixed concerns — keep refactoring separate from features
-- Include before/after screenshots for UI changes
-- Follow the full checklist in the
-  [PR template](.github/pull_request_template.md)
-
-**CI runs on every PR:** unit tests (`test.yml`), iOS e2e (`ios-e2e.yml`),
-Android e2e (`android-e2e.yml`). All must pass.
-
-## Security
-
-Freighter handles private keys and signs transactions. When contributing:
-
-- **Never log or expose** private keys, seed phrases, or passwords
-- **Use `react-native-keychain`** (iOS Keychain / Android Keystore) for secrets
-  — never AsyncStorage
-- **Validate all external data** — WalletConnect payloads, API responses, deep
-  links
-- **Don't weaken Blockaid** transaction scanning or `jail-monkey` jailbreak
-  detection
-- **Report vulnerabilities** via the
-  [Stellar Security Policy](https://github.com/stellar/.github/blob/master/SECURITY.md)
-  — not public issues
-
-For the auth security model, read `src/ducks/auth.ts` directly — it is the
-source of truth for the authentication state machine.
-
-## Further Reading
-
-| Topic                      | Location                                                                                      |
-| -------------------------- | --------------------------------------------------------------------------------------------- |
-| WalletConnect RPC methods  | [`docs/walletconnect-rpc-methods.md`](docs/walletconnect-rpc-methods.md)                      |
-| E2E testing (6 guides)     | [`e2e/docs/`](e2e/docs/)                                                                      |
-| Mock dApp for testing      | [`mock-dapp/README.md`](mock-dapp/README.md)                                                  |
-| Release process            | [`RELEASE.md`](RELEASE.md)                                                                    |
-| All scripts & commands     | `package.json`                                                                                |
-| Best practices (LLM guide) | [`docs/skills/freighter-mobile-best-practices`](docs/skills/freighter-mobile-best-practices/) |
-
-**Questions?** Open a
-[GitHub Discussion](https://github.com/stellar/freighter-mobile/discussions) or
-join the [Stellar Developer Discord](https://discord.gg/stellardev).
+# Contributing
+
+Thanks for helping improve Freighter Mobile. We welcome bug reports, feature requests, documentation fixes, and code from outside of the team.
+
+**Read the [Stellar Contribution Guide](https://github.com/stellar/.github/blob/master/CONTRIBUTING.md) first.** It is the contribution policy for every repository in the Stellar organization, including this one. It covers how to report a bug, when a pull request will be accepted, and what you are responsible for when you use AI tools. The [Code of Conduct](https://github.com/stellar/.github/blob/master/CODE_OF_CONDUCT.md) applies here as well.
+
+This document does not replace it. It adds what is specific to this repository. The code handles private keys, signs transactions, and moves funds, so some steps are stricter here and some are spelled out in more detail. Where this document is silent, the Stellar Contribution Guide governs.
+
+This document is about *how to contribute*. For prerequisites, local setup, architecture, and the day-to-day commands, see [DEVELOPMENT.md](DEVELOPMENT.md).
+
+## Start with an issue
+
+We encourage contributors to start their task by opening an issue instead of a pull request. This lets maintainers confirm the problem is real, agree on the approach, and check that nobody is already working on it before anyone writes code.
+
+1. Search existing issues in this repository first.
+2. Open an issue describing the problem, the user impact, and, if you have one, the approach you intend to take.
+3. Wait for a maintainer to triage it. An issue is ready to work on when a maintainer has replied confirming the approach or labeled it `accepted` or `help wanted`.
+4. Comment on the issue to claim it before starting.
+
+Pull requests without an accepted issue may be closed without review. This is not a judgment on the code. Reviewer time is the scarcest resource this project has, and vetting work at the issue stage is how we protect it.
+
+Exceptions that do not need an issue first:
+
+- Typo and formatting fixes in documentation.
+- Fixing a broken link.
+- Dependency bumps requested by a maintainer.
+
+## Report a bug
+
+Include the version or commit you are running, your platform (browser and OS, mobile OS and device, or Go/Node version), reproduction steps, and the expected and observed behavior. Attach logs if you have them/if applicable.
+
+Before posting, remove secret keys, seed phrases, mnemonics, API keys, session tokens, and any account data that is not yours to share. Public keys and transaction hashes are fine.
+
+## Suggest a feature
+
+Open an issue describing the problem and the workflow you want to support, not just the feature you want built. Explain who benefits and how. Maintainers will weigh it against the roadmap and respond. Every feature needs explicit agreement with a maintainer on its functional requirements before any code is written. Features that change key management, signing, or transaction construction need an agreed design as well.
+
+## Improve the documentation
+
+Documentation fixes are welcome. Use synthetic examples. Keep example addresses, keys, and amounts fictional and clearly non-functional.
+
+## Report a security issue
+
+Do not open a public issue for a vulnerability in this repository. Report it privately through the [Stellar security policy](https://github.com/stellar/.github/blob/master/SECURITY.md), which describes the bug bounty program and how to submit a report.
+
+Do not post exploit details, proof-of-concept code, affected user accounts, or credentials publicly, including in pull request descriptions or commit messages. If you believe a dependency has a vulnerability, report it to that project through its own security policy.
+
+## Pull requests
+
+A pull request is ready for review when all of the following are true:
+
+- **Linked issue.** The description references the accepted issue it resolves. One issue per pull request unless a maintainer agreed otherwise.
+- **Focused scope.** No unrelated refactors, formatting sweeps, or drive-by fixes. Open those separately.
+- **Tests.** New behavior has tests. Bug fixes have a regression test. If a test is genuinely infeasible, say so in the description and explain why.
+- **Passing CI.** Lint, type checks, and tests pass on the target branch.
+- **Clear title.** Follow the target repository's convention, typically a `feat:`, `fix:`, `refactor:`, `docs:`, or `ci:` prefix and a short summary.
+- **Written by you.** The description is in your own words. It explains what changed, why, and how you verified it. See [Using LLMs responsibly](#using-llms-responsibly).
+- **Understood by you.** You can explain and defend every line in the diff. If a reviewer asks why something is there, "the tool produced it" is not an answer.
+
+Keep pull requests as small and focused as possible. A pull request should do one thing, and the diff should contain only what that one thing requires. If you find yourself explaining several unrelated changes in the description, that is a sign it should be more than one pull request. Large changes should be split into a sequence of small, individually reviewable pull requests agreed on the issue.
+
+Maintainers may close pull requests that do not meet these requirements without a detailed review. You are welcome to fix the gaps and reopen.
+
+## Using LLMs responsibly
+
+The [AI-Assisted Contributions](https://github.com/stellar/.github/blob/master/CONTRIBUTING.md#ai-assisted-contributions) section of the Stellar Contribution Guide applies in full.
+
+LLM-assisted contributions are welcome. Use LLMs to explore the codebase, explain unfamiliar code, draft, refine, test, and review. The guidance below is about how to use them well. It comes down to two things: talk to maintainers yourself, and own every line you submit.
+
+### Why this matters
+
+The code handles private keys, signs transactions, and moves funds. A defect that would be an inconvenience elsewhere is an irreversible loss here. LLMs make it easy to produce large volumes of plausible code and prose. Human review capacity does not scale with it. A contribution is only useful if a maintainer can trust that a person understood it, verified it, and can answer for it.
+
+### Write to maintainers yourself
+
+Pull request descriptions, issue reports, review replies, and comments are a conversation between you and the people maintaining the project. Write them in your own words.
+
+- **Describe what you did, not what the tool did.** Say what changed, why, what you considered and rejected, and how you verified it. A model summary of the diff tells the reviewer nothing they cannot see themselves.
+- **Answer review questions yourself.** When a maintainer asks why something is there, respond from your own understanding. Do not paste the question into a model and return its answer.
+- **Keep it short and specific.** Generated text tends toward length and generality. Cut it down to what the reviewer needs to make a decision.
+- **Quote model output when you use it.** If a model's explanation or analysis is genuinely part of the point you are making, mark it as a quote so readers know whose position they are reading.
+
+### Understand the entire change
+
+You are responsible for every line in your pull request, whether you typed it or a tool did.
+
+- **Read the whole diff before opening the pull request.** Every file, every hunk. If a tool changed something you did not ask for, remove it or explain it.
+- **Be able to explain any line.** If a reviewer points at a line and asks why it is there, "the tool produced it" is not an answer. If you cannot explain it, you are not ready to submit it.
+- **Verify, do not assume.** Run the tests. Exercise the change by hand. Generated tests that pass are not proof that the tests check the right thing. Read them.
+- **Know the blast radius.** Understand what calls the code you changed and what it calls. This matters most in key handling, signing, transaction construction, and anything that authorizes movement of funds. Treat generated changes in those areas with extra suspicion, and expect reviewers to do the same.
+- **Keep generated changes small.** Tools make it easy to change many files at once. Reviewers cannot verify a large generated diff any faster than a large handwritten one. Split it.
+
+### Nobody has to use an LLM
+
+Contributions written entirely by hand are always welcome and will never be held to a higher standard because of tools you did not use.
+
+## Review expectations
+
+Maintainers aim to triage new issues within a week and to give a first response on pull requests linked to accepted issues within two weeks. This is best effort and could change according to maintainer availability.
+
+Maintainers are not obligated to review contributions that do not meet the requirements above, and may close them without performing the verification that is the contributor's responsibility.
+
+## For maintainers
+
+- Label issues when you triage them. `accepted` or `help wanted` signals a contributor may start work; a maintainer's written confirmation of the approach does too. Issues without a qualifying label or confirmation are not ready.
+- When closing a pull request under this policy, link to the section that applies.
