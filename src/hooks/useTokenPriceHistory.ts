@@ -81,7 +81,8 @@ interface UseTokenPriceHistoryReturn {
   retry: () => void;
   /** False off-mainnet or when the caller disabled the feature */
   isEnabled: boolean;
-  /** True once this token's warm pass has settled every range */
+  /** True once nothing more will load in the background for this token
+   * this visit: the warm pass finished, or a failed first load skipped it */
   rangesSettled: boolean;
 }
 
@@ -318,6 +319,7 @@ const useTokenPriceHistory = ({
   useEffect(() => {
     hasFetchedRef.current = false;
     hasWarmedRef.current = false;
+    setSettledScope(null);
     // The settled-range sentinel is per token too. Left alone, it carries the
     // previous token's last range into the next one, and the first switch
     // BACK to that range emits no `range_changed` — token A settling on 1Y

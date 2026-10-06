@@ -463,6 +463,48 @@ describe("useTokenPriceHistory", () => {
       expect(result.current.rangesSettled).toBe(false);
     });
 
+    it("waits on the user's own in-flight range instead of skipping it", async () => {
+      const { result } = renderChart();
+      await flush();
+
+      // The user picks ALL while 1D is still loading.
+      act(() => {
+        result.current.setRange("ALL");
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(PRICE_HISTORY_RANGE_DEBOUNCE_MS + 10);
+        await Promise.resolve();
+      });
+      expect(requestedRanges()).toEqual(["1D", "ALL"]);
+
+      await settle("1D");
+      // The queue is parked on the user's ALL: no second request, no 1H yet.
+      expect(requestedRanges()).toEqual(["1D", "ALL"]);
+      expect(result.current.rangesSettled).toBe(false);
+
+      await settle("ALL");
+      expect(requestedRanges()).toEqual(["1D", "ALL", "1H"]);
+    });
+
+    it("waits for a fresh pass when the user comes back to a token", async () => {
+      const { result, rerender } = renderChart();
+      await flush();
+      await fail("1D");
+      // No pass will run for this failed visit.
+      expect(result.current.rangesSettled).toBe(true);
+
+      rerender({ tokenId: "USDC:GA5Z" });
+      await flush();
+      rerender({ tokenId: "native" });
+      await flush();
+      await settle("1D"); // USDC's, abandoned
+      await settle("1D");
+
+      // The return loaded 1D and started a pass; ALL is still in flight.
+      expect(requestedRangesFor("native")).toEqual(["1D", "1D", "ALL"]);
+      expect(result.current.rangesSettled).toBe(false);
+    });
+
     it("stops the queue when the component unmounts mid-warm", async () => {
       const { unmount } = renderChart();
       await flush();

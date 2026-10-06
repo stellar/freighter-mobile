@@ -473,7 +473,7 @@ describe("priceHistory duck", () => {
       expect(mockFetchHistory).toHaveBeenCalledTimes(1);
     });
 
-    it("skips a key whose user-driven fetch is already in flight", async () => {
+    it("waits on, and never duplicates, a user-driven fetch already in flight", async () => {
       // The user always wins: warming shares the stale-response guard, so
       // starting one here would supersede the in-flight user request and
       // swallow the token_chart.loaded it is about to fire.
@@ -491,18 +491,35 @@ describe("priceHistory duck", () => {
         range: "1H",
       });
 
-      await warm("1H");
+      // The warm waits on the user's request rather than starting its own.
+      let warmed = false;
+      const warming = usePriceHistoryStore
+        .getState()
+        .warmPriceHistory({
+          tokenId: "native",
+          network: NETWORKS.PUBLIC,
+          range: "1H",
+        })
+        .then(() => {
+          warmed = true;
+        });
+      await act(async () => {
+        await Promise.resolve();
+      });
       expect(mockFetchHistory).toHaveBeenCalledTimes(1);
+      expect(warmed).toBe(false);
 
       let fetched: TokenPriceHistory | null = null;
       await act(async () => {
         resolveUserFetch(makeHistory({ range: "1H" }));
         fetched = await userFetch;
+        await warming;
       });
 
       // The user's fetch was never superseded, so it still resolves with the
       // payload its caller reports token_chart.loaded from.
       expect(fetched).not.toBeNull();
+      expect(warmed).toBe(true);
     });
   });
 

@@ -49,9 +49,10 @@ export const isSparseSeries = (
 };
 
 /**
- * Each range's lookback window. Must match freighter-backend-v2's
- * `priceHistoryRanges`, or a token that started trading just outside the
- * window is called newly traded. ALL has no window.
+ * Each range's lookback window and bucket width. Must match
+ * freighter-backend-v2's `priceHistoryRanges`, or a token that started
+ * trading just outside the window, or traded only every few buckets, is
+ * called newly traded. ALL has neither.
  */
 export const RANGE_WINDOW_SECONDS: Partial<Record<PriceHistoryRange, number>> =
   {
@@ -62,9 +63,17 @@ export const RANGE_WINDOW_SECONDS: Partial<Record<PriceHistoryRange, number>> =
     "1Y": 365 * 86400,
   };
 
-/** ALL first: its first point is what tells a newly traded token apart from
- * a limited-data one, and until it lands every range falls back to the
- * latter. */
+export const RANGE_BUCKET_SECONDS: Partial<Record<PriceHistoryRange, number>> =
+  {
+    "1H": 300,
+    "1D": 900,
+    "1W": 3600,
+    "1M": 14400,
+    "1Y": 259200,
+  };
+
+/** ALL first: every newly-traded verdict needs its first point, while each
+ * finer range only narrows it. */
 export const PRICE_HISTORY_WARM_ORDER: PriceHistoryRange[] = [
   "ALL",
   "1H",
@@ -88,7 +97,6 @@ export const getFirstTradeLowerBound = (
   cachedByRange: Partial<
     Record<string, { data: { points: PriceHistoryPoint[] }; updatedAt: number }>
   >,
-  nowSeconds: number,
 ): number | undefined => {
   let bound = cachedByRange.ALL?.data.points[0]?.t;
   if (bound === undefined) return undefined;
@@ -97,8 +105,7 @@ export const getFirstTradeLowerBound = (
     const entry = cachedByRange[range];
     const firstT = entry?.data.points[0]?.t;
     if (!entry || firstT === undefined || bound === undefined) return;
-    const fetchedAtSeconds = Math.min(entry.updatedAt / 1000, nowSeconds);
-    if (fetchedAtSeconds - (RANGE_WINDOW_SECONDS[range] ?? 0) <= bound) {
+    if (entry.updatedAt / 1000 - (RANGE_WINDOW_SECONDS[range] ?? 0) <= bound) {
       bound = Math.max(bound, firstT);
     }
   });
@@ -117,22 +124,24 @@ export const getFirstTradeLowerBound = (
 export const isNewlyTradedSeries = (
   range: PriceHistoryRange,
   points: PriceHistoryPoint[],
-  resolutionSeconds: number,
   nowSeconds: number,
   firstTradeSeconds: number | undefined,
 ): boolean => {
   const windowSeconds = RANGE_WINDOW_SECONDS[range];
+  // Not the payload's resolution: the backend derives that from the smallest
+  // gap, so a token trading every 2h on 1D would read as fully covered.
+  const bucketSeconds = RANGE_BUCKET_SECONDS[range];
   if (
     !windowSeconds ||
+    !bucketSeconds ||
     firstTradeSeconds === undefined ||
-    resolutionSeconds <= 0 ||
     points.length === 0 ||
     firstTradeSeconds <= nowSeconds - windowSeconds
   ) {
     return false;
   }
   const expectedSinceFirstPoint = Math.ceil(
-    (nowSeconds - points[0].t) / resolutionSeconds,
+    (nowSeconds - points[0].t) / bucketSeconds,
   );
   return points.length >= expectedSinceFirstPoint * SPARSE_SERIES_RATIO;
 };

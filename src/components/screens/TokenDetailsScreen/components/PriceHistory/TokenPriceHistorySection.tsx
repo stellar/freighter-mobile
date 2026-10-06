@@ -286,11 +286,8 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
           isNewlyTraded: isNewlyTradedSeries(
             range,
             points,
-            data.resolutionSeconds,
             nowSeconds,
-            cachedByRange
-              ? getFirstTradeLowerBound(cachedByRange, nowSeconds)
-              : undefined,
+            cachedByRange ? getFirstTradeLowerBound(cachedByRange) : undefined,
           ),
           rangesSettled,
         })

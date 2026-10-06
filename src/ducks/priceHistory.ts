@@ -476,8 +476,11 @@ export const usePriceHistoryStore = create<PriceHistoryState>((set, get) => {
       const key = getPriceHistoryKey(network, tokenId, range);
 
       // The user's request owns this key: warming shares the guard, so
-      // starting one would supersede it and swallow its `loaded` event.
+      // starting one would supersede it and swallow its `loaded` event. Still
+      // wait for it, or it lands after the pass and moves the first-trade
+      // bound under a notice already on screen.
       if (get().historyStatusByKey[key]?.isLoading) {
+        await inFlightByKey.get(key)?.catch(() => undefined);
         return;
       }
 

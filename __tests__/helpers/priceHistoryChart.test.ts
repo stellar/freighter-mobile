@@ -336,29 +336,26 @@ describe("getFirstTradeLowerBound", () => {
 
   it("is unknown until ALL is cached", () => {
     expect(
-      getFirstTradeLowerBound({ "1D": cached("1D", NOW - 6 * HOUR) }, NOW),
+      getFirstTradeLowerBound({ "1D": cached("1D", NOW - 6 * HOUR) }),
     ).toBeUndefined();
   });
 
   it("is ALL's first bucket start when nothing finer covers it", () => {
     expect(
-      getFirstTradeLowerBound({ ALL: cached("ALL", NOW - 400 * DAY) }, NOW),
+      getFirstTradeLowerBound({ ALL: cached("ALL", NOW - 400 * DAY) }),
     ).toBe(NOW - 400 * DAY);
   });
 
   it("narrows a launch hours ago down to the 1D bucket", () => {
     // ALL's two-week bucket alone starts before the 1D window.
     expect(
-      getFirstTradeLowerBound(
-        {
-          ALL: cached("ALL", NOW - 12 * DAY),
-          "1Y": cached("1Y", NOW - 2 * DAY),
-          "1M": cached("1M", NOW - 8 * HOUR),
-          "1W": cached("1W", NOW - 7 * HOUR),
-          "1D": cached("1D", NOW - 6 * HOUR),
-        },
-        NOW,
-      ),
+      getFirstTradeLowerBound({
+        ALL: cached("ALL", NOW - 12 * DAY),
+        "1Y": cached("1Y", NOW - 2 * DAY),
+        "1M": cached("1M", NOW - 8 * HOUR),
+        "1W": cached("1W", NOW - 7 * HOUR),
+        "1D": cached("1D", NOW - 6 * HOUR),
+      }),
     ).toBe(NOW - 6 * HOUR);
   });
 
@@ -366,27 +363,32 @@ describe("getFirstTradeLowerBound", () => {
     // 1W's window starts 7 days back, after the 8.5-day bound, so trades
     // before it are invisible to 1W — its later first point proves nothing.
     expect(
-      getFirstTradeLowerBound(
-        {
-          ALL: cached("ALL", NOW - 10 * DAY),
-          "1M": cached("1M", NOW - 8.5 * DAY),
-          "1W": cached("1W", NOW - 1 * DAY),
-        },
-        NOW,
-      ),
+      getFirstTradeLowerBound({
+        ALL: cached("ALL", NOW - 10 * DAY),
+        "1M": cached("1M", NOW - 8.5 * DAY),
+        "1W": cached("1W", NOW - 1 * DAY),
+      }),
     ).toBe(NOW - 8.5 * DAY);
+  });
+
+  it("measures a range fetched after `now` was taken from its own fetch time", () => {
+    // 1W was warmed 20s after `nowSeconds`, so its window starts 20s later
+    // than `now - 7d` and does not reach the bound 10s after that.
+    expect(
+      getFirstTradeLowerBound({
+        ALL: cached("ALL", NOW - 7 * DAY + 10),
+        "1W": cached("1W", NOW - 1 * DAY, NOW + 20),
+      }),
+    ).toBe(NOW - 7 * DAY + 10);
   });
 
   it("measures a cached range's window from when it was fetched", () => {
     // 1W fetched 3 days ago reached back 10 days, past the 9-day bound.
     expect(
-      getFirstTradeLowerBound(
-        {
-          ALL: cached("ALL", NOW - 9 * DAY),
-          "1W": cached("1W", NOW - 8 * DAY, NOW - 3 * DAY),
-        },
-        NOW,
-      ),
+      getFirstTradeLowerBound({
+        ALL: cached("ALL", NOW - 9 * DAY),
+        "1W": cached("1W", NOW - 8 * DAY, NOW - 3 * DAY),
+      }),
     ).toBe(NOW - 8 * DAY);
   });
 });
@@ -407,20 +409,12 @@ describe("isNewlyTradedSeries", () => {
 
   it("is true when the first trade is inside the window and coverage since is dense", () => {
     expect(
-      isNewlyTradedSeries(
-        "1Y",
-        youngOneYear,
-        THREE_DAYS,
-        NOW,
-        firstTradeInWindow,
-      ),
+      isNewlyTradedSeries("1Y", youngOneYear, NOW, firstTradeInWindow),
     ).toBe(true);
   });
 
   it("is false while the token's first trade is unknown", () => {
-    expect(
-      isNewlyTradedSeries("1Y", youngOneYear, THREE_DAYS, NOW, undefined),
-    ).toBe(false);
+    expect(isNewlyTradedSeries("1Y", youngOneYear, NOW, undefined)).toBe(false);
   });
 
   it("is false for an old token that only traded late in the window", () => {
@@ -430,7 +424,6 @@ describe("isNewlyTradedSeries", () => {
       isNewlyTradedSeries(
         "1D",
         series(8, FIFTEEN_MIN),
-        FIFTEEN_MIN,
         NOW,
         NOW - 2 * 365 * 86400,
       ),
@@ -439,7 +432,15 @@ describe("isNewlyTradedSeries", () => {
 
   it("is false when the first trade is only known to fall before the window", () => {
     expect(
-      isNewlyTradedSeries("1W", series(40, 3600), 3600, NOW, NOW - 10 * 86400),
+      isNewlyTradedSeries("1W", series(40, 3600), NOW, NOW - 10 * 86400),
+    ).toBe(false);
+  });
+
+  it("measures coverage in the range's own buckets, not the derived resolution", () => {
+    // Launched 20h ago and traded every 2h: the backend derives a 2h
+    // resolution from the gaps, but that is 10 of 80 fifteen-minute buckets.
+    expect(
+      isNewlyTradedSeries("1D", series(10, 7200), NOW, NOW - 20 * 3600),
     ).toBe(false);
   });
 
@@ -448,20 +449,14 @@ describe("isNewlyTradedSeries", () => {
       { t: NOW - 12 * THREE_DAYS, p: "1" },
       ...series(2, THREE_DAYS),
     ];
-    expect(
-      isNewlyTradedSeries("1Y", gappy, THREE_DAYS, NOW, firstTradeInWindow),
-    ).toBe(false);
+    expect(isNewlyTradedSeries("1Y", gappy, NOW, firstTradeInWindow)).toBe(
+      false,
+    );
   });
 
   it("is never true on ALL, which is already lifetime-relative", () => {
     expect(
-      isNewlyTradedSeries(
-        "ALL",
-        series(3, 1209600),
-        1209600,
-        NOW,
-        NOW - 3 * 1209600,
-      ),
+      isNewlyTradedSeries("ALL", series(3, 1209600), NOW, NOW - 3 * 1209600),
     ).toBe(false);
   });
 });
