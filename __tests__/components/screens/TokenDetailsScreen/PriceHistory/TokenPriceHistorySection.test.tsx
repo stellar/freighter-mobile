@@ -1226,6 +1226,25 @@ describe("TokenPriceHistorySection", () => {
       expect(queryByTestId("price-history-notice-newlyTraded")).toBeNull();
     });
 
+    it("still shows limited-data after a retry recovers a failed first load", async () => {
+      // A failed first load starts no warm pass, so none can settle.
+      mockFetchHistory.mockRejectedValueOnce(new Error("backend 503"));
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({ points: densePoints.slice(0, 5) }),
+      );
+
+      const { getByTestId } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-retry")).toBeTruthy();
+      });
+      fireEvent.press(getByTestId("price-history-retry"));
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-notice-limitedData")).toBeTruthy();
+      });
+    });
+
     it("stays limited-data when ALL never loads", async () => {
       answerLaunchedToday({ failAll: true });
 

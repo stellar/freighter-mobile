@@ -283,14 +283,18 @@ const useTokenPriceHistory = ({
         usePriceHistoryStore.getState().historyStatusByKey[
           getPriceHistoryKey(network, tokenId, loadRange)
         ] ?? IDLE_PRICE_HISTORY_STATUS;
-      if (loadError) return;
+      if (loadError) {
+        // No pass will run this visit, so nothing is left to wait for.
+        setSettledScope(scope);
+        return;
+      }
 
       if (hasWarmedRef.current) return;
       hasWarmedRef.current = true;
 
       await warmOtherRanges(loadRange);
     },
-    [doFetch, warmOtherRanges, network, tokenId],
+    [doFetch, warmOtherRanges, network, tokenId, scope],
   );
 
   /**
