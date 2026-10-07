@@ -73,6 +73,16 @@ describe("scanBulkTokens id validation", () => {
       expect.anything(),
     );
   });
+
+  it("returns no results without calling the backend when every id is left out", async () => {
+    const result = await scanBulkTokens({
+      addressList: ["USDC-SEAV-CCONTRACT"],
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockGet).not.toHaveBeenCalled();
+    expect(result).toEqual({ results: {} });
+  });
 });
 
 describe("scanToken native XLM handling", () => {

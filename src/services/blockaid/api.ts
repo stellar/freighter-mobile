@@ -184,6 +184,10 @@ export const scanBulkTokens = async (
       .filter((address) => address.split("-").length === 2)
       .map((address) => `asset_ids=${encodeURIComponent(address)}`)
       .join("&");
+    // The backend rejects a request with no ids.
+    if (!queryParams) {
+      return { results: {} } as Blockaid.TokenBulkScanResponse;
+    }
     const endpoint = `${BLOCKAID_ENDPOINTS.SCAN_BULK_TOKENS}?${queryParams}`;
 
     const response = await freighterBackendV1.get<
