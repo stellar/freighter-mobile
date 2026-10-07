@@ -30,6 +30,8 @@ export const SHIMMER_PILL_RADIUS = 8;
 const HIGHLIGHT = "#ffffff";
 /** Alpha hex for the five stops: 0 / 3 / 7 / 3 / 0 percent, hairline 0 / 8 / 15 / 8 / 0. */
 const PILL_STOPS = ["00", "08", "12", "08", "00"];
+// Light pills fade white to gray 5, where 7% white disappears; 60% reads.
+const LIGHT_PILL_STOPS = ["00", "4D", "99", "4D", "00"];
 const HAIRLINE_STOPS = ["00", "14", "26", "14", "00"];
 const STOP_POSITIONS = [0, 0.3, 0.5, 0.7, 1];
 
@@ -64,7 +66,8 @@ const Shimmer: React.FC<ShimmerProps> = ({
   } else {
     baseColors = [themeColors.base[0], themeColors.gray[5]];
   }
-  const stops = variant === "hairline" ? HAIRLINE_STOPS : PILL_STOPS;
+  const pillStops = isDark ? PILL_STOPS : LIGHT_PILL_STOPS;
+  const stops = variant === "hairline" ? HAIRLINE_STOPS : pillStops;
   const highlightColors = stops.map((alpha) => `${HIGHLIGHT}${alpha}`);
 
   return (

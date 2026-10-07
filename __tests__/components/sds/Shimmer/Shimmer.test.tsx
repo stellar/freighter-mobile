@@ -44,12 +44,13 @@ describe("Shimmer", () => {
       themeColors.base[0],
       themeColors.gray[5],
     ]);
-    // Highlight: five white stops, 0 / 3 / 7 / 3 / 0 percent.
+    // Light highlight peaks at 60% white: the frame's 7% vanishes on a pill
+    // that fades to near-white gray 5.
     expect(gradients[1].props.colors).toEqual([
       "#ffffff00",
-      "#ffffff08",
-      "#ffffff12",
-      "#ffffff08",
+      "#ffffff4D",
+      "#ffffff99",
+      "#ffffff4D",
       "#ffffff00",
     ]);
     expect(gradients[1].props.positions).toEqual([0, 0.3, 0.5, 0.7, 1]);
@@ -63,6 +64,14 @@ describe("Shimmer", () => {
       const { toJSON } = render();
       const gradients = findAllRenderedByType(toJSON(), "skLinearGradient");
       expect(gradients[0].props.colors).toEqual([dark.gray[5], dark.base[0]]);
+      // Dark keeps the frame's highlight: 0 / 3 / 7 / 3 / 0 percent white.
+      expect(gradients[1].props.colors).toEqual([
+        "#ffffff00",
+        "#ffffff08",
+        "#ffffff12",
+        "#ffffff08",
+        "#ffffff00",
+      ]);
     } finally {
       scheme.mockRestore();
     }
