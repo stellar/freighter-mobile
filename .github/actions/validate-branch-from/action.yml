@@ -9,6 +9,9 @@ inputs:
       "The source ref to branch from: either the base branch or a version tag of
       the form vX.Y.Z"
     required: true
+  # MIRROR-ONLY: added so the mirror can pass rebrand/varial. During the
+  # launch-day hygiene pass, remove it, put back the hard-coded "main" it
+  # replaced in this file, and drop base_branch from new-release.yml's call.
   base_branch:
     description: "The branch regular releases are cut from"
     required: false

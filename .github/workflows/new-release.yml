@@ -9,6 +9,8 @@ on:
         required: true
         type: string
       branch_from:
+        # MIRROR-ONLY: must name BASE_BRANCH below. Revert to "main" during the
+        # launch-day hygiene pass, before pushing this branch public.
         description:
           Branch this release from (Default is `rebrand/varial`. For emergency
           releases, enter the tag version to branch from, e.g. 1.9.24. Available
@@ -95,6 +97,8 @@ jobs:
         uses: ./.github/actions/validate-branch-from
         with:
           branch_from: ${{ env.BRANCH_FROM }}
+          # MIRROR-ONLY: remove with validate-branch-from's base_branch input
+          # during the launch-day hygiene pass.
           base_branch: ${{ env.BASE_BRANCH }}
 
       - name: Determine branch names
