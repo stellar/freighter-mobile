@@ -21,6 +21,7 @@
 //     it, which crashes in the Jest env on native async-storage
 //     (`PlatformLocalStorage`). The factory stubs only what core.ts touches.
 import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
+import { DEFAULT_COLOR_SCHEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 
@@ -34,7 +35,10 @@ jest.mock("@amplitude/analytics-react-native", () => ({
 jest.mock("@amplitude/experiment-react-native-client", () => ({
   Experiment: { initializeWithAmplitudeAnalytics: jest.fn(() => ({})) },
 }));
-jest.mock("react-native", () => ({ Platform: { OS: "ios", Version: "17.0" } }));
+jest.mock("react-native", () => ({
+  Platform: { OS: "ios", Version: "17.0" },
+  Appearance: { getColorScheme: jest.fn(() => "light") },
+}));
 jest.mock("react-native-device-info", () => ({
   getVersion: jest.fn(() => "9.9.9"),
   getBuildNumber: jest.fn(() => "42"),
@@ -238,6 +242,33 @@ describe("buildCommonContext (four-bucket model)", () => {
       "account_id_hash",
       "f56f6f2c6cf1b9388e3495dfab96f0c55ec5d217f481b2ae45d11b46145c44ef",
     );
+  });
+});
+
+describe("color_scheme common property", () => {
+  // buildCommonContext reads Appearance at call time, so we swap the shared
+  // react-native mock's return value per-test and restore it afterwards.
+  const { Appearance } = jest.requireMock<{
+    Appearance: { getColorScheme: jest.Mock };
+  }>("react-native");
+
+  afterEach(() => {
+    Appearance.getColorScheme.mockReturnValue("light");
+  });
+
+  it("stamps the scheme the app is rendering", () => {
+    Appearance.getColorScheme.mockReturnValue("dark");
+    expect(buildCommonContext().color_scheme).toBe("dark");
+
+    Appearance.getColorScheme.mockReturnValue("light");
+    expect(buildCommonContext().color_scheme).toBe("light");
+  });
+
+  it("falls back to the theme default when the device reports no scheme", () => {
+    // Must match the fallback the theme hooks render with, or the event would
+    // report a scheme the user is not seeing.
+    Appearance.getColorScheme.mockReturnValue(null);
+    expect(buildCommonContext().color_scheme).toBe(DEFAULT_COLOR_SCHEME);
   });
 });
 
