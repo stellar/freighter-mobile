@@ -3,16 +3,13 @@ import { TokenIcon } from "components/TokenIcon";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { NATIVE_TOKEN_CODE, UNFUNDED_ACCOUNT_HELP_URL } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useState } from "react";
 import { TouchableOpacity, View } from "react-native";
-
-const HELP_ARTICLE_URL =
-  "https://help.freighter.app/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet";
 
 export interface XlmReserveBottomSheetProps {
   publicKey: string;
@@ -57,7 +54,7 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
   };
 
   const handleWhyXlm = () => {
-    openInAppBrowser(HELP_ARTICLE_URL);
+    openInAppBrowser(UNFUNDED_ACCOUNT_HELP_URL);
   };
 
   const handleClose = () => {
