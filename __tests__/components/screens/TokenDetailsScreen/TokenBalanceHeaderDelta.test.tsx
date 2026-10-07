@@ -628,8 +628,8 @@ describe("TokenBalanceHeader range delta", () => {
         const wrapper = getByTestId("token-price-header-loading");
         expect(wrapper.props.accessibilityState).toEqual({ busy: true });
         expect(wrapper.props.accessibilityLabel).toBe("Loading price");
-        // Name still renders from the route symbol; there is no icon without a balance.
-        expect(getByText("XLM")).toBeTruthy();
+        // Named as the loaded header will name it; there is no icon without a balance.
+        expect(getByText("Stellar Lumens")).toBeTruthy();
         const price = getByTestId("token-price-header-price-skeleton", {
           includeHiddenElements: true,
         });
@@ -858,6 +858,9 @@ describe("TokenBalanceDetails loading placeholders", () => {
     expect(
       queryByTestId("token-value-skeleton", { includeHiddenElements: true }),
     ).toBeTruthy();
+    // But the card no longer announces "Loading balance" over the amount it
+    // shows, or hides that amount behind its label.
+    expect(queryByTestId("token-balance-details-loading")).toBeNull();
   });
 
   it("shows no Value pill off mainnet, where no Value row can render", () => {

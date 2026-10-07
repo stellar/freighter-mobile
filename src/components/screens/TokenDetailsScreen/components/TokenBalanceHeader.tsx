@@ -114,7 +114,8 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
     if (isNativeAssetId(tokenId)) {
       return {
         symbol: NATIVE_TOKEN_CODE,
-        name: tokenBalance?.displayName || tokenSymbol,
+        // The name ducks/balances gives native once the balance lands.
+        name: tokenBalance?.displayName || "Stellar Lumens",
       };
     }
 
@@ -228,11 +229,11 @@ export const TokenBalanceDetails: React.FC<{
   // falsy together — but the rows and the header must agree about what counts
   // as "priced", and only one of them reading both fields invites drift.
   const hasPrice = !!tokenBalance?.currentPrice && !!tokenBalance?.fiatTotal;
-  // Loading pills show only while there is no balance at all (the guard
-  // above already returned null for "no balance, not loading"). A present
-  // but unpriced balance keeps the plain list, even mid-refresh — see the
-  // header's own comment for why.
-  const isAnyPending = !tokenBalance;
+  // Busy only while the Balance row itself is a pill: once the raw amount
+  // shows, a "Loading balance" label would sit over it and hide it from
+  // screen readers. A present but unpriced balance keeps the plain list, even
+  // mid-refresh — see the header's own comment for why.
+  const isAnyPending = !tokenBalance && !rawBalance;
 
   let balanceCell;
   if (tokenBalance) {
@@ -311,7 +312,7 @@ export const TokenBalanceDetails: React.FC<{
     return list;
   }
 
-  // While anything is pending the card announces once; the pills inside it
+  // While the balance is pending the card announces once; the pills inside it
   // are decorative, matching the header's own loading wrapper above.
   return (
     <View
