@@ -237,6 +237,32 @@ describe("TokenPriceChart timeframe morph", () => {
     );
   });
 
+  it("rises from a flat line at the centre when it replaces the loading hairline", async () => {
+    // The chart's own reduced-motion query starts "reduced" and settles to
+    // false during this test; the rise the caller asked for must survive it.
+    const { toJSON } = renderWithProviders(
+      <TokenPriceChart
+        testID="chart"
+        points={points}
+        resolutionSeconds={900}
+        width={CHART_WIDTH}
+        direction="positive"
+        riseFromFlat
+      />,
+    );
+    await settle();
+    const real = geometryFor(points, 900).coords;
+
+    expect(linePathValue(toJSON())).toBe(
+      buildChartLinePath(
+        real.map(({ x }) => ({ x, y: PRICE_CHART_LINE_HEIGHT / 2 })),
+      ),
+    );
+
+    await settle(CHART_MORPH_DURATION_MS);
+    expect(linePathValue(toJSON())).toBe(buildChartLinePath(real));
+  });
+
   it("starts the tween from the outgoing shape, not from the incoming one", async () => {
     const { toJSON, rerender } = await renderMorphable();
 

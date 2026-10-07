@@ -162,8 +162,19 @@ interface TokenPriceChartProps {
   width: number;
   /** Colours the whole artwork, from the same source as the header delta. */
   direction: PriceChangeDirection;
+  /** Replacing the loading hairline: start as a flat line at the vertical
+   * centre, where the hairline sat, and morph up into the series. Read on
+   * mount only. The caller checks reduced motion: this chart's own query is
+   * still unresolved (and so reads "reduced") when it mounts. */
+  riseFromFlat?: boolean;
   testID?: string;
 }
+
+/** The series laid flat across the plot's vertical centre. */
+const flattenChartCoordinates = (
+  coords: ChartCoordinate[],
+): ChartCoordinate[] =>
+  coords.map(({ x }) => ({ x, y: PRICE_CHART_LINE_HEIGHT / 2 }));
 
 /**
  * Static Skia polyline — no gestures in Phase 1, so nothing competes with the
@@ -182,6 +193,7 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
   resolutionSeconds,
   width,
   direction,
+  riseFromFlat = false,
   testID,
 }) => {
   const { themeColors } = useColors();
@@ -207,10 +219,21 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
 
   // The tween's two endpoints and its position between them, all on the UI
   // thread. Seeded with the first geometry so the very first paint is the
-  // settled shape — there is nothing to morph from on a first render.
-  const morphFrom = useSharedValue<ChartCoordinate[]>(coords);
+  // settled shape, or with that shape laid flat when rising from the hairline.
+  const morphFrom = useSharedValue<ChartCoordinate[]>(
+    riseFromFlat ? flattenChartCoordinates(coords) : coords,
+  );
   const morphTo = useSharedValue<ChartCoordinate[]>(coords);
-  const morphProgress = useSharedValue(1);
+  const morphProgress = useSharedValue(riseFromFlat ? 0 : 1);
+  // Only the rise fades the fill in: a flat line's fill would otherwise flash
+  // as a solid band under it.
+  const fillOpacity = useSharedValue(riseFromFlat ? 0 : 1);
+  // Consumed by the first geometry with a line in it (the width is measured
+  // after mount, so the series may be empty on the first render).
+  const risePending = useRef(riseFromFlat);
+  // A rise in flight survives this chart's reduced-motion query settling and
+  // re-layouts; only a new series takes over from it.
+  const isRising = useRef(false);
   // Identity of the series the shared values were last aimed at. Compared by
   // reference on purpose: only a NEW series morphs. A re-layout (measured
   // width) or a recoloured direction recomputes the geometry without changing
@@ -222,12 +245,59 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
    * reaches the UI thread a frame later, so routing the settled state through
    * one would paint the previous range for that frame.
    */
-  const [isMorphing, setIsMorphing] = useState(false);
-  const stopMorphing = useCallback(() => setIsMorphing(false), []);
+  const [isMorphing, setIsMorphing] = useState(riseFromFlat);
+  const stopMorphing = useCallback(() => {
+    isRising.current = false;
+    setIsMorphing(false);
+  }, []);
 
   useEffect(() => {
     const isNewSeries = renderedPoints.current !== points;
     renderedPoints.current = points;
+
+    const startTween = () => {
+      morphProgress.value = 0;
+      setIsMorphing(true);
+      // Reanimated's easing is applied here, so the helper receives an
+      // already-eased progress and stays a pure linear lerp. Easing.out(cubic)
+      // is the same curve as the shared `easeOutCubic`; do not ease twice.
+      morphProgress.value = withTiming(
+        1,
+        { duration: CHART_MORPH_DURATION_MS, easing: Easing.out(Easing.cubic) },
+        (finished) => {
+          "worklet";
+
+          // Only a tween that RAN OUT hands back to the settled strings; an
+          // interrupted one would snap the line to the range it was abandoning.
+          if (finished) {
+            runOnJS(stopMorphing)();
+          }
+        },
+      );
+    };
+
+    if (isRising.current && !isNewSeries) {
+      morphFrom.value = flattenChartCoordinates(coords);
+      morphTo.value = coords;
+
+      return;
+    }
+    isRising.current = false;
+
+    if (risePending.current && coords.length >= 2) {
+      risePending.current = false;
+      isRising.current = true;
+      morphFrom.value = flattenChartCoordinates(coords);
+      morphTo.value = coords;
+      fillOpacity.value = 0;
+      fillOpacity.value = withTiming(1, {
+        duration: CHART_MORPH_DURATION_MS,
+        easing: Easing.out(Easing.cubic),
+      });
+      startTween();
+
+      return;
+    }
 
     // Nothing to morph from or to (fewer than 2 points is not a line), a
     // re-layout rather than a switch, or reduced motion: show the settled
@@ -241,6 +311,7 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
       morphFrom.value = coords;
       morphTo.value = coords;
       morphProgress.value = 1;
+      fillOpacity.value = 1;
       setIsMorphing(false);
 
       return;
@@ -255,24 +326,7 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
       progress: morphProgress.value,
     });
     morphTo.value = coords;
-    morphProgress.value = 0;
-    setIsMorphing(true);
-    // Reanimated's easing is applied here, so the helper receives an
-    // already-eased progress and stays a pure linear lerp. Easing.out(cubic)
-    // is the same curve as the shared `easeOutCubic`; do not ease twice.
-    morphProgress.value = withTiming(
-      1,
-      { duration: CHART_MORPH_DURATION_MS, easing: Easing.out(Easing.cubic) },
-      (finished) => {
-        "worklet";
-
-        // Only a tween that RAN OUT hands back to the settled strings; an
-        // interrupted one would snap the line to the range it was abandoning.
-        if (finished) {
-          runOnJS(stopMorphing)();
-        }
-      },
-    );
+    startTween();
   }, [
     points,
     coords,
@@ -280,12 +334,19 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
     morphFrom,
     morphTo,
     morphProgress,
+    fillOpacity,
     stopMorphing,
   ]);
 
   // Nothing in flight outlives the chart. Its own effect, with only stable
   // deps, so it cancels on unmount and never on a new tween.
-  useEffect(() => () => cancelAnimation(morphProgress), [morphProgress]);
+  useEffect(
+    () => () => {
+      cancelAnimation(morphProgress);
+      cancelAnimation(fillOpacity);
+    },
+    [morphProgress, fillOpacity],
+  );
 
   // One interpolation per frame, shared by the stroke, the fill and the end
   // dot so the three can never disagree about where the line is.
@@ -425,6 +486,7 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
         <Path
           path={isMorphing ? morphedFillPath : settled.fillPath}
           style="fill"
+          opacity={fillOpacity}
         >
           <LinearGradient
             start={vec(0, 0)}

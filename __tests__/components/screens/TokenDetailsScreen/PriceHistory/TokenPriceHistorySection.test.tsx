@@ -22,6 +22,7 @@ import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { formatDate } from "helpers/date";
 import { pxValue } from "helpers/dimensions";
 import {
+  CHART_MORPH_DURATION_MS,
   getPlottedRangeEnd,
   getPlottedRangeStart,
 } from "helpers/priceHistoryChart";
@@ -52,7 +53,11 @@ jest.mock("config/logger", () => ({
   },
 }));
 
-jest.mock("hooks/useIsReduceMotionEnabled", () => () => false);
+const mockIsReduceMotionEnabled = jest.fn(() => false);
+jest.mock(
+  "hooks/useIsReduceMotionEnabled",
+  () => () => mockIsReduceMotionEnabled(),
+);
 
 const mockFetchHistory = fetchTokenPriceHistory as jest.MockedFunction<
   typeof fetchTokenPriceHistory
@@ -170,6 +175,71 @@ describe("TokenPriceHistorySection", () => {
     });
 
     expect(analytics.trackTokenChartViewed).not.toHaveBeenCalled();
+  });
+
+  describe("leaving the loading hairline", () => {
+    const strokePath = (tree: RenderedTree): string => {
+      const stroke = findAllRenderedByType(tree, "skPath").find(
+        (node) => node.props.style === "stroke",
+      );
+      const path = stroke!.props.path as string | { value: string };
+
+      return typeof path === "string" ? path : path.value;
+    };
+    const isFlatAtCentre = (path: string) =>
+      path
+        .split(" ")
+        .filter((token, i, all) => i > 0 && /^[ML]/.test(all[i - 1]))
+        .every((y) => Number(y) === PRICE_CHART_LINE_HEIGHT / 2);
+
+    const loadThenLand = async () => {
+      let land: (value: TokenPriceHistory) => void = () => {};
+      mockFetchHistory.mockImplementation(
+        () =>
+          new Promise<TokenPriceHistory>((resolve) => {
+            land = resolve;
+          }),
+      );
+      const utils = renderSection();
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(utils.getByTestId("price-history-skeleton")).toBeTruthy();
+      await act(async () => {
+        land(makeHistory());
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(utils.getByTestId("price-history-chart")).toBeTruthy();
+
+      return utils;
+    };
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+    afterEach(() => {
+      mockIsReduceMotionEnabled.mockReturnValue(false);
+      jest.useRealTimers();
+    });
+
+    it("lifts the line out of the hairline once the fetch lands", async () => {
+      const { toJSON } = await loadThenLand();
+
+      expect(isFlatAtCentre(strokePath(toJSON() as RenderedTree))).toBe(true);
+      await act(async () => {
+        jest.advanceTimersByTime(CHART_MORPH_DURATION_MS);
+        await Promise.resolve();
+      });
+      expect(isFlatAtCentre(strokePath(toJSON() as RenderedTree))).toBe(false);
+    });
+
+    it("paints the line directly under reduced motion", async () => {
+      mockIsReduceMotionEnabled.mockReturnValue(true);
+      const { toJSON } = await loadThenLand();
+
+      expect(isFlatAtCentre(strokePath(toJSON() as RenderedTree))).toBe(false);
+    });
   });
 
   it("renders the chart with an accessibility label once data lands", async () => {

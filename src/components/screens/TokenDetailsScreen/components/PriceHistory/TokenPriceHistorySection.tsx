@@ -28,6 +28,7 @@ import {
   getPlottedRangeEnd,
 } from "helpers/priceHistoryChart";
 import useAppTranslation from "hooks/useAppTranslation";
+import useIsReduceMotionEnabled from "hooks/useIsReduceMotionEnabled";
 import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import useTokenPriceHistory from "hooks/useTokenPriceHistory";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -162,6 +163,25 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
     analytics.trackTokenChartViewed({ tokenId, data, network });
   }, [tokenId, network, data, isLoading, isEnabled]);
 
+  // Fetch errors degrade to the empty-style placeholder; a cached series
+  // keeps rendering through a failed refresh (stale chart beats blank).
+  const isErrorState = !!error && !data;
+  const isSkeleton = isLoading && !data && !isErrorState;
+
+  // Set while the hairline shows, so the chart that replaces it rises out of
+  // it; cleared once that chart has mounted. This section's reduced-motion
+  // query has settled by then, unlike the freshly mounted chart's.
+  const isReduceMotionEnabled = useIsReduceMotionEnabled();
+  const risesFromHairlineRef = useRef(false);
+  if (isSkeleton) {
+    risesFromHairlineRef.current = true;
+  }
+  useEffect(() => {
+    if (!isSkeleton) {
+      risesFromHairlineRef.current = false;
+    }
+  }, [isSkeleton]);
+
   if (!isEnabled) {
     return null;
   }
@@ -172,10 +192,6 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
 
   const points = data?.points ?? [];
   const hasChart = hasChartData(points);
-  // Fetch errors degrade to the empty-style placeholder; a cached series
-  // keeps rendering through a failed refresh (stale chart beats blank).
-  const isErrorState = !!error && !data;
-  const isSkeleton = isLoading && !data && !isErrorState;
 
   const noticeVariant =
     data && hasChart
@@ -289,6 +305,7 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
             data?.change?.percent,
             data?.change?.absolute,
           )}
+          riseFromFlat={risesFromHairlineRef.current && !isReduceMotionEnabled}
         />
       </View>
     );
