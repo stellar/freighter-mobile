@@ -6,6 +6,7 @@ import {
 } from "config/types";
 import { formatFiatAmount, formatPercentageAmount } from "helpers/formatAmount";
 import { ThemeColors } from "hooks/useColors";
+import { getNumberFormatSettings } from "react-native-localize";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -444,7 +445,14 @@ export const formatPriceHistoryLabel = (price: string | BigNumber): string => {
     return formatFiatAmount(bn);
   }
 
-  return `${bn.lt(0) ? "-" : ""}$${abs.toFixed(subDollarDecimalPlaces(abs))}`;
+  // Below a dollar there is no grouping, so only the decimal mark needs the
+  // device's setting, as formatFiatAmount uses for the spot price.
+  const { decimalSeparator } = getNumberFormatSettings();
+  const digits = abs
+    .toFixed(subDollarDecimalPlaces(abs))
+    .replace(".", decimalSeparator);
+
+  return `${bn.lt(0) ? "-" : ""}$${digits}`;
 };
 
 /**
