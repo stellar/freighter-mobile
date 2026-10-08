@@ -63,7 +63,9 @@ import {
   clearBackgroundedAt,
   getAutoLockTimer,
   getBackgroundedAt,
+  isHashKeyExpired,
   persistAutoLockTimer,
+  refreshHashKeyExpiration,
 } from "services/autoLock";
 import { getAccount } from "services/stellar";
 import {
@@ -447,25 +449,6 @@ const loadPersistedNetwork = async (
 const keyManager = createKeyManager(Networks.PUBLIC);
 
 /**
- * Checks if a hash key is expired.
- *
- * Clock-rollback backstop: a key whose generatedAt is in the future means the
- * device clock was moved backward below the key's creation time — a rolled-back
- * clock would otherwise keep `now <= expiresAt` true indefinitely and prevent
- * the hard-expiry from ever forcing a full re-auth. Treat that as expired
- * (mirrors getBackgroundedAt's future-timestamp guard for the soft timer).
- * generatedAt is optional so keys persisted before this field fall back to the
- * plain expiry check.
- */
-const isHashKeyExpired = (hashKey: HashKey): boolean => {
-  const now = Date.now();
-  if (hashKey.generatedAt !== undefined && hashKey.generatedAt > now) {
-    return true;
-  }
-  return now > hashKey.expiresAt;
-};
-
-/**
  * Gets all accounts from the account list
  *
  * @returns {Promise<Account[]>} The list of accounts
@@ -477,6 +460,36 @@ const getAllAccounts = async (): Promise<Account[]> => {
   }
 
   return JSON.parse(accountListRaw) as Account[];
+};
+
+/**
+ * Clears a stale persisted soft-lock marker, best-effort.
+ *
+ * Only for `getAuthStatus`'s expiry paths, which have already decided the
+ * session is over and are just tidying up after themselves. That cleanup must
+ * not be able to change the decision: an error escaping to `getAuthStatus`'s
+ * outer catch downgrades a known HASH_KEY_EXPIRED session to
+ * NOT_AUTHENTICATED, which routes an account-bearing wallet to the onboarding
+ * auth stack instead of the lock screen that collects the required password
+ * re-auth. The marker is an optimisation; the returned status is the security
+ * decision.
+ *
+ * `secureDataStorage.remove` swallows its own keychain errors today, so this is
+ * defense in depth rather than a live fix. Deliberately NOT used for signIn's
+ * marker clear: there the removal is part of establishing the new session, not
+ * cleanup after a decision, so a failure genuinely means the persisted state
+ * disagrees with the session and should surface.
+ */
+const clearPersistedAuthStatus = async (): Promise<void> => {
+  try {
+    await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS);
+  } catch (error) {
+    logger.error(
+      "clearPersistedAuthStatus",
+      "Failed to clear stale persisted auth status",
+      error,
+    );
+  }
 };
 
 /**
@@ -509,26 +522,32 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     }
 
     // Read from SECURE storage (encrypted) to prevent tampering.
-    // LOCKED check comes before isHashKeyExpired: if the user locked the app,
-    // the hash key may have expired while it was sitting on the lock screen.
-    // We still want LOCKED (not HASH_KEY_EXPIRED) so the signIn fast path runs
-    // (TTL refresh + derived key cache) rather than forcing a full re-derivation.
+    // Hard expiry outranks a persisted soft lock (#924). Under sign-in
+    // anchoring (#905) the key routinely expired while sitting on the lock
+    // screen, so LOCKED deliberately won to keep the fast unlock reachable;
+    // with the TTL re-anchored on activity, an expired key here means a full
+    // backstop window (72h) of no use — exactly the genuine-idle case that
+    // must force the full password re-auth instead of the fast path. The
+    // stale soft-lock marker is consumed so later checks can't resurrect it.
     const persistedAuthStatus = await secureDataStorage.getItem(
       SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
     );
     if (persistedAuthStatus === AUTH_STATUS.LOCKED) {
+      if (hashKey && isHashKeyExpired(hashKey)) {
+        await clearPersistedAuthStatus();
+        return AUTH_STATUS.HASH_KEY_EXPIRED;
+      }
       if (temporaryStore) {
         return AUTH_STATUS.LOCKED;
       }
       // Temp store missing: LOCKED state is invalid, treat as expired
-      await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS);
+      await clearPersistedAuthStatus();
       return AUTH_STATUS.HASH_KEY_EXPIRED;
     }
 
     // Hard expiry wins over the soft timer lock: checked before the timer so a
     // session backgrounded past the hash-key TTL forces a full re-auth instead
-    // of a fast-path LOCKED that would just refresh the expired key. (The
-    // persisted-LOCKED branch above keeps the fast path — there it's intended.)
+    // of a fast-path LOCKED that would just refresh the expired key.
     if (hashKey && isHashKeyExpired(hashKey)) {
       return AUTH_STATUS.HASH_KEY_EXPIRED;
     }
@@ -550,24 +569,79 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
       // unlock path (all presets are positive durations, so no zero/null case
       // to exclude).
       if (elapsedInBackground >= autoLockTimerMs && temporaryStore) {
-        await secureDataStorage.setItem(
-          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
-          AUTH_STATUS.LOCKED,
-        );
-        await clearBackgroundedAt();
+        // Persisting the marker is best-effort here: unlike `remove`,
+        // `secureDataStorage.setItem` does throw on a keychain failure, and
+        // letting that reach the outer catch would answer NOT_AUTHENTICATED
+        // for a session we have just decided is LOCKED - sending an
+        // account-bearing wallet to the onboarding stack instead of the lock
+        // screen. That matters most on a cold start, where no in-memory lock
+        // state exists yet to fall back on. On failure the backgrounded-at
+        // timestamp is deliberately left intact (the clear is inside the try),
+        // so the next check re-derives the same lock from elapsed time and the
+        // wallet is never auto-unlockable.
+        //
+        // The store's softLock() takes the opposite line on the same write -
+        // retry once, then rethrow - and both are right: softLock also serves
+        // foreground-idle locks that have no backgrounded-at timestamp to
+        // re-derive from, so there a lost write really can leave the wallet
+        // unlocked on the next cold launch. It also sets the in-memory LOCKED
+        // state before writing, so its throw surfaces the fault without
+        // unlocking anything.
+        try {
+          await secureDataStorage.setItem(
+            SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+            AUTH_STATUS.LOCKED,
+          );
+          await clearBackgroundedAt();
+        } catch (error) {
+          logger.error(
+            "getAuthStatus",
+            "Failed to persist soft-lock auth status",
+            error,
+          );
+        }
         return AUTH_STATUS.LOCKED;
       }
 
       if (AppState.currentState === "active") {
         // Returned within the timer: consume the timestamp so the foreground
-        // interval can't lock mid-use. The hash-key TTL is deliberately NOT
-        // refreshed here — it's only anchored at credential-verified moments
-        // (signIn / generateHashKey) so key material stays bounded however
-        // often the app is reopened.
+        // interval can't lock mid-use. (The hash-key TTL re-anchor happens
+        // below, on the shared AUTHENTICATED path — not here — so it also
+        // covers ticks where no backgrounded-at timestamp exists.)
         await clearBackgroundedAt();
       }
       // Still backgrounded (periodic background check): leave the timestamp
       // intact so the timer keeps counting from the original moment.
+    }
+
+    // Re-anchor the hash-key hard-expiry on use (#924): every authenticated
+    // foreground auth check pushes the deadline out, so the backstop bounds
+    // *inactivity* — HASH_KEY_EXPIRATION_MS with no foreground use — instead
+    // of time since the last credential entry, and an actively-used wallet
+    // never hard-expires (parity with the extension's session model). Gated
+    // to the active app state so the periodic background check can't extend
+    // the deadline of a pocketed device, and throttled inside the helper so
+    // the 5s foreground tick doesn't hammer the keychain. This runs strictly
+    // after the LOCKED / hard-expiry / clock-rollback checks above, so an
+    // expired or rolled-back key can never be resurrected here — those still
+    // require signIn's credential-verified re-stamp. An orphan key (present
+    // with no temporary store, e.g. a partial wipe) is never re-anchored
+    // either, so it still hard-expires and gets cleaned up rather than having
+    // its deadline pushed out forever by each tick.
+    if (hashKey && temporaryStore && AppState.currentState === "active") {
+      try {
+        await refreshHashKeyExpiration(hashKey);
+      } catch (error) {
+        // The re-anchor is opportunistic: a failed keychain write must not
+        // demote an authenticated session (the outer catch returns
+        // NOT_AUTHENTICATED). Worst case the key keeps its old deadline and
+        // hard-expires as it would have before the re-anchor existed.
+        logger.error(
+          "getAuthStatus",
+          "Failed to refresh hash key expiration",
+          error,
+        );
+      }
     }
 
     // All conditions for authentication are met
@@ -1509,10 +1583,18 @@ const signIn = async ({
     const existingTempStore = await secureDataStorage.getItem(
       SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     );
-    if (existingHashKey && existingTempStore) {
+    if (
+      existingHashKey &&
+      existingTempStore &&
+      !isHashKeyExpired(existingHashKey)
+    ) {
       // Fast path: temp store is intact — just refresh the hard-expiry TTL.
       // Re-anchor generatedAt too (this is a credential-verified moment) so the
-      // clock-rollback backstop stays aligned with the new expiry.
+      // clock-rollback backstop stays aligned with the new expiry. An expired
+      // or rolled-back key never takes this path (getAuthStatus reports it as
+      // HASH_KEY_EXPIRED, but expiry can also cross between that check and
+      // this call): it falls through to the full rebuild below, which mints a
+      // fresh key instead of re-stamping stale material.
       const refreshNow = Date.now();
       await secureDataStorage.setItem(
         SENSITIVE_STORAGE_KEYS.HASH_KEY,
@@ -3259,8 +3341,9 @@ export const clearSessionAuthValidMemo = (): void => {
  * so it evaluates account existence, persisted LOCKED, hash-key hard-expiry AND
  * the auto-lock timer (`backgroundedAt` + `autoLockTimer`), rather than
  * re-implementing a subset. Result is memoized for SESSION_AUTH_VALID_TTL_MS
- * (see above). Does not decrypt the temporary store (no PBKDF2); persisted/secure
- * reads only.
+ * (see above). Does not decrypt the temporary store (no scrypt); secure-storage
+ * reads plus at most one throttled hash-key re-anchor write per hour on the
+ * active path.
  */
 export const isSessionAuthValid = async (): Promise<boolean> => {
   const memo = sessionAuthValidMemo;
