@@ -1,4 +1,11 @@
-import { Address, Asset as SdkToken, Keypair, xdr } from "@stellar/stellar-sdk";
+import {
+  Address,
+  Asset as SdkToken,
+  Keypair,
+  nativeToScVal,
+  Operation,
+  xdr,
+} from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import { NETWORKS, TESTNET_NETWORK_DETAILS } from "config/constants";
 import {
@@ -17,13 +24,18 @@ import {
   getInvocationArgs,
   getInvocationDetails,
   getNativeContractDetails,
+  getTokenInvocationArgs,
   INVOCATION_TYPE_EXTERNAL_REF,
+  INVOCATION_TYPE_INVOKE,
   INVOCATION_TYPE_UNRECOGNIZED,
   INVOCATION_TYPE_WASM,
   scValByType,
+  scValToDisplayTokens,
+  scValToDisplayValue,
   SorobanTokenInterface,
   addressToString,
   isSorobanTransaction,
+  xdrStringToRaw,
 } from "helpers/soroban";
 
 // Mock isContractId before importing the module
@@ -535,15 +547,35 @@ describe("soroban helpers", () => {
       ).toBe("\\xff\\xfe");
     });
 
-    it("hex-encodes string payloads that are not valid UTF-8", () => {
+    it("keeps non-UTF-8 string payloads distinguishable via their SEP-51 form", () => {
       expect(
         scValByType(xdr.ScVal.scvString(new Uint8Array([0xff, 0xfe]))),
-      ).toBe("fffe");
+      ).toBe("\\xff\\xfe");
+      // Two distinct binary payloads must not collapse onto one screen string.
+      expect(
+        scValByType(xdr.ScVal.scvString(new Uint8Array([0xff, 0xfd]))),
+      ).toBe("\\xff\\xfd");
     });
 
-    it("hex-encodes bytes", () => {
+    it("keeps non-UTF-8 symbol payloads distinguishable via their SEP-51 form", () => {
+      expect(
+        scValByType(xdr.ScVal.scvSymbol(new Uint8Array([0xff, 0xfe]))),
+      ).toBe("\\xff\\xfe");
+    });
+
+    it("leaves valid non-ASCII text readable rather than escaping it", () => {
+      expect(scValByType(xdr.ScVal.scvString("caf\u00e9"))).toBe("caf\u00e9");
+      expect(scValByType(xdr.ScVal.scvExecutableTag("caf\u00e9"))).toBe(
+        "caf\u00e9",
+      );
+    });
+
+    // The `0x` prefix is what the value-literal form uses, and the two forms
+    // rendering the same bytes differently is exactly the drift this whole
+    // change is about.
+    it("hex-encodes bytes, prefixed the same way the value literal is", () => {
       expect(scValByType(xdr.ScVal.scvBytes(new Uint8Array([1, 2, 255])))).toBe(
-        "0102ff",
+        "0x0102ff",
       );
     });
 
@@ -562,6 +594,239 @@ describe("soroban helpers", () => {
     it("stringifies integers", () => {
       expect(scValByType(xdr.ScVal.scvU32(7))).toBe("7");
       expect(scValByType(xdr.ScVal.scvI64(BigInt("-5")))).toBe("-5");
+    });
+    describe("maps and vectors", () => {
+      const mapEntry = (key: xdr.ScVal, val: xdr.ScVal) =>
+        new xdr.ScMapEntry({ key, val });
+
+      it("renders a map as a value literal", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvMap([
+              mapEntry(xdr.ScVal.scvString("key"), xdr.ScVal.scvU64(BigInt(1))),
+            ]),
+          ),
+        ).toBe('{\n  "key": 1\n}');
+      });
+
+      it("renders a vector as a value literal", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvVec([xdr.ScVal.scvU32(1), xdr.ScVal.scvString("two")]),
+          ),
+        ).toBe('[\n  1,\n  "two"\n]');
+      });
+
+      it("renders empty maps and vectors", () => {
+        expect(scValByType(xdr.ScVal.scvMap([]))).toBe("{}");
+        expect(scValByType(xdr.ScVal.scvVec([]))).toBe("[]");
+      });
+
+      // Decoding a map to a JS object coerces every key to a string and lets a
+      // later entry overwrite an earlier one, so these maps could render as a
+      // single line on the screen the user approves from.
+      it("renders every entry of a map with mixed-type keys", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvMap([
+              mapEntry(
+                xdr.ScVal.scvU64(BigInt(1)),
+                xdr.ScVal.scvString("from-u64"),
+              ),
+              mapEntry(
+                xdr.ScVal.scvString("1"),
+                xdr.ScVal.scvString("from-string"),
+              ),
+            ]),
+          ),
+        ).toBe('{\n  1: "from-u64",\n  "1": "from-string"\n}');
+      });
+
+      it("renders every entry of a map with structured keys", () => {
+        const structKey = (id: number) =>
+          xdr.ScVal.scvMap([
+            mapEntry(xdr.ScVal.scvSymbol("id"), xdr.ScVal.scvU32(id)),
+          ]);
+        const rendered = scValByType(
+          xdr.ScVal.scvMap(
+            [0, 1, 2, 3].map((id) =>
+              mapEntry(structKey(id), xdr.ScVal.scvString(`v${id}`)),
+            ),
+          ),
+        );
+
+        expect(rendered).toBe(
+          '{\n  { id: 0 }: "v0",\n  { id: 1 }: "v1",\n  { id: 2 }: "v2",\n  { id: 3 }: "v3"\n}',
+        );
+        expect(rendered).not.toContain("[object Object]");
+      });
+
+      it("distinguishes a symbol key from a string key", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvMap([
+              mapEntry(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvString("sym")),
+              mapEntry(xdr.ScVal.scvString("a"), xdr.ScVal.scvString("str")),
+            ]),
+          ),
+        ).toBe('{\n  a: "sym",\n  "a": "str"\n}');
+      });
+
+      it("renders every entry of an address-keyed map", () => {
+        const account = Keypair.random().publicKey();
+        expect(
+          scValByType(
+            xdr.ScVal.scvMap([
+              mapEntry(
+                xdr.ScVal.scvAddress(new Address(account).toScAddress()),
+                xdr.ScVal.scvU32(0),
+              ),
+              mapEntry(
+                xdr.ScVal.scvAddress(new Address(OWNER_CONTRACT).toScAddress()),
+                xdr.ScVal.scvU32(1),
+              ),
+            ]),
+          ),
+        ).toBe(`{\n  ${account}: 0,\n  ${OWNER_CONTRACT}: 1\n}`);
+      });
+
+      it("renders every entry of a u32-keyed map", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvMap(
+              [0, 1, 2].map((id) =>
+                mapEntry(xdr.ScVal.scvU32(id), xdr.ScVal.scvBool(true)),
+              ),
+            ),
+          ),
+        ).toBe("{\n  0: true,\n  1: true,\n  2: true\n}");
+      });
+
+      it("does not collapse a map nested inside a vector", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvVec([
+              xdr.ScVal.scvMap([
+                mapEntry(
+                  xdr.ScVal.scvU64(BigInt(1)),
+                  xdr.ScVal.scvString("from-u64"),
+                ),
+                mapEntry(
+                  xdr.ScVal.scvString("1"),
+                  xdr.ScVal.scvString("from-string"),
+                ),
+              ]),
+            ]),
+          ),
+        ).toBe('[\n  {\n    1: "from-u64",\n    "1": "from-string"\n  }\n]');
+      });
+
+      it("renders binary content nested in a container without decoding it as text", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvVec([
+              xdr.ScVal.scvString(
+                new Uint8Array([...Buffer.from("alice"), 0xff]),
+              ),
+              xdr.ScVal.scvBytes(new Uint8Array([0xde, 0xad])),
+            ]),
+          ),
+        ).toBe('[\n  "alice\\xff",\n  0xdead\n]');
+      });
+    });
+  });
+
+  // A function name is an SCSymbol, so it is a byte string rather than
+  // guaranteed text. A lenient decode renders every invalid byte as U+FFFD,
+  // which would collapse two distinct signed names onto one screen string.
+  describe("function name decoding", () => {
+    const invalidFnName = (suffix: number) =>
+      new Uint8Array([...Buffer.from("transfer"), suffix]);
+
+    const contractFn = (functionName: string | Uint8Array, args: xdr.ScVal[]) =>
+      new xdr.InvokeContractArgs({
+        contractAddress: new Address(OWNER_CONTRACT).toScAddress(),
+        functionName: functionName as unknown as string,
+        args,
+      });
+
+    const contractFnInvocation = (functionName: string | Uint8Array) =>
+      new xdr.SorobanAuthorizedInvocation({
+        function:
+          xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+            contractFn(functionName, []),
+          ),
+        subInvocations: [],
+      });
+
+    const invokeHostFn = (
+      functionName: string | Uint8Array,
+      args: xdr.ScVal[],
+    ) => {
+      const op = Operation.fromXDRObject(
+        Operation.invokeHostFunction({
+          func: xdr.HostFunction.hostFunctionTypeInvokeContract(
+            contractFn(functionName, args),
+          ),
+          auth: [],
+        }),
+      );
+      // Narrow to the invokeHostFunction arm rather than asserting, so the
+      // fixture fails loudly if the builder ever stops producing one.
+      if (op.type !== "invokeHostFunction") {
+        throw new Error("unreachable");
+      }
+      return op;
+    };
+
+    const fnNameOf = (functionName: string | Uint8Array) => {
+      const [details] = getInvocationDetails(
+        contractFnInvocation(functionName),
+      );
+      if (details.type !== INVOCATION_TYPE_INVOKE) {
+        throw new Error("unreachable");
+      }
+      return details.fnName;
+    };
+
+    it("renders a non-UTF-8 function name in its reversible SEP-51 form", () => {
+      expect(fnNameOf(invalidFnName(0xff))).toBe("transfer\\xff");
+      expect(fnNameOf(invalidFnName(0xff))).not.toContain("�");
+    });
+
+    it("does not collapse two distinct non-UTF-8 function names", () => {
+      expect(fnNameOf(invalidFnName(0xff))).not.toBe(
+        fnNameOf(invalidFnName(0xfe)),
+      );
+    });
+
+    it("leaves a valid function name untouched", () => {
+      expect(fnNameOf("transfer")).toBe("transfer");
+    });
+
+    it("treats a non-UTF-8 function name as not a token invocation", () => {
+      // A binary name can never be one of the token interfaces, so this must
+      // bail out rather than match on a lossily decoded string or throw.
+      expect(
+        getTokenInvocationArgs(invokeHostFn(invalidFnName(0xff), [])),
+      ).toBe(null);
+    });
+
+    it("still recognises a valid token transfer", () => {
+      const from = Keypair.random().publicKey();
+      const to = Keypair.random().publicKey();
+      const op = invokeHostFn(SorobanTokenInterface.transfer, [
+        nativeToScVal(from, { type: "address" }),
+        nativeToScVal(to, { type: "address" }),
+        nativeToScVal(BigInt(100), { type: "i128" }),
+      ]);
+
+      expect(getTokenInvocationArgs(op)).toMatchObject({
+        fnName: SorobanTokenInterface.transfer,
+        from,
+        to,
+        amount: BigInt(100),
+      });
     });
   });
 
@@ -1015,5 +1280,275 @@ describe("getContractFnArgNames", () => {
     };
 
     expect(getContractFnArgNames(spec, "bump", 0)).toEqual([]);
+  });
+});
+
+const mapEntryOf = (key: xdr.ScVal, val: xdr.ScVal) =>
+  new xdr.ScMapEntry({ key, val });
+
+/**
+ * A signing screen is only honest if the string it draws stands for exactly
+ * one signed byte string. Every case below is a way two distinct payloads
+ * could otherwise collapse onto one line.
+ */
+describe("signing-screen text escaping", () => {
+  it("escapes an invalid byte in a string", () => {
+    const rendered = scValByType(
+      xdr.ScVal.scvString(new Uint8Array([0x61, 0x6c, 0xff])),
+    );
+    expect(rendered).toBe("al\\xff");
+  });
+
+  it("escapes an invalid byte in a symbol", () => {
+    expect(scValByType(xdr.ScVal.scvSymbol(new Uint8Array([0x61, 0xfe])))).toBe(
+      "a\\xfe",
+    );
+  });
+
+  it("escapes an invalid byte in an executable tag", () => {
+    expect(
+      scValByType(xdr.ScVal.scvExecutableTag(new Uint8Array([0x61, 0xff]))),
+    ).toBe("a\\xff");
+  });
+
+  it("does not let two distinct invalid payloads collapse onto one string", () => {
+    const first = scValByType(xdr.ScVal.scvString(new Uint8Array([0xff])));
+    const second = scValByType(xdr.ScVal.scvString(new Uint8Array([0xfe])));
+    expect(first).not.toBe(second);
+  });
+
+  // The escape alphabet is prefix-free because the backslash is itself
+  // escaped, so valid text can never spell out another payload's escape.
+  it("does not let valid text impersonate an escaped byte string", () => {
+    const escapedByte = scValByType(
+      xdr.ScVal.scvString(new Uint8Array([0xff])),
+    );
+    const literalText = scValByType(xdr.ScVal.scvString("\\xff"));
+    expect(escapedByte).toBe("\\xff");
+    expect(literalText).toBe("\\\\xff");
+    expect(literalText).not.toBe(escapedByte);
+  });
+
+  it("leaves legible non-ASCII text alone", () => {
+    expect(scValByType(xdr.ScVal.scvString("café ☕"))).toBe("café ☕");
+  });
+
+  // Valid UTF-8, but invisible: left raw, a bidi override reorders what is
+  // drawn without changing what is signed.
+  it("escapes invisible and control codepoints", () => {
+    expect(scValByType(xdr.ScVal.scvString("a‮b"))).toBe("a\\u{202e}b");
+    expect(scValByType(xdr.ScVal.scvString("a​b"))).toBe("a\\u{200b}b");
+    expect(scValByType(xdr.ScVal.scvString("a\u0007b"))).toBe("a\\x07b");
+    expect(scValByType(xdr.ScVal.scvString("a\tb"))).toBe("a\\tb");
+  });
+
+  it("escapes invalid UTF-8 nested inside a container", () => {
+    const rendered = scValToDisplayValue(
+      xdr.ScVal.scvVec([
+        xdr.ScVal.scvMap([
+          mapEntryOf(
+            xdr.ScVal.scvSymbol("k"),
+            xdr.ScVal.scvString(new Uint8Array([0x61, 0xff])),
+          ),
+        ]),
+      ]),
+    );
+    expect(rendered).toContain('"a\\xff"');
+  });
+
+  // These all exercise the hand-written UTF-8 decoder that replaced
+  // `new TextDecoder("utf-8", { fatal: true })`. React Native's polyfill throws
+  // from that constructor, so the strict decode has to be written out -- and
+  // written out means it needs its own coverage of the shapes a strict decoder
+  // is supposed to reject.
+  describe("strict UTF-8 decoding", () => {
+    const str = (...bytes: number[]) =>
+      xdr.ScVal.scvString(new Uint8Array(bytes));
+
+    it("accepts a four-byte codepoint", () => {
+      // U+1F680 ROCKET
+      expect(scValByType(str(0xf0, 0x9f, 0x9a, 0x80))).toBe("\u{1f680}");
+    });
+
+    it("rejects an overlong encoding", () => {
+      // 0xc0 0x80 is a two-byte spelling of U+0000.
+      expect(scValByType(str(0xc0, 0x80))).toBe("\\xc0\\x80");
+    });
+
+    it("rejects a lone continuation byte", () => {
+      expect(scValByType(str(0x80))).toBe("\\x80");
+    });
+
+    it("rejects a truncated multi-byte sequence", () => {
+      expect(scValByType(str(0x61, 0xe2, 0x82))).toBe("a\\xe2\\x82");
+    });
+
+    it("rejects a surrogate half", () => {
+      // 0xed 0xa0 0x80 is CESU-8 for U+D800.
+      expect(scValByType(str(0xed, 0xa0, 0x80))).toBe("\\xed\\xa0\\x80");
+    });
+
+    it("escapes only the bad byte, not the text that follows it", () => {
+      expect(scValByType(str(0x61, 0xff, 0x62))).toBe("a\\xffb");
+    });
+  });
+
+  describe("xdrStringToRaw", () => {
+    it("returns the text of a valid name", () => {
+      expect(xdrStringToRaw(new xdr.XdrString("transfer"))).toBe("transfer");
+    });
+
+    // An escaped display string is not a name any contract spec declares, so
+    // there is nothing to look up rather than something wrong to look up.
+    it("returns undefined when the bytes are not text", () => {
+      expect(xdrStringToRaw(new xdr.XdrString(new Uint8Array([0xff])))).toBe(
+        undefined,
+      );
+    });
+  });
+});
+
+describe("display tokens", () => {
+  it("tags every scalar with the arm it was signed as, at any depth", () => {
+    const tokens = scValToDisplayTokens(
+      xdr.ScVal.scvMap([
+        mapEntryOf(
+          xdr.ScVal.scvSymbol("nested"),
+          xdr.ScVal.scvVec([
+            xdr.ScVal.scvU64(BigInt(1)),
+            xdr.ScVal.scvString("1"),
+          ]),
+        ),
+      ]),
+    );
+
+    const values = tokens
+      .filter((token) => token.kind === "value")
+      .map((token) => [token.text, token.scValType]);
+
+    expect(values).toEqual([
+      ["nested", "scvSymbol"],
+      ["1", "scvU64"],
+      ['"1"', "scvString"],
+    ]);
+  });
+
+  // The rendered text and the copied text are the same stream, so they cannot
+  // drift apart.
+  it("joins back to exactly the string form", () => {
+    const fixtures = [
+      xdr.ScVal.scvU64(BigInt(7)),
+      xdr.ScVal.scvString("hello"),
+      xdr.ScVal.scvBool(false),
+      xdr.ScVal.scvVoid(),
+      xdr.ScVal.scvVec([xdr.ScVal.scvU32(1), xdr.ScVal.scvU32(2)]),
+      xdr.ScVal.scvMap([
+        mapEntryOf(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvString("b")),
+      ]),
+    ];
+
+    fixtures.forEach((scVal) => {
+      [{}, { compact: true }].forEach((opts) => {
+        expect(
+          scValToDisplayTokens(scVal, opts)
+            .map((token) => token.text)
+            .join(""),
+        ).toBe(scValToDisplayValue(scVal, opts));
+      });
+    });
+  });
+
+  const EMPTY_ROW_FIXTURES = [
+    xdr.ScVal.scvBool(false),
+    xdr.ScVal.scvBool(true),
+    xdr.ScVal.scvVoid(),
+    xdr.ScVal.scvLedgerKeyContractInstance(),
+    xdr.ScVal.scvU32(0),
+    // A signed empty string is a value too; the quoting in the literal form is
+    // what keeps it from being nothing at all.
+    xdr.ScVal.scvString(""),
+    xdr.ScVal.scvMap([]),
+    xdr.ScVal.scvVec([]),
+  ];
+
+  // `<Text>{undefined}</Text>` and `<Text>{false}</Text>` both render nothing,
+  // so anything that reaches the screen as a non-string, or as the empty
+  // string, is a blank row on the screen the user approves from.
+  it("never renders a signed value as an empty row", () => {
+    EMPTY_ROW_FIXTURES.forEach((scVal) => {
+      const rendered = scValToDisplayValue(scVal);
+      expect(typeof rendered).toBe("string");
+      expect(rendered.length).toBeGreaterThan(0);
+    });
+  });
+
+  // `scValByType` is the bare-scalar projection, so it does not quote — an
+  // empty string is legitimately empty there. What it must never do is hand
+  // back something React drops entirely.
+  it("always projects a scalar to a string", () => {
+    EMPTY_ROW_FIXTURES.forEach((scVal) => {
+      expect(typeof scValByType(scVal)).toBe("string");
+    });
+  });
+
+  it("renders false rather than dropping it", () => {
+    expect(scValByType(xdr.ScVal.scvBool(false))).toBe("false");
+    expect(scValByType(xdr.ScVal.scvVoid())).toBe("void");
+  });
+});
+
+describe("contract instances", () => {
+  const WASM_HASH = new Uint8Array(32).fill(0xab);
+
+  const instanceOf = (storage: xdr.ScMapEntry[] | null) =>
+    xdr.ScVal.scvContractInstance(
+      new xdr.ScContractInstance({
+        executable: xdr.ContractExecutable.contractExecutableWasm(WASM_HASH),
+        storage,
+      }),
+    );
+
+  it("renders the storage map, not just the executable", () => {
+    const rendered = scValByType(
+      instanceOf([
+        mapEntryOf(xdr.ScVal.scvSymbol("admin"), xdr.ScVal.scvU32(1)),
+      ]),
+    );
+    expect(rendered).toContain("storage:");
+    expect(rendered).toContain("admin");
+  });
+
+  // Two instances sharing an executable are told apart by storage alone, so
+  // dropping it makes them indistinguishable on the screen being approved.
+  it("tells two instances sharing an executable apart", () => {
+    const first = scValByType(
+      instanceOf([mapEntryOf(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvU32(1))]),
+    );
+    const second = scValByType(
+      instanceOf([mapEntryOf(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvU32(2))]),
+    );
+    expect(first).not.toBe(second);
+  });
+
+  // `storage` is an optional pointer: absent and empty are different signed
+  // values.
+  it("distinguishes absent storage from empty storage", () => {
+    expect(scValByType(instanceOf(null))).not.toBe(scValByType(instanceOf([])));
+  });
+
+  it("stays on one line when used as a map key", () => {
+    const rendered = scValToDisplayValue(
+      xdr.ScVal.scvMap([
+        mapEntryOf(
+          instanceOf([
+            mapEntryOf(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvU32(1)),
+          ]),
+          xdr.ScVal.scvU32(9),
+        ),
+      ]),
+    );
+    // One signed entry is exactly one line: the opening brace's newline, the
+    // entry, and the closing brace's newline — nothing more.
+    expect(rendered.split("\n")).toHaveLength(3);
   });
 });

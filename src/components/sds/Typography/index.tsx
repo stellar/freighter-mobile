@@ -285,6 +285,11 @@ export interface TextProps extends TypographyBaseProps {
    * "Learn more" link) can announce themselves to screen readers.
    */
   accessibilityRole?: AccessibilityRole;
+  /**
+   * Forwarded to the native Text. Lets a block built from many nested spans
+   * still be announced as one value rather than as a run of fragments.
+   */
+  accessibilityLabel?: string;
 }
 
 const StyledText = styled(BaseText)<{

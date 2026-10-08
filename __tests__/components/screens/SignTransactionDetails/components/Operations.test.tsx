@@ -609,8 +609,11 @@ describe("SignTransactionDetails > Operations: contract argument labels", () => 
     const keys = getAllByTestId("ParameterKey").map(
       (node) => node.props.children,
     );
+    // A parameter renders as a stream of tappable scalars, so its children are
+    // elements rather than one string; the accessibility label carries the
+    // whole rendered value as text.
     const values = getAllByTestId("ParameterValue").map(
-      (node) => node.props.children,
+      (node) => node.props.accessibilityLabel,
     );
 
     expect(keys).toEqual([
