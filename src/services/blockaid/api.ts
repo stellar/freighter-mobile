@@ -177,10 +177,17 @@ export const scanBulkTokens = async (
       throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
     }
 
-    // Build URL with query parameters for bulk scanning
+    // The backend parses each id as CODE-ISSUER and 400s the whole batch on
+    // one it can't, so drop any id with other than exactly one hyphen (e.g. a
+    // SEP-41 symbol containing a hyphen). The issuer itself isn't validated.
     const queryParams = addressList
+      .filter((address) => address.split("-").length === 2)
       .map((address) => `asset_ids=${encodeURIComponent(address)}`)
       .join("&");
+    // The backend rejects a request with no ids.
+    if (!queryParams) {
+      return { results: {} } as Blockaid.TokenBulkScanResponse;
+    }
     const endpoint = `${BLOCKAID_ENDPOINTS.SCAN_BULK_TOKENS}?${queryParams}`;
 
     const response = await freighterBackendV1.get<

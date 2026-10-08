@@ -50,6 +50,41 @@ describe("scanBulkTokens error handling", () => {
   });
 });
 
+describe("scanBulkTokens id validation", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // freighter-backend reads each id's key as split("-")[1] and rejects the
+  // whole batch if any one fails, so a SEP-41 symbol like "USDC-SEAV" would
+  // cost every other token in the request its verdict.
+  it("leaves out ids whose code contains a hyphen so the rest of the batch is still scanned", async () => {
+    mockGet.mockResolvedValue({
+      data: {
+        data: { results: { "USDC-GISSUER": { result_type: "Benign" } } },
+      },
+    });
+
+    await scanBulkTokens({
+      addressList: ["USDC-GISSUER", "USDC-SEAV-CCONTRACT"],
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockGet).toHaveBeenCalledWith(
+      "/scan-asset-bulk?asset_ids=USDC-GISSUER",
+      expect.anything(),
+    );
+  });
+
+  it("returns no results without calling the backend when every id is left out", async () => {
+    const result = await scanBulkTokens({
+      addressList: ["USDC-SEAV-CCONTRACT"],
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockGet).not.toHaveBeenCalled();
+    expect(result).toEqual({ results: {} });
+  });
+});
+
 describe("scanToken native XLM handling", () => {
   beforeEach(() => jest.clearAllMocks());
 
