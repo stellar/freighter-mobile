@@ -105,6 +105,22 @@ const runBeforeSendWith = (event: Partial<ErrorEvent>): ErrorEvent | null => {
   return initOpts.beforeSend(event as ErrorEvent, {}) as ErrorEvent | null;
 };
 
+/**
+ * Drive the configured beforeBreadcrumb through a synthetic breadcrumb.
+ * Returns whatever the hook returns (the breadcrumb, or null if dropped).
+ */
+const runBeforeBreadcrumb = (
+  breadcrumb: Sentry.Breadcrumb,
+): Sentry.Breadcrumb | null => {
+  initializeSentry();
+  const initOpts = mockedSentry.init.mock.calls[0]?.[0];
+  if (!initOpts?.beforeBreadcrumb) {
+    throw new Error("beforeBreadcrumb not configured");
+  }
+  // The hint argument is unused by the scrub logic; pass an empty obj.
+  return initOpts.beforeBreadcrumb(breadcrumb, {});
+};
+
 // Drain the microtask queue so queued lifecycle transitions get a chance to
 // start (and park on their first await) without settling the whole chain.
 const flushMicrotasks = (): Promise<void> =>
@@ -398,6 +414,98 @@ describe("sentryConfig.beforeSend filters", () => {
         }) as ErrorEvent;
 
         expect(result?.contexts?.appContext?.publicKey).toBe(PUBLIC_KEY);
+      });
+    });
+
+    describe("beforeBreadcrumb applies scrub at creation time", () => {
+      // beforeSend only scrubs breadcrumbs attached to events that pass
+      // through the JS layer. Native crashes, iOS app hangs and Android
+      // ANRs ship the breadcrumb buffer as stored, so the scrub has to
+      // happen on the way in for those paths to be covered.
+
+      it("scrubs the publicKey from an http breadcrumb data.url", () => {
+        const result = runBeforeBreadcrumb({
+          category: "http",
+          type: "http",
+          data: {
+            url: `https://horizon.stellar.org/accounts/${PUBLIC_KEY}/operations`,
+            method: "GET",
+            status_code: 200,
+          },
+        });
+
+        expect(result?.data?.url).toBe(
+          "https://horizon.stellar.org/accounts/G***/operations",
+        );
+      });
+
+      it("scrubs the publicKey from a backend account-history url", () => {
+        const result = runBeforeBreadcrumb({
+          category: "http",
+          data: { url: `/account-history/${PUBLIC_KEY}` },
+        });
+
+        expect(result?.data?.url).toBe("/account-history/G***");
+      });
+
+      it("scrubs breadcrumb.message, which beforeSend does not touch", () => {
+        const result = runBeforeBreadcrumb({
+          category: "console",
+          message: `Fetching balances for ${PUBLIC_KEY}`,
+        });
+
+        expect(result?.message).toBe("Fetching balances for G***");
+      });
+
+      it("scrubs a StrKey nested inside breadcrumb data", () => {
+        const result = runBeforeBreadcrumb({
+          category: "xhr",
+          data: { response: { owner: PUBLIC_KEY, otherField: "ok" } },
+        });
+
+        const response = result?.data?.response as {
+          owner?: string;
+          otherField?: string;
+        };
+        expect(response.owner).toBe("G***");
+        expect(response.otherField).toBe("ok");
+      });
+
+      it("scrubs a secret seed to S*** (defense-in-depth)", () => {
+        const result = runBeforeBreadcrumb({
+          category: "console",
+          message: `Imported ${SECRET_SEED}`,
+        });
+
+        expect(result?.message).toBe("Imported S***");
+      });
+
+      it("scrubs every StrKey when a url contains more than one", () => {
+        const result = runBeforeBreadcrumb({
+          category: "http",
+          data: {
+            url: `/paths?from=${PUBLIC_KEY}&to=${PUBLIC_KEY_2}`,
+          },
+        });
+
+        expect(result?.data?.url).toBe("/paths?from=G***&to=G***");
+      });
+
+      it("leaves a breadcrumb without a StrKey unchanged", () => {
+        const result = runBeforeBreadcrumb({
+          category: "navigation",
+          message: "Navigated to Settings",
+          data: { from: "Home", to: "Settings" },
+        });
+
+        expect(result?.message).toBe("Navigated to Settings");
+        expect(result?.data).toEqual({ from: "Home", to: "Settings" });
+      });
+
+      it("returns the breadcrumb when it carries neither message nor data", () => {
+        const result = runBeforeBreadcrumb({ category: "ui.tap" });
+
+        expect(result).toEqual({ category: "ui.tap" });
       });
     });
 
