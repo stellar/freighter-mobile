@@ -5,11 +5,17 @@ import TokenPriceDelta from "components/screens/TokenDetailsScreen/components/Pr
 import { Display, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { useBalancesStore } from "ducks/balances";
+import {
+  useInspectedPriceHistory,
+  useSelectedPriceHistoryRange,
+} from "ducks/priceHistory";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatBalanceAmount, formatFiatAmount } from "helpers/formatAmount";
+import { formatPriceHistoryLabel } from "helpers/priceHistoryChart";
 import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
+import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import React from "react";
 import { View } from "react-native";
 
@@ -58,6 +64,9 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const { t } = useAppTranslation();
   const isSorobanToken = isContractId(tokenId);
   const tokenBalance = useTokenDetailBalance(tokenId);
+  const isPriceHistoryEnabled = usePriceHistoryEnabled(network);
+  const inspected = useInspectedPriceHistory(network, tokenId);
+  const selectedRange = useSelectedPriceHistoryRange(network, tokenId);
 
   // Early return if tokenBalance is not available
   if (!tokenBalance) {
@@ -96,12 +105,27 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const { name } = getTokenDisplayInfo();
   const hasPrice = tokenBalance.currentPrice && tokenBalance.fiatTotal;
 
-  // The price is live spot and does NOT vary by timeframe; only the delta
-  // beneath it follows the chart's selected range (§7.3).
+  // While a drag-to-inspect is in progress the price is the inspected
+  // point's close; released, it is spot again (Phase 3). Guarded on the
+  // SELECTED range too, exactly like {@link TokenPriceDelta}: keeps the price
+  // honest if an inspection ever carries another range. `scrollEnabled` needs
+  // no such guard — it follows the gesture itself, independent of range.
+  // Otherwise the price is live spot and does NOT vary by timeframe; only the
+  // delta beneath it follows the chart's selected range (§7.3).
+  const inspectedHeaderPrice =
+    isPriceHistoryEnabled && inspected && inspected.range === selectedRange
+      ? inspected.point.p
+      : undefined;
+
+  // An active inspection re-points the header even without a spot quote — the
+  // chart is fetched independently of it, so a spot-price failure must not
+  // hide a drawable, inspectable series.
   const renderPriceInfo = () => (
     <View className="gap-1">
-      <Display xs medium>
-        {formatFiatAmount(tokenBalance.currentPrice ?? "0")}
+      <Display xs medium testID="token-price-header-price">
+        {inspectedHeaderPrice !== undefined
+          ? formatPriceHistoryLabel(inspectedHeaderPrice)
+          : formatFiatAmount(tokenBalance.currentPrice ?? "0")}
       </Display>
       <TokenPriceDelta
         tokenId={tokenId}
@@ -129,7 +153,9 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
         <Text md medium secondary>
           {name}
         </Text>
-        {hasPrice ? renderPriceInfo() : renderBalanceInfo()}
+        {hasPrice || inspectedHeaderPrice !== undefined
+          ? renderPriceInfo()
+          : renderBalanceInfo()}
       </View>
     </View>
   );

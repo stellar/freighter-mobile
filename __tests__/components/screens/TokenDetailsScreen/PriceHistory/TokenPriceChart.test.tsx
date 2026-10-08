@@ -1,5 +1,6 @@
 import { act, fireEvent, renderHook } from "@testing-library/react-native";
 import TokenPriceChart, {
+  buildChartFillPath,
   buildChartLinePath,
   axisLabelWidth,
   clampAxisLabelX,
@@ -7,6 +8,8 @@ import TokenPriceChart, {
   priceChartHeight,
   priceChartLabelHeight,
   PRICE_CHART_LINE_HEIGHT,
+  INSPECT_GESTURE_TEST_ID,
+  INSPECT_LONG_PRESS_MS,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChart";
 import { TEXT_SIZES } from "components/sds/Typography";
 import { getThemeColors } from "config/colors";
@@ -14,6 +17,7 @@ import { fsValue } from "helpers/dimensions";
 import {
   CHART_MORPH_DURATION_MS,
   computeChartGeometry,
+  formatInspectedTimestamp,
   interpolateChartCoordinates,
   PriceChangeDirection,
 } from "helpers/priceHistoryChart";
@@ -22,13 +26,19 @@ import {
   RenderedTree,
   renderWithProviders,
 } from "helpers/testUtils";
-import React from "react";
+import React, { useLayoutEffect } from "react";
 import {
   AccessibilityInfo,
+  DeviceEventEmitter,
   Dimensions,
   StyleSheet,
   useWindowDimensions,
 } from "react-native";
+import { State, PanGesture } from "react-native-gesture-handler";
+import {
+  fireGestureHandler,
+  getByGestureTestId,
+} from "react-native-gesture-handler/jest-utils";
 
 // `useColorScheme` reports "light" under the react-native jest preset, so the
 // component resolves its palette through the light theme. The two status
@@ -60,6 +70,7 @@ const renderChart = (direction: PriceChangeDirection) =>
       testID="chart"
       points={points}
       resolutionSeconds={900}
+      range="1D"
       width={300}
       direction={direction}
     />,
@@ -198,6 +209,7 @@ describe("TokenPriceChart timeframe morph", () => {
         testID="chart"
         points={series}
         resolutionSeconds={resolutionSeconds}
+        range="1D"
         width={width}
         direction="positive"
       />,
@@ -221,6 +233,7 @@ describe("TokenPriceChart timeframe morph", () => {
           testID="chart"
           points={series}
           resolutionSeconds={resolutionSeconds}
+          range="1D"
           width={width}
           direction={direction}
         />,
@@ -408,6 +421,7 @@ describe("TokenPriceChart with too few points to plot", () => {
           testID="chart"
           points={[{ t: 1786636800, p: "0.1589" }]}
           resolutionSeconds={900}
+          range="1D"
           width={300}
           direction="positive"
         />,
@@ -509,6 +523,7 @@ describe("axis label placement uses the live text scale", () => {
         testID="chart"
         points={rising}
         resolutionSeconds={900}
+        range="1D"
         width={width}
         direction="positive"
       />,
@@ -554,6 +569,7 @@ describe("axis labels reposition once they have been measured", () => {
         testID="chart"
         points={rising}
         resolutionSeconds={900}
+        range="1D"
         width={width}
         direction="positive"
       />,
@@ -603,6 +619,7 @@ describe("axis label measurements do not outlive their text", () => {
         testID="chart"
         points={rising}
         resolutionSeconds={900}
+        range="1D"
         width={width}
         direction="positive"
       />,
@@ -630,6 +647,7 @@ describe("axis label measurements do not outlive their text", () => {
         testID="chart"
         points={higher}
         resolutionSeconds={900}
+        range="1D"
         width={width}
         direction="positive"
       />,
@@ -673,6 +691,7 @@ describe("axis label measurements survive their own edge cases", () => {
         testID="chart"
         points={series}
         resolutionSeconds={900}
+        range="1D"
         width={WIDTH}
         direction="positive"
       />,
@@ -707,5 +726,476 @@ describe("axis label measurements survive their own edge cases", () => {
     });
 
     expect(opacityOf()).toBe(0);
+  });
+});
+
+describe("drag to inspect", () => {
+  // RNTL skips a11y-hidden nodes by default; the timestamp is one.
+  const HIDDEN = { includeHiddenElements: true };
+  const width = 300;
+  // 4 points spanning the width: bucket ends at 900, 1800, 2700, 3600 → x 0, 100, 200, 300
+  const inspectPoints = [
+    { t: 0, p: "1.00" },
+    { t: 900, p: "1.10" },
+    { t: 1800, p: "1.05" },
+    { t: 2700, p: "1.20" },
+  ];
+  const renderInspectable = (
+    props: Partial<React.ComponentProps<typeof TokenPriceChart>> = {},
+  ) =>
+    renderWithProviders(
+      <TokenPriceChart
+        testID="price-history-chart"
+        points={inspectPoints}
+        resolutionSeconds={900}
+        range="1D"
+        width={width}
+        direction="positive"
+        {...props}
+      />,
+    );
+
+  beforeEach(() => {
+    jest.spyOn(Date, "now").mockReturnValue(1_000_000 * 1000);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it("arms the Pan gesture with the long-press duration, not an immediate drag", () => {
+    renderInspectable();
+
+    expect(
+      getByGestureTestId(INSPECT_GESTURE_TEST_ID).config.activateAfterLongPress,
+    ).toBe(INSPECT_LONG_PRESS_MS);
+  });
+
+  it("limits the Pan gesture to a single pointer", () => {
+    renderInspectable();
+
+    expect(getByGestureTestId(INSPECT_GESTURE_TEST_ID).config.maxPointers).toBe(
+      1,
+    );
+  });
+
+  it("reports the SNAPPED index on start and on every move, then ends", () => {
+    const onInspectStart = jest.fn();
+    const onInspectMove = jest.fn();
+    const onInspectEnd = jest.fn();
+    renderInspectable({ onInspectStart, onInspectMove, onInspectEnd });
+
+    fireGestureHandler<PanGesture>(
+      getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+      [
+        { state: State.BEGAN, x: 40 },
+        { state: State.ACTIVE, x: 40 },
+        { x: 160 },
+        { x: 999 },
+        { state: State.END },
+      ],
+    );
+
+    expect(onInspectStart).toHaveBeenCalledTimes(1);
+    expect(onInspectStart).toHaveBeenCalledWith(0);
+    expect(onInspectMove.mock.calls.map(([i]) => i)).toEqual([2, 3]);
+    expect(onInspectEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("ends when the gesture is cancelled", () => {
+    const onInspectEnd = jest.fn();
+    renderInspectable({ onInspectEnd });
+    fireGestureHandler<PanGesture>(
+      getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+      [
+        { state: State.BEGAN, x: 40 },
+        { state: State.ACTIVE, x: 40 },
+        { state: State.CANCELLED },
+      ],
+    );
+    expect(onInspectEnd).toHaveBeenCalledTimes(1);
+  });
+
+  const timestampFor = (
+    unixSeconds: number,
+    range: React.ComponentProps<typeof TokenPriceChart>["range"] = "1D",
+  ) => {
+    const { date, time } = formatInspectedTimestamp({
+      unixSeconds,
+      range,
+      locale: "en",
+    });
+
+    return time ? `${date} at ${time}` : date;
+  };
+
+  it("draws the guide and the dot at the inspected point and hides the end dot", () => {
+    const { toJSON } = renderInspectable({ inspectedIndex: 1 });
+    const tree = toJSON() as RenderedTree;
+    const circles = findAllRenderedByType(tree, "skCircle");
+    // ring + dot at x=100; no end dot at x=300
+    expect(circles.map((c) => c.props.cx)).toEqual([100, 100]);
+    // The ring punches a gap between the dot and the line, so it must be the
+    // page surface the screen paints (base 0), not the gray-01 card tone.
+    expect(circles[0].props.color).toBe(themeColors.base[0]);
+    expect(findAllRenderedByType(tree, "skLine")).toHaveLength(1);
+    expect(findAllRenderedByType(tree, "skDashPathEffect")).toHaveLength(1);
+  });
+
+  it("shows the point's plotted time in the high-label row instead of the high and low prices", () => {
+    const { fontScale } = renderHook(() => useWindowDimensions()).result
+      .current;
+    const { getByTestId, queryByTestId } = renderInspectable({
+      inspectedIndex: 1,
+    });
+
+    const row = getByTestId("price-history-chart-label-row-high", HIDDEN);
+    const timestamp = getByTestId("price-history-inspect-timestamp", HIDDEN);
+    // Bucket end, not bucket start: point 1 starts at 900 and plots at 1800.
+    expect(timestamp).toHaveTextContent(timestampFor(1800));
+    expect(row).toContainElement(timestamp);
+    expect(queryByTestId("price-history-chart-label-high", HIDDEN)).toBeNull();
+    expect(queryByTestId("price-history-chart-label-low", HIDDEN)).toBeNull();
+    expect(queryByTestId("price-history-inspect-tooltip", HIDDEN)).toBeNull();
+    // The rows keep their height, so nothing below the chart moves.
+    expect(
+      getByTestId("price-history-chart-label-row-low", HIDDEN),
+    ).toHaveStyle({ height: priceChartLabelHeight(fontScale) });
+  });
+
+  it("times the last point at now, where the chart plots it", () => {
+    jest.spyOn(Date, "now").mockReturnValue(3000 * 1000);
+    const { getByTestId } = renderInspectable({ inspectedIndex: 3 });
+
+    expect(
+      getByTestId("price-history-inspect-timestamp", HIDDEN),
+    ).toHaveTextContent(timestampFor(3000));
+  });
+
+  it("dates a 1Y point with its year and no time", () => {
+    const { getByTestId } = renderInspectable({
+      inspectedIndex: 1,
+      range: "1Y",
+    });
+    const text = timestampFor(1800, "1Y");
+
+    expect(text).not.toContain(" at ");
+    expect(
+      getByTestId("price-history-inspect-timestamp", HIDDEN),
+    ).toHaveTextContent(text);
+  });
+
+  it("centres the timestamp on the guide once measured, clamped inside the chart", () => {
+    const { fontScale } = renderHook(() => useWindowDimensions()).result
+      .current;
+    const styleOf = (utils: ReturnType<typeof renderInspectable>) =>
+      StyleSheet.flatten(
+        utils.getByTestId("price-history-inspect-timestamp", HIDDEN).props
+          .style,
+      );
+    const measure = (utils: ReturnType<typeof renderInspectable>) =>
+      fireEvent(
+        utils.getByTestId("price-history-inspect-timestamp", HIDDEN),
+        "layout",
+        { nativeEvent: { layout: { width: 90, height: 16, x: 0, y: 0 } } },
+      );
+
+    const middle = renderInspectable({ inspectedIndex: 1 }); // x = 100
+    expect(styleOf(middle)).toMatchObject({
+      left: clampAxisLabelX(100, width, axisLabelWidth(width, fontScale)),
+      opacity: 0,
+    });
+    measure(middle);
+    expect(styleOf(middle)).toMatchObject({ left: 100 - 45, opacity: 1 });
+    middle.unmount();
+
+    const edge = renderInspectable({ inspectedIndex: 3 }); // x = 300
+    measure(edge);
+    expect(styleOf(edge)).toMatchObject({ left: width - 90, opacity: 1 });
+  });
+
+  it("keeps the inspect timestamp mounted across a snapped move so it does not blink", () => {
+    const { getByTestId, rerender } = renderInspectable({ inspectedIndex: 1 });
+    const label = () => getByTestId("price-history-inspect-timestamp", HIDDEN);
+    const opacityOf = () =>
+      (StyleSheet.flatten(label().props.style) as { opacity: number }).opacity;
+
+    fireEvent(label(), "layout", {
+      nativeEvent: { layout: { width: 90, height: 16, x: 0, y: 0 } },
+    });
+    expect(opacityOf()).toBe(1);
+
+    // A snap to a different point changes the timestamp's TEXT (bucket end
+    // 1800 -> 2700) with no new layout event fired yet — exactly the case
+    // the text-keyed label used to remount and blank on.
+    rerender(
+      <TokenPriceChart
+        testID="price-history-chart"
+        points={inspectPoints}
+        resolutionSeconds={900}
+        range="1D"
+        width={width}
+        direction="positive"
+        inspectedIndex={2}
+      />,
+    );
+
+    expect(opacityOf()).toBe(1);
+  });
+
+  it("draws the timestamp in the foreground colour and hides it from assistive tech", () => {
+    const { getByTestId, getByText } = renderInspectable({
+      inspectedIndex: 1,
+    });
+
+    expect(
+      getByTestId("price-history-inspect-timestamp", HIDDEN).props,
+    ).toMatchObject({
+      accessibilityElementsHidden: true,
+      importantForAccessibility: "no-hide-descendants",
+    });
+    expect(getByText(timestampFor(1800), HIDDEN)).toHaveStyle({
+      color: themeColors.foreground.primary,
+    });
+  });
+
+  it("draws nothing extra and keeps the end dot and price labels when not inspecting", () => {
+    const { toJSON, getByTestId, queryByTestId } = renderInspectable({
+      inspectedIndex: null,
+    });
+    const tree = toJSON() as RenderedTree;
+    expect(findAllRenderedByType(tree, "skCircle")).toHaveLength(1);
+    expect(findAllRenderedByType(tree, "skLine")).toHaveLength(0);
+    expect(queryByTestId("price-history-inspect-timestamp", HIDDEN)).toBeNull();
+    expect(getByTestId("price-history-chart-label-high", HIDDEN)).toBeTruthy();
+    expect(getByTestId("price-history-chart-label-low", HIDDEN)).toBeTruthy();
+  });
+
+  const pathsByStyle = (tree: RenderedTree, style: "stroke" | "fill") =>
+    findAllRenderedByType(tree, "skPath")
+      .filter((node) => node.props.style === style)
+      .map((node) => ({ path: node.props.path, opacity: node.props.opacity }));
+
+  it("dims the line and the fill beyond the inspected point, split at that point", () => {
+    const { coords } = geometryFor(inspectPoints, 900, width);
+    const { toJSON } = renderInspectable({ inspectedIndex: 1 });
+    const tree = toJSON() as RenderedTree;
+
+    expect(pathsByStyle(tree, "stroke")).toEqual([
+      { path: buildChartLinePath(coords.slice(0, 2)), opacity: undefined },
+      { path: buildChartLinePath(coords.slice(1)), opacity: 0.3 },
+    ]);
+    expect(pathsByStyle(tree, "fill")).toEqual([
+      { path: buildChartFillPath(coords.slice(0, 2)), opacity: undefined },
+      { path: buildChartFillPath(coords.slice(1)), opacity: 0.3 },
+    ]);
+  });
+
+  it("draws one undimmed line and fill when not inspecting", () => {
+    const { coords } = geometryFor(inspectPoints, 900, width);
+    const { toJSON } = renderInspectable({ inspectedIndex: null });
+    const tree = toJSON() as RenderedTree;
+
+    expect(pathsByStyle(tree, "stroke")).toEqual([
+      { path: buildChartLinePath(coords), opacity: undefined },
+    ]);
+    expect(pathsByStyle(tree, "fill")).toEqual([
+      { path: buildChartFillPath(coords), opacity: undefined },
+    ]);
+  });
+
+  /**
+   * Drives RNGH's own event pipeline — the one `fireGestureHandler` emits on —
+   * a single state change at a time.
+   *
+   * `fireGestureHandler` cannot express a gesture that is still running: its
+   * `fillMissingStatesTransitions` always appends a terminal END to whatever
+   * it is given, so there is no event list that leaves the handler ACTIVE.
+   * Emitting the state changes directly is the same path, minus that sugar.
+   */
+  const emitStateChange = (
+    handlerTag: number,
+    event: { oldState: State; state: State; x?: number },
+  ) =>
+    DeviceEventEmitter.emit("onGestureHandlerStateChange", {
+      handlerTag,
+      numberOfPointers: 1,
+      y: 0,
+      absoluteX: event.x ?? 40,
+      absoluteY: 0,
+      translationX: 0,
+      translationY: 0,
+      velocityX: 0,
+      velocityY: 0,
+      x: 40,
+      ...event,
+    });
+
+  it("ends an inspect the chart is unmounted out of", () => {
+    const onInspectEnd = jest.fn();
+    const { unmount } = renderInspectable({ onInspectEnd });
+    const { handlerTag } = getByGestureTestId(INSPECT_GESTURE_TEST_ID);
+
+    emitStateChange(handlerTag, {
+      oldState: State.UNDETERMINED,
+      state: State.BEGAN,
+    });
+    emitStateChange(handlerTag, { oldState: State.BEGAN, state: State.ACTIVE });
+    // Still live: RNGH sends no terminal state change on teardown, so nothing
+    // else is going to clear the parent's inspected point.
+    expect(onInspectEnd).not.toHaveBeenCalled();
+
+    unmount();
+
+    expect(onInspectEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not end twice when a finished gesture is followed by an unmount", () => {
+    const onInspectEnd = jest.fn();
+    const { unmount } = renderInspectable({ onInspectEnd });
+
+    fireGestureHandler<PanGesture>(
+      getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+      [
+        { state: State.BEGAN, x: 40 },
+        { state: State.ACTIVE, x: 40 },
+        { state: State.END },
+      ],
+    );
+    expect(onInspectEnd).toHaveBeenCalledTimes(1);
+
+    unmount();
+
+    expect(onInspectEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("never ends a chart that was unmounted without a gesture", () => {
+    const onInspectEnd = jest.fn();
+    const { unmount } = renderInspectable({ onInspectEnd });
+
+    unmount();
+
+    expect(onInspectEnd).not.toHaveBeenCalled();
+  });
+
+  it("keeps ONE gesture across a callback change, and reports through the latest", () => {
+    const first = jest.fn();
+    const second = jest.fn();
+    const { rerender } = renderInspectable({ onInspectStart: first });
+    const gesture = getByGestureTestId(INSPECT_GESTURE_TEST_ID);
+
+    // The ordinary call site passes inline arrows: a new function identity
+    // every render. The detector must not be re-armed for that.
+    rerender(
+      <TokenPriceChart
+        testID="price-history-chart"
+        points={inspectPoints}
+        resolutionSeconds={900}
+        range="1D"
+        width={width}
+        direction="positive"
+        onInspectStart={second}
+      />,
+    );
+    expect(getByGestureTestId(INSPECT_GESTURE_TEST_ID)).toBe(gesture);
+
+    fireGestureHandler<PanGesture>(
+      getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+      [
+        { state: State.BEGAN, x: 40 },
+        { state: State.ACTIVE, x: 40 },
+        { state: State.END },
+      ],
+    );
+
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledWith(0);
+  });
+
+  it("keeps ONE gesture across a same-length series change, and snaps against the NEW xs", () => {
+    const onInspectStart = jest.fn();
+    const { rerender } = renderInspectable({ onInspectStart });
+    const gesture = getByGestureTestId(INSPECT_GESTURE_TEST_ID);
+
+    // Same length (4) as `inspectPoints`, but unevenly spaced: bucket ends
+    // 900, 1200, 2700, 3600 -> x 0, 33.3, 200, 300, so x=40 snaps to index 1
+    // here instead of index 0 (nearest to x=0 in the original, evenly-spaced
+    // series).
+    const shiftedPoints = [
+      { t: 0, p: "1.00" },
+      { t: 300, p: "1.10" },
+      { t: 1800, p: "1.05" },
+      { t: 2700, p: "1.20" },
+    ];
+    rerender(
+      <TokenPriceChart
+        testID="price-history-chart"
+        points={shiftedPoints}
+        resolutionSeconds={900}
+        range="1D"
+        width={width}
+        direction="positive"
+        onInspectStart={onInspectStart}
+      />,
+    );
+    expect(getByGestureTestId(INSPECT_GESTURE_TEST_ID)).toBe(gesture);
+
+    fireGestureHandler<PanGesture>(
+      getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+      [
+        { state: State.BEGAN, x: 40 },
+        { state: State.ACTIVE, x: 40 },
+        { state: State.END },
+      ],
+    );
+
+    expect(onInspectStart).toHaveBeenCalledWith(1);
+  });
+
+  it("snaps a move that lands before the new series' passive effects against the NEW xs", () => {
+    const onInspectStart = jest.fn();
+    // Same x grid as the test above: x=40 is index 0 here, index 1 there.
+    const shiftedPoints = [
+      { t: 0, p: "1.00" },
+      { t: 300, p: "1.10" },
+      { t: 1800, p: "1.05" },
+      { t: 2700, p: "1.20" },
+    ];
+    // A later sibling's layout effect runs after the chart commits but
+    // before any passive effect, which is where a real gesture event can land.
+    const MoveOnCommit = ({ series }: { series: typeof inspectPoints }) => {
+      useLayoutEffect(() => {
+        if (series === shiftedPoints) {
+          fireGestureHandler<PanGesture>(
+            getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+            [
+              { state: State.BEGAN, x: 40 },
+              { state: State.ACTIVE, x: 40 },
+              { state: State.END },
+            ],
+          );
+        }
+      }, [series]);
+
+      return null;
+    };
+    const view = (series: typeof inspectPoints) => (
+      <>
+        <TokenPriceChart
+          testID="price-history-chart"
+          points={series}
+          resolutionSeconds={900}
+          range="1D"
+          width={width}
+          direction="positive"
+          onInspectStart={onInspectStart}
+        />
+        <MoveOnCommit series={series} />
+      </>
+    );
+    const { rerender } = renderWithProviders(view(inspectPoints));
+
+    rerender(view(shiftedPoints));
+
+    expect(onInspectStart).toHaveBeenCalledTimes(1);
+    expect(onInspectStart).toHaveBeenCalledWith(1);
   });
 });

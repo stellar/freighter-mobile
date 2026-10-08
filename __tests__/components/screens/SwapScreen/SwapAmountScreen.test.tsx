@@ -20,7 +20,6 @@ import { View } from "react-native";
 import { analytics } from "services/analytics";
 
 import { mockBalances } from "../../../../__mocks__/balances";
-import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
 import { mockUseColors } from "../../../../__mocks__/use-colors";
 
 const MockView = View;
@@ -36,7 +35,6 @@ const mockSaveSwapFee = jest.fn();
 const mockExecuteSwap = jest.fn().mockResolvedValue(undefined);
 const mockSetupSwapTransaction = jest.fn().mockResolvedValue(undefined);
 
-mockGestureHandler();
 mockUseColors();
 
 // Stub the BottomSheet wrapper so tests can press CTAs that present sheets

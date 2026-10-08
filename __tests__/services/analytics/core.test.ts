@@ -500,6 +500,18 @@ describe("token_chart throttling (per-occurrence event contracts)", () => {
     );
     expect(hasData).toEqual([true, false]);
   });
+
+  it("keeps both brush activations in a rapid double-drag", () => {
+    // `token_chart.brushed` is once-per-activation (§7.5): two separate
+    // drags 100ms apart are two distinct occurrences, and the shared
+    // event-name bucket must not drop the earlier one.
+    track(AnalyticsEvent.TOKEN_CHART_BRUSHED, { range: "1D" });
+    jest.advanceTimersByTime(100);
+    track(AnalyticsEvent.TOKEN_CHART_BRUSHED, { range: "1D" });
+
+    jest.advanceTimersByTime(THROTTLE_DELAY_MS + 1);
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("screen.viewed throttling (D1: cross-screen collapse regression)", () => {

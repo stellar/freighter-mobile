@@ -2,10 +2,14 @@ import BigNumber from "bignumber.js";
 import { Text, TEXT_SIZES } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import { PriceHistoryRange, TokenIdentifier } from "config/types";
-import { useSelectedPriceHistoryRange } from "ducks/priceHistory";
+import {
+  useInspectedPriceHistory,
+  useSelectedPriceHistoryRange,
+} from "ducks/priceHistory";
 import { fsValue } from "helpers/dimensions";
 import { formatPercentageAmount } from "helpers/formatAmount";
 import {
+  computeInspectedChange,
   formatPriceHistoryRangeDelta,
   getPriceChangeColor,
   getPriceChangeDirection,
@@ -78,6 +82,10 @@ const TokenPriceDelta: React.FC<TokenPriceDeltaProps> = ({
     range,
     isPriceHistoryEnabled,
   );
+  // Called unconditionally — `isPriceHistoryEnabled` toggles at runtime
+  // (kill switch, flag settling) without unmounting this component, so a
+  // hook below the early return would violate the rules of hooks.
+  const inspected = useInspectedPriceHistory(network, tokenId);
 
   // Green up, red down, neutral flat — the sign always lives in the text, so
   // colour never carries it alone (§7.4).
@@ -126,8 +134,27 @@ const TokenPriceDelta: React.FC<TokenPriceDeltaProps> = ({
   // delta above a canvas reading "No price data for this period".
   const hasChart = hasChartData(data?.points ?? []);
 
+  // Guarded on the SELECTED range too: keeps the delta honest if an
+  // inspection ever carries another range. `scrollEnabled` needs no such
+  // guard — it follows the gesture itself, not the resolved point or range.
+  const inspectedChange =
+    inspected && inspected.range === range
+      ? computeInspectedChange(inspected.first, inspected.point)
+      : null;
+
   let delta: Delta | null = null;
-  if (hasChart && data?.change) {
+  if (inspectedChange) {
+    // The one client-side delta (D8 exception): close-to-close from the
+    // first plotted point to the one under the finger; same formatter, same
+    // colours.
+    delta = {
+      text: formatPriceHistoryRangeDelta(inspectedChange),
+      direction: getPriceChangeDirection(
+        inspectedChange.percent,
+        inspectedChange.absolute,
+      ),
+    };
+  } else if (hasChart && data?.change) {
     // The server's change, verbatim — never recomputed client-side (§4.2).
     delta = {
       text: formatPriceHistoryRangeDelta(data.change),

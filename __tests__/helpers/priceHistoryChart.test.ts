@@ -1,4 +1,5 @@
 import { getThemeColors } from "config/colors";
+import { formatFiatAmount } from "helpers/formatAmount";
 import {
   ChartCoordinate,
   CHART_MORPH_DURATION_MS,
@@ -6,6 +7,7 @@ import {
   CHART_VERTICAL_PADDING,
   easeOutCubic,
   EXPECTED_POINTS_BY_RANGE,
+  formatInspectedTimestamp,
   formatPriceHistoryDelta,
   formatPriceHistoryLabel,
   formatPriceHistoryRangeDelta,
@@ -18,6 +20,7 @@ import {
   getPlottedRangeStart,
   getPlottedRangeEnd,
 } from "helpers/priceHistoryChart";
+import { getNumberFormatSettings } from "react-native-localize";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -315,6 +318,31 @@ describe("isSparseSeries", () => {
 });
 
 describe("formatPriceHistoryLabel", () => {
+  describe("on a device set to comma decimals", () => {
+    const setSeparators = (
+      decimalSeparator: string,
+      groupingSeparator: string,
+    ) =>
+      jest
+        .mocked(getNumberFormatSettings)
+        .mockImplementation(() => ({ decimalSeparator, groupingSeparator }));
+
+    beforeEach(() => setSeparators(",", "."));
+    // The jest.setup default; later tests must not inherit the comma.
+    afterEach(() => setSeparators(".", ","));
+
+    it("uses the device's decimal separator below a dollar, like the spot price", () => {
+      expect(formatPriceHistoryLabel("0.2213")).toBe("$0,2213");
+      expect(formatFiatAmount("0.2213")).toBe("$0,22");
+      expect(formatPriceHistoryLabel("0.000012345")).toBe("$0,000012");
+      expect(formatPriceHistoryDelta("-0.0123")).toBe("-$0,0123");
+    });
+
+    it("leaves dollar-and-above prices to the localized fiat formatter", () => {
+      expect(formatPriceHistoryLabel("1234.5")).toBe("$1.234,50");
+    });
+  });
+
   it("keeps sub-dollar precision instead of rounding to $0.00", () => {
     expect(formatPriceHistoryLabel("0.158900")).toBe("$0.1589");
     expect(formatPriceHistoryLabel("0.29")).toBe("$0.29");
@@ -728,5 +756,59 @@ describe("interpolateChartCoordinates", () => {
     // The settled chart is byte-identical to what a hard switch would draw:
     // §7.0 ("exactly the points array") governs the settled state.
     expect(settled).toEqual(daily!.coords);
+  });
+});
+
+describe("formatInspectedTimestamp", () => {
+  // Built in local time, so the device-zone formatting reads back 4:03.
+  const unixSeconds = new Date(2026, 8, 21, 4, 3).getTime() / 1000;
+
+  it("gives an intraday point a weekday date and a lower-case time", () => {
+    const { date, time } = formatInspectedTimestamp({
+      unixSeconds,
+      range: "1D",
+      locale: "en",
+    });
+
+    expect(date).toBe("Mon, Sep 21");
+    expect(time).toMatch(/^4:03\sam$/u);
+  });
+
+  it("times a 1H point too", () => {
+    expect(
+      formatInspectedTimestamp({ unixSeconds, range: "1H", locale: "en" }).time,
+    ).toMatch(/^4:03\sam$/u);
+  });
+
+  it("dates a 1W point without a time or a year", () => {
+    expect(
+      formatInspectedTimestamp({ unixSeconds, range: "1W", locale: "en" }),
+    ).toEqual({ date: "Mon, Sep 21" });
+  });
+
+  it.each(["1Y", "ALL"] as const)(
+    "adds the year and drops the time on %s",
+    (range) => {
+      expect(
+        formatInspectedTimestamp({ unixSeconds, range, locale: "en" }),
+      ).toEqual({ date: "Mon, Sep 21, 2026" });
+    },
+  );
+
+  it("formats in the given locale", () => {
+    const { date } = formatInspectedTimestamp({
+      unixSeconds,
+      range: "1W",
+      locale: "pt",
+    });
+
+    expect(date).toBe(
+      new Intl.DateTimeFormat("pt", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }).format(new Date(unixSeconds * 1000)),
+    );
+    expect(date).not.toBe("Mon, Sep 21");
   });
 });

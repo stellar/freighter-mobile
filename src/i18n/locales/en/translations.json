@@ -409,6 +409,7 @@
     "loadingA11yLabel": "Loading price chart",
     "chartA11yLabel": "Price chart, {{range}}: {{start}} to {{end}}, {{delta}}",
     "noDelta": "no change data",
+    "inspectedAt": "{{date}} at {{time}}",
     "loadingDeltaA11yLabel": "Loading price change",
     "timeframeSelectorA11yLabel": "Timeframe",
     "ranges": {

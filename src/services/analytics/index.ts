@@ -18,6 +18,7 @@ import {
   trackTokenChartLoaded,
   trackTokenChartViewed,
   trackTokenChartRangeChanged,
+  trackTokenChartBrushed,
 } from "services/analytics/tokenChart";
 import {
   trackSignedTransaction,
@@ -116,6 +117,7 @@ export interface AnalyticsInstance {
   readonly trackTokenChartLoaded: typeof trackTokenChartLoaded;
   readonly trackTokenChartViewed: typeof trackTokenChartViewed;
   readonly trackTokenChartRangeChanged: typeof trackTokenChartRangeChanged;
+  readonly trackTokenChartBrushed: typeof trackTokenChartBrushed;
 
   // Discover analytics
   readonly trackDiscoverProtocolOpened: typeof trackDiscoverProtocolOpened;
@@ -188,6 +190,7 @@ export const analytics: AnalyticsInstance = {
   trackTokenChartLoaded,
   trackTokenChartViewed,
   trackTokenChartRangeChanged,
+  trackTokenChartBrushed,
   trackDiscoverProtocolOpened,
   trackDiscoverProtocolDetailsViewed,
   trackDiscoverProtocolOpenedFromDetails,

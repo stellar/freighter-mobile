@@ -1,4 +1,5 @@
 import { act } from "@testing-library/react-hooks";
+import { renderHook } from "@testing-library/react-native";
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { TokenPriceHistory, TokenStats } from "config/types";
@@ -7,6 +8,8 @@ import {
   PRICE_HISTORY_CACHE_VALIDITY_MS,
   getPriceHistoryKey,
   resetInFlightRequests,
+  useInspectedPriceHistory,
+  useIsInspectingPriceHistory,
 } from "ducks/priceHistory";
 import { fetchTokenPriceHistory, fetchTokenStats } from "services/backend";
 
@@ -599,5 +602,248 @@ describe("priceHistory duck", () => {
         range: "1Y",
       });
     });
+  });
+});
+
+// Placed here rather than up with the other module-level fixtures: a
+// `network`/`tokenId` this high up would shadow the `select` helper's own
+// (network, tokenId) parameters inside "selected range" above and trip
+// @typescript-eslint/no-shadow.
+const network = NETWORKS.PUBLIC;
+const tokenId = "native";
+const points = [
+  { t: 1786636800, p: "0.20" },
+  { t: 1786637700, p: "0.22" },
+  { t: 1786638600, p: "0.26" },
+];
+
+const seedEntry = () =>
+  usePriceHistoryStore.setState({
+    historyByNetwork: {
+      [network]: {
+        [tokenId]: {
+          "1D": {
+            data: {
+              token: "native",
+              range: "1D",
+              resolutionSeconds: 900,
+              currency: "USD",
+              lowVolume: false,
+              change: { absolute: "0.06", percent: "30.00" },
+              points,
+            },
+            updatedAt: Date.now(),
+          },
+        },
+      },
+    },
+  });
+
+describe("inspected point", () => {
+  beforeEach(() => {
+    usePriceHistoryStore.setState({
+      historyByNetwork: {},
+      selectedRange: null,
+      inspectedPoint: null,
+      inspectingKey: null,
+    });
+  });
+
+  it("is null until a point is set", () => {
+    const { result } = renderHook(() =>
+      useInspectedPriceHistory(network, tokenId),
+    );
+    expect(result.current).toBeNull();
+  });
+
+  it("resolves the point and the first point off the cached series", () => {
+    seedEntry();
+    usePriceHistoryStore
+      .getState()
+      .setInspectedPoint({ network, tokenId, range: "1D", index: 2 });
+
+    const { result } = renderHook(() =>
+      useInspectedPriceHistory(network, tokenId),
+    );
+    expect(result.current).toEqual({
+      range: "1D",
+      index: 2,
+      point: points[2],
+      first: points[0],
+    });
+  });
+
+  it("is scoped: another token reads null", () => {
+    seedEntry();
+    usePriceHistoryStore
+      .getState()
+      .setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+
+    const { result } = renderHook(() =>
+      useInspectedPriceHistory(network, "USDC:GABC"),
+    );
+    expect(result.current).toBeNull();
+  });
+
+  it("is null when the cached series is missing or the index is out of bounds", () => {
+    usePriceHistoryStore
+      .getState()
+      .setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+    const missingSeries = renderHook(() =>
+      useInspectedPriceHistory(network, tokenId),
+    );
+    expect(missingSeries.result.current).toBeNull();
+    // Unmount before the next round of store mutations: this hook is still
+    // subscribed, and seeding/re-pointing below would otherwise re-render it
+    // outside `act`, which is what the "not wrapped in act(...)" warning
+    // (a leftover subscriber, not a bug in the selector) is telling us.
+    missingSeries.unmount();
+
+    seedEntry();
+    usePriceHistoryStore
+      .getState()
+      .setInspectedPoint({ network, tokenId, range: "1D", index: 7 });
+    const outOfBounds = renderHook(() =>
+      useInspectedPriceHistory(network, tokenId),
+    );
+    expect(outOfBounds.result.current).toBeNull();
+    outOfBounds.unmount();
+  });
+
+  it("clears only its own scope", () => {
+    seedEntry();
+    const store = usePriceHistoryStore.getState();
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+    store.clearInspectedPoint({ network, tokenId: "USDC:GABC" });
+    expect(usePriceHistoryStore.getState().inspectedPoint).not.toBeNull();
+    store.clearInspectedPoint({ network, tokenId });
+    expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+  });
+
+  it("a range switch for the same scope drops the inspected point", () => {
+    seedEntry();
+    const store = usePriceHistoryStore.getState();
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+    store.setSelectedRange({ network, tokenId, range: "1W" });
+    expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+  });
+
+  it("useIsInspectingPriceHistory reports the scope's activity", () => {
+    seedEntry();
+    const { result } = renderHook(() =>
+      useIsInspectingPriceHistory(network, tokenId),
+    );
+    expect(result.current).toBe(false);
+    act(() =>
+      usePriceHistoryStore.getState().startInspectGesture({ network, tokenId }),
+    );
+    expect(result.current).toBe(true);
+    act(() =>
+      usePriceHistoryStore.getState().endInspectGesture({ network, tokenId }),
+    );
+    expect(result.current).toBe(false);
+  });
+
+  it("useIsInspectingPriceHistory is true after start even with no resolved point", () => {
+    // The lock follows the GESTURE, not `inspectedPoint` — a series landing
+    // mid-drag clears the point but must not drop the scroll lock.
+    const { result } = renderHook(() =>
+      useIsInspectingPriceHistory(network, tokenId),
+    );
+
+    act(() =>
+      usePriceHistoryStore.getState().startInspectGesture({ network, tokenId }),
+    );
+
+    expect(result.current).toBe(true);
+    expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+  });
+
+  it("startInspectGesture/endInspectGesture are scoped: another token's end is a no-op", () => {
+    const store = usePriceHistoryStore.getState();
+    store.startInspectGesture({ network, tokenId });
+
+    store.endInspectGesture({ network, tokenId: "USDC:GABC" });
+
+    expect(usePriceHistoryStore.getState().inspectingKey).not.toBeNull();
+
+    store.endInspectGesture({ network, tokenId });
+
+    expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
+  });
+
+  it("endInspectGesture is idempotent", () => {
+    const store = usePriceHistoryStore.getState();
+    store.startInspectGesture({ network, tokenId });
+    store.endInspectGesture({ network, tokenId });
+
+    expect(() => store.endInspectGesture({ network, tokenId })).not.toThrow();
+    expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
+  });
+
+  it("endInspection clears the gesture and the point in one write, with no bad intermediate state", () => {
+    seedEntry();
+    const store = usePriceHistoryStore.getState();
+    store.startInspectGesture({ network, tokenId });
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+
+    const observed: { inspectingKey: string | null; hasPoint: boolean }[] = [];
+    const unsubscribe = usePriceHistoryStore.subscribe((state) => {
+      observed.push({
+        inspectingKey: state.inspectingKey,
+        hasPoint: state.inspectedPoint !== null,
+      });
+    });
+
+    store.endInspection({ network, tokenId });
+    unsubscribe();
+
+    expect(observed).toHaveLength(1);
+    expect(observed.some((s) => s.inspectingKey === null && s.hasPoint)).toBe(
+      false,
+    );
+    expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
+    expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+  });
+
+  it("endInspection is scoped: another token's inspection is untouched", () => {
+    seedEntry();
+    const store = usePriceHistoryStore.getState();
+    store.startInspectGesture({ network, tokenId });
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+
+    store.endInspection({ network, tokenId: "USDC:GABC" });
+
+    expect(usePriceHistoryStore.getState().inspectingKey).not.toBeNull();
+    expect(usePriceHistoryStore.getState().inspectedPoint).not.toBeNull();
+
+    store.endInspection({ network, tokenId });
+
+    expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
+    expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+  });
+
+  it("re-setting the same point keeps the state reference", () => {
+    seedEntry();
+    const store = usePriceHistoryStore.getState();
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+    const before = usePriceHistoryStore.getState().inspectedPoint;
+
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+
+    expect(usePriceHistoryStore.getState().inspectedPoint).toBe(before);
+  });
+
+  it("a different index yields a new object", () => {
+    seedEntry();
+    const store = usePriceHistoryStore.getState();
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+    const before = usePriceHistoryStore.getState().inspectedPoint;
+
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 2 });
+
+    const after = usePriceHistoryStore.getState().inspectedPoint;
+    expect(after).not.toBe(before);
+    expect(after).toEqual({ key: before?.key, range: "1D", index: 2 });
   });
 });

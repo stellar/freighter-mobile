@@ -9,6 +9,7 @@ import {
   priceChartLabelHeight,
   END_DOT_RADIUS,
   PRICE_CHART_LINE_HEIGHT,
+  INSPECT_GESTURE_TEST_ID,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChart";
 import TokenPriceHistorySection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection";
 import { getThemeColors } from "config/colors";
@@ -30,7 +31,16 @@ import {
   renderWithProviders,
 } from "helpers/testUtils";
 import React from "react";
-import { StyleSheet, useWindowDimensions } from "react-native";
+import {
+  DeviceEventEmitter,
+  StyleSheet,
+  useWindowDimensions,
+} from "react-native";
+import { State, PanGesture } from "react-native-gesture-handler";
+import {
+  fireGestureHandler,
+  getByGestureTestId,
+} from "react-native-gesture-handler/jest-utils";
 import { analytics } from "services/analytics";
 import { fetchTokenPriceHistory } from "services/backend";
 
@@ -135,6 +145,8 @@ describe("TokenPriceHistorySection", () => {
       statsByNetwork: {},
       historyStatusByKey: {},
       selectedRange: null,
+      inspectedPoint: null,
+      inspectingKey: null,
     });
     mockFetchHistory.mockResolvedValue(makeHistory());
   });
@@ -621,6 +633,416 @@ describe("TokenPriceHistorySection", () => {
 
       expect(queryByTestId("price-history-skeleton")).toBeNull();
       expect(getByTestId("price-history-chart")).toBeTruthy();
+    });
+  });
+
+  describe("drag to inspect", () => {
+    // `fireGestureHandler` always normalizes its event list to a full
+    // BEGAN→ACTIVE→END sequence (react-native-gesture-handler/jestUtils'
+    // `fillMissingStatesTransitions` appends a terminal END to ANY list that
+    // doesn't already end in one) — so a call can never leave the gesture
+    // paused mid-drag across two separate `fireGestureHandler` calls the way
+    // a real finger can. One call always runs start -> move(s) -> end. The
+    // wiring itself (this section calling the duck's actions off the
+    // gesture) is exercised end-to-end below with a spy on the action that
+    // starts it; the "something ends an inspection early" tests instead put
+    // the duck into a mid-inspect state directly (the same state a real
+    // partial drag would leave it in) and drive the section around it.
+    const putInMidInspect = () => {
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+    };
+
+    it("a drag sets the inspected point in the duck, fires brushed ONCE, and clears on end", async () => {
+      // Spied BEFORE the render, not after: the section reads the action off
+      // the store hook once per render and closes over that value, so a spy
+      // installed after mount would never be the function it actually calls.
+      const setInspectedPointSpy = jest.spyOn(
+        usePriceHistoryStore.getState(),
+        "setInspectedPoint",
+      );
+
+      const { getByTestId } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      act(() => {
+        fireGestureHandler<PanGesture>(
+          getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+          [
+            { state: State.BEGAN, x: 10 },
+            { state: State.ACTIVE, x: 10 },
+            { x: 200 },
+            { state: State.END },
+          ],
+        );
+      });
+
+      // Set at least once, off the 1D series actually plotted — the first
+      // call is the activation (§7.5's "once per activation").
+      expect(setInspectedPointSpy).toHaveBeenCalledWith({
+        network: NETWORKS.PUBLIC,
+        tokenId: "native",
+        range: "1D",
+        index: expect.any(Number),
+      });
+      expect(analytics.trackTokenChartBrushed).toHaveBeenCalledTimes(1);
+      expect(analytics.trackTokenChartBrushed).toHaveBeenCalledWith("1D");
+
+      // ...and the drag's own END clears it — no lingering point once the
+      // finger lifts.
+      expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+
+      // Deliberately not `mockRestore()`d: the store is a module-level
+      // singleton and `set()` merges forward whatever function reference is
+      // CURRENTLY installed, including a spy — restoring the property on the
+      // (by now stale) snapshot `spyOn` captured leaves the live state stuck
+      // on a detached spy instead of undoing anything. The spy still calls
+      // through to the real action, so later tests are unaffected.
+      expect(setInspectedPointSpy).toHaveBeenCalled();
+    });
+
+    it("fires brushed exactly twice across two full gestures", async () => {
+      const { getByTestId } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      act(() => {
+        fireGestureHandler<PanGesture>(
+          getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+          [
+            { state: State.BEGAN, x: 10 },
+            { state: State.ACTIVE, x: 10 },
+            { x: 200 },
+            { x: 220 },
+            { x: 240 },
+            { state: State.END },
+          ],
+        );
+      });
+
+      // Three moves in this one gesture must not add three more calls — only
+      // the activation counts (§7.5).
+      expect(analytics.trackTokenChartBrushed).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        fireGestureHandler<PanGesture>(
+          getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+          [
+            { state: State.BEGAN, x: 50 },
+            { state: State.ACTIVE, x: 50 },
+            { x: 150 },
+            { x: 170 },
+            { x: 190 },
+            { state: State.END },
+          ],
+        );
+      });
+
+      // Once per ACTIVATION, never per move — two separate gestures are two
+      // activations, so exactly two calls (§7.5).
+      expect(analytics.trackTokenChartBrushed).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not inspect when no series is loaded — the chart itself does not render", () => {
+      // `plottedRange` (off `data?.range`) is undefined with no series: the
+      // real TokenPriceChart (and its gesture) never mounts without data —
+      // only the ghost does — so there is no gesture to drive. This is the
+      // structural guarantee that `handleInspectStart`/`handleInspectMove`'s
+      // `if (!plottedRange) return;` early-outs exist for defense-in-depth;
+      // the gesture test id being entirely absent proves the primary guard.
+      mockFetchHistory.mockImplementation(() => new Promise(() => {}));
+      const setInspectedPointSpy = jest.spyOn(
+        usePriceHistoryStore.getState(),
+        "setInspectedPoint",
+      );
+
+      const { queryByTestId } = renderSection();
+
+      expect(queryByTestId("price-history-chart")).toBeNull();
+      // The gesture handler registry (a global keyed by testID, not the
+      // rendered tree) has nothing under this id either: no `GestureDetector`
+      // ever mounted to register it.
+      expect(() => getByGestureTestId(INSPECT_GESTURE_TEST_ID)).toThrow();
+      expect(setInspectedPointSpy).not.toHaveBeenCalled();
+      expect(analytics.trackTokenChartBrushed).not.toHaveBeenCalled();
+    });
+
+    it("unmounting clears the scope's inspected point", async () => {
+      const { getByTestId, unmount } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      putInMidInspect();
+      expect(usePriceHistoryStore.getState().inspectedPoint).not.toBeNull();
+
+      unmount();
+
+      expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+    });
+
+    it("a range switch mid-inspect clears it (no index carries into another series)", async () => {
+      jest.useFakeTimers();
+      try {
+        const { getByTestId } = renderSection();
+
+        await act(async () => {
+          await Promise.resolve();
+        });
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+
+        putInMidInspect();
+        expect(usePriceHistoryStore.getState().inspectedPoint).not.toBeNull();
+
+        act(() => {
+          fireEvent.press(getByTestId("timeframe-selector-1W"));
+        });
+
+        // Cleared the instant the tab is pressed — `setSelectedRange` clears
+        // a same-scope inspection synchronously, before the debounced fetch
+        // even starts, so no index survives into the new series.
+        expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+
+        await act(async () => {
+          jest.advanceTimersByTime(500);
+          await Promise.resolve();
+        });
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it("a same-range refetch landing under the finger clears it, even with no range switch", async () => {
+      // The range-switch test above is satisfied by the DUCK's own
+      // `setSelectedRange`, which clears a same-scope inspection on its own —
+      // it doesn't touch this section's `data?.points` cleanup dependency at
+      // all. This covers the other branch: a revalidation (retry, or a
+      // background refetch) that lands a NEW payload for the SAME range,
+      // with no tab pressed and no `range` change anywhere. The index would
+      // otherwise describe a point in the OLD series, not the one now drawn.
+      const { getByTestId } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      putInMidInspect();
+      expect(usePriceHistoryStore.getState().inspectedPoint).not.toBeNull();
+
+      // Drives the duck's own fetch path directly (not a UI retry, which
+      // requires an error state first) with `forceRefresh` to bypass the
+      // flat cache-validity window, resolving a DIFFERENT points array for
+      // the SAME "1D" range — a new object, a new array identity, same key.
+      mockFetchHistory.mockResolvedValueOnce(
+        makeHistory({ points: densePoints.slice(0, 35) }),
+      );
+      await act(async () => {
+        await usePriceHistoryStore.getState().fetchPriceHistory({
+          tokenId: "native",
+          network: NETWORKS.PUBLIC,
+          range: "1D",
+          forceRefresh: true,
+        });
+      });
+
+      expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+    });
+
+    /**
+     * Drives RNGH's own event pipeline directly — `fireGestureHandler`
+     * cannot leave a gesture ACTIVE (it always appends a terminal END) — so
+     * the gesture can be held open across the refetch below. Same pattern as
+     * `TokenPriceChart.test.tsx`'s `emitStateChange`.
+     */
+    const emitStateChange = (
+      handlerTag: number,
+      event: { oldState: State; state: State },
+    ) =>
+      DeviceEventEmitter.emit("onGestureHandlerStateChange", {
+        handlerTag,
+        numberOfPointers: 1,
+        x: 10,
+        y: 0,
+        absoluteX: 10,
+        absoluteY: 0,
+        translationX: 0,
+        translationY: 0,
+        velocityX: 0,
+        velocityY: 0,
+        ...event,
+      });
+
+    it("keeps the scroll lock through a same-range refetch landing mid-gesture, and drops it only on the gesture's own end", async () => {
+      const { getByTestId } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      const { handlerTag } = getByGestureTestId(INSPECT_GESTURE_TEST_ID);
+      act(() => {
+        emitStateChange(handlerTag, {
+          oldState: State.UNDETERMINED,
+          state: State.BEGAN,
+        });
+        emitStateChange(handlerTag, {
+          oldState: State.BEGAN,
+          state: State.ACTIVE,
+        });
+      });
+      expect(usePriceHistoryStore.getState().inspectingKey).not.toBeNull();
+
+      // Same "landing under the finger" refetch as the test above — a new
+      // payload for the SAME "1D" range, no tab pressed.
+      mockFetchHistory.mockResolvedValueOnce(
+        makeHistory({ points: densePoints.slice(0, 35) }),
+      );
+      await act(async () => {
+        await usePriceHistoryStore.getState().fetchPriceHistory({
+          tokenId: "native",
+          network: NETWORKS.PUBLIC,
+          range: "1D",
+          forceRefresh: true,
+        });
+      });
+
+      // The point cleared (no stale index), but the gesture is still live,
+      // so the lock must still be held.
+      expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+      expect(usePriceHistoryStore.getState().inspectingKey).not.toBeNull();
+
+      act(() => {
+        emitStateChange(handlerTag, {
+          oldState: State.ACTIVE,
+          state: State.END,
+        });
+      });
+
+      expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
+    });
+
+    it("remounts the chart on a token/network switch so a live drag cannot carry the new scope's callbacks", async () => {
+      const { getByTestId, rerender } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      const { handlerTag: oldHandlerTag } = getByGestureTestId(
+        INSPECT_GESTURE_TEST_ID,
+      );
+      act(() => {
+        emitStateChange(oldHandlerTag, {
+          oldState: State.UNDETERMINED,
+          state: State.BEGAN,
+        });
+        emitStateChange(oldHandlerTag, {
+          oldState: State.BEGAN,
+          state: State.ACTIVE,
+        });
+      });
+      expect(usePriceHistoryStore.getState().inspectingKey).not.toBeNull();
+
+      // Pre-seeds the new token's cache so the switch is a hit: no loading
+      // skeleton, so the chart would otherwise stay mounted through the prop
+      // change with nothing forcing the remount under test.
+      act(() => {
+        usePriceHistoryStore.setState((state) => ({
+          historyByNetwork: {
+            ...state.historyByNetwork,
+            [NETWORKS.PUBLIC]: {
+              ...state.historyByNetwork[NETWORKS.PUBLIC],
+              "USDC:GABC": {
+                "1D": { data: makeHistory(), updatedAt: Date.now() },
+              },
+            },
+          },
+        }));
+      });
+
+      // The screen swaps route params in place — same section instance, a
+      // NEW (network, tokenId) scope — while the drag above is still live.
+      act(() => {
+        rerender(
+          <TokenPriceHistorySection
+            tokenId="USDC:GABC"
+            network={NETWORKS.PUBLIC}
+          />,
+        );
+      });
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      // The OLD scope's lock and point are both gone — the remounted
+      // chart's own unmount cleanup ended the drag, not a ref swapped onto
+      // the new scope mid-gesture.
+      expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
+      expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+
+      // A genuinely new chart instance registered its own handler tag.
+      const { handlerTag: newHandlerTag } = getByGestureTestId(
+        INSPECT_GESTURE_TEST_ID,
+      );
+      expect(newHandlerTag).not.toBe(oldHandlerTag);
+
+      // The crux: RNGH's native Pan is still tracking the SAME finger and
+      // reports its next move on the OLD handler tag — never finalized, so
+      // nothing else would end it. Without the remount that tag is still
+      // registered and its ref-read callbacks now close over the NEW scope,
+      // so this write would land on the token the drag never touched.
+      act(() => {
+        DeviceEventEmitter.emit("onGestureHandlerStateChange", {
+          handlerTag: oldHandlerTag,
+          numberOfPointers: 1,
+          x: 250,
+          y: 0,
+          absoluteX: 250,
+          absoluteY: 0,
+          translationX: 0,
+          translationY: 0,
+          velocityX: 0,
+          velocityY: 0,
+        });
+      });
+
+      expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+      expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
+    });
+
+    it("clears the inspected point when the kill switch flips off mid-drag", async () => {
+      // Parity with the extension: the section keeps rendering null (it does
+      // NOT unmount) once the flag flips, so only an explicit guard — not the
+      // unmount cleanup — stops the header from describing a point off a
+      // chart no longer on screen.
+      const { getByTestId, queryByTestId } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      putInMidInspect();
+      expect(usePriceHistoryStore.getState().inspectedPoint).not.toBeNull();
+
+      act(() => {
+        useRemoteConfigStore.setState({ use_token_price_history: false });
+      });
+
+      expect(queryByTestId("token-price-history-section")).toBeNull();
+      expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
     });
   });
 

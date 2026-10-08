@@ -375,6 +375,7 @@
     "loadingA11yLabel": "Carregando o gráfico de preço",
     "chartA11yLabel": "Gráfico de preço, {{range}}: {{start}} a {{end}}, {{delta}}",
     "noDelta": "sem dados de variação",
+    "inspectedAt": "{{date}} às {{time}}",
     "loadingDeltaA11yLabel": "Carregando a variação de preço",
     "timeframeSelectorA11yLabel": "Período",
     "ranges": {

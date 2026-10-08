@@ -48,6 +48,12 @@ interface HistoryListProps {
   noHorizontalPadding?: boolean;
   className?: string;
   refreshActionPosition: "start" | "center" | "end";
+  /**
+   * False while the token chart's drag-to-inspect is active: the long-press
+   * already arbitrates the START of the gesture, this stops the list from
+   * taking over mid-drag.
+   */
+  scrollEnabled?: boolean;
 }
 
 /**
@@ -67,6 +73,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   noHorizontalPadding = false,
   className,
   refreshActionPosition = "center",
+  scrollEnabled = true,
 }) => {
   const { t } = useAppTranslation();
   const { height: windowHeight } = useWindowDimensions();
@@ -253,6 +260,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
           ListFooterComponent={DefaultListFooter}
           className={className}
           ListEmptyComponent={listEmptyComponent}
+          scrollEnabled={scrollEnabled}
         />
       </View>
     </BaseLayout>

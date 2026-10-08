@@ -14,10 +14,6 @@ import React from "react";
 import { InteractionManager } from "react-native";
 import { analytics } from "services/analytics";
 
-import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
-
-mockGestureHandler();
-
 jest.mock("components/screens/SwapScreen/hooks/useSwapTokenLookup");
 
 jest.mock("ducks/swap", () => ({
