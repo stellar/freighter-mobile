@@ -224,6 +224,13 @@
     "textAreaNote": "Frases geralmente têm 12 ou 24 palavras",
     "defaultActionButtonText": "Importar carteira"
   },
+  "rebrandAnnouncementScreen": {
+    "title": "O Freighter agora é Varial",
+    "description": "Sua carteira Freighter, agora com um novo nome e visual.",
+    "continueButton": "Continuar para o Varial",
+    "closeAccessibilityLabel": "Fechar",
+    "illustrationAccessibilityLabel": "O logotipo do Varial"
+  },
   "lockScreen": {
     "title": "Bem-vindo de volta",
     "description": "Digite a senha para desbloquear o Varial",

@@ -72,6 +72,23 @@ describe("Typography", () => {
       });
     });
 
+    it("uses the static Funnel Sans file for the display family", () => {
+      const { getByText } = renderWithProviders(
+        <Display sm medium family="funnelSans">
+          Display Text
+        </Display>,
+      );
+      const element = getByText("Display Text");
+
+      // Static weights carry their own weight, so none is requested.
+      expect(element.props.style).toMatchObject({
+        fontFamily: "FunnelSans-Medium",
+        fontWeight: "normal",
+        fontSize: fsValue(32),
+        lineHeight: fsValue(40),
+      });
+    });
+
     it("applies correct custom styles", () => {
       const { getByText } = renderWithProviders(
         <Display size="xl" weight="bold" color={CUSTOM_COLOR}>

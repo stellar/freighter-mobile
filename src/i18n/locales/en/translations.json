@@ -258,6 +258,13 @@
     "textAreaNote": "Phrases are usually 12 or 24 words",
     "defaultActionButtonText": "Import wallet"
   },
+  "rebrandAnnouncementScreen": {
+    "title": "Freighter is now Varial",
+    "description": "Your Freighter wallet, now with a new name and look.",
+    "continueButton": "Continue to Varial",
+    "closeAccessibilityLabel": "Close",
+    "illustrationAccessibilityLabel": "The Varial logo"
+  },
   "lockScreen": {
     "title": "Welcome back",
     "description": "Enter password to unlock Varial",

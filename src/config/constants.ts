@@ -379,6 +379,9 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  * ACTIVE_NETWORK The active network is the network that is currently being used.
  * RECENT_ADDRESSES The list of recently used addresses for sending payments.
  *
+ * REBRAND_ANNOUNCEMENT_STATUS Gate for the one-time rebrand announcement: "pending" for wallets that existed
+ * before the first Varial launch, "seen" otherwise or once shown. Survives wallet wipes. @see helpers/rebrandAnnouncement
+ *
  * APP_UPDATE_DISMISSED_REQUIRED_VERSION The version that the user has dismissed the app update notice for.
  * This is used to prevent the app update full screen notice from being shown again after the user has dismissed it.
  * It stores the version that the user has dismissed the notice for so it can be shown again if the user updates to a new version and falls behind again in the future.
@@ -401,6 +404,7 @@ export enum STORAGE_KEYS {
   WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   HAS_SEEN_DISCOVER_WELCOME = "hasSeenDiscoverWelcome",
+  REBRAND_ANNOUNCEMENT_STATUS = "rebrandAnnouncementStatus",
   APP_UPDATE_DISMISSED_REQUIRED_VERSION = "appUpdateDismissedRequiredVersion",
 }
 

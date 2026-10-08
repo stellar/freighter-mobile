@@ -50,6 +50,7 @@ import {
   encryptDataWithDerivedKey,
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
+import { markRebrandAnnouncementSeen } from "helpers/rebrandAnnouncement";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { scrubStrKeys } from "helpers/stellarStrKey";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
@@ -2216,6 +2217,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             // visible before the long async cleanup begins.
             clearDerivedKeyCache();
             clearAuthKeypairCache();
+
+            // A reset leads into onboarding, which must not show the rebrand
+            // announcement. Written first so a failed or interrupted wipe
+            // cannot leave it pending.
+            await markRebrandAnnouncementSeen();
 
             // Capture navigationRef before ...initialState clears it to null
             const { navigationRef: navRef } = get();

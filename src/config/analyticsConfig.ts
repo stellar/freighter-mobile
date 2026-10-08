@@ -262,6 +262,11 @@ export enum AnalyticsEvent {
   DISCOVER_ALL_TABS_CLOSED = "discover.all_tabs_closed",
   DISCOVER_WELCOME_MODAL_VIEWED = "discover.welcome_modal_viewed",
 
+  // Rebrand announcement (existing users only)
+  REBRAND_ANNOUNCEMENT_VIEWED = "rebrand.announcement_viewed",
+  // carries source (close | continue | back)
+  REBRAND_ANNOUNCEMENT_DISMISSED = "rebrand.announcement_dismissed",
+
   // Platform-only events (retained; renamed to the shared grammar)
   QR_SCAN_SUCCESS = "qr_scan.completed",
   // carries reason_code
