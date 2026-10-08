@@ -234,7 +234,11 @@
   "lockScreen": {
     "title": "Bem-vindo de volta",
     "description": "Digite a senha para desbloquear o Varial",
-    "passwordInputPlaceholder": "Digite sua senha",
+    "rebrandNotice": "O Freighter agora é Varial",
+    "passwordInputPlaceholder": "Senha",
+    "showPassword": "Mostrar senha",
+    "hidePassword": "Ocultar senha",
+    "unlockWithBiometrics": "Desbloquear com biometria",
     "unlockButtonText": "Desbloquear",
     "forgotPasswordButtonText": "Esqueci minha senha",
     "useFaceIdInstead": "Usar Face ID",
@@ -248,11 +252,11 @@
     "errorUnlockingWalletMessage": "Se o problema persistir, toque em \"Esqueci minha senha\" e reimporte sua carteira.",
     "failedToLoadAccountTitle": "Conta não carregada",
     "failedToLoadAccountMessage": "Sua conta não pôde ser carregada após o login. Tente novamente.",
-    "forgotPasswordWarningTitle": "Tem certeza?",
-    "forgotPasswordWarningMessage1": "Não podemos recuperar sua senha para você. Este processo apagará sua carteira e você precisará passar pelo fluxo de importação da carteira para reimportá-la com sua frase de recuperação.",
-    "forgotPasswordWarningMessage2": "Você perderá permanentemente o acesso à conta atualmente armazenada no Varial.",
-    "forgotPasswordWarningMessage3": "Só faça isso se você tiver sua frase guardada em segurança em outro lugar.",
-    "forgotPasswordWarningResetButton": "Redefinir Varial"
+    "forgotPasswordWarningTitle": "Esqueceu sua senha?",
+    "forgotPasswordWarningMessage1": "Sua senha fica salva apenas neste dispositivo e não pode ser recuperada.",
+    "forgotPasswordWarningMessage2": "Você pode redefinir o Varial com sua frase de recuperação, criar uma nova senha e importar a carteira novamente.",
+    "forgotPasswordWarningMessage3": "Tenha sua frase de recuperação em mãos antes de continuar.",
+    "forgotPasswordWarningResetButton": "Redefinir carteira"
   },
   "onboarding": {
     "continue": "Continuar",

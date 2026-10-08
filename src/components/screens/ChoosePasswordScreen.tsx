@@ -2,9 +2,10 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
-import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "config/constants";
+import { PASSWORD_MAX_LENGTH } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
 import { useLoginDataStore } from "ducks/loginData";
+import { isValidPasswordLength } from "helpers/passwordValidation";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState } from "react";
@@ -33,9 +34,7 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
     });
   };
 
-  const canContinue =
-    localPassword.length >= PASSWORD_MIN_LENGTH &&
-    localPassword.length <= PASSWORD_MAX_LENGTH;
+  const canContinue = isValidPasswordLength(localPassword);
 
   return (
     <OnboardLayout

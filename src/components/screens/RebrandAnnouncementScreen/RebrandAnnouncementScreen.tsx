@@ -6,9 +6,10 @@ import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { markRebrandAnnouncementSeen } from "helpers/rebrandAnnouncement";
 import useAppTranslation from "hooks/useAppTranslation";
+import useBackHandler from "hooks/useBackHandler";
 import useTheme from "hooks/useTheme";
 import React, { useCallback, useEffect, useRef } from "react";
-import { BackHandler, StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
 
 export type RebrandAnnouncementDismissSource = "close" | "continue" | "back";
@@ -60,24 +61,12 @@ export const RebrandAnnouncementScreen: React.FC<
   );
 
   // The overlay is not a route, so the Android back button would otherwise
-  // reach the navigator underneath. Treat it as a dismiss. Registered once:
-  // Android gives the newest listener priority, so re-registering on each
-  // render could put this above the lock overlay's listener.
-  const handleDismissRef = useRef(handleDismiss);
-  handleDismissRef.current = handleDismiss;
+  // reach the navigator underneath. Treat it as a dismiss.
+  useBackHandler(() => {
+    handleDismiss("back");
 
-  useEffect(() => {
-    const subscription = BackHandler.addEventListener(
-      "hardwareBackPress",
-      () => {
-        handleDismissRef.current("back");
-
-        return true;
-      },
-    );
-
-    return () => subscription.remove();
-  }, []);
+    return true;
+  });
 
   return (
     <BaseLayout useSafeArea testID="rebrand-announcement-screen">

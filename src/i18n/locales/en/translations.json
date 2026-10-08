@@ -268,7 +268,11 @@
   "lockScreen": {
     "title": "Welcome back",
     "description": "Enter password to unlock Varial",
-    "passwordInputPlaceholder": "Type your password",
+    "rebrandNotice": "Freighter is now Varial",
+    "passwordInputPlaceholder": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "unlockWithBiometrics": "Unlock with biometrics",
     "unlockButtonText": "Unlock",
     "forgotPasswordButtonText": "Forgot password",
     "useFaceIdInstead": "Use Face ID instead",
@@ -282,11 +286,11 @@
     "errorUnlockingWalletMessage": "If the problem persists, please tap on \"Forgot password\" and re-import your wallet.",
     "failedToLoadAccountTitle": "Account not loaded",
     "failedToLoadAccountMessage": "Your account could not be loaded after sign-in. Please try again.",
-    "forgotPasswordWarningTitle": "Are you sure?",
-    "forgotPasswordWarningMessage1": "We cannot recover your password for you. This process will erase your wallet and you'll need to go through the import wallet flow to re-import your wallet with your recovery phrase.",
-    "forgotPasswordWarningMessage2": "You will permanently lose access to the account currently stored in Varial.",
-    "forgotPasswordWarningMessage3": "Only do this if you have your phrase backed up safely somewhere else.",
-    "forgotPasswordWarningResetButton": "Reset Varial"
+    "forgotPasswordWarningTitle": "Forgot your password?",
+    "forgotPasswordWarningMessage1": "Your password is stored only on this device and can’t be recovered.",
+    "forgotPasswordWarningMessage2": "You can reset Varial with your recovery phrase, set a new password, and re-import.",
+    "forgotPasswordWarningMessage3": "Make sure you have your recovery phrase before continuing.",
+    "forgotPasswordWarningResetButton": "Reset wallet"
   },
   "onboarding": {
     "continue": "Continue",
