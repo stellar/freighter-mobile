@@ -47,12 +47,10 @@ const mockGetExperimentClient = getExperimentClient as jest.MockedFunction<
 >;
 
 describe("production defaults", () => {
-  it("ships the price-history kill switch OFF", () => {
-    // The endpoints it calls are not deployed yet, and `isInitialized` is set
-    // on a FAILED flag fetch too — so a `true` default would mount the
-    // feature and fire seven failing requests per mainnet token-detail open
-    // on any build that reached users before the backend. Amplitude flips it
-    // on once the endpoints are live, like `use_balances_v2`.
+  it("ships the price-history kill switch ON, like the extension", () => {
+    // One default on both platforms: the chart is on unless Amplitude turns
+    // it off. Clients do not ship before the backend routes are live, so ON
+    // never reaches users while the endpoints 404.
     // `__DEV__` is a React Native global; jest defines it as true, and the
     // production branch is what needs asserting.
     // eslint-disable-next-line no-underscore-dangle
@@ -71,9 +69,10 @@ describe("production defaults", () => {
             "ducks/remoteConfig",
           );
 
-        expect(store.getState().use_token_price_history).toBe(false);
-        // The switch is off, not the whole config: a neighbour still ships on.
-        expect(store.getState().use_token_prices_v2).toBe(true);
+        expect(store.getState().use_token_price_history).toBe(true);
+        // Proves the production branch was read: swap is ON in dev and
+        // follows isAndroid (mocked false) in production.
+        expect(store.getState().swap_enabled).toBe(false);
       });
     } finally {
       // eslint-disable-next-line no-underscore-dangle

@@ -6,12 +6,9 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Display, Text } from "components/sds/Typography";
-import {
-  LoginType,
-  PASSWORD_MAX_LENGTH,
-  PASSWORD_MIN_LENGTH,
-} from "config/constants";
+import { LoginType } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
+import { isValidPasswordLength } from "helpers/passwordValidation";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useCallback, useMemo, useRef, useState } from "react";
@@ -62,8 +59,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
 
   const canContinue = useMemo(
     () =>
-      (passwordValue.length >= PASSWORD_MIN_LENGTH &&
-        passwordValue.length <= PASSWORD_MAX_LENGTH) ||
+      isValidPasswordLength(passwordValue) ||
       signInMethod !== LoginType.PASSWORD,
     [passwordValue, signInMethod],
   );

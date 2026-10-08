@@ -703,10 +703,14 @@ describe("svg assets", () => {
 
   /**
    * Marks that carry their own background. The white in these is a glyph on a
-   * brand-colored disc, so it is opaque to the page behind it and must not
-   * follow the scheme.
+   * brand-colored surface, so it is opaque to the page behind it and must not
+   * follow the scheme. The announcement tile is tinted via currentColor; its
+   * white mark sits on that tile.
    */
-  const OWN_BACKGROUND = ["logos/usdc-logo.svg"];
+  const OWN_BACKGROUND = [
+    "logos/usdc-logo.svg",
+    "images/rebrand-announcement-tile.svg",
+  ];
 
   const svgFiles = (dir: string): string[] =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

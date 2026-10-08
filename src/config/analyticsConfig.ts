@@ -249,6 +249,8 @@ export enum AnalyticsEvent {
   /** Per-range VIEW (cache hits included), unlike loaded's per-network-fetch. */
   TOKEN_CHART_VIEWED = "token_chart.viewed",
   TOKEN_CHART_RANGE_CHANGED = "token_chart.range_changed",
+  /** Once per drag-to-inspect activation, never per move (§7.5, Phase 3). */
+  TOKEN_CHART_BRUSHED = "token_chart.brushed",
 
   // Onramp
   COINBASE_ONRAMP_OPENED = "onramp.coinbase_opened",
@@ -261,6 +263,11 @@ export enum AnalyticsEvent {
   DISCOVER_TAB_CLOSED = "discover.tab_closed",
   DISCOVER_ALL_TABS_CLOSED = "discover.all_tabs_closed",
   DISCOVER_WELCOME_MODAL_VIEWED = "discover.welcome_modal_viewed",
+
+  // Rebrand announcement (existing users only)
+  REBRAND_ANNOUNCEMENT_VIEWED = "rebrand.announcement_viewed",
+  // carries source (close | continue | back)
+  REBRAND_ANNOUNCEMENT_DISMISSED = "rebrand.announcement_dismissed",
 
   // Platform-only events (retained; renamed to the shared grammar)
   QR_SCAN_SUCCESS = "qr_scan.completed",

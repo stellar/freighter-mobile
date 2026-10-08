@@ -17,6 +17,10 @@ import {
   TokenIdentifier,
   TokenPriceHistory,
 } from "config/types";
+import {
+  useInspectedPriceHistory,
+  usePriceHistoryStore,
+} from "ducks/priceHistory";
 import { formatDate } from "helpers/date";
 import { pxValue } from "helpers/dimensions";
 import {
@@ -138,6 +142,80 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
       onLoaded: handleLoaded,
       onRangeSettled: handleRangeSettled,
     });
+
+  // The chart snaps a drag position to an INDEX; this section knows which
+  // series that index indexes into and publishes both, so the header can
+  // resolve the point off the same cache entry the chart drew.
+  const setInspectedPoint = usePriceHistoryStore(
+    (state) => state.setInspectedPoint,
+  );
+  const clearInspectedPoint = usePriceHistoryStore(
+    (state) => state.clearInspectedPoint,
+  );
+  const startInspectGesture = usePriceHistoryStore(
+    (state) => state.startInspectGesture,
+  );
+  const endInspection = usePriceHistoryStore((state) => state.endInspection);
+  const inspected = useInspectedPriceHistory(network, tokenId);
+  const plottedRange = data?.range;
+
+  const handleInspectStart = useCallback(
+    (index: number) => {
+      if (!plottedRange) return;
+      // Before the point is set: the lock must be held for the whole
+      // gesture, not just while an index has resolved against it.
+      startInspectGesture({ network, tokenId });
+      setInspectedPoint({ network, tokenId, range: plottedRange, index });
+      // Once per activation, never per move (§7.5).
+      analytics.trackTokenChartBrushed(plottedRange);
+    },
+    [network, tokenId, plottedRange, setInspectedPoint, startInspectGesture],
+  );
+  const handleInspectMove = useCallback(
+    (index: number) => {
+      if (!plottedRange) return;
+      setInspectedPoint({ network, tokenId, range: plottedRange, index });
+    },
+    [network, tokenId, plottedRange, setInspectedPoint],
+  );
+  const handleInspectEnd = useCallback(() => {
+    endInspection({ network, tokenId });
+  }, [network, tokenId, endInspection]);
+
+  // A new series under the finger (fetch landed, range switched) clears the
+  // POINT, not the gesture: a still-live gesture re-sets it on its next move
+  // (RNGH keeps the handler and swaps in the new xs), so the drag re-resolves
+  // on the new series with no second `brushed`. Keyed off `data?.points`
+  // rather than the post-return `points` local so this stays a hook called
+  // unconditionally every render.
+  useEffect(
+    () => () => clearInspectedPoint({ network, tokenId }),
+    [network, tokenId, data?.points, clearInspectedPoint],
+  );
+
+  // Unmount-only, deliberately NOT keyed off `data?.points` like the cleanup
+  // above: the scroll lock must survive a series landing mid-drag, and only
+  // end when the scope itself goes away.
+  useEffect(
+    () => () => endInspection({ network, tokenId }),
+    [network, tokenId, endInspection],
+  );
+
+  // The kill switch can flip off WITHOUT this section unmounting — it just
+  // renders null below — so without this the header would keep describing a
+  // point off a chart that is no longer on screen (mobile's counterpart to
+  // the extension's "header never outlives the chart" guard).
+  useEffect(() => {
+    if (!isEnabled) {
+      endInspection({ network, tokenId });
+    }
+  }, [isEnabled, network, tokenId, endInspection]);
+
+  // Guarded on the SELECTED range too: keeps the artwork honest if an
+  // inspection ever carries another range. `scrollEnabled` needs no such
+  // guard — it follows the gesture itself, not the resolved point or range.
+  const inspectedIndex =
+    inspected && inspected.range === plottedRange ? inspected.index : null;
 
   /**
    * One event per (token, range) SHOWN, cache hits included — `loaded` skips
@@ -289,9 +367,14 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
     return (
       <View accessible accessibilityLabel={chartA11yLabel}>
         <TokenPriceChart
+          // Forces a remount on a scope change so a live gesture ends via
+          // this instance's own unmount cleanup, instead of the chart's
+          // ref-swap handing an in-flight drag callbacks for the new scope.
+          key={`${network}/${tokenId}`}
           testID="price-history-chart"
           points={points}
           resolutionSeconds={data!.resolutionSeconds}
+          range={data!.range}
           // The chart draws its canvas a dot radius wider than the plot. This
           // is a SectionList header, and an iOS ScrollView clips to its
           // bounds, so that room comes out of the measured width instead of
@@ -306,6 +389,10 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
             data?.change?.absolute,
           )}
           riseFromFlat={risesFromHairlineRef.current && !isReduceMotionEnabled}
+          inspectedIndex={inspectedIndex}
+          onInspectStart={handleInspectStart}
+          onInspectMove={handleInspectMove}
+          onInspectEnd={handleInspectEnd}
         />
       </View>
     );

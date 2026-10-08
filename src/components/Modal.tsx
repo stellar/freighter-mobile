@@ -41,8 +41,8 @@ interface ModalProps {
   /**
    * By default a modal auto-dismisses when the wallet soft-locks (a native RN
    * Modal would otherwise render above the in-tree lock overlay). Set false for
-   * modals that are part of the lock screen itself (e.g. the forgot-password
-   * warning), which must stay usable while soft-locked.
+   * a modal that is part of the lock screen itself, which must stay usable
+   * while soft-locked.
    */
   dismissOnSoftLock?: boolean;
 }
@@ -104,8 +104,8 @@ const Modal: React.FC<ModalProps> = ({
   // Dismiss on soft lock: a native RN Modal renders above the in-tree lock
   // overlay, so an open one would sit on top of the lock screen. Gated on
   // isSoftLocked (not a raw background event) so a brief glance keeps state.
-  // Skipped for the lock screen's own modals, which must remain interactive
-  // while the wallet is soft-locked.
+  // Skipped when dismissOnSoftLock is false, for a modal that is part of the
+  // lock screen and must remain interactive while the wallet is soft-locked.
   const isSoftLocked = useAuthenticationStore((state) => state.isSoftLocked);
   useEffect(() => {
     if (visible && isSoftLocked && dismissOnSoftLock) {

@@ -33,6 +33,7 @@ import {
 import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
+import { useIsInspectingPriceHistory } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { getTokenType, getIssuerFromIdentifier } from "helpers/balances";
@@ -89,6 +90,10 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   // One shared predicate (kill switch + mainnet) for all three price-history
   // sections; each section also enforces it itself, so they cannot drift.
   const priceHistoryEnabled = usePriceHistoryEnabled(network);
+  // While a drag-to-inspect is in progress on the chart, the list must not
+  // steal the gesture mid-drag: the long-press already arbitrated the START
+  // of the gesture, scroll would arbitrate it a second time.
+  const isInspectingChart = useIsInspectingPriceHistory(network, tokenId);
   const { overriddenBlockaidResponse } = useDebugStore();
   const { saveSelectedTokenId, saveSelectedCollectibleDetails } =
     useTransactionSettingsStore();
@@ -291,6 +296,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           refreshActionPosition="start"
           isRefreshing={isRefreshing}
           isNavigationRefresh={isNavigationRefresh}
+          scrollEnabled={!isInspectingChart}
           ListHeaderComponent={
             /* EVERYTHING above the transactions lives in the list header, so
                the screen scrolls as one column like the extension's does.

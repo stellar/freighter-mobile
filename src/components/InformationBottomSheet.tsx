@@ -1,4 +1,4 @@
-import { Button } from "components/sds/Button";
+import { Button, ButtonVariant, ButtonVariants } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useColors from "hooks/useColors";
@@ -12,9 +12,11 @@ import { TouchableOpacity, View } from "react-native";
  * @property {() => void} [onConfirm] - Optional callback function for confirmation action (e.g., "Add Memo" button)
  * @property {() => void} onClose - Callback function when the bottom sheet is closed
  * @property {string} title - The main title displayed at the top of the bottom sheet
- * @property {React.ReactNode} [headerElement] - Optional custom header element (e.g., icon with background)
+ * @property {React.ReactNode} [headerElement] - Optional custom header element (e.g., icon with background). Without one, the close button sits alone at the top right
  * @property {Array<{ key: string; value: React.ReactNode }>} texts - Array of paragraphs to display. `value` accepts plain text or rich content (e.g. nested `<Text>` for inline emphasis); rendered inside the shared paragraph `<Text>` wrapper so RN's nested-Text inheritance keeps fonts consistent.
  * @property {string} [confirmLabel] - Optional label for the confirmation button (defaults to "Add memo")
+ * @property {ButtonVariant} [confirmVariant] - Optional variant for the confirmation button (defaults to secondary)
+ * @property {string} [confirmTestID] - Optional testID for the confirmation button.
  * @property {string} [closeTestID] - Optional testID for the close (X) button.
  */
 type InformationBottomSheetProps = {
@@ -24,6 +26,8 @@ type InformationBottomSheetProps = {
   headerElement?: React.ReactNode;
   texts: { key: string; value: React.ReactNode }[];
   confirmLabel?: string;
+  confirmVariant?: ButtonVariant;
+  confirmTestID?: string;
   closeTestID?: string;
 };
 
@@ -53,6 +57,8 @@ const InformationBottomSheet = ({
   headerElement,
   texts,
   confirmLabel,
+  confirmVariant = ButtonVariants.SECONDARY,
+  confirmTestID,
   closeTestID,
 }: InformationBottomSheetProps) => {
   const { themeColors } = useColors();
@@ -61,11 +67,14 @@ const InformationBottomSheet = ({
 
   return (
     <View className="flex-1">
-      <View className="relative flex-row items-center mb-8">
+      {/* With no header element, the close button stays in the flow to give the row its height */}
+      <View
+        className={`relative flex-row items-center mb-8 ${headerElement ? "" : "justify-end"}`}
+      >
         {headerElement}
         <TouchableOpacity
           onPress={onClose}
-          className="absolute right-0"
+          className={headerElement ? "absolute right-0" : ""}
           testID={closeTestID}
         >
           <Icon.X
@@ -92,7 +101,12 @@ const InformationBottomSheet = ({
       {onConfirm && (
         <View className="mt-[24px] gap-[12px] flex-row">
           <View className="flex-1">
-            <Button onPress={onConfirm} secondary xl>
+            <Button
+              onPress={onConfirm}
+              variant={confirmVariant}
+              xl
+              testID={confirmTestID}
+            >
               {confirmLabel ?? t("common.addMemo")}
             </Button>
           </View>

@@ -39,6 +39,32 @@ const ANDROID_FONT_WEIGHTS: Record<FontWeightKey, string> = {
 export type FontWeight = keyof typeof FONT_WEIGHTS;
 
 /**
+ * Inter is the app's text face. Funnel Sans is the Varial display face, used
+ * for large headings; it ships as static weights on both platforms.
+ */
+export type FontFamily = "inter" | "funnelSans";
+
+const fontFamilyFor = (family: FontFamily, weight: FontWeight): string => {
+  if (family === "funnelSans") {
+    return `FunnelSans-${ANDROID_FONT_WEIGHTS[weight]}`;
+  }
+
+  return Platform.select({
+    ios: "Inter-Variable",
+    android: `Inter-${ANDROID_FONT_WEIGHTS[weight]}`,
+  }) as string;
+};
+
+const fontWeightFor = (family: FontFamily, weight: FontWeight): string => {
+  // Static files carry their weight; only the variable Inter on iOS needs it.
+  if (family === "inter" && Platform.OS === "ios") {
+    return FONT_WEIGHTS[weight];
+  }
+
+  return "normal";
+};
+
+/**
  * Base props for Typography components (Display and Text)
  *
  * @prop {string} [color] - Explicit color value (e.g. theme.colors.text.primary)
@@ -171,17 +197,25 @@ const getColor = (
 // Base styled components
 // =============================================================================
 
-const BaseText = styled(RNText)<{ $weight: FontWeight; $color: string }>`
-  font-family: ${({ $weight }: { $weight: FontWeight }) =>
-    Platform.select({
-      ios: "Inter-Variable",
-      android: `Inter-${ANDROID_FONT_WEIGHTS[$weight]}`,
-    })};
-  font-weight: ${({ $weight }: { $weight: FontWeight }) =>
-    Platform.select({
-      ios: FONT_WEIGHTS[$weight],
-      android: "normal",
-    })};
+const BaseText = styled(RNText)<{
+  $weight: FontWeight;
+  $color: string;
+  $family?: FontFamily;
+}>`
+  font-family: ${({
+    $family = "inter",
+    $weight,
+  }: {
+    $family?: FontFamily;
+    $weight: FontWeight;
+  }) => fontFamilyFor($family, $weight)};
+  font-weight: ${({
+    $family = "inter",
+    $weight,
+  }: {
+    $family?: FontFamily;
+    $weight: FontWeight;
+  }) => fontWeightFor($family, $weight)};
   color: ${({ $color }: { $color: string }) => $color};
 `;
 
@@ -191,6 +225,8 @@ const BaseText = styled(RNText)<{ $weight: FontWeight; $color: string }>`
 
 export interface DisplayProps extends TypographyBaseProps {
   size?: TextSize;
+  /** Typeface; defaults to Inter. */
+  family?: FontFamily;
   style?: StyleProp<TextStyle>;
   adjustsFontSizeToFit?: boolean;
   numberOfLines?: number;
@@ -251,6 +287,7 @@ const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`
 export const Display: React.FC<DisplayProps> = ({
   size,
   weight,
+  family,
   color,
   children,
   adjustsFontSizeToFit,
@@ -264,6 +301,7 @@ export const Display: React.FC<DisplayProps> = ({
     <StyledDisplay
       $size={getSize({ size, ...props }, "sm")}
       $weight={getWeight({ weight, ...props }, "regular")}
+      $family={family}
       $color={getColor({ color, ...props }, theme)}
       adjustsFontSizeToFit={adjustsFontSizeToFit}
       numberOfLines={numberOfLines}

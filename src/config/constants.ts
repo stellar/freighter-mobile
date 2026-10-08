@@ -181,18 +181,18 @@ export const BOTTOM_SHEET_CONTENT_BOTTOM_PADDING = 64;
 export const BOTTOM_SHEET_CONTENT_GAP = 16;
 
 // settings screen URLs
-export const FREIGHTER_BASE_URL = "https://www.freighter.app";
+export const FREIGHTER_BASE_URL = "https://varialwallet.com";
 export const FREIGHTER_GITHUB_ISSUE_URL =
   "https://github.com/stellar/freighter-mobile/issues";
 export const STELLAR_FOUNDATION_BASE_URL = "https://stellar.org";
-export const FREIGHTER_TERMS_URL = "https://www.freighter.app/terms";
-export const FREIGHTER_PRIVACY_URL = "https://www.freighter.app/privacy";
+export const FREIGHTER_TERMS_URL = "https://varialwallet.com/terms";
+export const FREIGHTER_PRIVACY_URL = "https://varialwallet.com/privacy";
 
 export const CREATE_ACCOUNT_TUTORIAL_URL =
   "https://developers.stellar.org/docs/tutorials/create-account/#create-account";
 
 export const UNFUNDED_ACCOUNT_HELP_URL =
-  "https://help.freighter.app/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet";
+  "https://help.varialwallet.com/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet";
 
 export enum FRIENDBOT_URLS {
   TESTNET = "https://friendbot.stellar.org",
@@ -379,6 +379,9 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  * ACTIVE_NETWORK The active network is the network that is currently being used.
  * RECENT_ADDRESSES The list of recently used addresses for sending payments.
  *
+ * REBRAND_ANNOUNCEMENT_STATUS Gate for the one-time rebrand announcement: "pending" for wallets that existed
+ * before the first Varial launch, "seen" otherwise or once shown. Survives wallet wipes. @see helpers/rebrandAnnouncement
+ *
  * APP_UPDATE_DISMISSED_REQUIRED_VERSION The version that the user has dismissed the app update notice for.
  * This is used to prevent the app update full screen notice from being shown again after the user has dismissed it.
  * It stores the version that the user has dismissed the notice for so it can be shown again if the user updates to a new version and falls behind again in the future.
@@ -401,6 +404,7 @@ export enum STORAGE_KEYS {
   WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   HAS_SEEN_DISCOVER_WELCOME = "hasSeenDiscoverWelcome",
+  REBRAND_ANNOUNCEMENT_STATUS = "rebrandAnnouncementStatus",
   APP_UPDATE_DISMISSED_REQUIRED_VERSION = "appUpdateDismissedRequiredVersion",
 }
 

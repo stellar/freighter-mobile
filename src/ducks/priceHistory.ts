@@ -1,11 +1,14 @@
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
+  PriceHistoryPoint,
   PriceHistoryRange,
   TokenIdentifier,
   TokenPriceHistory,
   TokenStats,
 } from "config/types";
+import { hasChartData } from "helpers/priceHistoryChart";
+import { useMemo } from "react";
 import { fetchTokenPriceHistory, fetchTokenStats } from "services/backend";
 import { create } from "zustand";
 
@@ -37,6 +40,17 @@ export interface TokenStatsEntry {
 export interface PriceHistoryKeyStatus {
   isLoading: boolean;
   error: string | null;
+}
+
+/**
+ * The point under the user's finger (Phase 3 drag-to-inspect), keyed to the
+ * scope AND the range it was chosen on: the header reads it, the chart
+ * draws it, and a range switch must not carry an index into another series.
+ */
+export interface InspectedPoint {
+  key: string;
+  range: PriceHistoryRange;
+  index: number;
 }
 
 /**
@@ -187,6 +201,35 @@ interface PriceHistoryState {
    * one mounts, and must not wipe its selection.
    */
   clearSelectedRange: (params: TokenScopeParams) => void;
+  /** The inspected point, if a drag is in progress. Never persisted. */
+  inspectedPoint: InspectedPoint | null;
+  /**
+   * Records the point a live drag has snapped to: `index` into the cached
+   * series for `range` under the (network, token) scope. A no-op when the
+   * key, range and index are unchanged, so a pointer move that lands on the
+   * same point re-renders nothing.
+   */
+  setInspectedPoint: (
+    params: TokenScopeParams & { range: PriceHistoryRange; index: number },
+  ) => void;
+  /** Scoped like {@link clearSelectedRange}, for the same unmount-order reason. */
+  clearInspectedPoint: (params: TokenScopeParams) => void;
+  /**
+   * Scope key of a live drag-to-inspect gesture. Separate from
+   * `inspectedPoint`: the scroll lock must follow the GESTURE (start → end),
+   * not whether an index has resolved against the current series.
+   */
+  inspectingKey: string | null;
+  /** Marks the scope's gesture as started. */
+  startInspectGesture: (params: TokenScopeParams) => void;
+  /** Scoped and idempotent, like {@link clearInspectedPoint}. */
+  endInspectGesture: (params: TokenScopeParams) => void;
+  /**
+   * Atomic sibling of `endInspectGesture` + `clearInspectedPoint`: one `set`,
+   * so no subscriber can observe the gesture ended while the point lingers
+   * (or the reverse).
+   */
+  endInspection: (params: TokenScopeParams) => void;
   /**
    * Resolves with the payload only when a network fetch completed — callers
    * fire `token_chart.loaded` off that — and null on cache hits, superseded
@@ -334,11 +377,20 @@ export const usePriceHistoryStore = create<PriceHistoryState>((set, get) => {
     statsByNetwork: {},
     historyStatusByKey: {},
     selectedRange: null,
+    inspectedPoint: null,
+    inspectingKey: null,
 
-    setSelectedRange: ({ network, tokenId, range }) =>
-      set({
-        selectedRange: { key: getTokenScopeKey(network, tokenId), range },
-      }),
+    setSelectedRange: ({ network, tokenId, range }) => {
+      const key = getTokenScopeKey(network, tokenId);
+      set((state) => ({
+        selectedRange: { key, range },
+        // Clears the point rather than ending the drag: a still-live gesture
+        // re-sets it on its next move against the new range's series, so the
+        // switch never leaves the index pointing at the wrong series.
+        inspectedPoint:
+          state.inspectedPoint?.key === key ? null : state.inspectedPoint,
+      }));
+    },
 
     clearSelectedRange: ({ network, tokenId }) => {
       if (get().selectedRange?.key !== getTokenScopeKey(network, tokenId)) {
@@ -346,6 +398,54 @@ export const usePriceHistoryStore = create<PriceHistoryState>((set, get) => {
       }
 
       set({ selectedRange: null });
+    },
+
+    setInspectedPoint: ({ network, tokenId, range, index }) =>
+      set((state) => {
+        const key = getTokenScopeKey(network, tokenId);
+        const current = state.inspectedPoint;
+        // A pointer move fires at touch frequency; most moves land on the
+        // same snapped index as the last one. Returning the SAME state
+        // object when key/range/index are unchanged keeps every subscriber
+        // (header, delta, section, chart) from re-rendering on a no-op move.
+        if (
+          current &&
+          current.key === key &&
+          current.range === range &&
+          current.index === index
+        ) {
+          return state;
+        }
+        return { inspectedPoint: { key, range, index } };
+      }),
+
+    clearInspectedPoint: ({ network, tokenId }) => {
+      if (get().inspectedPoint?.key !== getTokenScopeKey(network, tokenId)) {
+        return;
+      }
+      set({ inspectedPoint: null });
+    },
+
+    startInspectGesture: ({ network, tokenId }) =>
+      set({ inspectingKey: getTokenScopeKey(network, tokenId) }),
+
+    endInspectGesture: ({ network, tokenId }) => {
+      if (get().inspectingKey !== getTokenScopeKey(network, tokenId)) {
+        return;
+      }
+      set({ inspectingKey: null });
+    },
+
+    endInspection: ({ network, tokenId }) => {
+      const key = getTokenScopeKey(network, tokenId);
+      const { inspectingKey, inspectedPoint } = get();
+      if (inspectingKey !== key && inspectedPoint?.key !== key) {
+        return;
+      }
+      set({
+        inspectingKey: inspectingKey === key ? null : inspectingKey,
+        inspectedPoint: inspectedPoint?.key === key ? null : inspectedPoint,
+      });
     },
 
     fetchPriceHistory: ({ tokenId, network, range, forceRefresh }) => {
@@ -465,3 +565,62 @@ export const useTokenStatsEntry = (
   tokenId: TokenIdentifier,
 ): TokenStatsEntry | undefined =>
   usePriceHistoryStore((state) => state.statsByNetwork[network]?.[tokenId]);
+
+export interface InspectedPriceHistory {
+  range: PriceHistoryRange;
+  index: number;
+  point: PriceHistoryPoint;
+  first: PriceHistoryPoint;
+}
+
+/**
+ * The inspected point resolved against the CACHED series it was chosen on.
+ * Read by the chart (artwork), the header price and the header delta, so the
+ * three cannot disagree. Null when nothing is inspected for this scope, the
+ * series is gone, or the index no longer fits it. Two primitive-ish selects
+ * plus a memo rather than one object-returning selector: zustand compares
+ * with Object.is, and a fresh object per store write re-renders every
+ * subscriber on every unrelated update.
+ */
+export const useInspectedPriceHistory = (
+  network: NETWORKS,
+  tokenId: TokenIdentifier,
+): InspectedPriceHistory | null => {
+  const key = getTokenScopeKey(network, tokenId);
+  const inspected = usePriceHistoryStore((state) =>
+    state.inspectedPoint?.key === key ? state.inspectedPoint : null,
+  );
+  const points = usePriceHistoryStore((state) =>
+    inspected
+      ? state.historyByNetwork[network]?.[tokenId]?.[inspected.range]?.data
+          .points
+      : undefined,
+  );
+
+  return useMemo(() => {
+    if (!inspected || !points || !hasChartData(points)) {
+      return null;
+    }
+    const point = points[inspected.index];
+    if (!point) {
+      return null;
+    }
+    return {
+      range: inspected.range,
+      index: inspected.index,
+      point,
+      first: points[0],
+    };
+  }, [inspected, points]);
+};
+
+// Reads `inspectingKey`, not `inspectedPoint`: a series landing under the
+// finger clears the resolved point but must not drop the scroll lock.
+/** True from gesture start to end for this scope. */
+export const useIsInspectingPriceHistory = (
+  network: NETWORKS,
+  tokenId: TokenIdentifier,
+): boolean =>
+  usePriceHistoryStore(
+    (state) => state.inspectingKey === getTokenScopeKey(network, tokenId),
+  );

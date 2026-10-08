@@ -6,6 +6,7 @@ import {
 } from "config/types";
 import { formatFiatAmount, formatPercentageAmount } from "helpers/formatAmount";
 import { ThemeColors } from "hooks/useColors";
+import { getNumberFormatSettings } from "react-native-localize";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -99,6 +100,103 @@ export const getPlottedRangeStart = (input: {
   input.points.length === 1
     ? getPlottedRangeEnd(input)
     : input.points[0].t + input.resolutionSeconds;
+
+const INSPECT_TIME_RANGES: PriceHistoryRange[] = ["1H", "1D"];
+const INSPECT_YEAR_RANGES: PriceHistoryRange[] = ["1Y", "ALL"];
+
+/** The inspected point's timestamp label parts; the caller joins them through i18n. */
+export const formatInspectedTimestamp = ({
+  unixSeconds,
+  range,
+  locale,
+}: {
+  unixSeconds: number;
+  range: PriceHistoryRange;
+  locale: string;
+}): { date: string; time?: string } => {
+  const instant = new Date(unixSeconds * 1000);
+  const date = new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    ...(INSPECT_YEAR_RANGES.includes(range) && { year: "numeric" }),
+  }).format(instant);
+
+  if (!INSPECT_TIME_RANGES.includes(range)) {
+    return { date };
+  }
+
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: "numeric",
+    minute: "2-digit",
+  })
+    .format(instant)
+    .toLowerCase();
+
+  return { date, time };
+};
+
+/**
+ * Index of the plotted x nearest to `x` — the drag-to-inspect SNAP (Phase 3).
+ *
+ * `xs` is ascending but not strictly: the clock-skew clamp can put several
+ * points on one x. Ties and duplicates resolve to the LATER index, so a
+ * finger on a collapsed cluster reads the most recent close in it — the one
+ * the polyline is drawn on from. At the ~277-point ALL ceiling adjacent
+ * points sit ~2px apart; per-point precision is never asked of the user.
+ * Returns -1 for an empty series.
+ */
+export const nearestCoordinateIndex = (xs: number[], x: number): number => {
+  if (xs.length === 0) {
+    return -1;
+  }
+
+  // First index whose x is >= the pointer.
+  let low = 0;
+  let high = xs.length - 1;
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2);
+    if (xs[mid] < x) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+
+  let best = low;
+  const previous = low - 1;
+  // Strictly nearer wins; an exact tie stays on `low`, the later point.
+  if (previous >= 0 && x - xs[previous] < xs[low] - x) {
+    best = previous;
+  }
+  while (best + 1 < xs.length && xs[best + 1] === xs[best]) {
+    best += 1;
+  }
+
+  return best;
+};
+
+/**
+ * The one delta the client computes (D8 exception, Phase 3): close-to-close
+ * from the first plotted point to the inspected one. Shaped exactly like the
+ * server's `change` so the header formats it through the same path.
+ * `percent` is rounded to 2dp as the backend does, so a real-but-tiny move
+ * arrives as "0.00" beside a live absolute and the direction helper falls
+ * back to the absolute — the same behaviour the server delta already has.
+ * A zero start price reports "0.00" rather than dividing by zero.
+ */
+export const computeInspectedChange = (
+  from: PriceHistoryPoint,
+  to: PriceHistoryPoint,
+): PriceHistoryChange => {
+  const start = new BigNumber(from.p);
+  const absolute = new BigNumber(to.p).minus(start);
+  const percent = start.isZero()
+    ? new BigNumber(0)
+    : absolute.div(start).times(100);
+
+  return { absolute: absolute.toFixed(), percent: percent.toFixed(2) };
+};
 
 export interface ChartCoordinate {
   x: number;
@@ -347,7 +445,14 @@ export const formatPriceHistoryLabel = (price: string | BigNumber): string => {
     return formatFiatAmount(bn);
   }
 
-  return `${bn.lt(0) ? "-" : ""}$${abs.toFixed(subDollarDecimalPlaces(abs))}`;
+  // Below a dollar there is no grouping, so only the decimal mark needs the
+  // device's setting, as formatFiatAmount uses for the spot price.
+  const { decimalSeparator } = getNumberFormatSettings();
+  const digits = abs
+    .toFixed(subDollarDecimalPlaces(abs))
+    .replace(".", decimalSeparator);
+
+  return `${bn.lt(0) ? "-" : ""}$${digits}`;
 };
 
 /**

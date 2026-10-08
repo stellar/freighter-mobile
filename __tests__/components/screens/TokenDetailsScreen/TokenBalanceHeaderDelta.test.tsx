@@ -17,6 +17,11 @@ import {
 } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { fsValue, pxValue } from "helpers/dimensions";
+import { formatFiatAmount } from "helpers/formatAmount";
+import {
+  formatPriceHistoryLabel,
+  formatPriceHistoryRangeDelta,
+} from "helpers/priceHistoryChart";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import {
@@ -333,8 +338,15 @@ describe("TokenBalanceHeader range delta", () => {
         fireEvent.press(getByTestId("timeframe-selector-1Y"));
       });
       await act(async () => {
-        jest.advanceTimersByTime(500);
-        await Promise.resolve();
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
       });
 
       expect(getByTestId("token-price-delta").props.children).toBe(
@@ -420,8 +432,15 @@ describe("TokenBalanceHeader range delta", () => {
         fireEvent.press(getByTestId("timeframe-selector-1Y"));
       });
       await act(async () => {
-        jest.advanceTimersByTime(500);
-        await Promise.resolve();
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
       });
 
       expect(getByTestId("price-history-error")).toBeTruthy();
@@ -445,8 +464,15 @@ describe("TokenBalanceHeader range delta", () => {
         fireEvent.press(getByTestId("timeframe-selector-1W"));
       });
       await act(async () => {
-        jest.advanceTimersByTime(500);
-        await Promise.resolve();
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
       });
 
       // Exactly one request per range with both components mounted: 1W's came
@@ -601,6 +627,414 @@ describe("TokenBalanceHeader range delta", () => {
       const delta = getByTestId("token-price-delta");
       expect(delta.props.children).toBe("-1.23%");
       expect(deltaColor(delta)).toBe(themeColors.text.secondary);
+    });
+  });
+
+  describe("drag-to-inspect (M6)", () => {
+    const inspectedPoints = [
+      { t: densePoints[0].t, p: "0.20" },
+      { t: densePoints[1].t, p: "0.22" },
+      { t: densePoints[2].t, p: "0.26" },
+    ];
+
+    it("while inspecting, the delta is close-to-close from the first point to the inspected one", async () => {
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.06", percent: "30.00" },
+          points: inspectedPoints,
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      expect(getByTestId("token-price-delta")).toHaveTextContent(
+        formatPriceHistoryRangeDelta({ absolute: "0.02", percent: "10.00" }),
+      );
+    });
+
+    it("while inspecting, the header price is the inspected point's price", async () => {
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.06", percent: "30.00" },
+          points: inspectedPoints,
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount("0.22"),
+      );
+    });
+
+    it("while inspecting a sub-dollar point, the header price uses the chart's precision", async () => {
+      const subDollarPoints = [
+        { t: densePoints[0].t, p: "0.2196" },
+        { t: densePoints[1].t, p: "0.2213" },
+        { t: densePoints[2].t, p: "0.2267" },
+      ];
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.0017", percent: "0.77" },
+          points: subDollarPoints,
+        }),
+      );
+
+      // Spot with more than two decimals, so the release assertion can tell
+      // the fiat format ("$0.28") from the chart's ("$0.2813").
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            currentPrice: new BigNumber("0.2813"),
+            fiatTotal: new BigNumber("28.13"),
+          },
+        } as never,
+        isLoading: false,
+      });
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatPriceHistoryLabel("0.2213"),
+      );
+
+      act(() => {
+        usePriceHistoryStore
+          .getState()
+          .clearInspectedPoint({ network: NETWORKS.PUBLIC, tokenId: "native" });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount("0.2813"),
+      );
+    });
+
+    it("while inspecting a sub-cent point, the header price keeps significant digits instead of rounding to zero", async () => {
+      const subCentPoints = [
+        { t: densePoints[0].t, p: "0.00001200" },
+        { t: densePoints[1].t, p: "0.00001234" },
+        { t: densePoints[2].t, p: "0.00001300" },
+      ];
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.00000034", percent: "2.83" },
+          points: subCentPoints,
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatPriceHistoryLabel("0.00001234"),
+      );
+    });
+
+    it("clearing the inspection restores the server delta and the live price", async () => {
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.06", percent: "30.00" },
+          points: inspectedPoints,
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      act(() => {
+        usePriceHistoryStore
+          .getState()
+          .clearInspectedPoint({ network: NETWORKS.PUBLIC, tokenId: "native" });
+      });
+
+      expect(getByTestId("token-price-delta")).toHaveTextContent(
+        formatPriceHistoryRangeDelta({ absolute: "0.06", percent: "30.00" }),
+      );
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
+      );
+    });
+
+    it("an inspection on a range other than the selected one is ignored", async () => {
+      jest.useFakeTimers();
+      mockFetchHistory.mockImplementation(({ range }) =>
+        Promise.resolve(
+          range === "1W"
+            ? makeHistory({
+                range: "1W",
+                change: { absolute: "-0.05", percent: "-11.11" },
+              })
+            : makeHistory({ points: inspectedPoints }),
+        ),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      act(() => {
+        fireEvent.press(getByTestId("timeframe-selector-1W"));
+      });
+      await act(async () => {
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
+      });
+
+      expect(getByTestId("token-price-delta")).toHaveTextContent(
+        formatPriceHistoryRangeDelta({ absolute: "-0.05", percent: "-11.11" }),
+      );
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      // The selected range (1W) still shows the server's 1W delta — the
+      // stale 1D inspection is never mistaken for one on the visible range.
+      expect(getByTestId("token-price-delta")).toHaveTextContent(
+        formatPriceHistoryRangeDelta({ absolute: "-0.05", percent: "-11.11" }),
+      );
+
+      jest.useRealTimers();
+    });
+
+    it("an inspection on a range other than the selected one leaves the header price on spot", async () => {
+      jest.useFakeTimers();
+      mockFetchHistory.mockImplementation(({ range }) =>
+        Promise.resolve(
+          range === "1W"
+            ? makeHistory({
+                range: "1W",
+                change: { absolute: "-0.05", percent: "-11.11" },
+              })
+            : makeHistory({ points: inspectedPoints }),
+        ),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      act(() => {
+        fireEvent.press(getByTestId("timeframe-selector-1W"));
+      });
+      await act(async () => {
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
+      );
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      // The selected range (1W) still shows spot — the stale 1D inspection
+      // is never mistaken for one on the visible range.
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
+      );
+
+      jest.useRealTimers();
+    });
+
+    it("falls back to spot when the kill switch flips off mid-drag, like the delta", () => {
+      // Seeds the cache and the inspection directly (no section mounted), so
+      // nothing else in the tree can clear the duck — isolating the header's
+      // OWN gate rather than a race with the section's disable-effect.
+      usePriceHistoryStore.setState({
+        historyByNetwork: {
+          [NETWORKS.PUBLIC]: {
+            native: {
+              "1D": {
+                data: makeHistory({ points: inspectedPoints }),
+                updatedAt: Date.now(),
+              },
+            },
+          },
+        },
+      });
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <TokenBalanceHeader
+          tokenId="native"
+          tokenSymbol="XLM"
+          network={NETWORKS.PUBLIC}
+        />,
+      );
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount("0.22"),
+      );
+
+      act(() => {
+        useRemoteConfigStore.setState({
+          isInitialized: true,
+          use_token_price_history: false,
+        });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
+      );
+    });
+
+    it("shows the inspected price even when the token has no spot quote", () => {
+      // No section mounted (direct-seed, like the kill-switch test above):
+      // isolates the header's own gate from anything that could clear the
+      // duck. `currentPrice`/`fiatTotal` are absent, as on a spot-price
+      // failure, but a drawable 1D series exists and is being inspected.
+      usePriceHistoryStore.setState({
+        historyByNetwork: {
+          [NETWORKS.PUBLIC]: {
+            native: {
+              "1D": {
+                data: makeHistory({ points: inspectedPoints }),
+                updatedAt: Date.now(),
+              },
+            },
+          },
+        },
+      });
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            currentPrice: undefined,
+            fiatTotal: undefined,
+          } as PricedBalance,
+        },
+      });
+
+      const { getByTestId, queryByTestId } = renderWithProviders(
+        <TokenBalanceHeader
+          tokenId="native"
+          tokenSymbol="XLM"
+          network={NETWORKS.PUBLIC}
+        />,
+      );
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatPriceHistoryLabel("0.22"),
+      );
+      expect(getByTestId("token-price-delta")).toBeTruthy();
+
+      act(() => {
+        usePriceHistoryStore
+          .getState()
+          .clearInspectedPoint({ network: NETWORKS.PUBLIC, tokenId: "native" });
+      });
+
+      expect(queryByTestId("token-price-header-price")).toBeNull();
     });
   });
 

@@ -4,13 +4,14 @@ import { hash, xdr } from "@stellar/stellar-sdk";
 import { AnalyticsEvent, isScreenViewEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { syncSentryEnablement } from "config/sentryConfig";
+import { DEFAULT_COLOR_SCHEME } from "config/theme";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useNetworkStore } from "ducks/networkInfo";
 import { isE2ETest } from "helpers/isEnv";
 import { throttle, memoize } from "lodash";
-import { Platform } from "react-native";
+import { Appearance, Platform } from "react-native";
 import { getBundleId } from "react-native-device-info";
 import {
   AMPLITUDE_API_KEY,
@@ -303,6 +304,11 @@ export const buildCommonContext = (): Record<string, unknown> => {
     schema_version: SCHEMA_VERSION,
     surface: getSurface(),
     network: network.toUpperCase(), // Stellar network (TESTNET, PUBLIC, FUTURENET)
+    // Event property, not an Identify trait: devices set to "automatic" flip
+    // theme at sunset, so a profile property would thrash. Resolved exactly as
+    // the theme hooks resolve it (useColorScheme reads this same source), so
+    // it reports the scheme on screen. Matches the extension's color_scheme.
+    color_scheme: Appearance.getColorScheme() ?? DEFAULT_COLOR_SCHEME,
   };
 
   if (activePublicKey) {
@@ -444,6 +450,7 @@ const UNTHROTTLED_EVENTS: ReadonlySet<AnalyticsEventName> = new Set([
   AnalyticsEvent.TOKEN_CHART_LOADED,
   AnalyticsEvent.TOKEN_CHART_VIEWED,
   AnalyticsEvent.TOKEN_CHART_RANGE_CHANGED,
+  AnalyticsEvent.TOKEN_CHART_BRUSHED,
 ]);
 
 const getThrottleKey = (

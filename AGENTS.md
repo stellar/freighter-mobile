@@ -35,6 +35,7 @@ Domain terms you will encounter throughout this codebase:
 - [WalletConnect E2E](./e2e/docs/walletconnect-e2e-testing.md)
 - [Mock dApp for Testing](./mock-dapp/README.md)
 - [Getting Started](./README.md)
+- [Development Guide](./DEVELOPMENT.md)
 - [Contributing](./CONTRIBUTING.md)
 
 ## Quick Reference
@@ -160,21 +161,21 @@ yarn test                         # Unit tests must pass
 
 ## Best Practices
 
-| Concern              | File                                        | When to Read                                        |
-| -------------------- | ------------------------------------------- | --------------------------------------------------- |
-| Code Style           | docs/best-practices/code-style.md           | Writing or reviewing any code                       |
-| Architecture         | docs/best-practices/architecture.md         | Adding features, understanding the codebase         |
-| Styling              | docs/best-practices/styling.md              | Creating or modifying UI components                 |
-| Security             | docs/best-practices/security.md             | Touching keys, auth, storage, or dApp interactions  |
-| Testing              | docs/best-practices/testing.md              | Writing or fixing tests                             |
-| Performance          | docs/best-practices/performance.md          | Optimizing renders, lists, images, or startup       |
-| Error Handling       | docs/best-practices/error-handling.md       | Adding error states, retries, or user-facing errors |
-| Internationalization | docs/best-practices/i18n.md                 | Adding or modifying user-facing strings             |
-| WalletConnect        | docs/best-practices/walletconnect.md        | Working with dApp connections or RPC methods        |
-| Navigation           | docs/best-practices/navigation.md           | Adding screens, deep links, or navigation flows     |
-| Git & PR Workflow    | docs/best-practices/git-workflow.md         | Branching, committing, opening PRs, CI, releases    |
-| Dependencies         | docs/best-practices/dependencies.md         | Adding, updating, or auditing packages              |
-| Anti-Patterns        | docs/best-practices/anti-patterns.md        | Code review, avoiding common mistakes               |
+| Concern              | File                                  | When to Read                                        |
+| -------------------- | ------------------------------------- | --------------------------------------------------- |
+| Code Style           | docs/best-practices/code-style.md     | Writing or reviewing any code                       |
+| Architecture         | docs/best-practices/architecture.md   | Adding features, understanding the codebase         |
+| Styling              | docs/best-practices/styling.md        | Creating or modifying UI components                 |
+| Security             | docs/best-practices/security.md       | Touching keys, auth, storage, or dApp interactions  |
+| Testing              | docs/best-practices/testing.md        | Writing or fixing tests                             |
+| Performance          | docs/best-practices/performance.md    | Optimizing renders, lists, images, or startup       |
+| Error Handling       | docs/best-practices/error-handling.md | Adding error states, retries, or user-facing errors |
+| Internationalization | docs/best-practices/i18n.md           | Adding or modifying user-facing strings             |
+| WalletConnect        | docs/best-practices/walletconnect.md  | Working with dApp connections or RPC methods        |
+| Navigation           | docs/best-practices/navigation.md     | Adding screens, deep links, or navigation flows     |
+| Git & PR Workflow    | docs/best-practices/git-workflow.md   | Branching, committing, opening PRs, CI, releases    |
+| Dependencies         | docs/best-practices/dependencies.md   | Adding, updating, or auditing packages              |
+| Anti-Patterns        | docs/best-practices/anti-patterns.md  | Code review, avoiding common mistakes               |
 
 For build failures, setup issues, and known bugs, see
 [`docs/troubleshooting-guide.md`](./docs/troubleshooting-guide.md).

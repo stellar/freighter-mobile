@@ -1,17 +1,38 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { waitFor } from "@testing-library/react-native";
+import { act, waitFor } from "@testing-library/react-native";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
+import { NETWORKS } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import { usePriceHistoryStore } from "ducks/priceHistory";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { SectionList } from "react-native";
 
-jest.mock("components/screens/HistoryScreen/HistoryList", () =>
-  jest.fn(
-    ({ ListHeaderComponent }: { ListHeaderComponent?: React.ReactElement }) => (
-      <div data-testid="history-list">{ListHeaderComponent}</div>
+jest.mock("components/screens/HistoryScreen/HistoryList", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { SectionList: RNSectionList } = jest.requireActual("react-native");
+  // A real SectionList so scroll-lock tests can read `scrollEnabled`, wrapped
+  // in jest.fn so prop tests can read the call arguments.
+  const MockHistoryList = jest.fn(
+    ({
+      ListHeaderComponent,
+      scrollEnabled,
+    }: {
+      ListHeaderComponent?: React.ReactElement;
+      scrollEnabled?: boolean;
+    }) => (
+      <RNSectionList
+        testID="history-list"
+        sections={[]}
+        keyExtractor={(_item: unknown, index: number) => String(index)}
+        renderItem={() => null}
+        ListHeaderComponent={ListHeaderComponent}
+        scrollEnabled={scrollEnabled}
+      />
     ),
-  ),
-);
+  );
+  return MockHistoryList;
+});
 
 jest.mock("components/screens/TokenDetailsScreen/components", () => ({
   TokenBalanceHeader: () => <div data-testid="token-balance-header" />,
@@ -56,7 +77,9 @@ jest.mock("hooks/useGetActiveAccount", () => ({
 
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: () => ({
-    network: "testnet",
+    // Matches NETWORKS.PUBLIC — the scroll-lock test below inspects the
+    // price-history duck under that same scope.
+    network: "PUBLIC",
     setSignInMethod: jest.fn(),
   }),
   getLoginType: jest.fn((biometryType) => {
@@ -132,6 +155,10 @@ const mockRoute = {
 describe("TokenDetailsScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    usePriceHistoryStore.setState({
+      inspectedPoint: null,
+      inspectingKey: null,
+    });
   });
 
   it("displays token transaction history header", async () => {
@@ -194,4 +221,30 @@ describe("TokenDetailsScreen", () => {
     const callArgs = HistoryListMock.mock.calls[0];
     expect(callArgs[0]).toMatchObject({ loadingPlaceholder: "skeleton" });
   });
+
+  /* eslint-disable @typescript-eslint/naming-convention */
+  it("locks the list's scroll while a drag-to-inspect is in progress", () => {
+    const { UNSAFE_getByType } = renderWithProviders(
+      <TokenDetailsScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    const list = UNSAFE_getByType(SectionList);
+    expect(list.props.scrollEnabled).toBe(true);
+
+    act(() =>
+      usePriceHistoryStore.getState().startInspectGesture({
+        network: NETWORKS.PUBLIC,
+        tokenId: "native",
+      }),
+    );
+    expect(list.props.scrollEnabled).toBe(false);
+
+    act(() =>
+      usePriceHistoryStore
+        .getState()
+        .endInspectGesture({ network: NETWORKS.PUBLIC, tokenId: "native" }),
+    );
+    expect(list.props.scrollEnabled).toBe(true);
+  });
+  /* eslint-enable @typescript-eslint/naming-convention */
 });

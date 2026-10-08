@@ -53,6 +53,12 @@ interface HistoryListProps {
   refreshActionPosition: "start" | "center" | "end";
   /** The token-detail screen opts into the Figma skeleton rows; the History screen keeps its spinner. */
   loadingPlaceholder?: "spinner" | "skeleton";
+  /**
+   * False while the token chart's drag-to-inspect is active: the long-press
+   * already arbitrates the START of the gesture, this stops the list from
+   * taking over mid-drag.
+   */
+  scrollEnabled?: boolean;
 }
 
 /**
@@ -73,6 +79,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   className,
   refreshActionPosition = "center",
   loadingPlaceholder = "spinner",
+  scrollEnabled = true,
 }) => {
   const { t } = useAppTranslation();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
@@ -275,6 +282,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
           ListFooterComponent={DefaultListFooter}
           className={className}
           ListEmptyComponent={listEmptyComponent}
+          scrollEnabled={scrollEnabled}
         />
       </View>
     </BaseLayout>

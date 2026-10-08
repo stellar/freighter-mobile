@@ -28,6 +28,13 @@ module.exports = {
       "tailwindcss",
       "react-native-css-interop",
       "react-native-reanimated",
+      // 2.28.0 ships a packaging defect: a handful of files under
+      // `lib/commonjs` (e.g. `handlers/gestures/nativeGesture`,
+      // `handlers/NativeViewGestureHandler`) are raw `.ts` where a `.js` is
+      // expected, and the package's `react-native` field points the entry at
+      // `src/index.ts` anyway. Metro is fine with both; Jest needs babel to
+      // strip the TypeScript, which only happens inside this allow-list.
+      "react-native-gesture-handler",
       "@gorhom/bottom-sheet",
       "react-native-worklets",
       "react-native-keyboard-controller",

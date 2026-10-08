@@ -17,7 +17,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.23.27</string>
+	<string>1.26.29</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -62,6 +62,11 @@
 		<string>Inter-Regular.ttf</string>
 		<string>Inter-SemiBold.ttf</string>
 		<string>Inter-VariableFont_opsz,wght.ttf</string>
+		<string>FunnelSans-Light.ttf</string>
+		<string>FunnelSans-Regular.ttf</string>
+		<string>FunnelSans-Medium.ttf</string>
+		<string>FunnelSans-SemiBold.ttf</string>
+		<string>FunnelSans-Bold.ttf</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>BootSplash</string>

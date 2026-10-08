@@ -96,3 +96,12 @@ export const trackTokenChartViewed = ({
 export const trackTokenChartRangeChanged = (range: PriceHistoryRange): void => {
   track(AnalyticsEvent.TOKEN_CHART_RANGE_CHANGED, { range });
 };
+
+/**
+ * `token_chart.brushed` — fired ONCE when a drag-to-inspect activates, never
+ * on each move. `range` is the plotted series' range in API spelling. FROZEN
+ * cross-platform payload.
+ */
+export const trackTokenChartBrushed = (range: PriceHistoryRange): void => {
+  track(AnalyticsEvent.TOKEN_CHART_BRUSHED, { range });
+};
