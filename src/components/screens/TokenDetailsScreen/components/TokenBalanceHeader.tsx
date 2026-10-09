@@ -15,6 +15,7 @@ import {
   useSelectedPriceHistoryRange,
 } from "ducks/priceHistory";
 import { isNativeAssetId } from "helpers/assetIdentity";
+import { getLPShareCode } from "helpers/balances";
 import { fsValue, pxValue } from "helpers/dimensions";
 import { formatBalanceAmount, formatFiatAmount } from "helpers/formatAmount";
 import { formatPriceHistoryLabel } from "helpers/priceHistoryChart";
@@ -271,7 +272,11 @@ export const TokenBalanceDetails: React.FC<{
       <Text md>
         {formatBalanceAmount(
           rawBalance,
-          "token" in rawBalance ? rawBalance.token.code : undefined,
+          // The code ducks/balances gives it once priced, so the cell doesn't
+          // change when prices land: a pool share has no `token`.
+          "token" in rawBalance
+            ? rawBalance.token.code
+            : getLPShareCode(rawBalance),
         )}
       </Text>
     );

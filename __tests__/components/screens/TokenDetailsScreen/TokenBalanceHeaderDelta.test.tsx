@@ -1297,6 +1297,33 @@ describe("TokenBalanceDetails loading placeholders", () => {
     expect(queryByTestId("token-balance-details-loading")).toBeNull();
   });
 
+  it("names a liquidity pool share by its pair while prices are in flight, as once priced", () => {
+    const lpId = "pool-id:lp";
+    const rawLp = {
+      liquidityPoolId: "pool-id",
+      reserves: [
+        { asset: "native", amount: "10" },
+        {
+          asset:
+            "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          amount: "20",
+        },
+      ],
+      total: new BigNumber("100"),
+      limit: new BigNumber("1000"),
+    };
+    useBalancesStore.setState({
+      balances: { [lpId]: rawLp } as never,
+      pricedBalances: {},
+      isLoading: true,
+    });
+    const { getByText } = renderWithProviders(
+      <TokenBalanceDetails tokenId={lpId} network={NETWORKS.PUBLIC} />,
+    );
+
+    expect(getByText("100.00 XLM / USDC")).toBeTruthy();
+  });
+
   it("shows no Value pill off mainnet, where no Value row can render", () => {
     useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
     const { getByTestId, queryByTestId, queryByText } = renderDetails(
