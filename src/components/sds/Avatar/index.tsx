@@ -1,13 +1,8 @@
 /* eslint-disable react/no-array-index-key */
-import { Canvas, Rect } from "@shopify/react-native-skia";
+import { Canvas } from "@shopify/react-native-skia";
+import { MarbleAvatar } from "components/sds/Avatar/MarbleAvatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import {
-  HSVtoRGB,
-  publicKeyToBytes,
-  generateMatrix,
-  DEFAULT_MATRIX_SIZE,
-} from "helpers/stellarIdenticon";
 import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
@@ -244,17 +239,8 @@ export const Avatar: React.FC<AvatarProps> = ({
   const renderIdenticon = () => {
     if (!publicAddress) return null;
 
-    const bytes = publicKeyToBytes(publicAddress);
-    const matrix = generateMatrix(bytes, true);
-    const { r, g, b } = HSVtoRGB(bytes[0] / 255, 0.7, 0.8);
-    const rgbColor = `rgb(${r}, ${g}, ${b})`;
-
-    const { dimension } = AVATAR_DIMENSIONS[size];
-    const padding = Math.max(2, Math.floor(dimension * 0.2));
-    const availableSpace = dimension - padding * 2;
-    const cellSize = Math.floor(availableSpace / DEFAULT_MATRIX_SIZE);
-    const totalSize = cellSize * DEFAULT_MATRIX_SIZE;
-    const offset = (availableSpace - totalSize) / 2;
+    // The canvas fills the content area, which a border shrinks by 1px a side.
+    const canvasSize = AVATAR_DIMENSIONS[size].width - (hasBorder ? 2 : 0);
 
     return (
       <AvatarWrapper
@@ -265,33 +251,9 @@ export const Avatar: React.FC<AvatarProps> = ({
         hasBackground={hasBackground}
         hasDarkBackground={hasDarkBackground}
       >
-        <View className="justify-center items-center">
-          <Canvas
-            style={{
-              width: availableSpace,
-              height: availableSpace,
-              transform: [
-                { scale: AVATAR_DIMENSIONS[size].iconSize / availableSpace },
-              ],
-            }}
-          >
-            {matrix.map((row, rowIndex) =>
-              row.map(
-                (cell, colIndex) =>
-                  cell && (
-                    <Rect
-                      key={`${publicAddress}-${rowIndex}-${colIndex}`}
-                      x={offset + cellSize * colIndex}
-                      y={offset + cellSize * rowIndex}
-                      width={cellSize + 0.5}
-                      height={cellSize + 0.5}
-                      color={rgbColor}
-                    />
-                  ),
-              ),
-            )}
-          </Canvas>
-        </View>
+        <Canvas style={{ width: canvasSize, height: canvasSize }}>
+          <MarbleAvatar publicAddress={publicAddress} size={canvasSize} />
+        </Canvas>
       </AvatarWrapper>
     );
   };
