@@ -294,14 +294,14 @@ source of truth for the authentication state machine.
 
 ## Further Reading
 
-| Topic                      | Location                                                                 |
-| -------------------------- | ------------------------------------------------------------------------ |
-| WalletConnect RPC methods  | [`docs/walletconnect-rpc-methods.md`](docs/walletconnect-rpc-methods.md) |
-| E2E testing (6 guides)     | [`e2e/docs/`](e2e/docs/)                                                 |
-| Mock dApp for testing      | [`mock-dapp/README.md`](mock-dapp/README.md)                             |
-| Release process            | [`RELEASE.md`](RELEASE.md)                                               |
-| All scripts & commands     | `package.json`                                                           |
-| Best practices (LLM guide) | [`docs/best-practices`](docs/best-practices/)                            |
+| Topic                      | Location                                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------------------- |
+| WalletConnect RPC methods  | [`docs/walletconnect-rpc-methods.md`](docs/walletconnect-rpc-methods.md)                      |
+| E2E testing (6 guides)     | [`e2e/docs/`](e2e/docs/)                                                                      |
+| Mock dApp for testing      | [`mock-dapp/README.md`](mock-dapp/README.md)                                                  |
+| Release process            | [`RELEASE.md`](RELEASE.md)                                                                    |
+| All scripts & commands     | `package.json`                                                                                |
+| Best practices (LLM guide) | [`docs/best-practices`](docs/best-practices/) |
 
 **Questions?** Open a
 [GitHub Discussion](https://github.com/stellar/freighter-mobile/discussions) or
