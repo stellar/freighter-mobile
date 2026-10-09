@@ -1,21 +1,16 @@
-import KeySwapIcon from "assets/icons/key-swap.svg";
-import { VarialLogo } from "components/VarialLogo";
+import { WelcomeHeader } from "components/WelcomeHeader";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
-import { Display, Text } from "components/sds/Typography";
 import { LoginType } from "config/constants";
-import { pxValue } from "helpers/dimensions";
 import { isValidPasswordLength } from "helpers/passwordValidation";
 import useAppTranslation from "hooks/useAppTranslation";
 import useTheme from "hooks/useTheme";
 import React, { useCallback, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
-const LOGO_SIZE = 60;
 const ICON_SIZE = 20;
-const NOTICE_ICON_SIZE = 16;
 // Grows the 20px icons beside the password to a 44px touch target
 const ICON_HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
 
@@ -116,22 +111,7 @@ const LockScreenTemplate: React.FC<LockScreenTemplateProps> = ({
     <BaseLayout useSafeArea useKeyboardAvoidingView testID="lock-screen">
       <View className="flex-1 justify-center">
         <View className="items-center gap-[40px]">
-          <VarialLogo width={LOGO_SIZE} height={LOGO_SIZE} />
-          <View className="self-stretch gap-[8px]">
-            <Display medium family="funnelSans" style={{ textAlign: "center" }}>
-              {t("lockScreen.title")}
-            </Display>
-            <View className="flex-row items-center justify-center gap-[8px]">
-              <KeySwapIcon
-                width={pxValue(NOTICE_ICON_SIZE)}
-                height={pxValue(NOTICE_ICON_SIZE)}
-                color={iconColor}
-              />
-              <Text md medium secondary>
-                {t("lockScreen.rebrandNotice")}
-              </Text>
-            </View>
-          </View>
+          <WelcomeHeader title={t("lockScreen.title")} />
           <View className="self-stretch">
             <Input
               testID="password-input"

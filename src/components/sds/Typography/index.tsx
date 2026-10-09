@@ -343,7 +343,10 @@ const StyledText = styled(BaseText)<{
     fs(TEXT_SIZES[$size].fontSize)};
   line-height: ${({ $size }: { $size: TextSize }) =>
     fs(TEXT_SIZES[$size].lineHeight)};
-  text-decoration: none;
+  // The longhand: the text-decoration shorthand also sets the decoration
+  // color to black, and iOS then paints any underline black, whatever the
+  // text color
+  text-decoration-line: none;
   text-align: ${({
     $textAlign,
   }: {

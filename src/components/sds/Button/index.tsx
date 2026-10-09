@@ -160,7 +160,7 @@ const getSize = (
  * <Button secondary>Create a new wallet</Button>
  *
  * // tertiary - the outlined call to action
- * <Button tertiary>I already have a wallet</Button>
+ * <Button tertiary>Import wallet</Button>
  *
  * // destructive - solid red, for an irreversible action
  * <Button destructive>Delete</Button>

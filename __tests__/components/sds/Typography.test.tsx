@@ -10,7 +10,7 @@ import { getTheme } from "config/theme";
 import { fsValue } from "helpers/dimensions";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { Linking } from "react-native";
+import { Linking, StyleSheet } from "react-native";
 import * as RN from "react-native";
 
 // jest's react-native preset reports no device scheme, so components resolve
@@ -644,6 +644,24 @@ describe("Typography", () => {
       });
 
       expect(Linking.openURL).toHaveBeenCalledWith("https://example.com");
+    });
+
+    it("draws an underline in the text's own color", () => {
+      const { getByText } = renderWithProviders(
+        <Text secondary style={{ textDecorationLine: "underline" }}>
+          Underlined Text
+        </Text>,
+      );
+      const style = StyleSheet.flatten(
+        getByText("Underlined Text").props.style,
+      );
+
+      // iOS paints the underline in textDecorationColor when the style sets
+      // one, and in the text color otherwise. Android always uses the text
+      // color, so a wrong color here only shows on iOS.
+      expect(style.textDecorationColor ?? style.color).toBe(
+        LIGHT_THEME.colors.text.secondary,
+      );
     });
   });
 

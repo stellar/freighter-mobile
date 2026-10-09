@@ -1,7 +1,6 @@
 {
   "wallet": "Wallet",
   "network": "Network",
-  "freighterWallet": "Varial Wallet",
   "noInternetConnection": "No internet connection",
   "accountAddressCopied": "Account address copied!",
   "tokenAddress": "Token Address",
@@ -25,7 +24,6 @@
     "loading": "Loading...",
     "error": "Error: {{errorMessage}}",
     "unknownError": "Unknown error",
-    "and": " and ",
     "available": "available",
     "addMemoShorthand": "Add memo",
     "addMemo": "Add memo",
@@ -180,13 +178,19 @@
     "friendbotPlaceholder": "Enter Friendbot URL"
   },
   "welcomeScreen": {
+    "title": "Welcome",
     "createNewWallet": "Create a new wallet",
-    "iAlreadyHaveWallet": "I already have a wallet",
+    "importWallet": "Import wallet",
     "terms": {
-      "byProceeding": "By proceeding, you agree to Varial's ",
-      "termsOfService": "terms of use",
-      "privacyPolicy": "privacy policy"
+      "beforeTermsLink": "By continuing, you agree to the ",
+      "termsLink": "Terms",
+      "betweenLinks": " and ",
+      "privacyPolicyLink": "Privacy Policy",
+      "afterPrivacyPolicyLink": "."
     }
+  },
+  "welcomeHeader": {
+    "rebrandNotice": "Freighter is now Varial"
   },
   "passwordInput": {
     "passwordNote": "Must be at least 8 characters long"
@@ -268,7 +272,6 @@
   "lockScreen": {
     "title": "Welcome back",
     "description": "Enter password to unlock Varial",
-    "rebrandNotice": "Freighter is now Varial",
     "passwordInputPlaceholder": "Password",
     "showPassword": "Show password",
     "hidePassword": "Hide password",

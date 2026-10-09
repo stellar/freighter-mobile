@@ -173,12 +173,12 @@ describe("LockScreen", () => {
     return screen;
   };
 
-  it("sets its heading in Funnel Sans, the Varial display face", async () => {
+  it("sets its heading in Funnel Sans with the Varial tracking", async () => {
     const { getByText } = await renderLockScreen();
 
     expect(
       StyleSheet.flatten(getByText("Welcome back").props.style),
-    ).toMatchObject({ fontFamily: "FunnelSans-Medium" });
+    ).toMatchObject({ fontFamily: "FunnelSans-Medium", letterSpacing: -1.28 });
   });
 
   it("auto-prompts biometrics on mount and unlocks with the stored password", async () => {

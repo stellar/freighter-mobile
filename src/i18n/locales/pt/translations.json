@@ -1,7 +1,6 @@
 {
   "wallet": "Carteira",
   "network": "Rede",
-  "freighterWallet": "Carteira Varial",
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
   "tokenAddress": "Endereço do Token",
@@ -25,7 +24,6 @@
     "loading": "Carregando...",
     "error": "Erro: {{errorMessage}}",
     "unknownError": "Erro desconhecido",
-    "and": " e ",
     "available": "disponível",
     "yes": "Sim",
     "message": "Mensagem",
@@ -146,13 +144,19 @@
     "friendbotPlaceholder": "Insira a URL do Friendbot"
   },
   "welcomeScreen": {
+    "title": "Bem vindo",
     "createNewWallet": "Criar uma nova carteira",
-    "iAlreadyHaveWallet": "Já tenho uma carteira",
+    "importWallet": "Importar carteira",
     "terms": {
-      "byProceeding": "Ao prosseguir, você concorda com os ",
-      "termsOfService": "termos de uso do Varial",
-      "privacyPolicy": "política de privacidade"
+      "beforeTermsLink": "Ao continuar, você concorda com os ",
+      "termsLink": "Termos",
+      "betweenLinks": " e a ",
+      "privacyPolicyLink": "Política de Privacidade",
+      "afterPrivacyPolicyLink": "."
     }
+  },
+  "welcomeHeader": {
+    "rebrandNotice": "O Freighter agora é Varial"
   },
   "passwordInput": {
     "passwordNote": "Deve ter pelo menos 8 caracteres"
@@ -232,9 +236,8 @@
     "illustrationAccessibilityLabel": "O logotipo do Varial"
   },
   "lockScreen": {
-    "title": "Bem-vindo de volta",
+    "title": "Bem vindo de volta",
     "description": "Digite a senha para desbloquear o Varial",
-    "rebrandNotice": "O Freighter agora é Varial",
     "passwordInputPlaceholder": "Senha",
     "showPassword": "Mostrar senha",
     "hidePassword": "Ocultar senha",
@@ -295,7 +298,7 @@
     "tags": "Tags",
     "description": "Descrição",
     "clearRecents": "Limpar Recentes",
-    "welcomeTitle": "Bem-vindo ao Descobrir!",
+    "welcomeTitle": "Bem vindo ao Descobrir!",
     "welcomeGateway": "Seu portal para o ecossistema Stellar. Navegue e conecte-se a aplicativos descentralizados construídos na rede Stellar.",
     "welcomeCta": "Vamos lá",
     "newTab": "Nova aba",
@@ -1130,7 +1133,7 @@
     }
   },
   "welcomeBanner": {
-    "welcomeMessage": "Bem-vindo ao Varial!",
+    "welcomeMessage": "Bem vindo ao Varial!",
     "fundingText": "Para começar a usar esta conta, ",
     "fundingText2": "financie-a com pelo menos 2 XLM.",
     "minimumBalanceText": "As contas Stellar exigem um saldo mínimo de 2 XLM para garantir a segurança da rede e prevenir spam.",

@@ -1,15 +1,13 @@
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { VarialLogo } from "components/VarialLogo";
+import { WelcomeHeader } from "components/WelcomeHeader";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
-import { Display, Text } from "components/sds/Typography";
+import { Text } from "components/sds/Typography";
 import { FREIGHTER_TERMS_URL, FREIGHTER_PRIVACY_URL } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
-import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
-import { View } from "react-native";
-import styled from "styled-components/native";
+import { StyleSheet, View } from "react-native";
 
 type WelcomeScreenProps = {
   navigation: NativeStackNavigationProp<
@@ -18,33 +16,21 @@ type WelcomeScreenProps = {
   >;
 };
 
-const Container = styled.View`
-  flex: 1;
-  justify-content: space-between;
-`;
+// A StyleSheet rather than NativeWind classes: the SDS Text takes no
+// className, so its overrides go through the style prop.
+const styles = StyleSheet.create({
+  link: {
+    textDecorationLine: "underline",
+  },
+});
 
-const StyledDisplay = styled(Display)`
-  text-align: center;
-`;
-
-const StyledIconContainer = styled.View`
-  align-items: center;
-  margin-top: ${px(40)};
-`;
-
-const StyledTermsText = styled(Text)`
-  text-align: center;
-  padding-horizontal: ${px(14)};
-`;
-
-interface StyledProps {
-  $size: number;
-}
-
-const StyledSpacer = styled.View<StyledProps>`
-  height: ${({ $size }: StyledProps) => px($size)};
-`;
-
+/**
+ * The Create/Import entry screen, shown whenever there is no wallet on the
+ * device: on a fresh install, and after a wipe such as Forgot password.
+ *
+ * Design: https://www.figma.com/design/lcdj2ucnJ2BfvRvsLboBNC/Varial?node-id=650-6360
+ * (light) and ?node-id=760-37023 (dark).
+ */
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
 
@@ -54,15 +40,18 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
     });
   };
 
+  // The spacers share the free height in the Figma frame's proportions: on
+  // the 402x874 phone it was drawn on, the header and the buttons land at the
+  // frame's y-positions, 254 and 572, and on other heights every gap scales
+  // by the same factor. The last gap is 116, not the frame's 130, because
+  // BaseLayout's bottom padding sits the terms line higher than the frame.
   return (
     <BaseLayout useSafeArea>
-      <Container testID="welcome-screen">
-        <StyledIconContainer>
-          <VarialLogo />
-        </StyledIconContainer>
-        <View>
-          <StyledDisplay>{t("freighterWallet")}</StyledDisplay>
-          <StyledSpacer $size={32} />
+      <View className="flex-1" testID="welcome-screen">
+        <View className="grow-[168]" />
+        <WelcomeHeader title={t("welcomeScreen.title")} />
+        <View className="grow-[146]" />
+        <View className="gap-[8px]">
           <Button
             secondary
             xl
@@ -71,29 +60,40 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
           >
             {t("welcomeScreen.createNewWallet")}
           </Button>
-          <StyledSpacer $size={12} />
           <Button
             tertiary
             xl
             testID="import-wallet-button"
             onPress={() => navigateToScreen(true)}
           >
-            {t("welcomeScreen.iAlreadyHaveWallet")}
+            {t("welcomeScreen.importWallet")}
           </Button>
         </View>
-        <View>
-          <StyledTermsText md secondary medium>
-            {t("welcomeScreen.terms.byProceeding")}
-            <Text md medium url={FREIGHTER_TERMS_URL}>
-              {t("welcomeScreen.terms.termsOfService")}
-            </Text>
-            {t("common.and")}
-            <Text md medium url={FREIGHTER_PRIVACY_URL}>
-              {t("welcomeScreen.terms.privacyPolicy")}
-            </Text>
-          </StyledTermsText>
-        </View>
-      </Container>
+        <View className="grow-[116]" />
+        <Text xs secondary textAlign="center">
+          {t("welcomeScreen.terms.beforeTermsLink")}
+          <Text
+            xs
+            secondary
+            url={FREIGHTER_TERMS_URL}
+            accessibilityRole="link"
+            style={styles.link}
+          >
+            {t("welcomeScreen.terms.termsLink")}
+          </Text>
+          {t("welcomeScreen.terms.betweenLinks")}
+          <Text
+            xs
+            secondary
+            url={FREIGHTER_PRIVACY_URL}
+            accessibilityRole="link"
+            style={styles.link}
+          >
+            {t("welcomeScreen.terms.privacyPolicyLink")}
+          </Text>
+          {t("welcomeScreen.terms.afterPrivacyPolicyLink")}
+        </Text>
+      </View>
     </BaseLayout>
   );
 };
