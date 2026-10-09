@@ -25,7 +25,9 @@ import { formatDate } from "helpers/date";
 import { pxValue } from "helpers/dimensions";
 import {
   formatPriceHistoryRangeDelta,
+  getFirstTradeLowerBound,
   getPriceChangeDirection,
+  isNewlyTradedSeries,
   isSparseSeries,
   hasChartData,
   getPlottedRangeStart,
@@ -134,14 +136,22 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
     analytics.trackTokenChartRangeChanged(settledRange);
   }, []);
 
-  const { range, setRange, data, isLoading, error, retry, isEnabled } =
-    useTokenPriceHistory({
-      tokenId,
-      network,
-      enabled: isFeatureEnabled,
-      onLoaded: handleLoaded,
-      onRangeSettled: handleRangeSettled,
-    });
+  const {
+    range,
+    setRange,
+    data,
+    isLoading,
+    error,
+    retry,
+    isEnabled,
+    rangesSettled,
+  } = useTokenPriceHistory({
+    tokenId,
+    network,
+    enabled: isFeatureEnabled,
+    onLoaded: handleLoaded,
+    onRangeSettled: handleRangeSettled,
+  });
 
   // The chart snaps a drag position to an INDEX; this section knows which
   // series that index indexes into and publishes both, so the header can
@@ -217,6 +227,13 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
   const inspectedIndex =
     inspected && inspected.range === plottedRange ? inspected.index : null;
 
+  // Every cached range for this token, read past the cache's freshness
+  // window on purpose: a first trade never moves, so an aged-out entry still
+  // bounds it.
+  const cachedByRange = usePriceHistoryStore(
+    (state) => state.historyByNetwork[network]?.[tokenId],
+  );
+
   /**
    * One event per (token, range) SHOWN, cache hits included — `loaded` skips
    * those, and warming means an opened range is usually already cached. Keyed
@@ -271,6 +288,7 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
   const points = data?.points ?? [];
   const hasChart = hasChartData(points);
 
+  const nowSeconds = Math.floor(Date.now() / 1000);
   const noticeVariant =
     data && hasChart
       ? getPriceHistoryNoticeVariant({
@@ -279,8 +297,15 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
             range,
             points,
             data.resolutionSeconds,
-            Math.floor(Date.now() / 1000),
+            nowSeconds,
           ),
+          isNewlyTraded: isNewlyTradedSeries(
+            range,
+            points,
+            nowSeconds,
+            cachedByRange ? getFirstTradeLowerBound(cachedByRange) : undefined,
+          ),
+          rangesSettled,
         })
       : null;
 

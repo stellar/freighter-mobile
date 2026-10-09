@@ -12,6 +12,7 @@ import { useWindowDimensions, View } from "react-native";
 export type PriceHistoryNoticeVariant =
   | "lowVolume"
   | "limitedData"
+  | "newlyTraded"
   | "verdictUnavailable";
 
 interface GetNoticeVariantParams {
@@ -19,20 +20,31 @@ interface GetNoticeVariantParams {
   lowVolume: boolean | null;
   /** Whether the drawable series is below the sparse threshold */
   isSparse: boolean;
+  /** Whether the token's age explains the sparseness */
+  isNewlyTraded: boolean;
+  /** False while other ranges are still loading: the first-trade bound can
+   * still move, so limited-data could flip to newly-traded on screen. */
+  rangesSettled: boolean;
 }
 
 /**
  * Precedence: low volume beats limited-data (it commonly causes the
  * sparseness, and covers the wash-trader profile — a dense series at low
  * volume); a null verdict shows "couldn't verify", never the accusation.
+ * A sparse series shows nothing while other ranges are still loading (low
+ * volume and "couldn't verify" still show at once), then newly-traded when
+ * the token's age explains the gap, limited-data otherwise.
  */
 export const getPriceHistoryNoticeVariant = ({
   lowVolume,
   isSparse,
+  isNewlyTraded,
+  rangesSettled,
 }: GetNoticeVariantParams): PriceHistoryNoticeVariant | null => {
   if (lowVolume === true) return "lowVolume";
   if (lowVolume === null) return "verdictUnavailable";
-  if (isSparse) return "limitedData";
+  if (isSparse && !rangesSettled) return null;
+  if (isSparse) return isNewlyTraded ? "newlyTraded" : "limitedData";
 
   return null;
 };
@@ -59,7 +71,7 @@ export const iconOffsetFromFirstLine = (fontScale: number) =>
   );
 
 /**
- * Three copy variants, styled after the Blockaid token banners. Real text, so
+ * Four copy variants, styled after the Blockaid token banners. Real text, so
  * screen readers announce it.
  */
 const PriceHistoryNotice: React.FC<PriceHistoryNoticeProps> = ({ variant }) => {

@@ -50,6 +50,104 @@ export const isSparseSeries = (
 };
 
 /**
+ * Each range's lookback window and bucket width. Must match
+ * freighter-backend-v2's `priceHistoryRanges`, or a token that started
+ * trading just outside the window, or traded only every few buckets, is
+ * called newly traded. ALL has neither.
+ */
+export const RANGE_WINDOW_SECONDS: Partial<Record<PriceHistoryRange, number>> =
+  {
+    "1H": 3600,
+    "1D": 86400,
+    "1W": 7 * 86400,
+    "1M": 30 * 86400,
+    "1Y": 365 * 86400,
+  };
+
+export const RANGE_BUCKET_SECONDS: Partial<Record<PriceHistoryRange, number>> =
+  {
+    "1H": 300,
+    "1D": 900,
+    "1W": 3600,
+    "1M": 14400,
+    "1Y": 259200,
+  };
+
+/** ALL first: every newly-traded verdict needs its first point, while each
+ * finer range only narrows it. */
+export const PRICE_HISTORY_WARM_ORDER: PriceHistoryRange[] = [
+  "ALL",
+  "1H",
+  "1D",
+  "1W",
+  "1M",
+  "1Y",
+];
+
+const NARROWING_ORDER: PriceHistoryRange[] = ["1Y", "1M", "1W", "1D", "1H"];
+
+/**
+ * The earliest the token's first trade can be: the start of ALL's first
+ * bucket, narrowed by each finer cached range whose window (measured from
+ * when it was fetched) reaches back to the bound — every trade then falls
+ * inside that range, so its first bucket holds the first trade. Without the
+ * narrowing, ALL's two-week buckets put a token launched today before the 1D
+ * window. Undefined until ALL is cached.
+ */
+export const getFirstTradeLowerBound = (
+  cachedByRange: Partial<
+    Record<string, { data: { points: PriceHistoryPoint[] }; updatedAt: number }>
+  >,
+): number | undefined => {
+  let bound = cachedByRange.ALL?.data.points[0]?.t;
+  if (bound === undefined) return undefined;
+
+  NARROWING_ORDER.forEach((range) => {
+    const entry = cachedByRange[range];
+    const firstT = entry?.data.points[0]?.t;
+    if (!entry || firstT === undefined || bound === undefined) return;
+    if (entry.updatedAt / 1000 - (RANGE_WINDOW_SECONDS[range] ?? 0) <= bound) {
+      bound = Math.max(bound, firstT);
+    }
+  });
+
+  return bound;
+};
+
+/**
+ * A sparse series whose shortfall is explained by the token's age. The
+ * backend returns only buckets that traded, so a series' first point is the
+ * first trade in the window, not the token's first trade: an old token that
+ * traded only in the last hour looks young from its own series. Only
+ * `firstTradeSeconds` can rule that out, and it is a lower bound, so an
+ * unknown or straddling first trade is not newly traded.
+ */
+export const isNewlyTradedSeries = (
+  range: PriceHistoryRange,
+  points: PriceHistoryPoint[],
+  nowSeconds: number,
+  firstTradeSeconds: number | undefined,
+): boolean => {
+  const windowSeconds = RANGE_WINDOW_SECONDS[range];
+  // Not the payload's resolution: the backend derives that from the smallest
+  // gap, so a token trading every 2h on 1D would read as fully covered.
+  const bucketSeconds = RANGE_BUCKET_SECONDS[range];
+  if (
+    !windowSeconds ||
+    !bucketSeconds ||
+    firstTradeSeconds === undefined ||
+    points.length === 0 ||
+    firstTradeSeconds <= nowSeconds - windowSeconds
+  ) {
+    return false;
+  }
+  const expectedSinceFirstPoint = Math.ceil(
+    (nowSeconds - points[0].t) / bucketSeconds,
+  );
+  return points.length >= expectedSinceFirstPoint * SPARSE_SERIES_RATIO;
+};
+
+/**
  * Keeps the plotted extremes off the plot band's edges: the high/low labels
  * sit immediately above and below, so an unpadded min lands hard against its
  * own label. Matches the extension's constant.

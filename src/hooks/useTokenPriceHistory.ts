@@ -1,6 +1,5 @@
 import { NETWORKS } from "config/constants";
 import {
-  PRICE_HISTORY_RANGES,
   PriceHistoryRange,
   TokenIdentifier,
   TokenPriceHistory,
@@ -14,8 +13,9 @@ import {
   usePriceHistoryStore,
   useSelectedPriceHistoryRange,
 } from "ducks/priceHistory";
+import { PRICE_HISTORY_WARM_ORDER } from "helpers/priceHistoryChart";
 import useDebounce from "hooks/useDebounce";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -81,6 +81,9 @@ interface UseTokenPriceHistoryReturn {
   retry: () => void;
   /** False off-mainnet or when the caller disabled the feature */
   isEnabled: boolean;
+  /** True once nothing more will load in the background for this token
+   * this visit: the warm pass finished, or a failed first load skipped it */
+  rangesSettled: boolean;
 }
 
 /**
@@ -157,6 +160,8 @@ const useTokenPriceHistory = ({
    * cost six requests.
    */
   const warmGenerationRef = useRef(0);
+  const scope = `${network}/${tokenId}`;
+  const [settledScope, setSettledScope] = useState<string | null>(null);
   useEffect(
     () => () => {
       warmGenerationRef.current += 1;
@@ -210,8 +215,8 @@ const useTokenPriceHistory = ({
 
       /* eslint-disable no-await-in-loop -- sequential is the requirement:
          each range starts only once the previous one has settled. */
-      for (let i = 0; i < PRICE_HISTORY_RANGES.length; i += 1) {
-        const warmRange = PRICE_HISTORY_RANGES[i];
+      for (let i = 0; i < PRICE_HISTORY_WARM_ORDER.length; i += 1) {
+        const warmRange = PRICE_HISTORY_WARM_ORDER[i];
 
         // Cancelled by unmount, or by a token / network / gate change.
         if (warmGenerationRef.current !== generation) {
@@ -223,8 +228,11 @@ const useTokenPriceHistory = ({
         }
       }
       /* eslint-enable no-await-in-loop */
+      if (warmGenerationRef.current === generation) {
+        setSettledScope(scope);
+      }
     },
-    [warmPriceHistory, tokenId, network],
+    [warmPriceHistory, tokenId, network, scope],
   );
 
   const debouncedFetch = useDebounce((fetchRange: PriceHistoryRange) => {
@@ -276,14 +284,18 @@ const useTokenPriceHistory = ({
         usePriceHistoryStore.getState().historyStatusByKey[
           getPriceHistoryKey(network, tokenId, loadRange)
         ] ?? IDLE_PRICE_HISTORY_STATUS;
-      if (loadError) return;
+      if (loadError) {
+        // No pass will run this visit, so nothing is left to wait for.
+        setSettledScope(scope);
+        return;
+      }
 
       if (hasWarmedRef.current) return;
       hasWarmedRef.current = true;
 
       await warmOtherRanges(loadRange);
     },
-    [doFetch, warmOtherRanges, network, tokenId],
+    [doFetch, warmOtherRanges, network, tokenId, scope],
   );
 
   /**
@@ -307,6 +319,7 @@ const useTokenPriceHistory = ({
   useEffect(() => {
     hasFetchedRef.current = false;
     hasWarmedRef.current = false;
+    setSettledScope(null);
     // The settled-range sentinel is per token too. Left alone, it carries the
     // previous token's last range into the next one, and the first switch
     // BACK to that range emits no `range_changed` — token A settling on 1Y
@@ -350,6 +363,7 @@ const useTokenPriceHistory = ({
     error,
     retry,
     isEnabled,
+    rangesSettled: settledScope === scope,
   };
 };
 

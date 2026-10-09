@@ -367,6 +367,10 @@
         "title": "Dados de negociação limitados",
         "body": "O histórico de preços é limitado para este período."
       },
+      "newlyTraded": {
+        "title": "Token negociado recentemente",
+        "body": "O histórico de preços é limitado porque este token começou a ser negociado recentemente."
+      },
       "verdictUnavailable": {
         "title": "Não foi possível verificar a atividade de negociação",
         "body": "Os dados de preço podem ser menos confiáveis para este token."

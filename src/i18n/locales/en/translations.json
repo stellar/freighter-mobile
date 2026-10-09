@@ -401,6 +401,10 @@
         "title": "Limited trading data",
         "body": "Price history is limited for this period."
       },
+      "newlyTraded": {
+        "title": "Newly traded token",
+        "body": "Price history is limited because this token started trading recently."
+      },
       "verdictUnavailable": {
         "title": "Couldn't verify trading activity",
         "body": "Price data may be less reliable for this token."
