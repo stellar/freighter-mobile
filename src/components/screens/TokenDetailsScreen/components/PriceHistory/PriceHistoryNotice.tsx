@@ -31,6 +31,9 @@ interface GetNoticeVariantParams {
  * Precedence: low volume beats limited-data (it commonly causes the
  * sparseness, and covers the wash-trader profile — a dense series at low
  * volume); a null verdict shows "couldn't verify", never the accusation.
+ * A sparse series shows nothing while other ranges are still loading (low
+ * volume and "couldn't verify" still show at once), then newly-traded when
+ * the token's age explains the gap, limited-data otherwise.
  */
 export const getPriceHistoryNoticeVariant = ({
   lowVolume,

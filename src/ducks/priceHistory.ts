@@ -247,8 +247,14 @@ interface PriceHistoryState {
    * structural rather than a convention an edit can break.
    *
    * It writes no status and reports no failures either: a warm can never move
-   * the chart, the delta, the notice or the tab, and the user never asked for
-   * this range. A later switch takes the normal path and reports normally.
+   * the chart, the delta or the tab, and the user never asked for this range.
+   * A later switch takes the normal path and reports normally.
+   *
+   * It does decide the sparse notice: warmed ranges set and narrow the
+   * first-trade bound that picks newly-traded over limited-data, which is why
+   * both sparse notices wait for the pass to settle. If the user's own
+   * request for this range is already in flight, it waits on that request
+   * instead of starting a second one.
    */
   warmPriceHistory: (params: WarmPriceHistoryParams) => Promise<void>;
   /** Fetch a token's stats with the same flat session-cache validity. */
