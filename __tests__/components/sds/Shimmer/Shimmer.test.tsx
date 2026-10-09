@@ -1,5 +1,8 @@
 import { act } from "@testing-library/react-native";
-import Shimmer, { SHIMMER_PILL_RADIUS } from "components/sds/Shimmer";
+import Shimmer, {
+  SHIMMER_PILL_RADIUS,
+  ShimmerVariant,
+} from "components/sds/Shimmer";
 import { shimmerProgress } from "components/sds/Shimmer/clock";
 import { getThemeColors } from "config/colors";
 import { findAllRenderedByType, renderWithProviders } from "helpers/testUtils";
@@ -107,7 +110,11 @@ describe("Shimmer", () => {
   });
 
   it("uses the stronger highlight and the border colour for the hairline", () => {
-    const { toJSON } = render({ variant: "hairline", height: 1, radius: 0 });
+    const { toJSON } = render({
+      variant: ShimmerVariant.Hairline,
+      height: 1,
+      radius: 0,
+    });
     const tree = toJSON();
     const gradients = findAllRenderedByType(tree, "skLinearGradient");
     expect(gradients[0].props.colors).toEqual([

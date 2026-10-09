@@ -9,7 +9,7 @@ import TokenPriceChart, {
   priceChartHeight,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChart";
 import { Button } from "components/sds/Button";
-import Shimmer from "components/sds/Shimmer";
+import Shimmer, { ShimmerVariant } from "components/sds/Shimmer";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, NETWORKS } from "config/constants";
 import {
@@ -324,7 +324,7 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
               with the shared shimmer sweeping along it. */}
           <Shimmer
             testID="price-history-chart-shimmer"
-            variant="hairline"
+            variant={ShimmerVariant.Hairline}
             width={measuredWidth}
             height={1}
             radius={0}

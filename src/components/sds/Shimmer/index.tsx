@@ -15,12 +15,17 @@ import React from "react";
 import { useColorScheme, View } from "react-native";
 import { useDerivedValue } from "react-native-reanimated";
 
+export enum ShimmerVariant {
+  Pill = "pill",
+  Hairline = "hairline",
+}
+
 export interface ShimmerProps {
   width: number;
   height: number;
   /** Corner radius. Pills default to 8; the hairline passes 0. */
   radius?: number;
-  variant?: "pill" | "hairline";
+  variant?: ShimmerVariant;
   testID?: string;
 }
 
@@ -45,7 +50,7 @@ const Shimmer: React.FC<ShimmerProps> = ({
   width,
   height,
   radius = SHIMMER_PILL_RADIUS,
-  variant = "pill",
+  variant = ShimmerVariant.Pill,
   testID,
 }) => {
   const { themeColors } = useColors();
@@ -59,7 +64,7 @@ const Shimmer: React.FC<ShimmerProps> = ({
   ]);
 
   let baseColors: string[];
-  if (variant === "hairline") {
+  if (variant === ShimmerVariant.Hairline) {
     baseColors = [themeColors.border.primary, themeColors.border.primary];
   } else if (isDark) {
     baseColors = [themeColors.gray[5], themeColors.base[0]];
@@ -67,7 +72,8 @@ const Shimmer: React.FC<ShimmerProps> = ({
     baseColors = [themeColors.base[0], themeColors.gray[5]];
   }
   const pillStops = isDark ? PILL_STOPS : LIGHT_PILL_STOPS;
-  const stops = variant === "hairline" ? HAIRLINE_STOPS : pillStops;
+  const stops =
+    variant === ShimmerVariant.Hairline ? HAIRLINE_STOPS : pillStops;
   const highlightColors = stops.map((alpha) => `${HIGHLIGHT}${alpha}`);
 
   return (
