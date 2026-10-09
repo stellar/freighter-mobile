@@ -7,14 +7,11 @@
 // Marble uses three consecutive entries (wrapping), so order is part of the
 // design. Must match the extension's VARIAL_AVATAR_COLORS.
 export const VARIAL_AVATAR_COLORS = [
-  "#0050ff",
+  "#1677ff",
   "#c8e0ff",
   "#0e2b6c",
+  "#0050ff",
   "#73a5ff",
-  "#2255a3",
-  "#a8c6ff",
-  "#1677ff",
-  "#0f3b7c",
 ];
 
 // The library draws on an 80x80 viewBox; callers scale to their size.
