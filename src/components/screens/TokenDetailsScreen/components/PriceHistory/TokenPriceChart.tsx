@@ -353,7 +353,7 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
    *
    * RNGH drops the handler on teardown WITHOUT a terminal state change, so
    * `onFinalize` never runs for a gesture that was still live — navigating
-   * away mid-drag, or the section swapping the chart for the ghost on a range
+   * away mid-drag, or the section swapping the chart for the skeleton on a range
    * that has to fetch. The parent would keep the inspected point it was last
    * told about and leave the list unscrollable with nothing on screen to
    * release it. Guarded by the ref so it cannot double-fire after a gesture

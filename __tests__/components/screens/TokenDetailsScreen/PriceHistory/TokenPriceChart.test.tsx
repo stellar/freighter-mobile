@@ -477,8 +477,8 @@ describe("chart block geometry", () => {
     );
   });
 
-  it("grows the whole block with the text, so the ghost still matches", () => {
-    // The skeleton, the ghost and the real chart all read this. If it stopped
+  it("grows the whole block with the text, so the skeleton still matches", () => {
+    // The skeleton and the real chart both read this. If it stopped
     // tracking the label rows, swapping the placeholder for the chart would
     // shift the selector below it.
     const atDefault = priceChartHeight(1);

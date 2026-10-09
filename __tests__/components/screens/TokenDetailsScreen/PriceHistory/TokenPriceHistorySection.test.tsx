@@ -372,9 +372,9 @@ describe("TokenPriceHistorySection", () => {
     expect(getByLabelText(/Price chart, 1D:.*\d{1,2}:\d{2}/)).toBeTruthy();
   });
 
-  it("lays the loaded chart out at the same height as the ghost it replaces", async () => {
-    // The ghost, the skeleton and the real chart all size from one function,
-    // but only the first two were ever measured. A chart that stopped reading
+  it("lays the loaded chart out at the same height as the skeleton it replaces", async () => {
+    // The skeleton and the real chart both size from one function,
+    // but only the skeleton was ever measured. A chart that stopped reading
     // the live text scale would lay out shorter than the placeholder it
     // replaces and jump the selector below it when the fetch resolves — with
     // every test still green.
@@ -396,7 +396,7 @@ describe("TokenPriceHistorySection", () => {
         expectedLabelHeight(),
       );
     });
-    // And those two rows plus the plot are the block the ghost reserved.
+    // And those two rows plus the plot are the block the skeleton reserved.
     expect(expectedChartHeight()).toBe(
       PRICE_CHART_LINE_HEIGHT + expectedLabelHeight() * 2,
     );
@@ -826,7 +826,7 @@ describe("TokenPriceHistorySection", () => {
     it("does not inspect when no series is loaded — the chart itself does not render", () => {
       // `plottedRange` (off `data?.range`) is undefined with no series: the
       // real TokenPriceChart (and its gesture) never mounts without data —
-      // only the ghost does — so there is no gesture to drive. This is the
+      // only the skeleton does — so there is no gesture to drive. This is the
       // structural guarantee that `handleInspectStart`/`handleInspectMove`'s
       // `if (!plottedRange) return;` early-outs exist for defense-in-depth;
       // the gesture test id being entirely absent proves the primary guard.
