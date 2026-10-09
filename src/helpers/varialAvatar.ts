@@ -1,5 +1,6 @@
 /* eslint-disable no-bitwise */
 import { StrKey } from "@stellar/stellar-sdk";
+import { colors as appColors } from "config/colors";
 
 // Port of boring-avatars@2.0.4's "marble" variant (MIT, (c) boringdesigners),
 // which the extension renders directly. It must stay output-identical so an
@@ -7,13 +8,14 @@ import { StrKey } from "@stellar/stellar-sdk";
 // pins that against the extension's fixtures.
 
 // Marble uses three consecutive entries (wrapping), so order is part of the
-// design. Must match the extension's VARIAL_AVATAR_COLORS.
+// design. Must match the extension's VARIAL_AVATAR_COLORS. Steps are named by
+// ramp, not the active theme, so an avatar never changes with the theme.
 export const VARIAL_AVATAR_COLORS = [
-  "#1677ff",
-  "#c8e0ff",
-  "#0e2b6c",
-  "#0050ff",
-  "#73a5ff",
+  appColors.dark.lilac[9],
+  appColors.light.lilac[5],
+  appColors.light.lilac[12],
+  appColors.light.lilac[9],
+  appColors.light.lilac[8],
 ];
 
 // The library draws on an 80x80 viewBox; callers scale to their size.
