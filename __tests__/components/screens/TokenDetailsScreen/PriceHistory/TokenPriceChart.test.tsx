@@ -250,6 +250,33 @@ describe("TokenPriceChart timeframe morph", () => {
     );
   });
 
+  it("rises from a flat line at the centre when it replaces the loading hairline", async () => {
+    // The chart's own reduced-motion query starts "reduced" and settles to
+    // false during this test; the rise the caller asked for must survive it.
+    const { toJSON } = renderWithProviders(
+      <TokenPriceChart
+        testID="chart"
+        points={points}
+        resolutionSeconds={900}
+        width={CHART_WIDTH}
+        direction="positive"
+        range="1D"
+        riseFromFlat
+      />,
+    );
+    await settle();
+    const real = geometryFor(points, 900).coords;
+
+    expect(linePathValue(toJSON())).toBe(
+      buildChartLinePath(
+        real.map(({ x }) => ({ x, y: PRICE_CHART_LINE_HEIGHT / 2 })),
+      ),
+    );
+
+    await settle(CHART_MORPH_DURATION_MS);
+    expect(linePathValue(toJSON())).toBe(buildChartLinePath(real));
+  });
+
   it("starts the tween from the outgoing shape, not from the incoming one", async () => {
     const { toJSON, rerender } = await renderMorphable();
 
@@ -450,8 +477,8 @@ describe("chart block geometry", () => {
     );
   });
 
-  it("grows the whole block with the text, so the ghost still matches", () => {
-    // The skeleton, the ghost and the real chart all read this. If it stopped
+  it("grows the whole block with the text, so the skeleton still matches", () => {
+    // The skeleton and the real chart both read this. If it stopped
     // tracking the label rows, swapping the placeholder for the chart would
     // shift the selector below it.
     const atDefault = priceChartHeight(1);
@@ -668,7 +695,7 @@ describe("axis label measurements survive their own edge cases", () => {
 
   // Restored in `afterAll`, not inline: a failed assertion aborts the body,
   // and an un-restored window cascades into every test appended after this
-  // one. Same hazard `TokenPriceChartGhost.test.tsx` guards against.
+  // one.
   let original: {
     window: ReturnType<typeof Dimensions.get>;
     screen: ReturnType<typeof Dimensions.get>;
@@ -996,9 +1023,13 @@ describe("drag to inspect", () => {
     expect(pathsByStyle(tree, "stroke")).toEqual([
       { path: buildChartLinePath(coords), opacity: undefined },
     ]);
-    expect(pathsByStyle(tree, "fill")).toEqual([
-      { path: buildChartFillPath(coords), opacity: undefined },
+    // The fill carries the rise's fade value, settled at full opacity.
+    const fills = pathsByStyle(tree, "fill");
+    expect(fills.map((fill) => fill.path)).toEqual([
+      buildChartFillPath(coords),
     ]);
+    const opacity = fills[0].opacity as number | { value: number } | undefined;
+    expect(typeof opacity === "object" ? opacity.value : opacity).toBe(1);
   });
 
   /**

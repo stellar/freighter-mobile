@@ -8,8 +8,8 @@ import TokenPriceChart, {
   END_DOT_RADIUS,
   priceChartHeight,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChart";
-import TokenPriceChartGhost from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChartGhost";
 import { Button } from "components/sds/Button";
+import Shimmer, { ShimmerVariant } from "components/sds/Shimmer";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, NETWORKS } from "config/constants";
 import {
@@ -32,6 +32,7 @@ import {
   getPlottedRangeEnd,
 } from "helpers/priceHistoryChart";
 import useAppTranslation from "hooks/useAppTranslation";
+import useIsReduceMotionEnabled from "hooks/useIsReduceMotionEnabled";
 import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import useTokenPriceHistory from "hooks/useTokenPriceHistory";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -240,6 +241,25 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
     analytics.trackTokenChartViewed({ tokenId, data, network });
   }, [tokenId, network, data, isLoading, isEnabled]);
 
+  // Fetch errors degrade to the empty-style placeholder; a cached series
+  // keeps rendering through a failed refresh (stale chart beats blank).
+  const isErrorState = !!error && !data;
+  const isSkeleton = isLoading && !data && !isErrorState;
+
+  // Set while the hairline shows, so the chart that replaces it rises out of
+  // it; cleared once that chart has mounted. This section's reduced-motion
+  // query has settled by then, unlike the freshly mounted chart's.
+  const isReduceMotionEnabled = useIsReduceMotionEnabled();
+  const risesFromHairlineRef = useRef(false);
+  if (isSkeleton) {
+    risesFromHairlineRef.current = true;
+  }
+  useEffect(() => {
+    if (!isSkeleton) {
+      risesFromHairlineRef.current = false;
+    }
+  }, [isSkeleton]);
+
   if (!isEnabled) {
     return null;
   }
@@ -250,10 +270,6 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
 
   const points = data?.points ?? [];
   const hasChart = hasChartData(points);
-  // Fetch errors degrade to the empty-style placeholder; a cached series
-  // keeps rendering through a failed refresh (stale chart beats blank).
-  const isErrorState = !!error && !data;
-  const isSkeleton = isLoading && !data && !isErrorState;
 
   const noticeVariant =
     data && hasChart
@@ -295,21 +311,23 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
 
   const renderChartArea = () => {
     if (isSkeleton) {
-      // A blurred ghost of the chart rather than a flat block (Figma "Data
-      // loading"): same height, so no layout shift, and the timeframe
-      // selector below stays crisp and tappable throughout.
       return (
         <View
           testID="price-history-skeleton"
-          className="w-full"
+          className="w-full justify-center"
           style={{ height: priceChartHeight(fontScale) }}
           accessible
           accessibilityState={{ busy: true }}
           accessibilityLabel={t("priceHistory.loadingA11yLabel")}
         >
-          <TokenPriceChartGhost
-            testID="price-history-chart-ghost"
+          {/* The Figma "Data loading" frame: a hairline at the plot's centre
+              with the shared shimmer sweeping along it. */}
+          <Shimmer
+            testID="price-history-chart-shimmer"
+            variant={ShimmerVariant.Hairline}
             width={measuredWidth}
+            height={1}
+            radius={0}
           />
         </View>
       );
@@ -360,7 +378,7 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
           // The chart draws its canvas a dot radius wider than the plot. This
           // is a SectionList header, and an iOS ScrollView clips to its
           // bounds, so that room comes out of the measured width instead of
-          // overflowing it. The ghost keeps the full width: its line has no dot.
+          // overflowing it. The loading hairline keeps the full width: it has no dot.
           width={measuredWidth - END_DOT_RADIUS}
           // Same `change` the header delta reads, through the same helper:
           // the chart cannot end up green while the number is red, and a move
@@ -370,6 +388,7 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
             data?.change?.percent,
             data?.change?.absolute,
           )}
+          riseFromFlat={risesFromHairlineRef.current && !isReduceMotionEnabled}
           inspectedIndex={inspectedIndex}
           onInspectStart={handleInspectStart}
           onInspectMove={handleInspectMove}

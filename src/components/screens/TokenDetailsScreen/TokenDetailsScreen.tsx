@@ -286,6 +286,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
         <HistoryList
           ignoreTopInset
           noHorizontalPadding
+          loadingPlaceholder="skeleton"
           historyData={historyData}
           isLoading={isLoading}
           error={error}
@@ -332,7 +333,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
               {priceHistoryEnabled && (
                 <TokenPriceHistorySection tokenId={tokenId} network={network} />
               )}
-              <TokenBalanceDetails tokenId={tokenId} />
+              <TokenBalanceDetails tokenId={tokenId} network={network} />
               {priceHistoryEnabled && (
                 <TokenStatsSection tokenId={tokenId} network={network} />
               )}

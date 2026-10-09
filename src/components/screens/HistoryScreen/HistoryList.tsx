@@ -7,13 +7,15 @@ import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { TransactionDetails } from "components/screens/HistoryScreen";
 import HistoryItem from "components/screens/HistoryScreen/HistoryItem";
+import HistorySkeletonRows from "components/screens/HistoryScreen/HistorySkeletonRows";
 import HistoryWrapper from "components/screens/HistoryScreen/HistoryWrapper";
 import MonthHeader from "components/screens/HistoryScreen/MonthHeader";
 import {
   TransactionDetailsBottomSheetCustomContent,
   TransactionDetailsFooter,
 } from "components/screens/HistoryScreen/TransactionDetailsBottomSheetCustomContent";
-import { NetworkDetails } from "config/constants";
+import { DEFAULT_PADDING, NetworkDetails } from "config/constants";
+import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HistorySection, HistoryData } from "hooks/useGetHistoryData";
 import React, { useCallback, useRef, useState } from "react";
@@ -24,6 +26,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { analytics } from "services/analytics";
 
 /**
@@ -48,6 +51,8 @@ interface HistoryListProps {
   noHorizontalPadding?: boolean;
   className?: string;
   refreshActionPosition: "start" | "center" | "end";
+  /** The token-detail screen opts into the Figma skeleton rows; the History screen keeps its spinner. */
+  loadingPlaceholder?: "spinner" | "skeleton";
   /**
    * False while the token chart's drag-to-inspect is active: the long-press
    * already arbitrates the START of the gesture, this stops the list from
@@ -73,10 +78,12 @@ const HistoryList: React.FC<HistoryListProps> = ({
   noHorizontalPadding = false,
   className,
   refreshActionPosition = "center",
+  loadingPlaceholder = "spinner",
   scrollEnabled = true,
 }) => {
   const { t } = useAppTranslation();
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const safeAreaInsets = useSafeAreaInsets();
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetails | null>(null);
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -198,6 +205,21 @@ const HistoryList: React.FC<HistoryListProps> = ({
    */
   const listEmptyComponent = (() => {
     if (isLoading) {
+      if (loadingPlaceholder === "skeleton") {
+        // Both layouts leave the page padding plus the safe-area inset on
+        // each side: the outer BaseLayout's when `noHorizontalPadding`, this
+        // list's own otherwise.
+        return (
+          <HistorySkeletonRows
+            width={
+              windowWidth -
+              2 * pxValue(DEFAULT_PADDING) -
+              safeAreaInsets.left -
+              safeAreaInsets.right
+            }
+          />
+        );
+      }
       return (
         <HistoryWrapper>
           <Spinner size="large" testID="spinner" />

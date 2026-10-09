@@ -1,7 +1,11 @@
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
+import { deltaRowHeight } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceDelta";
 import TokenPriceHistorySection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection";
-import TokenBalanceHeader from "components/screens/TokenDetailsScreen/components/TokenBalanceHeader";
+import TokenBalanceHeader, {
+  priceRowHeight,
+  TokenBalanceDetails,
+} from "components/screens/TokenDetailsScreen/components/TokenBalanceHeader";
 import { TEXT_SIZES } from "components/sds/Typography";
 import { getThemeColors } from "config/colors";
 import { NETWORKS } from "config/constants";
@@ -12,7 +16,7 @@ import {
   resetInFlightRequests,
 } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
-import { fsValue } from "helpers/dimensions";
+import { fsValue, pxValue } from "helpers/dimensions";
 import { formatFiatAmount } from "helpers/formatAmount";
 import {
   formatPriceHistoryLabel,
@@ -46,6 +50,8 @@ jest.mock("config/logger", () => ({
     debug: jest.fn(),
   },
 }));
+
+jest.mock("hooks/useIsReduceMotionEnabled", () => () => false);
 
 const mockFetchHistory = fetchTokenPriceHistory as jest.MockedFunction<
   typeof fetchTokenPriceHistory
@@ -124,6 +130,7 @@ describe("TokenBalanceHeader range delta", () => {
     });
     useBalancesStore.setState({
       pricedBalances: { native: nativeBalance },
+      isLoading: false,
     });
     mockFetchHistory.mockResolvedValue(makeHistory());
   });
@@ -381,6 +388,31 @@ describe("TokenBalanceHeader range delta", () => {
       const row = getByTestId("token-price-delta-row");
       expect(row.props.accessibilityState).toEqual({ busy: true });
       expect(row.props.accessibilityLabel).toBe("Loading price change");
+    });
+
+    it("draws the loading pill at the frame's 146pt width and the row's live height", () => {
+      // The pill must grow with the OS text size like the row.
+      const window = Dimensions.get("window");
+      const screen = Dimensions.get("screen");
+      act(() => {
+        Dimensions.set({ window: { ...window, fontScale: 2 }, screen });
+      });
+      try {
+        mockFetchHistory.mockImplementation(() => new Promise(() => {}));
+        const { getByTestId } = renderDetailView();
+
+        const pill = getByTestId("token-price-delta-skeleton", {
+          includeHiddenElements: true,
+        });
+        expect(StyleSheet.flatten(pill.props.style)).toEqual({
+          width: pxValue(146),
+          height: deltaRowHeight(2),
+        });
+      } finally {
+        act(() => {
+          Dimensions.set({ window, screen });
+        });
+      }
     });
 
     it("shows no number when a non-1D range fails — a 24h figure is the wrong timeframe", async () => {
@@ -1004,5 +1036,357 @@ describe("TokenBalanceHeader range delta", () => {
 
       expect(queryByTestId("token-price-header-price")).toBeNull();
     });
+  });
+
+  describe("loading placeholders", () => {
+    beforeEach(() => {
+      // Deterministic chart section: these tests assert on the header's own
+      // pills, not the price-history delta, so the history fetch is left
+      // hanging rather than resolving mid-assertion.
+      mockFetchHistory.mockImplementation(() => new Promise(() => {}));
+    });
+
+    it("shows the price and delta pills while balances load and none exists yet", () => {
+      // Pinned to fontScale 1 (the RN jest preset defaults to 2) so this is
+      // the unscaled baseline; the 2x case is the dedicated test below.
+      const window = Dimensions.get("window");
+      const screen = Dimensions.get("screen");
+      act(() => {
+        Dimensions.set({ window: { ...window, fontScale: 1 }, screen });
+      });
+      try {
+        useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+
+        const { getByTestId, getByText, queryByTestId } = renderDetailView();
+
+        const wrapper = getByTestId("token-price-header-loading");
+        expect(wrapper.props.accessibilityState).toEqual({ busy: true });
+        expect(wrapper.props.accessibilityLabel).toBe("Loading price");
+        // Named as the loaded header will name it; there is no icon without a balance.
+        expect(getByText("Stellar Lumens")).toBeTruthy();
+        const price = getByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        });
+        expect(StyleSheet.flatten(price.props.style)).toEqual({
+          width: pxValue(146),
+          height: priceRowHeight(1),
+        });
+        const delta = getByTestId("token-price-header-delta-skeleton", {
+          includeHiddenElements: true,
+        });
+        expect(StyleSheet.flatten(delta.props.style)).toEqual({
+          width: pxValue(146),
+          height: deltaRowHeight(1),
+        });
+        expect(queryByTestId("token-price-header-price")).toBeNull();
+      } finally {
+        act(() => {
+          Dimensions.set({ window, screen });
+        });
+      }
+    });
+
+    it("shows the amount, not pills, for a balance that settled unpriced, even while isLoading is true (a refresh)", () => {
+      // The store sets isLoading on every fetch, and a token that already
+      // settled unpriced keeps no price — the pills must not replace it.
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            currentPrice: undefined,
+            fiatTotal: undefined,
+          },
+        } as never,
+        isLoading: true,
+      });
+
+      const { getByText, queryByTestId } = renderDetailView();
+
+      expect(queryByTestId("token-price-header-loading")).toBeNull();
+      expect(
+        queryByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+      expect(
+        queryByTestId("token-price-header-delta-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+      expect(getByText("100.00 XLM")).toBeTruthy();
+    });
+
+    it("shows the amount for an unpriced balance once loading settles", () => {
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            currentPrice: undefined,
+            fiatTotal: undefined,
+          },
+        } as never,
+        isLoading: false,
+      });
+
+      const { queryByTestId, getByText } = renderDetailView();
+
+      expect(queryByTestId("token-price-header-loading")).toBeNull();
+      expect(
+        queryByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+      expect(getByText("100.00 XLM")).toBeTruthy();
+      expect(queryByTestId("token-price-delta-row")).toBeNull();
+    });
+
+    it("shows no delta pill off mainnet, where no delta row renders", () => {
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+      const { getByTestId, queryByTestId } = renderDetailView(NETWORKS.TESTNET);
+
+      expect(
+        getByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeTruthy();
+      expect(
+        queryByTestId("token-price-header-delta-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+    });
+
+    it("shows no delta pill on mainnet with the price-history kill switch off", () => {
+      useRemoteConfigStore.setState({
+        isInitialized: true,
+        use_token_price_history: false,
+      });
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+      const { queryByTestId } = renderDetailView();
+
+      expect(
+        queryByTestId("token-price-header-delta-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+    });
+
+    it("names a Soroban token by the loaded name's rules, not its contract ID", () => {
+      const contractId =
+        "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+      const { getByText, queryByText } = renderWithProviders(
+        <TokenBalanceHeader
+          tokenId={contractId}
+          tokenSymbol={contractId}
+          network={NETWORKS.PUBLIC}
+        />,
+      );
+
+      expect(getByText("Soroban Token")).toBeTruthy();
+      expect(queryByText(contractId)).toBeNull();
+    });
+
+    it("renders nothing while nothing is loading and there is no balance", () => {
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: false });
+      const { toJSON, queryByTestId } = renderDetailView();
+      expect(queryByTestId("token-price-header-loading")).toBeNull();
+      expect(toJSON()).not.toBeNull(); // the section beside it still renders
+    });
+
+    it("scales the price pill with the OS text size", () => {
+      const window = Dimensions.get("window");
+      const screen = Dimensions.get("screen");
+      act(() => {
+        Dimensions.set({ window: { ...window, fontScale: 2 }, screen });
+      });
+      try {
+        useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+        const { getByTestId } = renderDetailView();
+        const price = getByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        });
+        expect(StyleSheet.flatten(price.props.style).height).toBe(
+          priceRowHeight(2),
+        );
+      } finally {
+        act(() => {
+          Dimensions.set({ window, screen });
+        });
+      }
+    });
+  });
+});
+
+describe("TokenBalanceDetails loading placeholders", () => {
+  const renderDetails = (network: NETWORKS = NETWORKS.PUBLIC) =>
+    renderWithProviders(
+      <TokenBalanceDetails tokenId="native" network={network} />,
+    );
+
+  beforeEach(() => {
+    useBalancesStore.setState({ balances: {} });
+  });
+
+  it("shows both pills while balances load and none exists yet", () => {
+    // Pinned to fontScale 1 (the RN jest preset defaults to 2) so this is the
+    // unscaled baseline, matching the header's own pinned-scale test above.
+    const window = Dimensions.get("window");
+    const screen = Dimensions.get("screen");
+    act(() => {
+      Dimensions.set({ window: { ...window, fontScale: 1 }, screen });
+    });
+    try {
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+      const { getByTestId, getByText } = renderDetails();
+
+      const wrapper = getByTestId("token-balance-details-loading");
+      expect(wrapper.props.accessibilityState).toEqual({ busy: true });
+      expect(wrapper.props.accessibilityLabel).toBe("Loading balance");
+      expect(getByText("Balance")).toBeTruthy();
+      expect(getByText("Value")).toBeTruthy();
+      expect(
+        StyleSheet.flatten(
+          getByTestId("token-balance-skeleton", {
+            includeHiddenElements: true,
+          }).props.style,
+        ),
+      ).toEqual({ width: pxValue(102), height: deltaRowHeight(1) });
+      expect(
+        StyleSheet.flatten(
+          getByTestId("token-value-skeleton", {
+            includeHiddenElements: true,
+          }).props.style,
+        ),
+      ).toEqual({ width: pxValue(64), height: deltaRowHeight(1) });
+    } finally {
+      act(() => {
+        Dimensions.set({ window, screen });
+      });
+    }
+  });
+
+  it("shows the amount from the raw balances while prices are still in flight", () => {
+    // The store publishes raw balances before the price fetch (or its 3 s
+    // timeout) fills pricedBalances.
+    const rawNative = {
+      token: { type: "native", code: "XLM" },
+      total: new BigNumber("100"),
+      available: new BigNumber("99"),
+      minimumBalance: new BigNumber("1"),
+      buyingLiabilities: "0",
+      sellingLiabilities: "0",
+    };
+    useBalancesStore.setState({
+      balances: { native: rawNative } as never,
+      pricedBalances: {},
+      isLoading: true,
+    });
+    const { getByText, queryByTestId } = renderDetails();
+
+    expect(getByText("100.00 XLM")).toBeTruthy();
+    expect(
+      queryByTestId("token-balance-skeleton", { includeHiddenElements: true }),
+    ).toBeNull();
+    // The price is genuinely pending, so the Value pill stays.
+    expect(
+      queryByTestId("token-value-skeleton", { includeHiddenElements: true }),
+    ).toBeTruthy();
+    // But the card no longer announces "Loading balance" over the amount it
+    // shows, or hides that amount behind its label.
+    expect(queryByTestId("token-balance-details-loading")).toBeNull();
+  });
+
+  it("names a liquidity pool share by its pair while prices are in flight, as once priced", () => {
+    const lpId = "pool-id:lp";
+    const rawLp = {
+      liquidityPoolId: "pool-id",
+      reserves: [
+        { asset: "native", amount: "10" },
+        {
+          asset:
+            "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          amount: "20",
+        },
+      ],
+      total: new BigNumber("100"),
+      limit: new BigNumber("1000"),
+    };
+    useBalancesStore.setState({
+      balances: { [lpId]: rawLp } as never,
+      pricedBalances: {},
+      isLoading: true,
+    });
+    const { getByText } = renderWithProviders(
+      <TokenBalanceDetails tokenId={lpId} network={NETWORKS.PUBLIC} />,
+    );
+
+    expect(getByText("100.00 XLM / USDC")).toBeTruthy();
+  });
+
+  it("shows no Value pill off mainnet, where no Value row can render", () => {
+    useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+    const { getByTestId, queryByTestId, queryByText } = renderDetails(
+      NETWORKS.TESTNET,
+    );
+
+    expect(
+      getByTestId("token-balance-skeleton", { includeHiddenElements: true }),
+    ).toBeTruthy();
+    expect(
+      queryByTestId("token-value-skeleton", { includeHiddenElements: true }),
+    ).toBeNull();
+    expect(queryByText("Value")).toBeNull();
+  });
+
+  it("shows the Balance row only for a balance that settled unpriced, even while isLoading is true (a refresh)", () => {
+    // The store sets isLoading on every fetch, and a token that already
+    // settled unpriced keeps no price — the Value pill must not reappear.
+    useBalancesStore.setState({
+      pricedBalances: {
+        native: {
+          ...nativeBalance,
+          currentPrice: undefined,
+          fiatTotal: undefined,
+        },
+      } as never,
+      isLoading: true,
+    });
+    const { queryByTestId, queryByText, getByText } = renderDetails();
+
+    expect(queryByTestId("token-balance-details-loading")).toBeNull();
+    expect(
+      queryByTestId("token-value-skeleton", { includeHiddenElements: true }),
+    ).toBeNull();
+    expect(queryByText("Value")).toBeNull();
+    expect(getByText("Balance")).toBeTruthy();
+    expect(getByText(/XLM/)).toBeTruthy(); // the real amount
+  });
+
+  it("omits the Value row once loading ends unpriced, as before", () => {
+    useBalancesStore.setState({
+      pricedBalances: {
+        native: {
+          ...nativeBalance,
+          currentPrice: undefined,
+          fiatTotal: undefined,
+        },
+      } as never,
+      isLoading: false,
+    });
+    const { queryByTestId, queryByText } = renderDetails();
+
+    expect(queryByTestId("token-balance-details-loading")).toBeNull();
+    expect(queryByText("Value")).toBeNull();
+  });
+
+  it("renders nothing with no balance and nothing loading", () => {
+    // `renderWithProviders` always wraps with the Toast overlay, so `toJSON()`
+    // is never literally null; assert the component's own output is absent.
+    useBalancesStore.setState({ pricedBalances: {}, isLoading: false });
+    const { queryByTestId, queryByText } = renderDetails();
+
+    expect(queryByTestId("token-balance-details-loading")).toBeNull();
+    expect(queryByText("Balance")).toBeNull();
   });
 });

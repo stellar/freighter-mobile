@@ -13,7 +13,7 @@ import {
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChart";
 import TokenPriceHistorySection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection";
 import { getThemeColors } from "config/colors";
-import { NETWORKS } from "config/constants";
+import { DEFAULT_PADDING, NETWORKS } from "config/constants";
 import { PRICE_HISTORY_RANGES, TokenPriceHistory } from "config/types";
 import {
   usePriceHistoryStore,
@@ -21,7 +21,9 @@ import {
 } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { formatDate } from "helpers/date";
+import { pxValue } from "helpers/dimensions";
 import {
+  CHART_MORPH_DURATION_MS,
   getPlottedRangeEnd,
   getPlottedRangeStart,
 } from "helpers/priceHistoryChart";
@@ -33,6 +35,7 @@ import {
 import React from "react";
 import {
   DeviceEventEmitter,
+  Dimensions,
   StyleSheet,
   useWindowDimensions,
 } from "react-native";
@@ -60,6 +63,12 @@ jest.mock("config/logger", () => ({
     debug: jest.fn(),
   },
 }));
+
+const mockIsReduceMotionEnabled = jest.fn(() => false);
+jest.mock(
+  "hooks/useIsReduceMotionEnabled",
+  () => () => mockIsReduceMotionEnabled(),
+);
 
 const mockFetchHistory = fetchTokenPriceHistory as jest.MockedFunction<
   typeof fetchTokenPriceHistory
@@ -181,6 +190,71 @@ describe("TokenPriceHistorySection", () => {
     expect(analytics.trackTokenChartViewed).not.toHaveBeenCalled();
   });
 
+  describe("leaving the loading hairline", () => {
+    const strokePath = (tree: RenderedTree): string => {
+      const stroke = findAllRenderedByType(tree, "skPath").find(
+        (node) => node.props.style === "stroke",
+      );
+      const path = stroke!.props.path as string | { value: string };
+
+      return typeof path === "string" ? path : path.value;
+    };
+    const isFlatAtCentre = (path: string) =>
+      path
+        .split(" ")
+        .filter((token, i, all) => i > 0 && /^[ML]/.test(all[i - 1]))
+        .every((y) => Number(y) === PRICE_CHART_LINE_HEIGHT / 2);
+
+    const loadThenLand = async () => {
+      let land: (value: TokenPriceHistory) => void = () => {};
+      mockFetchHistory.mockImplementation(
+        () =>
+          new Promise<TokenPriceHistory>((resolve) => {
+            land = resolve;
+          }),
+      );
+      const utils = renderSection();
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(utils.getByTestId("price-history-skeleton")).toBeTruthy();
+      await act(async () => {
+        land(makeHistory());
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(utils.getByTestId("price-history-chart")).toBeTruthy();
+
+      return utils;
+    };
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+    afterEach(() => {
+      mockIsReduceMotionEnabled.mockReturnValue(false);
+      jest.useRealTimers();
+    });
+
+    it("lifts the line out of the hairline once the fetch lands", async () => {
+      const { toJSON } = await loadThenLand();
+
+      expect(isFlatAtCentre(strokePath(toJSON() as RenderedTree))).toBe(true);
+      await act(async () => {
+        jest.advanceTimersByTime(CHART_MORPH_DURATION_MS);
+        await Promise.resolve();
+      });
+      expect(isFlatAtCentre(strokePath(toJSON() as RenderedTree))).toBe(false);
+    });
+
+    it("paints the line directly under reduced motion", async () => {
+      mockIsReduceMotionEnabled.mockReturnValue(true);
+      const { toJSON } = await loadThenLand();
+
+      expect(isFlatAtCentre(strokePath(toJSON() as RenderedTree))).toBe(false);
+    });
+  });
+
   it("renders the chart with an accessibility label once data lands", async () => {
     const { getByTestId, getByLabelText } = renderSection();
 
@@ -298,9 +372,9 @@ describe("TokenPriceHistorySection", () => {
     expect(getByLabelText(/Price chart, 1D:.*\d{1,2}:\d{2}/)).toBeTruthy();
   });
 
-  it("lays the loaded chart out at the same height as the ghost it replaces", async () => {
-    // The ghost, the skeleton and the real chart all size from one function,
-    // but only the first two were ever measured. A chart that stopped reading
+  it("lays the loaded chart out at the same height as the skeleton it replaces", async () => {
+    // The skeleton and the real chart both size from one function,
+    // but only the skeleton was ever measured. A chart that stopped reading
     // the live text scale would lay out shorter than the placeholder it
     // replaces and jump the selector below it when the fetch resolves — with
     // every test still green.
@@ -322,7 +396,7 @@ describe("TokenPriceHistorySection", () => {
         expectedLabelHeight(),
       );
     });
-    // And those two rows plus the plot are the block the ghost reserved.
+    // And those two rows plus the plot are the block the skeleton reserved.
     expect(expectedChartHeight()).toBe(
       PRICE_CHART_LINE_HEIGHT + expectedLabelHeight() * 2,
     );
@@ -406,7 +480,7 @@ describe("TokenPriceHistorySection", () => {
     expect(queryByTestId("price-history-chart")).toBeNull();
   });
 
-  describe("loading state (blurred chart ghost)", () => {
+  describe("loading state (hairline shimmer)", () => {
     beforeEach(() => {
       mockFetchHistory.mockImplementation(() => new Promise(() => {}));
     });
@@ -415,46 +489,41 @@ describe("TokenPriceHistorySection", () => {
       const { getByTestId } = renderSection();
 
       const skeleton = getByTestId("price-history-skeleton");
-      expect(skeleton).toBeTruthy();
-      // Same total block height the loaded chart lays out to, so swapping
-      // the ghost for the real chart never moves the selector below it.
       expect(StyleSheet.flatten(skeleton.props.style).height).toBe(
         expectedChartHeight(),
       );
     });
 
-    it("renders the blurred ghost artwork, not a flat block", () => {
+    it("draws a hairline shimmer across the measured width, centred in the block", () => {
       const { getByTestId } = renderSection();
 
-      const ghost = getByTestId("price-history-chart-ghost", {
+      const line = getByTestId("price-history-chart-shimmer", {
         includeHiddenElements: true,
       });
-      expect(ghost).toBeTruthy();
-      // The ghost occupies the whole chart block; the old placeholder was a
-      // flat tinted View with no artwork inside it.
-      expect(StyleSheet.flatten(ghost.props.style).height).toBe(
-        expectedChartHeight(),
+      const style = StyleSheet.flatten(line.props.style);
+      expect(style.height).toBe(1);
+      // DEFAULT_CHART_WIDTH before layout: the window minus the page padding.
+      expect(style.width).toBe(
+        Dimensions.get("window").width - 2 * pxValue(DEFAULT_PADDING),
       );
-      expect(getByTestId("price-history-skeleton").props.className).not.toMatch(
-        /bg-background-tertiary/,
+      // Centred: the skeleton is a flex column that centres its child.
+      expect(getByTestId("price-history-skeleton").props.className).toMatch(
+        /justify-center/,
       );
     });
 
-    it("hides the ghost from assistive tech and reports busy on the container", () => {
+    it("hides the shimmer from assistive tech and reports busy on the container", () => {
       const { getByTestId, queryByTestId } = renderSection();
 
       const skeleton = getByTestId("price-history-skeleton");
       expect(skeleton.props.accessibilityState).toEqual({ busy: true });
       expect(skeleton.props.accessibilityLabel).toBe("Loading price chart");
-
-      // The ghost is decorative: it resolves only when hidden elements are
-      // included, i.e. it is absent from the accessibility tree.
-      expect(queryByTestId("price-history-chart-ghost")).toBeNull();
-      const ghost = getByTestId("price-history-chart-ghost", {
-        includeHiddenElements: true,
-      });
-      expect(ghost.props.accessibilityElementsHidden).toBe(true);
-      expect(ghost.props.importantForAccessibility).toBe("no-hide-descendants");
+      expect(queryByTestId("price-history-chart-shimmer")).toBeNull();
+      expect(
+        queryByTestId("price-history-chart-ghost", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
     });
 
     it("keeps the timeframe selector present and enabled while loading", () => {
@@ -757,7 +826,7 @@ describe("TokenPriceHistorySection", () => {
     it("does not inspect when no series is loaded — the chart itself does not render", () => {
       // `plottedRange` (off `data?.range`) is undefined with no series: the
       // real TokenPriceChart (and its gesture) never mounts without data —
-      // only the ghost does — so there is no gesture to drive. This is the
+      // only the skeleton does — so there is no gesture to drive. This is the
       // structural guarantee that `handleInspectStart`/`handleInspectMove`'s
       // `if (!plottedRange) return;` early-outs exist for defense-in-depth;
       // the gesture test id being entirely absent proves the primary guard.
@@ -1075,7 +1144,14 @@ describe("TokenPriceHistorySection", () => {
       await waitFor(() => {
         expect(getByTestId("price-history-notice-lowVolume")).toBeTruthy();
       });
-      const tree = JSON.stringify(toJSON());
+      const tree = JSON.stringify(
+        toJSON(),
+        // Skia's vec()/rect() stash a live reference to the whole (circular)
+        // CanvasKit module on every point/rect node now that global.CanvasKit
+        // is wired up for all suites; drop it so this ordering check doesn't
+        // choke serializing it.
+        (key, value) => (key === "CanvasKit" ? undefined : value),
+      );
       const chartAt = tree.indexOf('"testID":"price-history-chart"');
       const selectorAt = tree.indexOf('"testID":"timeframe-selector"');
       const noticeAt = tree.indexOf(
@@ -1231,19 +1307,6 @@ describe("TokenPriceHistorySection", () => {
         expect(getByTestId("price-history-chart")).toBeTruthy();
       });
       expect(lineColor(toJSON())).toBe(themeColors.text.secondary);
-    });
-
-    it("leaves the loading ghost's colour alone — it is decorative", () => {
-      mockFetchHistory.mockImplementation(() => new Promise(() => {}));
-
-      const { getByTestId, toJSON } = renderSection();
-
-      expect(
-        getByTestId("price-history-chart-ghost", {
-          includeHiddenElements: true,
-        }),
-      ).toBeTruthy();
-      expect(lineColor(toJSON())).toBe(themeColors.status.success);
     });
   });
 });

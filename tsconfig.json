@@ -15,6 +15,7 @@
     "**/*.ts",
     "**/*.tsx",
     "__mocks__",
+    "jest/**/*.js",
     "eslint.config.mjs",
     "nativewind-env.d.ts"
   ],

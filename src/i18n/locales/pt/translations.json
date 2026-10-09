@@ -309,6 +309,7 @@
       "title": "Nenhuma transação para mostrar"
     },
     "error": "Erro ao carregar o histórico",
+    "loadingA11yLabel": "Carregando o histórico",
     "refresh": "Atualizar",
     "refreshing": "Atualizando...",
     "transactionHistory": {
@@ -350,6 +351,8 @@
     "sorobanToken": "Token Soroban",
     "balance": "Saldo",
     "value": "Valor",
+    "loadingPriceA11yLabel": "Carregando o preço",
+    "loadingBalanceA11yLabel": "Carregando o saldo",
     "listHeader": "Sua atividade de {{tokenName}}",
     "swap": "Trocar",
     "send": "Enviar"

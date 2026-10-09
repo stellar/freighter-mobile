@@ -117,7 +117,7 @@ interface TypographyBaseProps extends SizeProps, WeightProps, ColorProps {
   testID?: string;
 }
 
-const DISPLAY_SIZES = {
+export const DISPLAY_SIZES = {
   xl: { fontSize: 56, lineHeight: 64 },
   lg: { fontSize: 48, lineHeight: 56 },
   md: { fontSize: 40, lineHeight: 48 },

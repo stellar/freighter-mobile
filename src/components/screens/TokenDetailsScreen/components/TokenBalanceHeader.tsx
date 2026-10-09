@@ -1,15 +1,22 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
-import TokenPriceDelta from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceDelta";
-import { Display, Text } from "components/sds/Typography";
+import TokenPriceDelta, {
+  deltaRowHeight,
+  PRICE_PILL_WIDTH,
+} from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceDelta";
+import Shimmer from "components/sds/Shimmer";
+import { Display, DISPLAY_SIZES, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import { Balance } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import {
   useInspectedPriceHistory,
   useSelectedPriceHistoryRange,
 } from "ducks/priceHistory";
 import { isNativeAssetId } from "helpers/assetIdentity";
+import { getLPShareCode } from "helpers/balances";
+import { fsValue, pxValue } from "helpers/dimensions";
 import { formatBalanceAmount, formatFiatAmount } from "helpers/formatAmount";
 import { formatPriceHistoryLabel } from "helpers/priceHistoryChart";
 import { isContractId } from "helpers/soroban";
@@ -17,7 +24,7 @@ import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import React from "react";
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -42,17 +49,27 @@ interface TokenDisplayInfo {
  * rather than looked up directly. Shared by the header and the balance rows,
  * which the screen renders on either side of the chart.
  */
-const useTokenDetailBalance = (tokenId: string) => {
-  const { pricedBalances } = useBalancesStore();
-
+const findTokenDetailBalance = <T extends Balance>(
+  balances: Record<string, T>,
+  tokenId: string,
+): T | undefined => {
   if (isContractId(tokenId)) {
-    return Object.values(pricedBalances).find(
+    return Object.values(balances).find(
       (balance) => "contractId" in balance && balance.contractId === tokenId,
     );
   }
 
-  return pricedBalances[tokenId];
+  return balances[tokenId];
 };
+
+const useTokenDetailBalance = (tokenId: string) => {
+  const { pricedBalances } = useBalancesStore();
+  return findTokenDetailBalance(pricedBalances, tokenId);
+};
+
+/** The price line (`Display xs`) at the live text scale, for its placeholder. */
+export const priceRowHeight = (fontScale: number): number =>
+  fsValue(DISPLAY_SIZES.xs.lineHeight) * fontScale;
 
 const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   tokenId,
@@ -64,20 +81,49 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const { t } = useAppTranslation();
   const isSorobanToken = isContractId(tokenId);
   const tokenBalance = useTokenDetailBalance(tokenId);
+  const isLoadingBalances = useBalancesStore((state) => state.isLoading);
+  const { fontScale } = useWindowDimensions();
   const isPriceHistoryEnabled = usePriceHistoryEnabled(network);
   const inspected = useInspectedPriceHistory(network, tokenId);
   const selectedRange = useSelectedPriceHistoryRange(network, tokenId);
 
-  // Early return if tokenBalance is not available
-  if (!tokenBalance) {
-    return null;
-  }
+  // Loading placeholders, from the Figma "Data loading" frame: one pill at the
+  // price line and one at the delta row, while there is no balance at all. A
+  // balance that is present but unpriced always shows the amount instead (see
+  // `hasPrice` below) — the store reports loading on every refresh, and a
+  // token that settled without a price must not flash back to pills.
+  const renderLoadingPriceInfo = () => (
+    <View
+      testID="token-price-header-loading"
+      className="gap-1"
+      accessible
+      accessibilityState={{ busy: true }}
+      accessibilityLabel={t("tokenDetailsScreen.loadingPriceA11yLabel")}
+    >
+      <Shimmer
+        testID="token-price-header-price-skeleton"
+        width={PRICE_PILL_WIDTH}
+        height={priceRowHeight(fontScale)}
+      />
+      {/* Only where TokenPriceDelta reserves a row to hand over to. */}
+      {isPriceHistoryEnabled && (
+        <Shimmer
+          testID="token-price-header-delta-skeleton"
+          width={PRICE_PILL_WIDTH}
+          height={deltaRowHeight(fontScale)}
+        />
+      )}
+    </View>
+  );
 
+  // Before the no-balance branch so a loading header names the token as the
+  // loaded one will.
   const getTokenDisplayInfo = (): TokenDisplayInfo => {
     if (isNativeAssetId(tokenId)) {
       return {
         symbol: NATIVE_TOKEN_CODE,
-        name: tokenBalance.displayName || tokenSymbol,
+        // The name ducks/balances gives native once the balance lands.
+        name: tokenBalance?.displayName || "Stellar Lumens",
       };
     }
 
@@ -98,11 +144,31 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
 
     return {
       symbol: tokenSymbol,
-      name: tokenBalance.displayName || tokenSymbol,
+      name: tokenBalance?.displayName || tokenSymbol,
     };
   };
 
   const { name } = getTokenDisplayInfo();
+
+  if (!tokenBalance) {
+    if (!isLoadingBalances) {
+      return null;
+    }
+
+    // No balance yet, so no icon (TokenIcon needs the balance); the rest is
+    // placeholder.
+    return (
+      <View className="gap-2">
+        <View className="gap-2">
+          <Text md medium secondary>
+            {name}
+          </Text>
+          {renderLoadingPriceInfo()}
+        </View>
+      </View>
+    );
+  }
+
   const hasPrice = tokenBalance.currentPrice && tokenBalance.fiatTotal;
 
   // While a drag-to-inspect is in progress the price is the inspected
@@ -165,13 +231,21 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
  * The Balance / Value rows. Rendered below the chart so the screen reads
  * icon -> name -> price -> delta -> chart -> holdings, matching the extension.
  */
-export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
-  tokenId,
-}) => {
+export const TokenBalanceDetails: React.FC<{
+  tokenId: string;
+  network: NETWORKS;
+}> = ({ tokenId, network }) => {
   const { t } = useAppTranslation();
   const tokenBalance = useTokenDetailBalance(tokenId);
+  // Raw balances land before prices do; the amount needs no price.
+  const rawBalance = useBalancesStore((state) =>
+    findTokenDetailBalance(state.balances, tokenId),
+  );
+  const isLoadingBalances = useBalancesStore((state) => state.isLoading);
+  const { fontScale } = useWindowDimensions();
+  const rowHeight = deltaRowHeight(fontScale);
 
-  if (!tokenBalance) {
+  if (!tokenBalance && !isLoadingBalances) {
     return null;
   }
 
@@ -179,7 +253,76 @@ export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
   // `ducks/balances` derives `fiatTotal` from `currentPrice`, so the two are
   // falsy together — but the rows and the header must agree about what counts
   // as "priced", and only one of them reading both fields invites drift.
-  const hasPrice = !!tokenBalance.currentPrice && !!tokenBalance.fiatTotal;
+  const hasPrice = !!tokenBalance?.currentPrice && !!tokenBalance?.fiatTotal;
+  // Busy only while the Balance row itself is a pill: once the raw amount
+  // shows, a "Loading balance" label would sit over it and hide it from
+  // screen readers. A present but unpriced balance keeps the plain list, even
+  // mid-refresh — see the header's own comment for why.
+  const isAnyPending = !tokenBalance && !rawBalance;
+
+  let balanceCell;
+  if (tokenBalance) {
+    balanceCell = (
+      <Text md>
+        {formatBalanceAmount(tokenBalance, tokenBalance.tokenCode)}
+      </Text>
+    );
+  } else if (rawBalance) {
+    balanceCell = (
+      <Text md>
+        {formatBalanceAmount(
+          rawBalance,
+          // The code ducks/balances gives it once priced, so the cell doesn't
+          // change when prices land: a pool share has no `token`.
+          "token" in rawBalance
+            ? rawBalance.token.code
+            : getLPShareCode(rawBalance),
+        )}
+      </Text>
+    );
+  } else {
+    balanceCell = (
+      <Shimmer
+        testID="token-balance-skeleton"
+        width={pxValue(102)}
+        height={rowHeight}
+      />
+    );
+  }
+
+  let valueRow = null;
+  if (hasPrice) {
+    valueRow = {
+      titleComponent: (
+        <Text md secondary>
+          {t("tokenDetailsScreen.value")}
+        </Text>
+      ),
+      trailingContent: (
+        <Text md>{formatFiatAmount(tokenBalance.fiatTotal ?? "0")}</Text>
+      ),
+    };
+  } else if (!tokenBalance && network === NETWORKS.PUBLIC) {
+    // The guard above already returned null for "no balance, not loading",
+    // so reaching here with no balance means isLoadingBalances is true. Only
+    // mainnet is priced (PRICE_NETWORK_PARAMS in services/backend), so only
+    // there can a Value row replace the pill.
+    valueRow = {
+      titleComponent: (
+        <Text md secondary>
+          {t("tokenDetailsScreen.value")}
+        </Text>
+      ),
+      trailingContent: (
+        <Shimmer
+          testID="token-value-skeleton"
+          width={pxValue(64)}
+          height={rowHeight}
+        />
+      ),
+    };
+  }
+
   const rows = [
     {
       titleComponent: (
@@ -187,29 +330,29 @@ export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
           {t("tokenDetailsScreen.balance")}
         </Text>
       ),
-      trailingContent: (
-        <Text md>
-          {formatBalanceAmount(tokenBalance, tokenBalance.tokenCode)}
-        </Text>
-      ),
+      trailingContent: balanceCell,
     },
-    ...(hasPrice
-      ? [
-          {
-            titleComponent: (
-              <Text md secondary>
-                {t("tokenDetailsScreen.value")}
-              </Text>
-            ),
-            trailingContent: (
-              <Text md>{formatFiatAmount(tokenBalance.fiatTotal ?? "0")}</Text>
-            ),
-          },
-        ]
-      : []),
+    ...(valueRow ? [valueRow] : []),
   ];
 
-  return <List variant="secondary" items={rows} />;
+  const list = <List variant="secondary" items={rows} />;
+
+  if (!isAnyPending) {
+    return list;
+  }
+
+  // While the balance is pending the card announces once; the pills inside it
+  // are decorative, matching the header's own loading wrapper above.
+  return (
+    <View
+      testID="token-balance-details-loading"
+      accessible
+      accessibilityState={{ busy: true }}
+      accessibilityLabel={t("tokenDetailsScreen.loadingBalanceA11yLabel")}
+    >
+      {list}
+    </View>
+  );
 };
 
 export default TokenBalanceHeader;

@@ -7,6 +7,7 @@ import { SectionList, Text } from "react-native";
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => key,
 }));
+jest.mock("hooks/useIsReduceMotionEnabled", () => () => false);
 
 /**
  * The token detail screen puts its ENTIRE page in `ListHeaderComponent`, so a
@@ -71,6 +72,51 @@ describe("HistoryList header stability", () => {
           },
           isLoading: false,
           error: null,
+        })}
+      />,
+    );
+    expect(mounts.count).toBe(1);
+  });
+
+  it("keeps one header instance across loading, empty and loaded with the skeleton placeholder", () => {
+    mounts.count = 0;
+
+    const { rerender, getByTestId } = renderWithProviders(
+      <HistoryList
+        {...props({
+          historyData: null,
+          isLoading: true,
+          error: null,
+          loadingPlaceholder: "skeleton",
+        })}
+      />,
+    );
+    expect(getByTestId("stable-header")).toBeTruthy();
+    expect(mounts.count).toBe(1);
+
+    // Loading -> empty.
+    rerender(
+      <HistoryList
+        {...props({
+          historyData: { history: [] },
+          isLoading: false,
+          error: null,
+          loadingPlaceholder: "skeleton",
+        })}
+      />,
+    );
+    expect(mounts.count).toBe(1);
+
+    // Empty -> has transactions: the list must keep its subtree across it.
+    rerender(
+      <HistoryList
+        {...props({
+          historyData: {
+            history: [{ monthYear: "September 2026", operations: [] }],
+          },
+          isLoading: false,
+          error: null,
+          loadingPlaceholder: "skeleton",
         })}
       />,
     );

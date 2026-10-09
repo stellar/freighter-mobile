@@ -11,21 +11,25 @@ import { SectionList } from "react-native";
 jest.mock("components/screens/HistoryScreen/HistoryList", () => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { SectionList: RNSectionList } = jest.requireActual("react-native");
-  const MockHistoryList = ({
-    ListHeaderComponent,
-    scrollEnabled,
-  }: {
-    ListHeaderComponent?: React.ReactElement;
-    scrollEnabled?: boolean;
-  }) => (
-    <RNSectionList
-      testID="history-list"
-      sections={[]}
-      keyExtractor={(_item: unknown, index: number) => String(index)}
-      renderItem={() => null}
-      ListHeaderComponent={ListHeaderComponent}
-      scrollEnabled={scrollEnabled}
-    />
+  // A real SectionList so scroll-lock tests can read `scrollEnabled`, wrapped
+  // in jest.fn so prop tests can read the call arguments.
+  const MockHistoryList = jest.fn(
+    ({
+      ListHeaderComponent,
+      scrollEnabled,
+    }: {
+      ListHeaderComponent?: React.ReactElement;
+      scrollEnabled?: boolean;
+    }) => (
+      <RNSectionList
+        testID="history-list"
+        sections={[]}
+        keyExtractor={(_item: unknown, index: number) => String(index)}
+        renderItem={() => null}
+        ListHeaderComponent={ListHeaderComponent}
+        scrollEnabled={scrollEnabled}
+      />
+    ),
   );
   return MockHistoryList;
 });
@@ -205,6 +209,17 @@ describe("TokenDetailsScreen", () => {
     expect(
       actions.find((a: { title: string }) => a.title === "Remove").destructive,
     ).toBe(true);
+  });
+
+  it("opts the history list into the skeleton loading placeholder", () => {
+    renderWithProviders(
+      <TokenDetailsScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+    const HistoryListMock = jest.requireMock(
+      "components/screens/HistoryScreen/HistoryList",
+    );
+    const callArgs = HistoryListMock.mock.calls[0];
+    expect(callArgs[0]).toMatchObject({ loadingPlaceholder: "skeleton" });
   });
 
   /* eslint-disable @typescript-eslint/naming-convention */
