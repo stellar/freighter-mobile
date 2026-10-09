@@ -1,5 +1,9 @@
 import avatarFixtures from "__tests__/helpers/fixtures/avatarFixtures.json";
-import { VARIAL_AVATAR_COLORS, marbleAvatar } from "helpers/varialAvatar";
+import {
+  VARIAL_AVATAR_COLORS,
+  avatarSeed,
+  marbleAvatar,
+} from "helpers/varialAvatar";
 
 // Same fixtures as the extension, which renders boring-avatars directly. A
 // mismatch means the two platforms draw different avatars for one account.
@@ -15,7 +19,7 @@ describe("marbleAvatar", () => {
   it.each(avatarFixtures)(
     "matches boring-avatars for $publicKey",
     ({ publicKey, base, layer1, layer2 }) => {
-      const avatar = marbleAvatar(publicKey, VARIAL_AVATAR_COLORS);
+      const avatar = marbleAvatar(avatarSeed(publicKey), VARIAL_AVATAR_COLORS);
 
       expect(avatar.base).toBe(base);
       expect({

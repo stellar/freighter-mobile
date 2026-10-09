@@ -1,4 +1,6 @@
 /* eslint-disable no-bitwise */
+import { StrKey } from "@stellar/stellar-sdk";
+
 // Port of boring-avatars@2.0.4's "marble" variant (MIT, (c) boringdesigners),
 // which the extension renders directly. It must stay output-identical so an
 // account has the same avatar on both platforms; __tests__/helpers/fixtures
@@ -48,6 +50,15 @@ const getUnit = (num: number, range: number, index?: number) => {
   const value = num % range;
   return index && getDigit(num, index) % 2 === 0 ? -value : value;
 };
+
+// A muxed (M…) address wraps a G… account, so it shows that account's avatar.
+// Must match the extension's avatarSeed.
+export const avatarSeed = (address: string) =>
+  address.startsWith("M") && StrKey.isValidMed25519PublicKey(address)
+    ? StrKey.encodeEd25519PublicKey(
+        StrKey.decodeMed25519PublicKey(address).subarray(0, 32),
+      )
+    : address;
 
 export const marbleAvatar = (name: string, colors: string[]) => {
   const num = hashCode(name);

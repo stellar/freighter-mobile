@@ -13,6 +13,7 @@ import {
   MARBLE_VIEWBOX,
   MarbleLayer,
   VARIAL_AVATAR_COLORS,
+  avatarSeed,
   marbleAvatar,
 } from "helpers/varialAvatar";
 import React from "react";
@@ -37,7 +38,7 @@ interface MarbleAvatarProps {
 /** Skia drawing of the account avatar; render inside a `size`-square Canvas. */
 export const MarbleAvatar = ({ publicAddress, size }: MarbleAvatarProps) => {
   const { base, layer1, layer2 } = marbleAvatar(
-    publicAddress,
+    avatarSeed(publicAddress),
     VARIAL_AVATAR_COLORS,
   );
 
