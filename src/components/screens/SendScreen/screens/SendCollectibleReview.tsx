@@ -712,7 +712,7 @@ const SendCollectibleReviewScreen: React.FC<
           />
         </View>
         <View className="mt-[24px] w-full flex items-center justify-center">
-          <View className="w-[240px] h-[240px] rounded-[32px] bg-background-tertiary overflow-hidden">
+          <View className="w-[240px] h-[240px] max-xs:w-[140px] max-xs:h-[140px] rounded-[32px] bg-background-tertiary overflow-hidden">
             <CollectibleImage
               imageUri={selectedCollectible?.image}
               placeholderIconSize={65}
