@@ -9,6 +9,7 @@ import {
   getTokenIdentifiersFromBalances,
   getTotalUsdLabel,
 } from "helpers/balances";
+import { getBalanceInWholeUnits } from "helpers/formatAmount";
 import { isMainnet } from "helpers/networks";
 import { fetchBalances } from "services/backend";
 import { create } from "zustand";
@@ -117,7 +118,9 @@ const computeFiatTotal = (
       }
 
       return {
-        total: acc.total.plus(balance.total.multipliedBy(currentPrice)),
+        total: acc.total.plus(
+          getBalanceInWholeUnits(balance).multipliedBy(currentPrice),
+        ),
         pricedCount: acc.pricedCount + 1,
       };
     },

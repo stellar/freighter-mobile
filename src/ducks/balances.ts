@@ -15,6 +15,7 @@ import {
   isLiquidityPool,
   sortBalances,
 } from "helpers/balances";
+import { getBalanceInWholeUnits } from "helpers/formatAmount";
 import { isMainnet } from "helpers/networks";
 import { ApiError, logApiError } from "services/apiFactory";
 import { fetchBalances } from "services/backend";
@@ -112,7 +113,9 @@ const getExistingPricedBalances = (
       // becomes state, making the wrong value stick.
       fiatTotal:
         existingPriceData?.currentPrice &&
-        balance.total.multipliedBy(existingPriceData.currentPrice),
+        getBalanceInWholeUnits(balance).multipliedBy(
+          existingPriceData.currentPrice,
+        ),
     };
 
     // Return entry as [id, pricedBalance] tuple
@@ -144,7 +147,9 @@ const getUpdatedPricedBalances = (
         fiatCode: "USD",
         fiatTotal:
           priceData.currentPrice &&
-          updatedPricedBalances[id].total.multipliedBy(priceData.currentPrice),
+          getBalanceInWholeUnits(updatedPricedBalances[id]).multipliedBy(
+            priceData.currentPrice,
+          ),
       };
     }
   });
