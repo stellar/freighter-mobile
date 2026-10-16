@@ -1922,6 +1922,65 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
     expect(mockSetDisplayAmountFromText).toHaveBeenCalledWith("123,45");
   });
 
+  describe("fiat-mode Max for a SEP-41 token", () => {
+    const solvBtcId =
+      "SolvBTC:CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";
+    const mockUpdateFiatDisplay = jest.fn();
+    const mockSetTokenAmount = jest.fn();
+
+    beforeEach(() => {
+      mockUseTokenFiatConverter.mockReturnValue({
+        ...(mockUseTokenFiatConverter as unknown as jest.Mock)(),
+        showFiatAmount: true,
+        setTokenAmount: mockSetTokenAmount,
+        updateFiatDisplay: mockUpdateFiatDisplay,
+      });
+      mockUseTransactionSettingsStore.mockReturnValue({
+        ...(mockUseTransactionSettingsStore as unknown as jest.Mock)(),
+        selectedTokenId: solvBtcId,
+      });
+      mockUseBalancesList.mockReturnValue({
+        ...(mockUseBalancesList as unknown as jest.Mock)(),
+        balanceItems: [
+          {
+            id: solvBtcId,
+            tokenId: solvBtcId,
+            contractId:
+              "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN",
+            decimals: 8,
+            total: new BigNumber("227"),
+            available: new BigNumber("227"),
+            currentPrice: new BigNumber("81597.03"),
+            token: {
+              code: "SolvBTC",
+              issuer: {
+                key: "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN",
+              },
+            },
+          } as any,
+        ],
+      });
+      mockCalculateSpendableAmount.mockReturnValue(new BigNumber("227"));
+    });
+
+    it("caps the fiat amount at the held balance, not the raw integer", () => {
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+
+      fireEvent.press(getByTestId("percentage-100"));
+
+      // 0.00000227 SolvBTC is $0.185; "0.19" would convert back to more than
+      // is held, so the handler must drop a cent.
+      expect(mockUpdateFiatDisplay).toHaveBeenLastCalledWith("0.18");
+      const tokens = new BigNumber(mockSetTokenAmount.mock.calls.at(-1)[0]);
+      expect(tokens.isLessThanOrEqualTo("0.00000227")).toBe(true);
+    });
+  });
+
   describe("pre-submit failure telemetry", () => {
     it("emits payment.failed without volume data when signing fails", async () => {
       const mockSign = jest.fn().mockReturnValue(null);

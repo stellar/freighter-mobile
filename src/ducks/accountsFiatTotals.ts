@@ -96,9 +96,9 @@ interface AccountsFiatTotalsState {
 }
 
 /**
- * Sums the USD value of every priced token in an account's balances.
- * Tokens without a known price (custom tokens, LP shares, price fetch
- * failures) contribute zero.
+ * Sums the USD value of every priced token in an account's balances, each
+ * valued in whole units. Tokens without a known price (LP shares, unpriced
+ * custom tokens, price fetch failures) contribute zero.
  *
  * Also reports how many tokens actually priced, which is what separates a
  * genuine zero from a total that couldn't be read: a funded account where

@@ -490,7 +490,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     // Ensure targetAmount never exceeds spendableBalance
     const cappedTargetAmount = BigNumber.minimum(
       targetAmount,
-      spendableBalance,
+      decimalAwareSpendable,
     );
 
     if (showFiatAmount) {
@@ -502,7 +502,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         let convertedBackToTokens = new BigNumber(fiatAmountString).dividedBy(
           tokenPrice,
         );
-        if (convertedBackToTokens.isGreaterThan(spendableBalance)) {
+        if (convertedBackToTokens.isGreaterThan(decimalAwareSpendable)) {
           // Subtract 1 cent to fix USD value going over max tokens
           calculatedFiatAmount = calculatedFiatAmount.minus(0.01);
           fiatAmountString = calculatedFiatAmount.toFixed(2);
@@ -513,7 +513,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
         const finalTokenAmount = BigNumber.minimum(
           convertedBackToTokens,
-          spendableBalance,
+          decimalAwareSpendable,
         );
         const finalFiatAmount = finalTokenAmount.multipliedBy(tokenPrice);
         const finalFiatAmountString = finalFiatAmount.toFixed(2);
