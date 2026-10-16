@@ -239,8 +239,14 @@ export const Avatar: React.FC<AvatarProps> = ({
   const renderIdenticon = () => {
     if (!publicAddress) return null;
 
-    // The canvas fills the content area, which a border shrinks by 1px a side.
-    const canvasSize = AVATAR_DIMENSIONS[size].width - (hasBorder ? 2 : 0);
+    // The drawing fills the content area, which a border shrinks by 1px a side.
+    const drawingSize = AVATAR_DIMENSIONS[size].width - (hasBorder ? 2 : 0);
+    // On iOS, Skia truncates its view's bounds to whole points, and layout
+    // pixel-snapping at a fractional offset (the home header) makes a 40pt
+    // canvas 39.67pt, so its last point row went missing. A canvas 1pt
+    // larger, pinned top-left and clipped by the content area, always keeps
+    // the whole drawing.
+    const canvasSize = drawingSize + 1;
 
     return (
       <AvatarWrapper
@@ -251,8 +257,16 @@ export const Avatar: React.FC<AvatarProps> = ({
         hasBackground={hasBackground}
         hasDarkBackground={hasDarkBackground}
       >
-        <Canvas style={{ width: canvasSize, height: canvasSize }}>
-          <MarbleAvatar publicAddress={publicAddress} size={canvasSize} />
+        <Canvas
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: canvasSize,
+            height: canvasSize,
+          }}
+        >
+          <MarbleAvatar publicAddress={publicAddress} size={drawingSize} />
         </Canvas>
       </AvatarWrapper>
     );

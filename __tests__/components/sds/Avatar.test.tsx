@@ -1,4 +1,5 @@
 import { Avatar, AvatarSizes } from "components/sds/Avatar";
+import { MarbleAvatar } from "components/sds/Avatar/MarbleAvatar";
 import { getTheme } from "config/theme";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -74,6 +75,33 @@ describe("Avatar", () => {
       expect(avatar.props.className).toContain("bg-background-tertiary");
       expect(avatar.props.className).toContain("rounded-full");
     });
+
+    it.each([false, true])(
+      "gives the drawing a canvas 1pt larger, pinned top-left (hasBorder: %s)",
+      (hasBorder) => {
+        // iOS Skia truncates its view to whole points, so a canvas exactly the
+        // drawing's size lost its bottom row at fractional offsets.
+        const { UNSAFE_getByType: getByType } = renderWithProviders(
+          <Avatar
+            size={AvatarSizes.LARGE}
+            publicAddress={TEST_PUBLIC_ADDRESS}
+            hasBorder={hasBorder}
+          />,
+        );
+        const drawingSize = hasBorder ? 38 : 40;
+        const drawing = getByType(MarbleAvatar);
+
+        expect(drawing.props.size).toBe(drawingSize);
+        // Skia's Jest setup renders Canvas as a View, so read it off the parent.
+        expect(drawing.parent?.props.style).toEqual({
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: drawingSize + 1,
+          height: drawingSize + 1,
+        });
+      },
+    );
 
     it("renders with user name (initials)", () => {
       const { getByTestId, getByText } = renderWithProviders(
