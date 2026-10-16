@@ -1,8 +1,5 @@
 import { fireEvent, render } from "@testing-library/react-native";
-import {
-  CollectibleFilterType,
-  CollectiblesGrid,
-} from "components/CollectiblesGrid";
+import { CollectiblesGrid } from "components/CollectiblesGrid";
 import React from "react";
 
 jest.mock("react-i18next", () => ({
@@ -84,19 +81,6 @@ describe("CollectiblesGrid empty-state CTA", () => {
     expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
   });
 
-  // The hidden list is a management view, not a place to add.
-  it("never renders the CTA on the hidden-collectibles list", () => {
-    const { queryByTestId } = render(
-      <CollectiblesGrid
-        type={CollectibleFilterType.HIDDEN}
-        showEmptyStateCta
-        onAddCollectiblePress={jest.fn()}
-      />,
-    );
-
-    expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
-  });
-
   // Nothing to offer while the grid is still a spinner.
   it("renders no empty state or CTA while loading", () => {
     mockIsLoading = true;
@@ -152,7 +136,9 @@ describe("CollectiblesGrid empty-state CTA", () => {
   it("renders no CTA in the error view when the caller did not ask for one", () => {
     mockError = "boom";
 
-    const { queryByTestId } = render(<CollectiblesGrid disableInnerScrolling />);
+    const { queryByTestId } = render(
+      <CollectiblesGrid disableInnerScrolling />,
+    );
 
     expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
   });

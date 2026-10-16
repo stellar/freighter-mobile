@@ -25,6 +25,7 @@ jest.mock("services/backend", () => ({
 jest.mock("services/storage/storageFactory", () => ({
   dataStorage: {
     getItem: jest.fn(),
+    setItem: jest.fn(),
   },
 }));
 
@@ -159,6 +160,257 @@ describe("balances duck", () => {
 
     // Set up default storage mock
     jest.spyOn(dataStorage, "getItem").mockImplementation(mockGetItem);
+  });
+
+  describe("hidden tokens", () => {
+    const USDC_ID =
+      "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+    beforeEach(() => {
+      act(() => {
+        // hideToken / unhideToken only touch the in-memory list when the
+        // store's snapshot is for the account they were called for.
+        useBalancesStore.setState({
+          hiddenTokenIds: [],
+          fetchedPublicKey: mockParams.publicKey,
+          fetchedNetwork: mockParams.network,
+        });
+      });
+      (dataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    });
+
+    it("writes storage but leaves the list alone when the store belongs to another account", async () => {
+      // The account switched while the write was in flight: clearAccountData
+      // reset the store, so the completion must not append to the new list.
+      act(() => {
+        useBalancesStore.setState({
+          fetchedPublicKey: "GOTHERACCOUNT",
+          hiddenTokenIds: [],
+        });
+      });
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.hideToken({
+          publicKey: mockParams.publicKey,
+          network: mockParams.network,
+          tokenId: USDC_ID,
+        });
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([]);
+      expect(dataStorage.setItem).toHaveBeenCalledWith(
+        STORAGE_KEYS.HIDDEN_TOKEN_LIST,
+        expect.any(String),
+      );
+    });
+
+    it("unhideToken also leaves the list alone for another account's store", async () => {
+      mockGetItem.mockImplementation((key: STORAGE_KEYS) =>
+        Promise.resolve(
+          key === STORAGE_KEYS.HIDDEN_TOKEN_LIST
+            ? JSON.stringify({
+                [mockParams.publicKey]: { [mockParams.network]: [USDC_ID] },
+              })
+            : null,
+        ),
+      );
+      act(() => {
+        useBalancesStore.setState({
+          fetchedPublicKey: "GOTHERACCOUNT",
+          hiddenTokenIds: [USDC_ID],
+        });
+      });
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.unhideToken({
+          publicKey: mockParams.publicKey,
+          network: mockParams.network,
+          tokenId: USDC_ID,
+        });
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([USDC_ID]);
+    });
+
+    it("loads the account's hidden tokens alongside the balances", async () => {
+      // First load: no snapshot yet, so the stored list applies
+      act(() => {
+        useBalancesStore.setState({
+          fetchedPublicKey: null,
+          fetchedNetwork: null,
+        });
+      });
+      mockGetItem.mockImplementation((key: STORAGE_KEYS) =>
+        Promise.resolve(
+          key === STORAGE_KEYS.HIDDEN_TOKEN_LIST
+            ? JSON.stringify({
+                [mockParams.publicKey]: { [mockParams.network]: [USDC_ID] },
+              })
+            : null,
+        ),
+      );
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([USDC_ID]);
+      // The balances themselves still carry the hidden token.
+      expect(result.current.balances[USDC_ID]).toBeDefined();
+    });
+
+    it("keeps the in-memory hidden list when a refresh for the same account lands", async () => {
+      // Storage still says "nothing hidden" (snapshot taken before the fetch),
+      // but the user hid USDC while the fetch was in flight.
+      mockGetItem.mockResolvedValue(null);
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+      act(() => {
+        useBalancesStore.setState({
+          fetchedPublicKey: mockParams.publicKey,
+          fetchedNetwork: mockParams.network,
+          hiddenTokenIds: [USDC_ID],
+        });
+      });
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([USDC_ID]);
+    });
+
+    it("applies the stored hidden list when the account or network changes", async () => {
+      mockGetItem.mockImplementation((key: STORAGE_KEYS) =>
+        Promise.resolve(
+          key === STORAGE_KEYS.HIDDEN_TOKEN_LIST
+            ? JSON.stringify({
+                [mockParams.publicKey]: { [mockParams.network]: [USDC_ID] },
+              })
+            : null,
+        ),
+      );
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+      act(() => {
+        useBalancesStore.setState({
+          fetchedPublicKey: "GOTHERACCOUNT",
+          fetchedNetwork: mockParams.network,
+          hiddenTokenIds: ["STALE:GSTALE"],
+        });
+      });
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([USDC_ID]);
+    });
+
+    it("hideToken persists the token and updates the store", async () => {
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.hideToken({
+          publicKey: mockParams.publicKey,
+          network: mockParams.network,
+          tokenId: USDC_ID,
+        });
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([USDC_ID]);
+      expect(dataStorage.setItem).toHaveBeenCalledWith(
+        STORAGE_KEYS.HIDDEN_TOKEN_LIST,
+        JSON.stringify({
+          [mockParams.publicKey]: { [mockParams.network]: [USDC_ID] },
+        }),
+      );
+    });
+
+    it("never hides XLM", async () => {
+      const { result } = renderHook(() => useBalancesStore());
+      (dataStorage.setItem as jest.Mock).mockClear();
+
+      await act(async () => {
+        await result.current.hideToken({
+          publicKey: mockParams.publicKey,
+          network: mockParams.network,
+          tokenId: "XLM",
+        });
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([]);
+      expect(dataStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it("unhideToken removes the token from storage and the store", async () => {
+      mockGetItem.mockImplementation((key: STORAGE_KEYS) =>
+        Promise.resolve(
+          key === STORAGE_KEYS.HIDDEN_TOKEN_LIST
+            ? JSON.stringify({
+                [mockParams.publicKey]: { [mockParams.network]: [USDC_ID] },
+              })
+            : null,
+        ),
+      );
+      act(() => {
+        useBalancesStore.setState({ hiddenTokenIds: [USDC_ID] });
+      });
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.unhideToken({
+          publicKey: mockParams.publicKey,
+          network: mockParams.network,
+          tokenId: USDC_ID,
+        });
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([]);
+      expect(dataStorage.setItem).toHaveBeenCalledWith(
+        STORAGE_KEYS.HIDDEN_TOKEN_LIST,
+        JSON.stringify({}),
+      );
+    });
+
+    it("hideToken leaves the store untouched and rethrows when storage fails", async () => {
+      (dataStorage.setItem as jest.Mock).mockRejectedValueOnce(
+        new Error("disk full"),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await expect(
+        act(async () => {
+          await result.current.hideToken({
+            publicKey: mockParams.publicKey,
+            network: mockParams.network,
+            tokenId: USDC_ID,
+          });
+        }),
+      ).rejects.toThrow("disk full");
+
+      expect(result.current.hiddenTokenIds).toEqual([]);
+    });
   });
 
   describe("store state", () => {

@@ -376,6 +376,10 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  * Formatted as: { [publicKey: string]: { [network: string]: CollectibleContract[] } } @see CollectiblesStorage
  * The HIDDEN_COLLECTIBLES_LIST is not removed during the standard logout process. It is used to keep the hidden collectibles even after the user logs out, since the API does not store hidden collectibles.
  *
+ * HIDDEN_TOKEN_LIST The hidden token list keeps track of the tokens the user chose to hide from the balances list.
+ * Formatted as: { [publicKey: string]: { [network: string]: string[] } } @see HiddenTokenStorage
+ * Each entry is the balance identifier ("CODE:ISSUER" or "SYMBOL:CONTRACT_ID"). Like the other lists it survives logout, since the API does not store hidden tokens.
+ *
  * ACTIVE_NETWORK The active network is the network that is currently being used.
  * RECENT_ADDRESSES The list of recently used addresses for sending payments.
  *
@@ -395,6 +399,7 @@ export enum STORAGE_KEYS {
   CUSTOM_TOKEN_LIST = "customTokenList",
   COLLECTIBLES_LIST = "collectiblesList",
   HIDDEN_COLLECTIBLES_LIST = "hiddenCollectiblesList",
+  HIDDEN_TOKEN_LIST = "hiddenTokenList",
   ACTIVE_NETWORK = "activeNetwork",
   RECENT_ADDRESSES = "recentAddresses",
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",

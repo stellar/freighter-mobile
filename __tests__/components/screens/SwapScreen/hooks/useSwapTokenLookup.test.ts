@@ -6,6 +6,8 @@ import {
 } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
+import { useBalancesStore } from "ducks/balances";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import * as stellarExpert from "services/stellarExpert";
 
@@ -341,6 +343,37 @@ describe("useSwapTokenLookup — idle mode", () => {
     expect(result.current.trendingTokens.map((t) => t.tokenCode)).toContain(
       "USDC",
     );
+  });
+
+  it("drops hidden tokens from trendingTokens and popularTokens", async () => {
+    // A hidden token is left out of balanceItems, so without the hidden list
+    // the hook would treat a held USDC as new and offer it under Popular.
+    const visibleHeld = buildHeldBalances().filter((b) =>
+      isNativeAssetId(b.id),
+    );
+    useBalancesStore.setState({ hiddenTokenIds: [`USDC:${USDC_ISSUER}`] });
+
+    try {
+      const { result } = renderHook(() =>
+        useSwapTokenLookup({
+          network: NETWORKS.PUBLIC,
+          balanceItems: visibleHeld,
+        }),
+      );
+
+      await act(async () => {
+        await settleAsync();
+      });
+
+      expect(result.current.trendingTokens.map((t) => t.tokenCode)).toEqual([
+        "AQUA",
+      ]);
+      expect(result.current.popularTokens.map((t) => t.tokenCode)).toEqual([
+        "AQUA",
+      ]);
+    } finally {
+      useBalancesStore.setState({ hiddenTokenIds: [] });
+    }
   });
 
   it("sets stellarExpertDown=true and degrades gracefully on fetch failure", async () => {
@@ -909,6 +942,60 @@ describe("useSwapTokenLookup — active search", () => {
     expect(
       result.current.unverifiedSearchMatches.map((t) => t.tokenCode),
     ).toContain("FOO");
+  });
+
+  it("drops hidden tokens from the verified and unverified search buckets", async () => {
+    // USDC is held but hidden, so it is missing from balanceItems; FOO is a
+    // hidden token the account no longer holds. Neither may be offered.
+    const visibleHeld = buildHeldBalances().filter((b) =>
+      isNativeAssetId(b.id),
+    );
+    useBalancesStore.setState({
+      hiddenTokenIds: [`USDC:${USDC_ISSUER}`, `FOO:${FOO_ISSUER}`],
+    });
+    (stellarExpert.searchToken as jest.Mock).mockResolvedValue({
+      _embedded: {
+        records: [
+          { asset: `USDC-${USDC_ISSUER}-1`, domain: "circle.com" },
+          { asset: `AQUA-${AQUA_ISSUER}-1`, domain: "aqua.network" },
+          { asset: `FOO-${FOO_ISSUER}-1`, domain: "foo.com" },
+        ],
+      },
+      _links: {},
+    });
+    mockSplitVerifiedTokens.mockImplementationOnce(
+      ({ tokens }: { tokens: any[] }) =>
+        Promise.resolve({
+          verified: tokens.filter((t) => t.tokenCode !== "FOO"),
+          unverified: tokens.filter((t) => t.tokenCode === "FOO"),
+        }),
+    );
+
+    try {
+      const { result } = renderHook(() =>
+        useSwapTokenLookup({
+          network: NETWORKS.PUBLIC,
+          balanceItems: visibleHeld,
+        }),
+      );
+
+      await act(async () => {
+        await settleAsync();
+      });
+
+      act(() => {
+        result.current.handleSearch("A");
+      });
+
+      await settleDebounce();
+
+      expect(
+        result.current.verifiedSearchMatches.map((t) => t.tokenCode),
+      ).toEqual(["AQUA"]);
+      expect(result.current.unverifiedSearchMatches).toEqual([]);
+    } finally {
+      useBalancesStore.setState({ hiddenTokenIds: [] });
+    }
   });
 
   it("dedupes a held token out of verified/unverified buckets when held + stellar.expert both surface it", async () => {

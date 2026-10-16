@@ -9,6 +9,7 @@
   },
   "common": {
     "close": "Fechar",
+    "unhide": "Mostrar",
     "paste": "Colar",
     "done": "Concluído",
     "none": "Nenhum",
@@ -358,7 +359,17 @@
     "loadingBalanceA11yLabel": "Carregando o saldo",
     "listHeader": "Sua atividade de {{tokenName}}",
     "swap": "Trocar",
-    "send": "Enviar"
+    "send": "Enviar",
+    "hideToken": "Ocultar {{tokenCode}}"
+  },
+  "hiddenTokens": {
+    "showHidden": "Mostrar ocultos",
+    "title": "Tokens ocultos",
+    "empty": "Nenhum token oculto",
+    "hidden": "{{tokenCode}} ocultado",
+    "unhidden": "{{tokenCode}} exibido",
+    "hideError": "Erro ao ocultar {{tokenCode}}",
+    "unhideError": "Erro ao exibir {{tokenCode}}"
   },
   "priceHistory": {
     "notice": {
@@ -504,7 +515,6 @@
     "title": "Colecionáveis",
     "error": "Erro ao carregar colecionáveis",
     "empty": "Nenhum colecionável ainda",
-    "emptyHidden": "Nenhum colecionável oculto",
     "addCollectibleButton": "Adicionar colecionável",
     "itemHiddenLabel": "{{name}}, oculto",
     "emptyDescription": "Os colecionáveis que você possui aparecerão aqui."
@@ -525,10 +535,14 @@
     "imageSavedToPhotos": "Imagem salva na galeria",
     "imageSaveFailed": "Falha ao salvar imagem na galeria",
     "imageSaveAttempted": "Tentativa de salvar, verifique suas fotos",
-    "hideCollectible": "Ocultar colecionável",
-    "showCollectible": "Mostrar colecionável",
-    "hideSuccess": "Colecionável ocultado com sucesso",
-    "hiddenBanner": "Este colecionável está oculto"
+    "hideCollectible": "Ocultar colecionável"
+  },
+  "hiddenCollectibles": {
+    "title": "Colecionáveis ocultos",
+    "empty": "Nenhum colecionável oculto",
+    "hidden": "Colecionável ocultado",
+    "unhidden": "Colecionável exibido",
+    "unhideError": "Erro ao exibir colecionável"
   },
   "addCollectibleScreen": {
     "title": "Adicionar Colecionável",
@@ -545,9 +559,7 @@
     "alreadyInWallet": "Este colecionável já está na sua carteira",
     "showHidden": "Mostrar ocultos"
   },
-  "hiddenCollectiblesScreen": {
-    "title": "Colecionáveis Ocultos"
-  },
+
   "collectibles": {
     "errors": {
       "collectionNotFound": "Coleção não encontrada para o endereço fornecido.",

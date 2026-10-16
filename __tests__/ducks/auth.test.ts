@@ -2376,6 +2376,7 @@ describe("auth duck", () => {
         fetchedPublicKey: null,
         fetchedNetwork: null,
         subentryCount: 0,
+        hiddenTokenIds: [],
         error: null,
       });
     });

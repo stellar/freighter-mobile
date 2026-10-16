@@ -1,4 +1,10 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BottomSheet from "components/BottomSheet";
+import { CollectibleImage } from "components/CollectibleImage";
+import HiddenItemsSheetContent, {
+  HiddenItem,
+} from "components/HiddenItemsSheetContent";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -13,9 +19,10 @@ import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import { useFilteredCollectibles } from "hooks/useFilteredCollectibles";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useToast } from "providers/ToastProvider";
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useMemo } from "react";
 import { View, TextInput } from "react-native";
 
 type AddCollectibleScreenProps = NativeStackScreenProps<
@@ -35,8 +42,12 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
     addCollectible,
     isLoading: isAddingCollectible,
     checkCollectibleExists,
+    unhideCollectible,
   } = useCollectiblesStore();
+  const { hiddenCollectibles } = useFilteredCollectibles();
   const { showToast } = useToast();
+  const hiddenCollectiblesBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const [unhidingKey, setUnhidingKey] = useState<string | null>(null);
 
   const [collectionAddress, setCollectionAddress] = useState("");
   const [tokenId, setTokenId] = useState("");
@@ -215,6 +226,92 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
     ? t("addCollectibleScreen.addToWallet")
     : t("addCollectibleScreen.enterDetails");
 
+  /**
+   * Unhides a collectible from the hidden-collectibles sheet, closes the
+   * sheet on success and confirms with a toast.
+   */
+  const handleUnhideCollectible = useCallback(
+    async ({
+      collectionAddress: contractId,
+      tokenId: collectibleTokenId,
+    }: {
+      collectionAddress: string;
+      tokenId: string;
+    }) => {
+      const publicKey = account?.publicKey;
+      const key = `${contractId}:${collectibleTokenId}`;
+
+      if (!publicKey || unhidingKey) {
+        return;
+      }
+
+      setUnhidingKey(key);
+
+      try {
+        await unhideCollectible({
+          publicKey,
+          network,
+          contractId,
+          tokenId: collectibleTokenId,
+        });
+        hiddenCollectiblesBottomSheetModalRef.current?.dismiss();
+        showToast({
+          title: t("hiddenCollectibles.unhidden"),
+          variant: "success",
+          toastId: "unhide-collectible-toast",
+        });
+      } catch (error) {
+        logger.error(
+          "handleUnhideCollectible",
+          "Failed to unhide collectible",
+          error,
+        );
+        showToast({
+          title: t("hiddenCollectibles.unhideError"),
+          variant: "error",
+          toastId: "unhide-collectible-toast",
+        });
+      } finally {
+        setUnhidingKey(null);
+      }
+    },
+    [account?.publicKey, unhidingKey, unhideCollectible, network, showToast, t],
+  );
+
+  const hiddenItems = useMemo<HiddenItem[]>(
+    () =>
+      hiddenCollectibles.flatMap((collection) =>
+        collection.items.map((item) => {
+          const key = `${item.collectionAddress}:${item.tokenId}`;
+
+          return {
+            id: key,
+            leading: (
+              <View className="size-10 rounded-lg overflow-hidden">
+                <CollectibleImage
+                  imageUri={item.image}
+                  placeholderIconSize={16}
+                />
+              </View>
+            ),
+            title:
+              item.name ??
+              t("collectibles.fallbacks.tokenName", { tokenId: item.tokenId }),
+            // The fallback title is already built from the id, so don't
+            // repeat it underneath
+            subtitle: item.name ? `#${item.tokenId}` : undefined,
+            isUnhiding: unhidingKey === key,
+            onUnhide: () =>
+              handleUnhideCollectible({
+                collectionAddress: item.collectionAddress,
+                tokenId: item.tokenId,
+              }),
+          };
+        }),
+      ),
+    [hiddenCollectibles, unhidingKey, handleUnhideCollectible, t],
+  );
+
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="mb-3">
@@ -249,7 +346,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
         />
       </View>
 
-      <View className="mb-3 self-start">
+      <View className="mb-3 self-end">
         <TextButton
           testID="add-collectible-show-hidden"
           text={t("addCollectibleScreen.showHidden")}
@@ -257,9 +354,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
           className="py-1"
           hitSlop={{ top: 6, bottom: 6 }}
           onPress={() =>
-            navigation.navigate(
-              ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN,
-            )
+            hiddenCollectiblesBottomSheetModalRef.current?.present()
           }
         />
       </View>
@@ -282,6 +377,25 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
           {buttonTitle}
         </Button>
       </View>
+      <BottomSheet
+        modalRef={hiddenCollectiblesBottomSheetModalRef}
+        // Lets drags scroll a long hidden list instead of moving the sheet
+        enableContentPanningGesture={false}
+        handleCloseModal={() =>
+          hiddenCollectiblesBottomSheetModalRef.current?.dismiss()
+        }
+        customContent={
+          <HiddenItemsSheetContent
+            title={t("hiddenCollectibles.title")}
+            emptyText={t("hiddenCollectibles.empty")}
+            items={hiddenItems}
+            onClose={() =>
+              hiddenCollectiblesBottomSheetModalRef.current?.dismiss()
+            }
+            testID="hidden-collectibles-sheet"
+          />
+        }
+      />
     </BaseLayout>
   );
 };

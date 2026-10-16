@@ -1,5 +1,5 @@
 /* eslint-disable global-require, @typescript-eslint/no-var-requires, react/react-in-jsx-scope */
-import { render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 import TokenItem from "components/screens/AddTokenScreen/TokenItem";
 import {
   TokenTypeWithCustomToken,
@@ -23,6 +23,16 @@ jest.mock("components/screens/AddTokenScreen/AddTokenRightContent", () => {
   return {
     __esModule: true,
     default: () => <View testID="add-token-right-content" />,
+  };
+});
+
+jest.mock("components/UnhideButton", () => {
+  const { TouchableOpacity } = require("react-native");
+  return {
+    __esModule: true,
+    default: ({ onPress, testID }: { onPress: () => void; testID: string }) => (
+      <TouchableOpacity testID={testID} onPress={onPress} />
+    ),
   };
 });
 
@@ -56,9 +66,45 @@ const makeToken = (
 describe("TokenItem", () => {
   const handleAddToken = jest.fn();
   const handleRemoveToken = jest.fn();
+  const handleUnhideToken = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it("offers Unhide instead of the manage menu for a hidden held token", () => {
+    const token = makeToken({ hasTrustline: true, isHidden: true });
+
+    const { getByTestId, queryByTestId } = render(
+      <TokenItem
+        token={token}
+        handleAddToken={handleAddToken}
+        handleRemoveToken={handleRemoveToken}
+        handleUnhideToken={handleUnhideToken}
+      />,
+    );
+
+    expect(queryByTestId("manage-token-right-content")).toBeNull();
+    expect(queryByTestId("add-token-right-content")).toBeNull();
+
+    fireEvent.press(getByTestId("unhide-token-button"));
+
+    expect(handleUnhideToken).toHaveBeenCalledWith(token);
+  });
+
+  it("falls back to the regular controls when no unhide handler is given", () => {
+    const token = makeToken({ hasTrustline: true, isHidden: true });
+
+    const { getByTestId, queryByTestId } = render(
+      <TokenItem
+        token={token}
+        handleAddToken={handleAddToken}
+        handleRemoveToken={handleRemoveToken}
+      />,
+    );
+
+    expect(queryByTestId("unhide-token-button")).toBeNull();
+    expect(getByTestId("manage-token-right-content")).toBeTruthy();
   });
 
   it("renders the Stellar Network label for the native record instead of a dash", () => {

@@ -15,6 +15,7 @@ import TokenPriceHistorySection from "components/screens/TokenDetailsScreen/comp
 import TokenStatsSection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenStatsSection";
 import {
   getRemoveTokenSheetVariant,
+  isTokenRemovable,
   RemoveTokenSheetContent,
   RemoveTokenSheetVariant,
 } from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
@@ -32,11 +33,14 @@ import {
 } from "config/routes";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { useDebugStore } from "ducks/debug";
 import { useIsInspectingPriceHistory } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { getTokenType, getIssuerFromIdentifier } from "helpers/balances";
+import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -46,6 +50,7 @@ import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useTokenActions } from "hooks/useTokenActions";
 import useTokenDetails from "hooks/useTokenDetails";
+import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { View, Dimensions, Platform } from "react-native";
 import { analytics } from "services/analytics";
@@ -61,10 +66,12 @@ import {
 const headerMenuIcons = Platform.select({
   ios: {
     copyAddress: "doc.on.doc",
+    hideToken: "eye.slash",
     removeToken: "minus.circle",
   },
   android: {
     copyAddress: "baseline_format_paint",
+    hideToken: "visibility_off",
     removeToken: "outline_circle",
   },
 });
@@ -97,6 +104,8 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { overriddenBlockaidResponse } = useDebugStore();
   const { saveSelectedTokenId, saveSelectedCollectibleDetails } =
     useTransactionSettingsStore();
+  const hideToken = useBalancesStore((state) => state.hideToken);
+  const { showToast } = useToast();
   const securityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
@@ -132,6 +141,9 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
+    // Keeps the token's balance resolved while a hide completes, so the menu
+    // and the remove prompt don't lose it before the screen closes.
+    includeHidden: true,
   });
 
   const removeTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -193,6 +205,58 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     removeTokenBottomSheetModalRef.current?.dismiss();
   }, [selectedBalance]);
 
+  // XLM pays every transaction fee, so it is never hidden: Send and Swap
+  // would stop seeing it and report insufficient XLM for fees.
+  const canOfferHide = !isNativeAssetId(tokenId);
+  const canOfferRemove = isTokenRemovable(selectedBalance, localOnlyTokenIds);
+  // The code the menu and toasts name the token by. The route's symbol is
+  // the code for a classic asset, but the contract id for a Soroban token
+  // until its details resolve.
+  const hideTokenCode =
+    selectedBalance?.tokenCode ??
+    (isContractId(tokenSymbol) ? actualTokenDetails?.symbol : undefined) ??
+    tokenSymbol;
+
+  /**
+   * Hides the token, then returns to the previous screen and confirms with a
+   * toast. This screen only opens from a visible token on Home, so it never
+   * shows a hidden one; unhiding happens from Add token.
+   */
+  const handleHideToken = useCallback(async () => {
+    const publicKey = account?.publicKey;
+
+    if (!publicKey) {
+      return;
+    }
+
+    try {
+      await hideToken({ publicKey, network, tokenId });
+
+      navigation.goBack();
+
+      showToast({
+        title: t("hiddenTokens.hidden", { tokenCode: hideTokenCode }),
+        variant: "success",
+        toastId: "hide-token-toast",
+      });
+    } catch {
+      showToast({
+        title: t("hiddenTokens.hideError", { tokenCode: hideTokenCode }),
+        variant: "error",
+        toastId: "hide-token-toast",
+      });
+    }
+  }, [
+    account?.publicKey,
+    hideToken,
+    network,
+    tokenId,
+    navigation,
+    showToast,
+    t,
+    hideTokenCode,
+  ]);
+
   const headerMenuActions = useMemo(
     () => [
       {
@@ -204,14 +268,42 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             "manageTokenRightContent.tokenAddressCopied",
           ),
       },
-      {
-        title: t("common.remove"),
-        systemIcon: headerMenuIcons!.removeToken,
-        destructive: true,
-        onPress: () => removeTokenBottomSheetModalRef.current?.present(),
-      },
+      ...(canOfferHide
+        ? [
+            {
+              title: t("tokenDetailsScreen.hideToken", {
+                tokenCode: hideTokenCode,
+              }),
+              systemIcon: headerMenuIcons!.hideToken,
+              onPress: () => {
+                // handleHideToken reports its own failures with a toast and
+                // never rejects; the catch only keeps the promise from
+                // floating.
+                handleHideToken().catch(() => undefined);
+              },
+            },
+          ]
+        : []),
+      ...(canOfferRemove
+        ? [
+            {
+              title: t("common.remove"),
+              systemIcon: headerMenuIcons!.removeToken,
+              destructive: true,
+              onPress: () => removeTokenBottomSheetModalRef.current?.present(),
+            },
+          ]
+        : []),
     ],
-    [t, copyTokenAddress, tokenId],
+    [
+      t,
+      copyTokenAddress,
+      tokenId,
+      canOfferHide,
+      hideTokenCode,
+      handleHideToken,
+      canOfferRemove,
+    ],
   );
 
   useRightHeaderMenu({

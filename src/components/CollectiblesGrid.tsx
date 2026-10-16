@@ -17,14 +17,6 @@ import React, { useCallback, useState } from "react";
 import { View, FlatList, RefreshControl } from "react-native";
 
 /**
- * Filter type for collectibles display
- */
-export enum CollectibleFilterType {
-  VISIBLE = "visible",
-  HIDDEN = "hidden",
-}
-
-/**
  * Props for the CollectiblesGrid component
  */
 interface CollectiblesGridProps {
@@ -38,9 +30,6 @@ interface CollectiblesGridProps {
   }) => void;
   /** Whether to disable internal scrolling (for use in parent ScrollView) */
   disableInnerScrolling?: boolean;
-
-  /** Type to determine which collectibles to display. Defaults to VISIBLE. */
-  type?: CollectibleFilterType;
   /**
    * Renders an "Add collectible" action inside the empty state. Home turns it
    * on while its tokens tab shows an empty state, so both tabs offer the same
@@ -63,16 +52,15 @@ interface CollectiblesGridProps {
  * - Pull-to-refresh functionality
  * - Responsive grid layout with proper spacing
  * - Memoized rendering for performance optimization
- * - Supports filtering by visible or hidden collectibles via the `type` prop
- * - Visual distinction for hidden collectibles (reduced opacity with eye-off icon)
+ * - Leaves out hidden collectibles; the Add collectible screen's "Show
+ *   hidden" sheet is where those are listed and unhidden
  *
  * The component automatically fetches collectibles data on mount and provides
  * a refresh mechanism for users to update the data manually. It uses the
- * `useFilteredCollectibles` hook to separate visible and hidden collectibles.
+ * `useFilteredCollectibles` hook to drop the hidden collectibles.
  *
  * @param {CollectiblesGridProps} props - Component props
  * @param {Function} [props.onCollectiblePress] - Callback function when a collectible is pressed
- * @param {CollectibleFilterType} [props.type] - Filter type to determine which collectibles to display (VISIBLE or HIDDEN). Defaults to VISIBLE.
  * @param {boolean} [props.disableInnerScrolling] - Whether to disable internal scrolling (for use in parent ScrollView)
  * @returns {JSX.Element} The collectibles grid component
  */
@@ -80,7 +68,6 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
   ({
     onCollectiblePress,
     disableInnerScrolling = false,
-    type = CollectibleFilterType.VISIBLE,
     showEmptyStateCta = false,
     onAddCollectiblePress,
   }) => {
@@ -90,16 +77,9 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     const { network } = useAuthenticationStore();
     const { isLoading, error, fetchCollectibles } = useCollectiblesStore();
 
-    // Separate visible and hidden collectibles using the hook
-    const { visibleCollectibles, hiddenCollectibles } =
+    // Hidden collectibles live in the Add collectible screen's sheet instead
+    const { visibleCollectibles: filteredCollections } =
       useFilteredCollectibles();
-
-    const isTypeHidden = type === CollectibleFilterType.HIDDEN;
-
-    // Select the appropriate collections based on type prop
-    const filteredCollections = isTypeHidden
-      ? hiddenCollectibles
-      : visibleCollectibles;
 
     // Local state for managing refresh UI only
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -146,9 +126,8 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       );
     }
 
-    // Never on the hidden list: a management view, not a place to add.
     const shouldShowEmptyStateCta =
-      showEmptyStateCta && !isTypeHidden && Boolean(onAddCollectiblePress);
+      showEmptyStateCta && Boolean(onAddCollectiblePress);
 
     // Same variant/size as the tokens CTA. Shared by the empty AND error views:
     // an error replaces the empty state, so leaving it out there would strand
@@ -186,14 +165,8 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       <View className="flex-1">
         <EmptyState
           Icon={Icon.Image01}
-          title={
-            isTypeHidden
-              ? t("collectiblesGrid.emptyHidden")
-              : t("collectiblesGrid.empty")
-          }
-          description={
-            isTypeHidden ? undefined : t("collectiblesGrid.emptyDescription")
-          }
+          title={t("collectiblesGrid.empty")}
+          description={t("collectiblesGrid.emptyDescription")}
           testID="collectibles-empty-state"
         >
           {/* EmptyState's own gap supplies the spacing here. */}

@@ -9,6 +9,7 @@
   },
   "common": {
     "close": "Close",
+    "unhide": "Unhide",
     "paste": "Paste",
     "done": "Done",
     "none": "None",
@@ -392,7 +393,17 @@
     "loadingBalanceA11yLabel": "Loading balance",
     "listHeader": "Your {{tokenName}} activity",
     "swap": "Swap",
-    "send": "Send"
+    "send": "Send",
+    "hideToken": "Hide {{tokenCode}}"
+  },
+  "hiddenTokens": {
+    "showHidden": "Show hidden",
+    "title": "Hidden tokens",
+    "empty": "No hidden tokens",
+    "hidden": "{{tokenCode}} hidden",
+    "unhidden": "{{tokenCode}} unhidden",
+    "hideError": "Error hiding {{tokenCode}}",
+    "unhideError": "Error unhiding {{tokenCode}}"
   },
   "priceHistory": {
     "notice": {
@@ -538,7 +549,6 @@
     "title": "Collectibles",
     "error": "Error loading collectibles",
     "empty": "No collectibles yet",
-    "emptyHidden": "No hidden collectibles",
     "addCollectibleButton": "Add collectible",
     "itemHiddenLabel": "{{name}}, hidden",
     "emptyDescription": "Collectibles you own will appear here."
@@ -559,10 +569,14 @@
     "imageSavedToPhotos": "Image saved to photos",
     "imageSaveFailed": "Failed to save image to photos",
     "imageSaveAttempted": "Save attempted, check your photos",
-    "hideCollectible": "Hide collectible",
-    "showCollectible": "Show collectible",
-    "hideSuccess": "Successfully hid collectible",
-    "hiddenBanner": "This collectible is hidden"
+    "hideCollectible": "Hide collectible"
+  },
+  "hiddenCollectibles": {
+    "title": "Hidden collectibles",
+    "empty": "No hidden collectibles",
+    "hidden": "Collectible hidden",
+    "unhidden": "Collectible unhidden",
+    "unhideError": "Error unhiding collectible"
   },
   "addCollectibleScreen": {
     "title": "Add Collectible",
@@ -579,9 +593,7 @@
     "alreadyInWallet": "This collectible is already in your wallet",
     "showHidden": "Show hidden"
   },
-  "hiddenCollectiblesScreen": {
-    "title": "Hidden Collectibles"
-  },
+
   "collectibles": {
     "errors": {
       "collectionNotFound": "Collection not found for the given address.",

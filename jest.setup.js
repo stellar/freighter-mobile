@@ -499,6 +499,7 @@ jest.mock("react-native-keyboard-controller", () =>
 jest.mock("hooks/useBalancesList", () => ({
   useBalancesList: jest.fn(() => ({
     balanceItems: [],
+    hiddenBalanceItems: [],
     scanResults: {},
     isLoading: false,
     error: null,

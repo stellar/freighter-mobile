@@ -10,7 +10,6 @@ import AddCollectibleScreen from "components/screens/AddCollectibleScreen";
 import { BiometricsOnboardingScreen } from "components/screens/BiometricsEnableScreen/BiometricsEnableScreen";
 import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScreen";
 import { ForceUpdateScreen } from "components/screens/ForceUpdateScreen/ForceUpdateScreen";
-import HiddenCollectiblesScreen from "components/screens/HiddenCollectiblesScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import { MaintenanceScreen } from "components/screens/MaintenanceScreen/MaintenanceScreen";
 import { RebrandAnnouncementScreen } from "components/screens/RebrandAnnouncementScreen";
@@ -355,13 +354,6 @@ export const RootNavigator = () => {
                   component={AddCollectibleScreen}
                   options={getScreenBottomNavigateOptions(
                     t("addCollectibleScreen.title"),
-                  )}
-                />
-                <RootStack.Screen
-                  name={ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN}
-                  component={HiddenCollectiblesScreen}
-                  options={getScreenBottomNavigateOptions(
-                    t("hiddenCollectiblesScreen.title"),
                   )}
                 />
                 <RootStack.Screen

@@ -3,6 +3,7 @@ import { act, waitFor } from "@testing-library/react-native";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import { NETWORKS } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import { useBalancesStore } from "ducks/balances";
 import { usePriceHistoryStore } from "ducks/priceHistory";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -115,9 +116,12 @@ jest.mock("hooks/useTokenDetails", () => ({
 }));
 
 jest.mock("hooks/useAppTranslation", () => () => ({
-  t: (key: string, params?: { tokenName?: string }) => {
+  t: (key: string, params?: { tokenName?: string; tokenCode?: string }) => {
     const translations: Record<string, string> = {
       "tokenDetailsScreen.listHeader": `${params?.tokenName || "Token"} transaction history`,
+      "tokenDetailsScreen.hideToken": `Hide ${params?.tokenCode}`,
+      "hiddenTokens.hidden": `${params?.tokenCode} hidden`,
+      "hiddenTokens.unhidden": `${params?.tokenCode} unhidden`,
       "manageTokenRightContent.copyAddress": "Copy address",
       "common.remove": "Remove",
     };
@@ -247,4 +251,152 @@ describe("TokenDetailsScreen", () => {
     expect(list.props.scrollEnabled).toBe(true);
   });
   /* eslint-enable @typescript-eslint/naming-convention */
+  it("never offers Hide for XLM, which pays every fee", () => {
+    const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
+
+    renderWithProviders(
+      <TokenDetailsScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+    const titles = actions.map((a: { title: string }) => a.title);
+
+    expect(titles).toEqual(["Copy address", "Remove"]);
+  });
+
+  describe("Remove for contract tokens", () => {
+    const contractId =
+      "CDMLFMKMMD7MWZP3FKUBZPVHTUEDLSX4BYGYKH4GCESXYHS3IHQ4EIG4";
+    const kaleId = `KALE:${contractId}`;
+    const kaleRoute = {
+      params: { tokenId: kaleId, tokenSymbol: "KALE" },
+      key: "token-details-kale",
+      name: ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+    } as unknown as TokenDetailsScreenProps["route"];
+    const kaleBalance = {
+      id: kaleId,
+      tokenCode: "KALE",
+      tokenType: "custom_token",
+      total: { isGreaterThan: () => true },
+      token: { issuer: { key: contractId }, code: "KALE" },
+    };
+
+    const mockBalancesList = (localOnlyTokenIds: string[]) => {
+      const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+      useBalancesList.mockReturnValue({
+        balanceItems: [kaleBalance],
+        hiddenBalanceItems: [],
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        localOnlyTokenIds,
+        handleRefresh: jest.fn(),
+      });
+      return useBalancesList;
+    };
+
+    const menuTitles = () => {
+      const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
+      const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+      return actions.map((a: { title: string }) => a.title);
+    };
+
+    afterEach(() => {
+      const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+      useBalancesList.mockReset();
+      useBalancesList.mockReturnValue({
+        balanceItems: [],
+        hiddenBalanceItems: [],
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: true,
+        isRefreshing: false,
+        isFunded: false,
+        localOnlyTokenIds: [],
+        handleRefresh: jest.fn(),
+      });
+    });
+
+    it("offers no Remove for a contract token the backend reports itself", () => {
+      mockBalancesList([]);
+
+      renderWithProviders(
+        <TokenDetailsScreen navigation={mockNavigation} route={kaleRoute} />,
+      );
+
+      expect(menuTitles()).toEqual(["Copy address", "Hide KALE"]);
+    });
+
+    it("keeps Remove for a contract token the user added by hand", () => {
+      mockBalancesList([contractId]);
+
+      renderWithProviders(
+        <TokenDetailsScreen navigation={mockNavigation} route={kaleRoute} />,
+      );
+
+      expect(menuTitles()).toEqual(["Copy address", "Hide KALE", "Remove"]);
+    });
+  });
+
+  describe("hide for a non-native token", () => {
+    const usdcId =
+      "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+    const usdcRoute = {
+      params: { tokenId: usdcId, tokenSymbol: "USDC" },
+      key: "token-details-usdc",
+      name: ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+    } as unknown as TokenDetailsScreenProps["route"];
+    const mockHideToken = jest.fn().mockResolvedValue(undefined);
+
+    beforeEach(() => {
+      useBalancesStore.setState({
+        hiddenTokenIds: [],
+        hideToken: mockHideToken,
+      });
+    });
+
+    it("places Hide between Copy address and Remove", () => {
+      const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
+
+      renderWithProviders(
+        <TokenDetailsScreen navigation={mockNavigation} route={usdcRoute} />,
+      );
+
+      const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+      const titles = actions.map((a: { title: string }) => a.title);
+
+      expect(titles).toEqual(["Copy address", "Hide USDC", "Remove"]);
+    });
+
+    it("hides the token, goes back and confirms with a toast", async () => {
+      const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
+
+      const { getByText } = renderWithProviders(
+        <TokenDetailsScreen navigation={mockNavigation} route={usdcRoute} />,
+      );
+
+      const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+      const hideAction = actions.find(
+        (a: { title: string }) => a.title === "Hide USDC",
+      );
+
+      await act(async () => {
+        await hideAction.onPress();
+      });
+
+      expect(mockHideToken).toHaveBeenCalledWith({
+        publicKey: "GACJYENHYW2LGHBNNGNZ4NCBGZYVTGTZM4CJLQIOQQ5IUZU3SYWOW5EK",
+        network: expect.any(String),
+        tokenId: usdcId,
+      });
+      expect(mockGoBack).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(getByText("USDC hidden")).toBeTruthy();
+      });
+    });
+  });
 });
