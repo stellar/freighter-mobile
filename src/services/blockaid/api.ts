@@ -1,8 +1,10 @@
 import Blockaid from "@blockaid/client";
+import { StrKey } from "@stellar/stellar-sdk";
 import axios from "axios";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { isMainnet } from "helpers/networks";
+import { isContractId } from "helpers/soroban";
 import { scrubStrKeys } from "helpers/stellarStrKey";
 import { analytics } from "services/analytics";
 import { freighterBackendV1 } from "services/backend";
@@ -178,10 +180,16 @@ export const scanBulkTokens = async (
     }
 
     // The backend parses each id as CODE-ISSUER and 400s the whole batch on
-    // one it can't, so drop any id with other than exactly one hyphen (e.g. a
-    // SEP-41 symbol containing a hyphen). The issuer itself isn't validated.
+    // one whose issuer isn't a G or C key, so drop those here. Must stay in
+    // step with freighter-backend's /scan-asset-bulk validator.
     const queryParams = addressList
-      .filter((address) => address.split("-").length === 2)
+      .filter((address) => {
+        const parts = address.split("-");
+        return (
+          parts.length === 2 &&
+          (StrKey.isValidEd25519PublicKey(parts[1]) || isContractId(parts[1]))
+        );
+      })
       .map((address) => `asset_ids=${encodeURIComponent(address)}`)
       .join("&");
     // The backend rejects a request with no ids.
