@@ -1495,18 +1495,86 @@ describe("display tokens", () => {
     expect(scValByType(xdr.ScVal.scvBool(false))).toBe("false");
     expect(scValByType(xdr.ScVal.scvVoid())).toBe("void");
   });
+
+  it("renders a CAP-85 executable tag as a tag literal", () => {
+    const scvTag = xdr.ScVal.scvExecutableTag("v2");
+    expect(scValToDisplayValue(scvTag)).toBe('tag("v2")');
+  });
+
+  // A tag's bytes can be anything, including a quoted string. Shown bare, a
+  // tag of `"hello"` and the string `hello` are the same characters.
+  it("does not let an executable tag read as a string", () => {
+    const tag = scValToDisplayValue(xdr.ScVal.scvExecutableTag('"hello"'));
+    const string = scValToDisplayValue(xdr.ScVal.scvString("hello"));
+    expect(string).toBe('"hello"');
+    expect(tag).toBe('tag("\\"hello\\"")');
+    expect(tag).not.toBe(string);
+  });
+
+  it("keeps an escaped byte in an executable tag distinguishable", () => {
+    const first = scValToDisplayValue(
+      xdr.ScVal.scvExecutableTag(
+        new Uint8Array([0x61, 0x6c, 0x69, 0x63, 0x65, 0xff]),
+      ),
+    );
+    const second = scValToDisplayValue(
+      xdr.ScVal.scvExecutableTag(
+        new Uint8Array([0x61, 0x6c, 0x69, 0x63, 0x65, 0xfe]),
+      ),
+    );
+    expect(first).toBe('tag("alice\\xff")');
+    expect(first).not.toBe(second);
+  });
 });
 
 describe("contract instances", () => {
   const WASM_HASH = new Uint8Array(32).fill(0xab);
+  const ACCOUNT = "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF";
+
+  const instance = (
+    executable: xdr.ContractExecutable,
+    storage: xdr.ScMapEntry[] | null,
+  ) =>
+    xdr.ScVal.scvContractInstance(
+      new xdr.ScContractInstance({ executable, storage }),
+    );
 
   const instanceOf = (storage: xdr.ScMapEntry[] | null) =>
-    xdr.ScVal.scvContractInstance(
-      new xdr.ScContractInstance({
-        executable: xdr.ContractExecutable.contractExecutableWasm(WASM_HASH),
-        storage,
+    instance(xdr.ContractExecutable.contractExecutableWasm(WASM_HASH), storage);
+
+  const externalRefOf = (tag: string | Uint8Array) =>
+    xdr.ContractExecutable.contractExecutableExternalRef(
+      new xdr.ContractExecutableExternalRef({
+        executableOwner: new Address(OWNER_CONTRACT).toScAddress(),
+        tag,
       }),
     );
+
+  // CAP-85: the owner and tag say whose code is about to run, so naming the
+  // executable arm alone would drop exactly what the signer is approving.
+  it("renders an external reference's owner and quoted tag", () => {
+    const rendered = scValToDisplayValue(instance(externalRefOf("v2"), null));
+    expect(rendered).toContain(OWNER_CONTRACT);
+    expect(rendered).toContain('tag: "v2"');
+  });
+
+  // The tag is a byte string the deployer chose. Unquoted, one that reads
+  // `x, owner: G...` draws a second owner field that nobody signed.
+  it("does not let an external reference's tag forge a field", () => {
+    const rendered = scValToDisplayValue(
+      instance(externalRefOf(`x, owner: ${ACCOUNT}`), null),
+    );
+    expect(rendered).toBe(
+      [
+        "contractInstance {",
+        "  executable: externalRef {",
+        `    owner: ${OWNER_CONTRACT},`,
+        `    tag: "x, owner: ${ACCOUNT}"`,
+        "  }",
+        "}",
+      ].join("\n"),
+    );
+  });
 
   it("renders the storage map, not just the executable", () => {
     const rendered = scValByType(
