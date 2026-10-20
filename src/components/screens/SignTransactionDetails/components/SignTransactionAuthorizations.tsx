@@ -111,7 +111,7 @@ const SignTransactionAuthorizations = ({
             <KeyValueInvokeHostFnArgs
               args={detail.args}
               contractId={detail.contractId}
-              fnName={detail.fnName}
+              specFnName={detail.fnNameRaw}
               isAuthEntry
             />
           </View>
