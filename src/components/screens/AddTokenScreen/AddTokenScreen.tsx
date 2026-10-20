@@ -366,8 +366,8 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
 
   /**
    * Unhides a token from the hidden-tokens sheet or a search row, then
-   * confirms with a toast. The sheet closes on success so the result is
-   * visible straight away.
+   * confirms with a toast. The sheet stays open so several tokens can be
+   * unhidden in a row.
    */
   const handleUnhideToken = useCallback(
     async ({ tokenId, tokenCode }: { tokenId: string; tokenCode: string }) => {
@@ -381,7 +381,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
 
       try {
         await unhideToken({ publicKey, network, tokenId });
-        hiddenTokensBottomSheetModalRef.current?.dismiss();
         showToast({
           title: t("hiddenTokens.unhidden", { tokenCode }),
           variant: "success",

@@ -198,23 +198,6 @@ describe("TokenDetailsScreen", () => {
     // Data loading is now handled by the store's polling mechanism
   });
 
-  it("configures a Copy address + Remove header menu", () => {
-    const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
-
-    renderWithProviders(
-      <TokenDetailsScreen navigation={mockNavigation} route={mockRoute} />,
-    );
-
-    const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
-    const titles = actions.map((a: { title: string }) => a.title);
-
-    expect(titles).toContain("Copy address");
-    expect(titles).toContain("Remove");
-    expect(
-      actions.find((a: { title: string }) => a.title === "Remove").destructive,
-    ).toBe(true);
-  });
-
   it("opts the history list into the skeleton loading placeholder", () => {
     renderWithProviders(
       <TokenDetailsScreen navigation={mockNavigation} route={mockRoute} />,
@@ -251,7 +234,7 @@ describe("TokenDetailsScreen", () => {
     expect(list.props.scrollEnabled).toBe(true);
   });
   /* eslint-enable @typescript-eslint/naming-convention */
-  it("never offers Hide for XLM, which pays every fee", () => {
+  it("offers neither Hide nor Remove for XLM, which pays every fee", () => {
     const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
 
     renderWithProviders(
@@ -261,7 +244,29 @@ describe("TokenDetailsScreen", () => {
     const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
     const titles = actions.map((a: { title: string }) => a.title);
 
-    expect(titles).toEqual(["Copy address", "Remove"]);
+    expect(titles).toEqual(["Copy address"]);
+  });
+
+  it("offers no Remove for LP shares, which can't be removed", () => {
+    const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
+    const lpRoute = {
+      params: {
+        tokenId:
+          "4ac86c65b9f7b175ae0493da0d36cc5bc88b72677ca69fce8fe374233983d8e7",
+        tokenSymbol: "LP",
+      },
+      key: "token-details-lp",
+      name: ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+    } as unknown as TokenDetailsScreenProps["route"];
+
+    renderWithProviders(
+      <TokenDetailsScreen navigation={mockNavigation} route={lpRoute} />,
+    );
+
+    const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+    const titles = actions.map((a: { title: string }) => a.title);
+
+    expect(titles).not.toContain("Remove");
   });
 
   describe("Remove for contract tokens", () => {
@@ -370,6 +375,10 @@ describe("TokenDetailsScreen", () => {
       const titles = actions.map((a: { title: string }) => a.title);
 
       expect(titles).toEqual(["Copy address", "Hide USDC", "Remove"]);
+      expect(
+        actions.find((a: { title: string }) => a.title === "Remove")
+          .destructive,
+      ).toBe(true);
     });
 
     it("hides the token, goes back and confirms with a toast", async () => {

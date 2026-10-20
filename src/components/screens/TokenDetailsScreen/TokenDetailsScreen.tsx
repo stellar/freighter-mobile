@@ -208,7 +208,13 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   // XLM pays every transaction fee, so it is never hidden: Send and Swap
   // would stop seeing it and report insufficient XLM for fees.
   const canOfferHide = !isNativeAssetId(tokenId);
-  const canOfferRemove = isTokenRemovable(selectedBalance, localOnlyTokenIds);
+  // Neither XLM nor LP shares can ever be removed here, so Remove isn't
+  // offered for them rather than opening a sheet that only says so.
+  const tokenType = getTokenType(tokenId);
+  const canOfferRemove =
+    tokenType !== TokenTypeWithCustomToken.NATIVE &&
+    tokenType !== TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES &&
+    isTokenRemovable(selectedBalance, localOnlyTokenIds);
   // The code the menu and toasts name the token by. The route's symbol is
   // the code for a classic asset, but the contract id for a Soroban token
   // until its details resolve.

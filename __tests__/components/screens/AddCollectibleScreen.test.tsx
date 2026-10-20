@@ -169,7 +169,8 @@ describe("AddCollectibleScreen - Show hidden sheet", () => {
         tokenId: "102510",
       });
     });
-    expect(mockDismiss).toHaveBeenCalled();
+    // Stays open so several can be unhidden in a row
+    expect(mockDismiss).not.toHaveBeenCalled();
     expect(getByText("Collectible unhidden")).toBeTruthy();
   });
 });

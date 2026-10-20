@@ -227,8 +227,8 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
     : t("addCollectibleScreen.enterDetails");
 
   /**
-   * Unhides a collectible from the hidden-collectibles sheet, closes the
-   * sheet on success and confirms with a toast.
+   * Unhides a collectible from the hidden-collectibles sheet and confirms
+   * with a toast. The sheet stays open so several can be unhidden in a row.
    */
   const handleUnhideCollectible = useCallback(
     async ({
@@ -254,7 +254,6 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
           contractId,
           tokenId: collectibleTokenId,
         });
-        hiddenCollectiblesBottomSheetModalRef.current?.dismiss();
         showToast({
           title: t("hiddenCollectibles.unhidden"),
           variant: "success",
