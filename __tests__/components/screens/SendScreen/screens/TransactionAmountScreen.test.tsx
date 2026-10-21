@@ -1922,6 +1922,71 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
     expect(mockSetDisplayAmountFromText).toHaveBeenCalledWith("123,45");
   });
 
+  describe("token-mode Max precision", () => {
+    const solvBtcContract =
+      "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";
+    const solvBtcId = `SolvBTC:${solvBtcContract}`;
+    const mockSetTokenAmount = jest.fn();
+
+    const pressMaxWithSolvBtc = (rawUnits: string) => {
+      mockUseTransactionSettingsStore.mockReturnValue({
+        ...(mockUseTransactionSettingsStore as unknown as jest.Mock)(),
+        selectedTokenId: solvBtcId,
+      });
+      mockUseBalancesList.mockReturnValue({
+        ...(mockUseBalancesList as unknown as jest.Mock)(),
+        balanceItems: [
+          {
+            id: solvBtcId,
+            tokenId: solvBtcId,
+            contractId: solvBtcContract,
+            decimals: 8,
+            total: new BigNumber(rawUnits),
+            available: new BigNumber(rawUnits),
+            token: { code: "SolvBTC", issuer: { key: solvBtcContract } },
+          } as any,
+        ],
+      });
+      mockCalculateSpendableAmount.mockReturnValue(new BigNumber(rawUnits));
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+      fireEvent.press(getByTestId("percentage-100"));
+    };
+
+    beforeEach(() => {
+      mockUseTokenFiatConverter.mockReturnValue({
+        ...(mockUseTokenFiatConverter as unknown as jest.Mock)(),
+        showFiatAmount: false,
+        setTokenAmount: mockSetTokenAmount,
+      });
+    });
+
+    it("sets exactly the held amount for an 8-decimal token", () => {
+      pressMaxWithSolvBtc("227");
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("0.00000227");
+    });
+
+    it("keeps dust below the 7th decimal instead of rounding it to zero", () => {
+      pressMaxWithSolvBtc("4");
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("0.00000004");
+    });
+
+    it("leaves classic tokens at 7 decimals", () => {
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+      fireEvent.press(getByTestId("percentage-100"));
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("1000.0000000");
+    });
+  });
+
   describe("fiat-mode Max for a SEP-41 token", () => {
     const solvBtcId =
       "SolvBTC:CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";

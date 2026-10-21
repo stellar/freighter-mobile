@@ -519,10 +519,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         const finalFiatAmountString = finalFiatAmount.toFixed(2);
 
         updateFiatDisplay(finalFiatAmountString);
-        setTokenAmount(finalTokenAmount.toFixed(DEFAULT_DECIMALS));
+        setTokenAmount(
+          finalTokenAmount.toFixed(decimals, BigNumber.ROUND_DOWN),
+        );
       }
     } else {
-      setTokenAmount(cappedTargetAmount.toFixed(DEFAULT_DECIMALS));
+      setTokenAmount(
+        cappedTargetAmount.toFixed(decimals, BigNumber.ROUND_DOWN),
+      );
     }
   };
 
