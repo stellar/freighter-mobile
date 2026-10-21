@@ -174,11 +174,17 @@ export const FIAT_DECIMALS = 2;
  */
 export const CLASSIC_TOKEN_MAX_AMOUNT = "922337203685.4775807";
 
-// Bottom sheet layout defaults
-export const BOTTOM_SHEET_MAX_HEIGHT_RATIO = 0.9;
-export const BOTTOM_SHEET_CONTENT_TOP_PADDING = DEFAULT_PADDING;
-export const BOTTOM_SHEET_CONTENT_BOTTOM_PADDING = 64;
-export const BOTTOM_SHEET_CONTENT_GAP = 16;
+// Bottom sheet layout defaults. A scrollable sheet stops at 726pt, or at 83%
+// of the window if that's shorter (726pt on design's 874pt screen).
+export const BOTTOM_SHEET_MAX_HEIGHT = 726;
+export const BOTTOM_SHEET_MAX_HEIGHT_RATIO = 0.83;
+
+// Floating bottom sheet: edge margin and corner radius
+export const BOTTOM_SHEET_FLOATING_MARGIN = 8;
+export const BOTTOM_SHEET_FLOATING_CORNER_RADIUS = 32;
+// Floating bottom sheet: height of the fade where content scrolls under the
+// pinned header or footer, or past the card's edge
+export const BOTTOM_SHEET_EDGE_FADE_HEIGHT = 24;
 
 // settings screen URLs
 export const FREIGHTER_BASE_URL = "https://varialwallet.com";

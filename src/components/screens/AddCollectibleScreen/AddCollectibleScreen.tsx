@@ -1,10 +1,9 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import BottomSheet from "components/BottomSheet";
 import { CollectibleImage } from "components/CollectibleImage";
-import HiddenItemsSheetContent, {
+import HiddenItemsBottomSheet, {
   HiddenItem,
-} from "components/HiddenItemsSheetContent";
+} from "components/HiddenItemsBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -376,24 +375,13 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
           {buttonTitle}
         </Button>
       </View>
-      <BottomSheet
+      <HiddenItemsBottomSheet
         modalRef={hiddenCollectiblesBottomSheetModalRef}
-        // Lets drags scroll a long hidden list instead of moving the sheet
-        enableContentPanningGesture={false}
-        handleCloseModal={() =>
-          hiddenCollectiblesBottomSheetModalRef.current?.dismiss()
-        }
-        customContent={
-          <HiddenItemsSheetContent
-            title={t("hiddenCollectibles.title")}
-            emptyText={t("hiddenCollectibles.empty")}
-            items={hiddenItems}
-            onClose={() =>
-              hiddenCollectiblesBottomSheetModalRef.current?.dismiss()
-            }
-            testID="hidden-collectibles-sheet"
-          />
-        }
+        title={t("hiddenCollectibles.title")}
+        emptyText={t("hiddenCollectibles.empty")}
+        items={hiddenItems}
+        onClose={() => hiddenCollectiblesBottomSheetModalRef.current?.dismiss()}
+        testID="hidden-collectibles-sheet"
       />
     </BaseLayout>
   );

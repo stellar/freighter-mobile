@@ -1,13 +1,15 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
-import SignTransactionDetailsBottomSheet from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
+import SignTransactionDetailsBottomSheet, {
+  SignTransactionDetailsHeader,
+} from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import { TouchableOpacity } from "react-native";
 
 interface SignTransactionDetailsProps {
@@ -28,9 +30,14 @@ const SignTransactionDetails: React.FC<SignTransactionDetailsProps> = ({
     signTransactionDetailsBottomSheetModalRef.current?.present();
   };
 
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     signTransactionDetailsBottomSheetModalRef.current?.dismiss();
-  };
+  }, []);
+
+  const renderDetailsHeader = useCallback(
+    () => <SignTransactionDetailsHeader onDismiss={handleDismiss} />,
+    [handleDismiss],
+  );
 
   return (
     <>
@@ -46,20 +53,11 @@ const SignTransactionDetails: React.FC<SignTransactionDetailsProps> = ({
 
       <BottomSheet
         modalRef={signTransactionDetailsBottomSheetModalRef}
-        handleCloseModal={() =>
-          signTransactionDetailsBottomSheetModalRef.current?.dismiss()
-        }
-        enableDynamicSizing={false}
-        useInsetsBottomPadding={false}
+        scrollable
         enablePanDownToClose={false}
         analyticsEvent={analyticsEvent}
-        snapPoints={["90%"]}
-        customContent={
-          <SignTransactionDetailsBottomSheet
-            data={data}
-            onDismiss={handleDismiss}
-          />
-        }
+        scrollViewHeaderComponent={renderDetailsHeader}
+        customContent={<SignTransactionDetailsBottomSheet data={data} />}
       />
     </>
   );

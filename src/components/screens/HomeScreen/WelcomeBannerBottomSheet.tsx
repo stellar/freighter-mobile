@@ -91,7 +91,6 @@ const WelcomeBannerBottomSheet: React.FC<WelcomeBannerBottomSheetProps> = ({
 }) => (
   <BottomSheet
     modalRef={modalRef}
-    handleCloseModal={onDismiss}
     bottomSheetModalProps={{
       onDismiss,
       enableDynamicSizing: true,

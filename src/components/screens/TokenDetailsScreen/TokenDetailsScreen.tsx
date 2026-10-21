@@ -475,9 +475,6 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       </View>
       <BottomSheet
         modalRef={securityWarningBottomSheetModalRef}
-        handleCloseModal={() =>
-          securityWarningBottomSheetModalRef.current?.dismiss()
-        }
         customContent={
           <SecurityDetailBottomSheet
             warnings={securityWarnings}
@@ -491,9 +488,6 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       />
       <BottomSheet
         modalRef={removeTokenBottomSheetModalRef}
-        handleCloseModal={() =>
-          removeTokenBottomSheetModalRef.current?.dismiss()
-        }
         bottomSheetModalProps={{
           onChange: (index: number) => {
             if (index >= 0) {

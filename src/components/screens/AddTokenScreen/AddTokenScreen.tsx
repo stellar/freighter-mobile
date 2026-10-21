@@ -3,9 +3,10 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
-import HiddenItemsSheetContent, {
+import { BottomSheetHeader } from "components/BottomSheetHeader";
+import HiddenItemsBottomSheet, {
   HiddenItem,
-} from "components/HiddenItemsSheetContent";
+} from "components/HiddenItemsBottomSheet";
 import Spinner from "components/Spinner";
 import { TokenIcon } from "components/TokenIcon";
 import { SecurityDetailBottomSheet } from "components/blockaid";
@@ -459,23 +460,12 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
         <BottomSheet
           modalRef={moreInfoBottomSheetModalRef}
           customContent={
-            <View className="gap-4">
-              <View className="flex-row justify-between items-center">
-                <View className="size-10 rounded-lg items-center justify-center bg-lilac-3 border border-lilac-6">
-                  <Icon.Coins01 themeColor="lilac" />
-                </View>
-                <TouchableOpacity
-                  onPress={() => moreInfoBottomSheetModalRef.current?.dismiss()}
-                  className="size-10 items-center justify-center rounded-full bg-gray-3"
-                >
-                  <Icon.X color={themeColors.gray[9]} />
-                </TouchableOpacity>
-              </View>
+            <View className="gap-[24px]">
+              <BottomSheetHeader
+                title={t("manageTokensScreen.moreInfo.title")}
+                onClose={() => moreInfoBottomSheetModalRef.current?.dismiss()}
+              />
               <View>
-                <Text xl medium>
-                  {t("manageTokensScreen.moreInfo.title")}
-                </Text>
-                <View className="h-4" />
                 <Text md regular secondary>
                   {t("manageTokensScreen.moreInfo.block1")}
                 </Text>
@@ -486,15 +476,9 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
               </View>
             </View>
           }
-          handleCloseModal={() =>
-            moreInfoBottomSheetModalRef.current?.dismiss()
-          }
         />
         <BottomSheet
           modalRef={addTokenBottomSheetModalRef}
-          handleCloseModal={() => {
-            addTokenBottomSheetModalRef.current?.dismiss();
-          }}
           bottomSheetModalProps={{
             onChange: (index: number) => {
               if (index >= 0) {
@@ -528,9 +512,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
         />
         <BottomSheet
           modalRef={removeTokenBottomSheetModalRef}
-          handleCloseModal={() => {
-            removeTokenBottomSheetModalRef.current?.dismiss();
-          }}
           bottomSheetModalProps={{
             onChange: (index: number) => {
               if (index >= 0) {
@@ -549,9 +530,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
         />
         <BottomSheet
           modalRef={securityWarningBottomSheetModalRef}
-          handleCloseModal={() =>
-            securityWarningBottomSheetModalRef.current?.dismiss()
-          }
           bottomSheetModalProps={{
             onChange: (index: number) => {
               if (index >= 0) {
@@ -582,22 +560,13 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
             />
           }
         />
-        <BottomSheet
+        <HiddenItemsBottomSheet
           modalRef={hiddenTokensBottomSheetModalRef}
-          // Lets drags scroll a long hidden list instead of moving the sheet
-          enableContentPanningGesture={false}
-          handleCloseModal={() =>
-            hiddenTokensBottomSheetModalRef.current?.dismiss()
-          }
-          customContent={
-            <HiddenItemsSheetContent
-              title={t("hiddenTokens.title")}
-              emptyText={t("hiddenTokens.empty")}
-              items={hiddenItems}
-              onClose={() => hiddenTokensBottomSheetModalRef.current?.dismiss()}
-              testID="hidden-tokens-sheet"
-            />
-          }
+          title={t("hiddenTokens.title")}
+          emptyText={t("hiddenTokens.empty")}
+          items={hiddenItems}
+          onClose={() => hiddenTokensBottomSheetModalRef.current?.dismiss()}
+          testID="hidden-tokens-sheet"
         />
         {/* Keep the search and its Show hidden link together at the top; the
             screen's space-between layout would otherwise float the link. */}

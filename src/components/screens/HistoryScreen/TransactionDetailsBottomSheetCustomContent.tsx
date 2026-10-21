@@ -35,7 +35,6 @@ import useColors, { ThemeColors } from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useCallback, useMemo } from "react";
 import { View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { analytics } from "services/analytics";
 
 interface TransactionDetailsBottomSheetCustomContentProps {
@@ -355,13 +354,12 @@ export const TransactionDetailsFooter: React.FC<
 > = ({ externalUrl }) => {
   const { t } = useAppTranslation();
   const { open: openInAppBrowser } = useInAppBrowser();
-  const insets = useSafeAreaInsets();
 
   return (
     <View
-      className="bg-background-primary w-full px-6 py-6 mt-6"
+      className="bg-background-primary w-full px-6 pt-[24px]"
       style={{
-        paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
+        paddingBottom: pxValue(DEFAULT_PADDING),
       }}
     >
       <Button

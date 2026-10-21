@@ -6,7 +6,6 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface AddWalletFooterProps {
   onPress: () => void;
@@ -25,12 +24,13 @@ export const AddWalletFooter: React.FC<AddWalletFooterProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const insets = useSafeAreaInsets();
 
   return (
     <View
-      className="bg-background-primary px-6 pt-[10px]"
-      style={{ paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING) }}
+      className="bg-background-primary px-6 pt-[24px]"
+      style={{
+        paddingBottom: pxValue(DEFAULT_PADDING),
+      }}
     >
       <TouchableOpacity
         className="flex-row items-center gap-[16px] w-full"

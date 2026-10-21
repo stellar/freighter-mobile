@@ -82,7 +82,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   scrollEnabled = true,
 }) => {
   const { t } = useAppTranslation();
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const safeAreaInsets = useSafeAreaInsets();
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetails | null>(null);
@@ -246,12 +246,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
     <BaseLayout insets={insets}>
       <BottomSheet
         modalRef={transactionDetailsBottomSheetModalRef}
-        handleCloseModal={() =>
-          transactionDetailsBottomSheetModalRef.current?.dismiss()
-        }
         scrollable
-        useInsetsBottomPadding={false}
-        maxDynamicContentSize={windowHeight * 0.9}
         customContent={
           <TransactionDetailsBottomSheetCustomContent
             transactionDetails={transactionDetails!}

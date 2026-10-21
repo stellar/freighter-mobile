@@ -1,5 +1,5 @@
+import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -26,18 +26,11 @@ export const MuxedAddressWarningBottomSheet: React.FC<
   const { t } = useAppTranslation();
 
   return (
-    <View className="flex-1 gap-[16px]">
-      <View className="flex-row justify-between items-center">
-        <View className="h-[40px] w-[40px] items-center justify-center rounded-[8px] bg-red-3 border border-red-6">
-          <Icon.AlertOctagon themeColor="red" />
-        </View>
-        <View className="bg-background-tertiary rounded-full p-2 h-[32px] w-[32px] items-center justify-center">
-          <Icon.XClose onPress={onClose} size={20} themeColor="gray" />
-        </View>
-      </View>
-      <Text xl primary>
-        {t("transactionAmountScreen.errors.muxedAddressWarning.title")}
-      </Text>
+    <View className="flex-1 gap-[24px]">
+      <BottomSheetHeader
+        title={t("transactionAmountScreen.errors.muxedAddressWarning.title")}
+        onClose={onClose}
+      />
       <Text md secondary regular>
         {t("transactionAmountScreen.errors.muxedAddressWarning.description")}
       </Text>

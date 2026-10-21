@@ -1,4 +1,4 @@
-import Icon from "components/sds/Icon";
+import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -8,7 +8,7 @@ import { computeTotalFeeXlm } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 
 type FeeBreakdownBottomSheetProps = {
   onClose: () => void;
@@ -82,28 +82,10 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
 
   return (
     <View className="flex-1">
-      {/* Header — lilac icon + close button */}
-      <View className="relative flex-row items-center mb-8">
-        <View className="bg-lilac-3 p-2 rounded-[8px]">
-          <Icon.Route color={themeColors.lilac[9]} size={28} />
-        </View>
-        <TouchableOpacity onPress={onClose} className="absolute right-0">
-          <Icon.X
-            color={themeColors.foreground.secondary}
-            size={24}
-            circle
-            circleBackground={themeColors.background.tertiary}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Title */}
-      <Text xl medium primary textAlign="left">
-        {t("feeBreakdown.title")}
-      </Text>
+      <BottomSheetHeader title={t("feeBreakdown.title")} onClose={onClose} />
 
       {/* Fee rows card */}
-      <View className="mt-[16px] rounded-[12px] overflow-hidden bg-background-tertiary">
+      <View className="mt-[24px] rounded-[12px] overflow-hidden bg-background-tertiary">
         {isSorobanContext && (
           <View className="flex-row justify-between items-center px-[16px] py-[12px] border-b border-gray-6">
             <Text md secondary>

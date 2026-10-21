@@ -207,7 +207,6 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     <BaseLayout insets={{ top: false, bottom: false }}>
       <BottomSheet
         modalRef={verifiedInfoSheetRef}
-        handleCloseModal={() => verifiedInfoSheetRef.current?.dismiss()}
         customContent={
           <VerifiedTokenInfoBottomSheet
             bottomSheetModalRef={verifiedInfoSheetRef}
@@ -216,7 +215,6 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       />
       <BottomSheet
         modalRef={unverifiedInfoSheetRef}
-        handleCloseModal={() => unverifiedInfoSheetRef.current?.dismiss()}
         customContent={
           <UnverifiedTokenInfoBottomSheet
             bottomSheetModalRef={unverifiedInfoSheetRef}

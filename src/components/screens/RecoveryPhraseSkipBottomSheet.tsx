@@ -81,7 +81,6 @@ const RecoveryPhraseSkipBottomSheet: React.FC<
 > = ({ modalRef, onConfirm, onDismiss, isLoading }) => (
   <BottomSheet
     modalRef={modalRef}
-    handleCloseModal={onDismiss}
     customContent={
       <CustomContent
         onConfirm={onConfirm}

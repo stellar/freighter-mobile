@@ -111,7 +111,6 @@ describe("ManageAccountBottomSheet", () => {
     expect(queryByTestId("manage-accounts-list")).toBeNull();
     // The rest of the sheet still renders.
     expect(getByTestId("manage-accounts-active-avatar")).toBeTruthy();
-    expect(getByTestId("manage-accounts-list-end-spacing")).toBeTruthy();
   });
 
   it("renders the rows wrapper once there are accounts", () => {
@@ -120,14 +119,6 @@ describe("ManageAccountBottomSheet", () => {
     );
 
     expect(getByTestId("manage-accounts-list")).toBeTruthy();
-  });
-
-  it("always renders list-end spacing after the last row", () => {
-    const { getByTestId } = renderWithProviders(
-      <ManageAccountBottomSheet {...defaultProps} />,
-    );
-
-    expect(getByTestId("manage-accounts-list-end-spacing")).toBeTruthy();
   });
 });
 

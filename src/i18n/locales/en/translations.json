@@ -709,7 +709,8 @@
       "minimum": "Minimum",
       "rate": "Rate",
       "fee": "Fee",
-      "xdr": "XDR"
+      "xdr": "XDR",
+      "sheetTitle": "Review swap"
     },
     "errors": {
       "failedToSetupTransaction": "Failed to setup swap transaction",
@@ -927,7 +928,8 @@
   "medium": "Medium",
   "high": "High",
   "transactionReviewScreen": {
-    "title": "You are sending"
+    "title": "You are sending",
+    "sheetTitle": "Review send"
   },
   "transactionProcessingScreen": {
     "sending": "Sending",

@@ -320,7 +320,6 @@ const TransactionProcessingScreen: React.FC<
 
       <BottomSheet
         modalRef={bottomSheetModalRef}
-        handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
         customContent={
           <TransactionDetailsBottomSheet
             type={type}

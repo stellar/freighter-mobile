@@ -68,12 +68,12 @@ export const KeyValueListItem = ({
 }: KeyValueListItemProps) => (
   <View className="bg-background-secondary rounded-[16px] p-[16px] gap-[12px]">
     <View className="flex-row items-center gap-[8px]">
-      <Text>{operationKey}</Text>
+      <Text medium>{operationKey}</Text>
     </View>
     <View className="h-[1px] bg-background-tertiary" />
     {typeof operationValue === "string" ||
     typeof operationValue === "number" ? (
-      <Text>{operationValue}</Text>
+      <Text medium>{operationValue}</Text>
     ) : (
       operationValue
     )}
@@ -237,7 +237,7 @@ export const KeyValueInvokeHostFnArgs = ({
           <>
             <View className="flex-row items-center gap-[8px]">
               <Icon.BracketsEllipses size={16} themeColor="gray" />
-              <Text>
+              <Text medium>
                 {t("signTransactionDetails.authorizations.parameters")}
               </Text>
             </View>
@@ -257,7 +257,7 @@ export const KeyValueInvokeHostFnArgs = ({
               className="gap-[8px]"
             >
               <View className="flex-row items-center gap-[4px]">
-                <Text secondary testID="ParameterKey">
+                <Text medium secondary testID="ParameterKey">
                   {argNames?.[index]}
                 </Text>
                 <Icon.Copy01
@@ -266,7 +266,9 @@ export const KeyValueInvokeHostFnArgs = ({
                   onPress={() => copyToClipboard(scValByType(arg) as string)}
                 />
               </View>
-              <Text testID="ParameterValue">{scValByType(arg)}</Text>
+              <Text medium testID="ParameterValue">
+                {scValByType(arg)}
+              </Text>
             </View>
           );
         })}
@@ -287,10 +289,10 @@ export const InlinePublicKeyRow = ({
   operationValue,
 }: KeyValueWithPublicKeyProps) => (
   <View className="bg-background-secondary rounded-[16px] px-[16px] py-[14px] flex-row items-center justify-between gap-[12px]">
-    <Text>{operationKey}</Text>
+    <Text medium>{operationKey}</Text>
     <View className="flex-1 flex-row items-center justify-end gap-[8px]">
       <Avatar publicAddress={operationValue} size="sm" hasDarkBackground />
-      <Text>{truncateAddress(operationValue)}</Text>
+      <Text medium>{truncateAddress(operationValue)}</Text>
     </View>
   </View>
 );
@@ -305,9 +307,9 @@ export const InlineHashRow = ({
   operationValue,
 }: InlineHashRowProps) => (
   <View className="bg-background-secondary rounded-[16px] px-[16px] py-[14px] flex-row items-center justify-between gap-[12px]">
-    <Text>{operationKey}</Text>
+    <Text medium>{operationKey}</Text>
     <View className="flex-1 flex-row items-center justify-end">
-      <Text>{truncateAddress(operationValue)}</Text>
+      <Text medium>{truncateAddress(operationValue)}</Text>
     </View>
   </View>
 );
@@ -321,7 +323,7 @@ export const KeyValueWithPublicKey = ({
     operationValue={
       <View className="flex-row items-center gap-[16px]">
         <Avatar publicAddress={operationValue} size="sm" hasDarkBackground />
-        <Text>{truncateAddress(operationValue)}</Text>
+        <Text medium>{truncateAddress(operationValue)}</Text>
       </View>
     }
   />
@@ -337,7 +339,9 @@ export const PathList = ({ paths }: PathListProps) => {
     <View>
       <View className="flex-row items-center gap-[8px]">
         <Icon.Shuffle01 size={16} themeColor="gray" />
-        <Text secondary>{t("signTransactionDetails.operations.path")} </Text>
+        <Text medium secondary>
+          {t("signTransactionDetails.operations.path")}{" "}
+        </Text>
       </View>
       <View className="gap-[12px] mt-[8px]">
         {paths.map(({ code, issuer }, index) => (
@@ -352,22 +356,22 @@ export const PathList = ({ paths }: PathListProps) => {
             </View>
 
             <View className="flex-row justify-between items-center">
-              <Text secondary>
+              <Text medium secondary>
                 {t("signTransactionDetails.operations.token")}
               </Text>
               {issuer && (
-                <Text secondary>
+                <Text medium secondary>
                   {t("signTransactionDetails.operations.issuer")}
                 </Text>
               )}
             </View>
 
             <View className="flex-row justify-between items-center">
-              <Text>{code}</Text>
+              <Text medium>{code}</Text>
               {issuer && (
                 <View className="flex-row items-center gap-[8px]">
                   <Avatar publicAddress={issuer} size="sm" hasDarkBackground />
-                  <Text>{truncateAddress(issuer, 4, 4)}</Text>
+                  <Text medium>{truncateAddress(issuer, 4, 4)}</Text>
                 </View>
               )}
             </View>
@@ -428,9 +432,11 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
       {renderSignerType()}
       <View className="h-[1px] mx-4 bg-border-primary" />
       <View className="rounded-[16px] px-[16px] py-[14px] flex-row items-center justify-between gap-[12px]">
-        <Text>{t("signTransactionDetails.operations.signerWeight")}</Text>
+        <Text medium>
+          {t("signTransactionDetails.operations.signerWeight")}
+        </Text>
         <View className="flex-1 flex-row items-center justify-end gap-[8px]">
-          <Text>{signer.weight}</Text>
+          <Text medium>{signer.weight}</Text>
         </View>
       </View>
     </View>
@@ -667,7 +673,7 @@ export const ExecutableDetails = ({ executable }: ExecutableDetailsProps) => {
           )}
           operationValue={
             <View className="flex-row items-center gap-[4px]">
-              <Text>{truncateAddress(wasmHash)}</Text>
+              <Text medium>{truncateAddress(wasmHash)}</Text>
               <Icon.Copy01
                 size={14}
                 themeColor="gray"
@@ -749,7 +755,7 @@ export const KeyValueInvokeHostFn = ({
                   operationKey={t("signTransactionDetails.operations.salt")}
                   operationValue={
                     <View className="flex-row items-center gap-[4px]">
-                      <Text>{truncateAddress(salt)}</Text>
+                      <Text medium>{truncateAddress(salt)}</Text>
                       <Icon.Copy01
                         size={14}
                         themeColor="gray"
@@ -781,7 +787,7 @@ export const KeyValueInvokeHostFn = ({
                 operationKey={t("signTransactionDetails.operations.salt")}
                 operationValue={
                   <View className="flex-row items-center gap-[4px]">
-                    <Text>{truncateAddress(salt)}</Text>
+                    <Text medium>{truncateAddress(salt)}</Text>
                     <Icon.Copy01
                       size={14}
                       themeColor="gray"
@@ -827,7 +833,7 @@ export const KeyValueInvokeHostFn = ({
                   operationKey={t("signTransactionDetails.operations.issuer")}
                   operationValue={
                     <View className="flex-row items-center gap-[4px]">
-                      <Text>
+                      <Text medium>
                         {truncateAddress(
                           StrKey.encodeEd25519PublicKey(
                             (
@@ -880,7 +886,7 @@ export const KeyValueInvokeHostFn = ({
               operationKey={t("signTransactionDetails.operations.contractId")}
               operationValue={
                 <View className="flex-row items-center gap-[4px]">
-                  <Text>{truncateAddress(contractId)}</Text>
+                  <Text medium>{truncateAddress(contractId)}</Text>
                   <Icon.Copy01
                     size={14}
                     themeColor="gray"

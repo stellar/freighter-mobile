@@ -177,7 +177,6 @@ const HomeScreenHeader = (
           modalRef={maintenanceModalRef}
           title={bannerContent.modal.title}
           body={bannerContent.modal.body}
-          variant={bannerContent.theme}
           onDismiss={handleModalDismiss}
         />
       )}

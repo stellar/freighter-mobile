@@ -668,7 +668,6 @@ const SendCollectibleReviewScreen: React.FC<
       </View>
       <BottomSheet
         modalRef={reviewBottomSheetModalRef}
-        handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
         analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
         scrollable
         customContent={
@@ -687,21 +686,11 @@ const SendCollectibleReviewScreen: React.FC<
       />
       <BottomSheet
         modalRef={addMemoExplanationBottomSheetModalRef}
-        handleCloseModal={onCancelAddMemo}
         customContent={
           <InformationBottomSheet
             title={t("addMemoExplanationBottomSheet.title")}
             onClose={onCancelAddMemo}
             onConfirm={onConfirmAddMemo}
-            headerElement={
-              <View className="bg-red-3 p-2 rounded-[8px]">
-                <Icon.InfoOctagon
-                  color={themeColors.status.error}
-                  size={28}
-                  withBackground
-                />
-              </View>
-            }
             texts={[
               {
                 key: "description",
@@ -721,9 +710,6 @@ const SendCollectibleReviewScreen: React.FC<
       />
       <BottomSheet
         modalRef={transactionSettingsBottomSheetModalRef}
-        handleCloseModal={() =>
-          transactionSettingsBottomSheetModalRef.current?.dismiss()
-        }
         customContent={
           <TransactionSettingsBottomSheet
             context={TransactionContext.Send}
@@ -735,7 +721,6 @@ const SendCollectibleReviewScreen: React.FC<
       />
       <BottomSheet
         modalRef={muxedAddressInfoBottomSheetModalRef}
-        handleCloseModal={handleCancelMuxedAddressWarning}
         customContent={
           <MuxedAddressWarningBottomSheet
             onCancel={handleCancelMuxedAddressWarning}
@@ -745,7 +730,6 @@ const SendCollectibleReviewScreen: React.FC<
       />
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}
-        handleCloseModal={handleCancelSecurityWarning}
         customContent={
           <SecurityDetailBottomSheet
             warnings={transactionSecurityWarnings}
