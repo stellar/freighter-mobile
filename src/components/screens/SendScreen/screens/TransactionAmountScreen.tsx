@@ -487,7 +487,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       targetAmount = decimalAwareSpendable.multipliedBy(percentage / 100);
     }
 
-    // Ensure targetAmount never exceeds spendableBalance
+    // Ensure targetAmount never exceeds the held amount (in whole units)
     const cappedTargetAmount = BigNumber.minimum(
       targetAmount,
       decimalAwareSpendable,
