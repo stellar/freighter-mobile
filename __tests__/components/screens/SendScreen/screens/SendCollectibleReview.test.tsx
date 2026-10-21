@@ -1,8 +1,11 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { act } from "@testing-library/react-native";
+import BigNumber from "bignumber.js";
 import SendCollectibleReviewScreen from "components/screens/SendScreen/screens/SendCollectibleReview";
 import { NETWORKS } from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
 import { useHistoryStore } from "ducks/history";
 import { useSendRecipientStore } from "ducks/sendRecipient";
@@ -10,6 +13,7 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { renderWithProviders } from "helpers/testUtils";
 import * as blockaidService from "hooks/blockaid/useBlockaidTransaction";
+import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import * as useValidateTransactionMemo from "hooks/useValidateTransactionMemo";
@@ -840,5 +844,162 @@ describe("SendCollectibleReview - Unfunded Recipient Handling", () => {
     );
     expect(mockSendReviewBottomSheetProps.bannerVariant).toBe("warning");
     expect(mockSendReviewBottomSheetProps.onBannerPress).toBeDefined();
+  });
+});
+
+describe("SendCollectibleReview - Sender XLM for Fees", () => {
+  // Same account setupDefaultMocks makes active
+  const senderPublicKey =
+    "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM";
+  const initialBalancesState = useBalancesStore.getState();
+
+  // Fee from the real repro: 0.00001 inclusion + 0.1027476 resource
+  const setSimulatedFee = () => {
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockUseTransactionBuilderStore(),
+      sorobanInclusionFeeXlm: "0.00001",
+      sorobanResourceFeeXlm: "0.1027476",
+    });
+  };
+
+  // jest.setup.js mocks useBalancesList globally with an empty list, so the
+  // XLM balance goes through that mock and the funding stamp through the store
+  const setSenderBalances = ({
+    isFunded,
+    xlmTotal = "0",
+    fetchedPublicKey = senderPublicKey,
+  }: {
+    isFunded: boolean;
+    xlmTotal?: string;
+    fetchedPublicKey?: string | null;
+  }) => {
+    const balanceItems = isFunded
+      ? [
+          {
+            id: "XLM",
+            tokenType: "native",
+            token: { type: "native", code: "XLM" },
+            total: new BigNumber(xlmTotal),
+            available: new BigNumber(xlmTotal),
+            minimumBalance: new BigNumber(1),
+            buyingLiabilities: "0",
+            sellingLiabilities: "0",
+          },
+        ]
+      : [];
+
+    (useBalancesList as jest.Mock).mockReturnValue({ balanceItems });
+    useBalancesStore.setState({
+      isFunded,
+      fetchedPublicKey,
+      fetchedNetwork: NETWORKS.TESTNET,
+    });
+  };
+
+  // The Review button carries the disabled state on an ancestor of its label
+  const isReviewDisabled = (
+    getByText: ReturnType<typeof renderWithProviders>["getByText"],
+  ) => {
+    let node = getByText("transactionAmountScreen.reviewButton").parent;
+    while (node && node.props.accessibilityState === undefined) {
+      node = node.parent;
+    }
+    return Boolean(node?.props.accessibilityState?.disabled);
+  };
+
+  const renderScreen = () =>
+    renderWithProviders(
+      <SendCollectibleReviewScreen
+        navigation={mockNavigation}
+        route={mockRoute}
+      />,
+    );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setupDefaultMocks();
+    // Set explicitly so these tests don't inherit another block's assessment
+    mockAssessTransactionSecurity.mockReturnValue({
+      level: SecurityLevel.SAFE,
+      isMalicious: false,
+      isSuspicious: false,
+      isExpectedToFail: false,
+      isUnableToScan: false,
+    });
+    mockExtractSecurityWarnings.mockReturnValue([]);
+  });
+
+  afterEach(() => {
+    // The screen is still mounted here, so the reset re-renders it
+    act(() => {
+      useBalancesStore.setState(initialBalancesState, true);
+    });
+    (useBalancesList as jest.Mock).mockReturnValue({ balanceItems: [] });
+  });
+
+  it("blocks an unfunded sender and skips building the transaction", () => {
+    setSenderBalances({ isFunded: false });
+
+    const { getByText } = renderScreen();
+
+    expect(
+      getByText("transactionAmountScreen.errors.senderNotFunded"),
+    ).toBeTruthy();
+    expect(isReviewDisabled(getByText)).toBe(true);
+    expect(
+      mockUseTransactionBuilderStore().buildSendCollectibleTransaction,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("blocks a sender whose XLM above the reserve can't cover the fee", () => {
+    setSimulatedFee();
+    // 1 XLM reserve leaves 0.0030669 spendable, under the 0.1027576 fee
+    setSenderBalances({ isFunded: true, xlmTotal: "1.0030669" });
+
+    const { getByText } = renderScreen();
+
+    expect(
+      getByText("transactionAmountScreen.errors.insufficientXlmForFees"),
+    ).toBeTruthy();
+    expect(isReviewDisabled(getByText)).toBe(true);
+  });
+
+  it("allows a sender whose spendable XLM exactly covers the fee", () => {
+    setSimulatedFee();
+    setSenderBalances({ isFunded: true, xlmTotal: "1.1027576" });
+
+    const { getByText, queryByText } = renderScreen();
+
+    expect(
+      queryByText("transactionAmountScreen.errors.insufficientXlmForFees"),
+    ).toBeNull();
+    expect(isReviewDisabled(getByText)).toBe(false);
+  });
+
+  it("allows a sender with plenty of XLM", () => {
+    setSimulatedFee();
+    setSenderBalances({ isFunded: true, xlmTotal: "100" });
+
+    const { getByText, queryByText } = renderScreen();
+
+    expect(
+      queryByText("transactionAmountScreen.errors.insufficientXlmForFees"),
+    ).toBeNull();
+    expect(
+      queryByText("transactionAmountScreen.errors.senderNotFunded"),
+    ).toBeNull();
+    expect(isReviewDisabled(getByText)).toBe(false);
+  });
+
+  it("does not report a funded sender as unfunded when the balances fetch failed", () => {
+    // A failed fetch leaves the cleared defaults and never stamps the key
+    setSenderBalances({ isFunded: false, fetchedPublicKey: null });
+
+    const { getByText, queryByText } = renderScreen();
+
+    expect(
+      queryByText("transactionAmountScreen.errors.senderNotFunded"),
+    ).toBeNull();
+    expect(isReviewDisabled(getByText)).toBe(false);
   });
 });
