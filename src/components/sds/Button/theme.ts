@@ -14,11 +14,12 @@ interface ButtonColorConfig {
 }
 
 export const BUTTON_THEME = {
+  // Varial heights: https://www.figma.com/design/lcdj2ucnJ2BfvRvsLboBNC/Varial?node-id=1-2482
   height: {
-    sm: 26,
-    md: 32,
-    lg: 40,
-    xl: 50,
+    sm: 36,
+    md: 40,
+    lg: 48,
+    xl: 52,
   },
   padding: {
     sm: {

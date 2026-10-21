@@ -12,7 +12,7 @@ interface UnhideButtonProps {
 
 /**
  * The "Unhide" action shown next to a hidden token, collectible or search
- * result. Shares the squared secondary look of the Add token button so the
+ * result. Shares the squared tertiary look of the Add token button so the
  * two read as the same kind of control.
  */
 const UnhideButton: React.FC<UnhideButtonProps> = ({
@@ -25,7 +25,7 @@ const UnhideButton: React.FC<UnhideButtonProps> = ({
 
   return (
     <Button
-      secondary
+      tertiary
       squared
       testID={testID}
       icon={<Icon.Eye size={16} color={themeColors.foreground.primary} />}

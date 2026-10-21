@@ -12,6 +12,7 @@ import {
   ButtonVariants,
   type ButtonVariant,
 } from "components/sds/Button";
+import { BUTTON_THEME } from "components/sds/Button/theme";
 import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
@@ -601,10 +602,11 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
         <TouchableOpacity
           onPress={onSettingsPress}
           className="border border-gray-6 items-center justify-center"
+          // Sized to sit flush beside the xl Button next to it
           style={{
-            height: pxValue(50),
-            borderRadius: pxValue(25),
-            width: pxValue(50),
+            height: pxValue(BUTTON_THEME.height.xl),
+            borderRadius: pxValue(BUTTON_THEME.height.xl / 2),
+            width: pxValue(BUTTON_THEME.height.xl),
           }}
         >
           <Icon.Settings04 size={24} themeColor="gray" />

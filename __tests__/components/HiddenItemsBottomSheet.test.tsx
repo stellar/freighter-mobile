@@ -67,9 +67,8 @@ describe("HiddenItemsBottomSheet", () => {
     expect(typeof capturedSheetProps.scrollViewHeaderComponent).toBe(
       "function",
     );
-    expect(typeof capturedSheetProps.scrollViewFooterComponent).toBe(
-      "function",
-    );
+    // No pinned Close footer: the header's X is the only way to dismiss.
+    expect(capturedSheetProps.scrollViewFooterComponent).toBeUndefined();
   });
 
   it("renders the empty state and no rows when nothing is hidden", () => {
@@ -111,8 +110,8 @@ describe("HiddenItemsBottomSheet", () => {
     expect(item.onUnhide).toHaveBeenCalledTimes(1);
   });
 
-  it("closes from the X icon and the Close button", () => {
-    const { getByTestId, getByText } = renderWithProviders(
+  it("closes from the X icon, with no Close button", () => {
+    const { getByTestId, queryByText } = renderWithProviders(
       <HiddenItemsBottomSheet
         modalRef={modalRef}
         title="Hidden tokens"
@@ -122,9 +121,10 @@ describe("HiddenItemsBottomSheet", () => {
       />,
     );
 
-    fireEvent.press(getByTestId("hidden-items-sheet-close-icon"));
-    fireEvent.press(getByText("Close"));
+    expect(queryByText("Close")).toBeNull();
 
-    expect(onClose).toHaveBeenCalledTimes(2);
+    fireEvent.press(getByTestId("hidden-items-sheet-close-icon"));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
