@@ -2028,6 +2028,42 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
       mockCalculateSpendableAmount.mockReturnValue(new BigNumber("227"));
     });
 
+    it("derives the fiat amount from the rounded-down token amount", () => {
+      const zeroDecContract =
+        "CDSRYSNQOZTTUQEGBYZZL4VYU5WFEQ7KV6UX2VH3QAVGDFL7ZWWL25KR";
+      mockUseTransactionSettingsStore.mockReturnValue({
+        ...(mockUseTransactionSettingsStore as unknown as jest.Mock)(),
+        selectedTokenId: `WHOLE:${zeroDecContract}`,
+      });
+      mockUseBalancesList.mockReturnValue({
+        ...(mockUseBalancesList as unknown as jest.Mock)(),
+        balanceItems: [
+          {
+            id: `WHOLE:${zeroDecContract}`,
+            tokenId: `WHOLE:${zeroDecContract}`,
+            contractId: zeroDecContract,
+            decimals: 0,
+            total: new BigNumber("5"),
+            available: new BigNumber("5"),
+            currentPrice: new BigNumber("10"),
+            token: { code: "WHOLE", issuer: { key: zeroDecContract } },
+          } as any,
+        ],
+      });
+      mockCalculateSpendableAmount.mockReturnValue(new BigNumber("5"));
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+
+      fireEvent.press(getByTestId("percentage-25"));
+
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("1");
+      expect(mockUpdateFiatDisplay).toHaveBeenLastCalledWith("10.00");
+    });
+
     it("caps the fiat amount at the held balance, not the raw integer", () => {
       const { getByTestId } = render(
         <TransactionAmountScreen
@@ -2041,8 +2077,7 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
       // 0.00000227 SolvBTC is $0.185; "0.19" would convert back to more than
       // is held, so the handler must drop a cent.
       expect(mockUpdateFiatDisplay).toHaveBeenLastCalledWith("0.18");
-      const tokens = new BigNumber(mockSetTokenAmount.mock.calls.at(-1)[0]);
-      expect(tokens.isLessThanOrEqualTo("0.00000227")).toBe(true);
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("0.00000220");
     });
   });
 
