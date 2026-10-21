@@ -3,7 +3,7 @@ import { BottomTabHeaderProps } from "@react-navigation/bottom-tabs";
 import { NativeStackHeaderProps } from "@react-navigation/native-stack";
 import {
   CustomHeaderButton,
-  DEFAULT_HEADER_BUTTON_SIZE,
+  HEADER_BUTTON_BOX,
 } from "components/layout/CustomHeaderButton";
 import MaintenanceBannerBottomSheet from "components/screens/HomeScreen/MaintenanceBannerBottomSheet";
 import { NoticeBanner } from "components/sds/NoticeBanner";
@@ -165,7 +165,7 @@ const HomeScreenHeader = (
           })
         ) : (
           // Need to leave this empty view here to maintain the correct alignment of the header title
-          <View className={DEFAULT_HEADER_BUTTON_SIZE} />
+          <View style={HEADER_BUTTON_BOX} />
         )}
       </View>
 

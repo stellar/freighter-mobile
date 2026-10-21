@@ -159,11 +159,6 @@ export const AUTO_LOCK_TIMER_MS: Record<AUTO_LOCK_TIMER, number> = {
   [AUTO_LOCK_TIMER.TWENTY_FOUR_HOURS]: 24 * HOUR_IN_MS,
 };
 
-// Recovery phrase validation constants
-export const VALIDATION_WORDS_PER_ROW: number = 3;
-export const VALIDATION_EXTRA_USER_WORDS: number = 2;
-export const VALIDATION_DECOY_WORDS: number = 6;
-
 export const DEFAULT_DECIMALS = 7;
 export const FIAT_DECIMALS = 2;
 
@@ -412,7 +407,6 @@ export enum STORAGE_KEYS {
   VERIFIED_TOKENS_PREFIX = "verifiedTokens_",
   STELLAR_EXPERT_TOP_TOKENS_PREFIX = "stellarExpertTopTokens_",
   BLOCKAID_TOKEN_SCANS_PREFIX = "blockaidTokenScans_",
-  WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   HAS_SEEN_DISCOVER_WELCOME = "hasSeenDiscoverWelcome",
   REBRAND_ANNOUNCEMENT_STATUS = "rebrandAnnouncementStatus",

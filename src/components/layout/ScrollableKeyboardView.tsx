@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { isIOS } from "helpers/device";
+import useKeyboardVisible from "hooks/useKeyboardVisible";
 import useTheme from "hooks/useTheme";
 import React, { ReactNode } from "react";
 import {
@@ -65,10 +67,17 @@ export const ScrollableKeyboardView: React.FC<ScrollableKeyboardViewProps> = ({
 }) => {
   const theme = useTheme();
   const backgroundColor = theme.colors.base.primary;
+  const isKeyboardVisible = useKeyboardVisible();
 
   return (
     <StyledKeyboardAvoidingView
       $backgroundColor={backgroundColor}
+      // Android reports a hidden keyboard's position as the visible area's
+      // height rather than its bottom. Drawn edge to edge, as Android 15 and
+      // later require, the view would keep the status and navigation bars'
+      // height as padding once the keyboard hides, so on Android it only
+      // avoids a keyboard that's up.
+      enabled={isIOS || isKeyboardVisible}
       {...keyboardAvoidingViewProps}
     >
       <StyledScrollView $backgroundColor={backgroundColor} {...scrollViewProps}>

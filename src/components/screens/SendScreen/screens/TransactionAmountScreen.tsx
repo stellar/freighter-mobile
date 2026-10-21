@@ -211,7 +211,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, [navigation]);
 
   const renderCloseHeaderButton = useCallback(
-    () => <CustomHeaderButton icon={Icon.X} onPress={handleCloseSendFlow} />,
+    () => <CustomHeaderButton variant="close" onPress={handleCloseSendFlow} />,
     [handleCloseSendFlow],
   );
 

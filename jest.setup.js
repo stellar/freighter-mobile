@@ -510,13 +510,6 @@ jest.mock("hooks/useBalancesList", () => ({
   })),
 }));
 
-jest.mock("hooks/useWelcomeBanner", () => ({
-  useWelcomeBanner: jest.fn(() => ({
-    welcomeBannerBottomSheetModalRef: { current: null },
-    handleWelcomeBannerDismiss: jest.fn(),
-  })),
-}));
-
 // Mock Sentry for Jest tests
 jest.mock("@sentry/react-native", () => ({
   init: jest.fn(),

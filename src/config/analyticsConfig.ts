@@ -23,9 +23,7 @@ export enum AnalyticsEvent {
   // Screen Navigation Events (Auto-generated from routes)
   VIEW_WELCOME = "welcome",
   VIEW_CHOOSE_PASSWORD = "account_creator",
-  VIEW_RECOVERY_PHRASE_ALERT = "mnemonic_phrase_alert",
   VIEW_RECOVERY_PHRASE = "mnemonic_phrase",
-  VIEW_VALIDATE_RECOVERY_PHRASE = "confirm_mnemonic_phrase",
   VIEW_IMPORT_WALLET = "recover_account",
   VIEW_LOCK_SCREEN = "unlock_account",
   VIEW_HOME = "account",
@@ -95,10 +93,6 @@ export enum AnalyticsEvent {
   // carries reason_code
   CREATE_PASSWORD_FAIL = "onboarding.password_create_failed",
   VIEWED_RECOVERY_PHRASE = "onboarding.recovery_phrase_viewed",
-  CONFIRM_RECOVERY_PHRASE_SUCCESS = "onboarding.recovery_phrase_confirmed",
-  // carries reason_code
-  CONFIRM_RECOVERY_PHRASE_FAIL = "onboarding.recovery_phrase_confirm_failed",
-  ACCOUNT_CREATOR_CONFIRM_MNEMONIC_BACK = "onboarding.recovery_phrase_back_clicked",
   // Fires once from the signUp store action's success path (create-account
   // terminal point) — NOT from the recovery-phrase / biometrics UI screens.
   // The import/recover flow emits account_recovery.completed instead, matching
@@ -376,13 +370,7 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_CHOOSE_PASSWORD]: {
     flow: AnalyticsFlow.ONBOARDING,
   },
-  [AnalyticsEvent.VIEW_RECOVERY_PHRASE_ALERT]: {
-    flow: AnalyticsFlow.ONBOARDING,
-  },
   [AnalyticsEvent.VIEW_RECOVERY_PHRASE]: {
-    flow: AnalyticsFlow.ONBOARDING,
-  },
-  [AnalyticsEvent.VIEW_VALIDATE_RECOVERY_PHRASE]: {
     flow: AnalyticsFlow.ONBOARDING,
   },
   [AnalyticsEvent.VIEW_IMPORT_WALLET]: {
@@ -603,9 +591,7 @@ export const ROUTES_WITHOUT_ANALYTICS = getRoutesWithoutAnalytics();
 export const CUSTOM_ROUTE_MAPPINGS: Record<string, AnalyticsEvent> = {
   // Auth flow overrides (extension uses different names)
   ChoosePasswordScreen: AnalyticsEvent.VIEW_CHOOSE_PASSWORD,
-  RecoveryPhraseAlertScreen: AnalyticsEvent.VIEW_RECOVERY_PHRASE_ALERT,
   RecoveryPhraseScreen: AnalyticsEvent.VIEW_RECOVERY_PHRASE,
-  ValidateRecoveryPhraseScreen: AnalyticsEvent.VIEW_VALIDATE_RECOVERY_PHRASE,
   ImportWalletScreen: AnalyticsEvent.VIEW_IMPORT_WALLET,
   LockScreen: AnalyticsEvent.VIEW_LOCK_SCREEN,
 

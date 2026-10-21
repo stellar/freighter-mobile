@@ -16,7 +16,6 @@ import { DebugTrigger } from "components/debug/DebugTrigger";
 import { BaseLayout } from "components/layout/BaseLayout";
 import ConnectedApps from "components/screens/HomeScreen/ConnectedApps";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
-import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
 import Icon from "components/sds/Icon";
 import { Display } from "components/sds/Typography";
 import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
@@ -49,7 +48,6 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useHomeHeaders } from "hooks/useHomeHeaders";
 import { useTotalBalance } from "hooks/useTotalBalance";
 import { useWarmUpAccountsFiatTotals } from "hooks/useWarmUpAccountsFiatTotals";
-import { useWelcomeBanner } from "hooks/useWelcomeBanner";
 import React, {
   useCallback,
   useEffect,
@@ -81,13 +79,8 @@ type HomeScreenProps = BottomTabScreenProps<
 export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
   ({ navigation }) => {
     const { account } = useGetActiveAccount();
-    const {
-      network,
-      getAllAccounts,
-      allAccounts,
-      isSwitchingAccount,
-      isLoadingAllAccounts,
-    } = useAuthenticationStore();
+    const { network, getAllAccounts, allAccounts, isLoadingAllAccounts } =
+      useAuthenticationStore();
     const { themeColors } = useColors();
     const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
     const connectedAppsBottomSheetRef = useRef<BottomSheetModal>(null);
@@ -162,14 +155,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       onAccountPress: handleManageAccountsPress,
       onConnectedAppsPress: handleConnectedAppsPress,
     });
-
-    const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
-      useWelcomeBanner({
-        account,
-        isFunded,
-        isLoadingBalances,
-        isSwitchingAccount,
-      });
 
     // NOTE: VIEW_HOME analytics event is already tracked by useNavigationAnalytics
     // when the user navigates to this screen. No need for additional tracking here.
@@ -328,11 +313,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         testID="home-screen"
         insets={{ bottom: false, top: false, left: false, right: false }}
       >
-        <WelcomeBannerBottomSheet
-          modalRef={welcomeBannerBottomSheetModalRef}
-          onAddXLM={navigateToBuyXLM}
-          onDismiss={handleWelcomeBannerDismiss}
-        />
         <ManageAccounts
           accounts={allAccounts}
           activeAccount={account}

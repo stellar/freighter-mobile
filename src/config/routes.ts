@@ -65,10 +65,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
 export const AUTH_STACK_ROUTES = {
   WELCOME_SCREEN: "WelcomeScreen",
   CHOOSE_PASSWORD_SCREEN: "ChoosePasswordScreen",
-  CONFIRM_PASSWORD_SCREEN: "ConfirmPasswordScreen",
-  RECOVERY_PHRASE_ALERT_SCREEN: "RecoveryPhraseAlertScreen",
   RECOVERY_PHRASE_SCREEN: "RecoveryPhraseScreen",
-  VALIDATE_RECOVERY_PHRASE_SCREEN: "ValidateRecoveryPhraseScreen",
   IMPORT_WALLET_SCREEN: "ImportWalletScreen",
   BIOMETRICS_ENABLE_SCREEN: "BiometricsOnboardingScreen",
 
@@ -181,17 +178,12 @@ export type AuthStackParamList = {
   [AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN]: {
     isImporting?: boolean;
   };
-  [AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN]: {
-    isImporting?: boolean;
-  };
-  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN]: {
     source: BiometricsSource;
   };
   [AUTH_STACK_ROUTES.LOCK_SCREEN]: undefined;
-  [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: undefined;
 };
 
 export type MainTabStackParamList = {

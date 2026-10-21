@@ -19,30 +19,6 @@ tags:
 - tapOn:
     id: import-wallet-button
 
-# Enter password on Choose Password screen
-- assertVisible:
-    id: password-input
-- tapOn:
-    id: password-input
-- inputText: "TestPassword123!"
-- hideKeyboard
-
-# Tap continue button
-- tapOn:
-    id: default-action-button
-
-# Confirm password screen
-- assertVisible:
-    id: confirm-password-input
-- tapOn:
-    id: confirm-password-input
-- inputText: "TestPassword123!"
-- hideKeyboard
-
-# Tap continue button
-- tapOn:
-    id: default-action-button
-
 # Import wallet screen - enter recovery phrase
 #
 # Phrase: CI uses secrets.E2E_TEST_RECOVERY_PHRASE; local uses .env E2E_TEST_RECOVERY_PHRASE.
@@ -82,34 +58,43 @@ tags:
           id: import-wallet-input
       - inputText: "${E2E_TEST_RECOVERY_PHRASE}"
       - hideKeyboard
-# Tap continue/import button
+# Import Wallet: Next checks the phrase
 - tapOn:
     id: default-action-button
 
-# Wait for import to complete - either welcome banner or home screen will appear
-# Try welcome banner first (it usually appears immediately after import)
-- runFlow:
-    when:
-      visible:
-        id: welcome-banner-dismiss-button
-    commands:
-      - tapOn:
-          id: welcome-banner-dismiss-button
-      - extendedWaitUntil:
-          visible:
-            id: home-screen
-          timeout: 15000
+# Set Password: the password, its confirmation and the acknowledgement
+- assertVisible:
+    id: password-input
+- tapOn:
+    id: password-input
+- inputText: "TestPassword123!"
+- tapOn:
+    id: confirm-password-input
+- inputText: "TestPassword123!"
+# The keyboard's done key, as a user would close it: hideKeyboard can't
+# dismiss the iOS keyboard on this screen. Unticked, the acknowledgement
+# keeps it from submitting.
+- pressKey: Enter
+- tapOn:
+    id: import-acknowledgement-checkbox
+- tapOn:
+    id: default-action-button
 
-# If welcome banner didn't appear, wait for home screen
-- runFlow:
-    when:
-      notVisible:
-        id: home-screen
-    commands:
-      - extendedWaitUntil:
-          visible:
-            id: home-screen
-          timeout: 60000
+# Wait for the import to finish
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 60000
+
+# The wallet setup screen covers Home until Home's balances are in, for 3s at
+# most after setup. Maestro doesn't check what covers an element, so Home
+# counts as visible beneath it: wait for the screen itself to go. Home mounts
+# before setup resolves, and loading the account can keep the JS thread busy
+# for seconds on a slow emulator, so the ceiling is generous.
+- extendedWaitUntil:
+    notVisible:
+      id: wallet-setup-overlay
+    timeout: 60000
 
 # Allow time for accounts/balances to load after import
 - extendedWaitUntil:

@@ -17,8 +17,8 @@ tags:
     file: ../onboarding/ImportFundedWallet.yaml
 
 # Switch to Testnet (account is provisioned on testnet). The shared sub-flow
-# waits for the post-import welcome bottom sheet and any auth-error toast,
-# dismisses them, then performs the network switch.
+# waits for Home to settle, dismisses any auth-error toast, then performs the
+# network switch.
 - runFlow:
     file: ../shared/SwitchToTestnet.yaml
 

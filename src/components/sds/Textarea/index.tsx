@@ -6,7 +6,10 @@ import { Platform, TextInput, View, TextStyle } from "react-native";
 
 export interface TextareaProps
   extends React.ComponentProps<typeof TextInput>,
-    BaseTextAreaProps {}
+    BaseTextAreaProps {
+  /** The text input, passed on as given. */
+  ref?: React.Ref<TextInput>;
+}
 
 const TEXTAREA_SIZES = {
   sm: {
@@ -36,11 +39,30 @@ const TEXTAREA_SIZES = {
     borderRadius: 8,
     lines: 4,
   },
+  // Varial's recovery phrase field (?node-id=2091-40745): 160pt tall, 16pt
+  // corners, 14pt sides, Inter Medium 16/24, no fill. The bottom padding
+  // keeps text clear of the 36pt button RecoveryPhraseField places 8pt
+  // inside the corner.
+  xl: {
+    fontSize: 16,
+    lineHeight: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    gap: 8,
+    borderRadius: 16,
+    lines: 5,
+    height: 160,
+  },
 } as const;
 
 export type TextAreaSize = keyof typeof TEXTAREA_SIZES;
 
 const LINES_MULTIPLIER = 28;
+
+const getHeight = (fieldSize: TextAreaSize): number => {
+  const size = TEXTAREA_SIZES[fieldSize];
+  return "height" in size ? size.height : size.lines * LINES_MULTIPLIER;
+};
 
 type ClassNameMap = Record<TextAreaSize, string>;
 
@@ -48,37 +70,42 @@ const CONTAINER_GAP_MAP: ClassNameMap = {
   sm: "gap-1.5",
   md: "gap-2",
   lg: "gap-2",
+  xl: "gap-2",
 };
 
 const BORDER_RADIUS_MAP: ClassNameMap = {
   sm: "rounded",
   md: "rounded-md",
   lg: "rounded-lg",
+  xl: "rounded-[16px]",
 };
 
 const HORIZONTAL_PADDING_MAP: ClassNameMap = {
   sm: "px-[10px]",
   md: "px-[12px]",
   lg: "px-[14px]",
+  xl: "px-[14px]",
 };
 
 const VERTICAL_PADDING_MAP: ClassNameMap = {
   sm: "py-[6px]",
   md: "py-[8px]",
   lg: "py-[10px]",
+  xl: "pt-[16px] pb-[52px]",
 };
 
 const LABEL_SIZE_MAP = {
   sm: "xs",
   md: "sm",
   lg: "md",
+  xl: "md",
 } as const;
 
 const getContainerClasses = (fieldSize: TextAreaSize): string =>
   `w-full ${CONTAINER_GAP_MAP[fieldSize]}`;
 
 const getTextAreaContainerClasses = (fieldSize: TextAreaSize): string =>
-  `w-full h-[${TEXTAREA_SIZES[fieldSize].lines * LINES_MULTIPLIER}px]`;
+  `w-full h-[${getHeight(fieldSize)}px]`;
 
 const getTextAreaClasses = (
   fieldSize: TextAreaSize,
@@ -86,9 +113,12 @@ const getTextAreaClasses = (
   isDisabled?: boolean,
 ): string => {
   const baseClasses = "w-full";
+  // The Varial xl field is an outline only, like Input's xl.
+  const enabledBackground =
+    fieldSize === "xl" ? "bg-transparent" : "bg-background-primary";
   const backgroundColor = isDisabled
     ? "bg-background-secondary"
-    : "bg-background-primary";
+    : enabledBackground;
   const borderColor = isError ? "border-status-error" : "border-border-primary";
   const borderRadius = BORDER_RADIUS_MAP[fieldSize];
   const paddingHorizontal = HORIZONTAL_PADDING_MAP[fieldSize];
@@ -99,17 +129,21 @@ const getTextAreaClasses = (
 };
 
 const getTextAreaStyles = (fieldSize: TextAreaSize): TextStyle => {
-  const height = TEXTAREA_SIZES[fieldSize].lines * LINES_MULTIPLIER;
+  // The SDS sizes set their text in regular, the Varial xl field in medium.
+  const isVarial = fieldSize === "xl";
 
   return {
-    height,
+    height: getHeight(fieldSize),
     fontSize: fsValue(TEXTAREA_SIZES[fieldSize].fontSize),
+    ...(isVarial && {
+      lineHeight: fsValue(TEXTAREA_SIZES[fieldSize].lineHeight),
+    }),
     fontFamily: Platform.select({
       ios: "Inter-Variable",
-      android: "Inter-Regular",
+      android: isVarial ? "Inter-Medium" : "Inter-Regular",
     }),
     fontWeight: Platform.select({
-      ios: "400",
+      ios: isVarial ? "500" : "400",
       android: "normal",
     }),
   };
@@ -170,7 +204,7 @@ const getLabelProps = (fieldSize: TextAreaSize) => ({
  * ```
  *
  * @param {TextareaProps} props - The component props
- * @param {string} [props.fieldSize="md"] - Size variant of the textarea ("sm" | "md" | "lg")
+ * @param {string} [props.fieldSize="md"] - Size variant of the textarea ("sm" | "md" | "lg" | "xl")
  * @param {string | ReactNode} [props.label] - Label text or component to display above the textarea
  * @param {string | ReactNode} [props.labelSuffix] - Additional text to display after the label
  * @param {boolean} [props.isLabelUppercase] - Whether to transform the label text to uppercase

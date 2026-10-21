@@ -6,9 +6,7 @@ import {
 } from "@react-navigation/native-stack";
 import { images } from "assets/images";
 import { OnboardLayout } from "components/layout/OnboardLayout";
-import { IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { Text } from "components/sds/Typography";
 import { colors } from "config/colors";
 import {
   BiometricsSource,
@@ -25,11 +23,13 @@ import {
 import { DEFAULT_COLOR_SCHEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useLoginDataStore } from "ducks/loginData";
+import { runWithWalletSetupOverlay } from "ducks/walletSetupOverlay";
 import { isIOS } from "helpers/device";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
+import { walletSetupFlowFor } from "hooks/useFinishWalletSetup";
 import { useSetupFailedToast } from "hooks/useSetupFailedToast";
 import useTheme from "hooks/useTheme";
 import React, { useCallback, useMemo, useState } from "react";
@@ -110,7 +110,7 @@ const BlurredBackgroundIcon = ({
 
   return (
     <View
-      className="items-center justify-center mt-4 flex-grow-0 z-10"
+      className="items-center justify-center flex-grow-0 z-10"
       style={iconContainerDimensions}
     >
       <View
@@ -165,6 +165,12 @@ const BlurredBackgroundIcon = ({
   );
 };
 
+/**
+ * Figma draws the phone artwork 29pt below the badge's top edge
+ * (?node-id=1-11973), so it tucks 75pt under the 104pt badge.
+ */
+const PHONE_UNDER_BADGE = 75;
+
 export const BiometricsOnboardingScreen: React.FC<
   BiometricsOnboardingScreenProps
 > = ({ route }) => {
@@ -217,34 +223,38 @@ export const BiometricsOnboardingScreen: React.FC<
     }
 
     try {
-      await enableBiometricsAction(async (biometricPassword) => {
-        await dataStorage.setItem(
-          STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
-          "true",
-        );
+      // The callback runs once the biometric check has passed, so the wallet
+      // setup screen comes up then, not when Enable is tapped.
+      await enableBiometricsAction((biometricPassword) =>
+        runWithWalletSetupOverlay(walletSetupFlowFor(source), async () => {
+          await dataStorage.setItem(
+            STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
+            "true",
+          );
 
-        // Use importWallet for import flow, signUp for onboarding flow.
-        // These return false (rather than throwing) on failure — bail out so we
-        // don't clear login data / enable biometrics on a failed setup.
-        const success =
-          source === BiometricsSource.IMPORT_WALLET
-            ? await importWallet({
-                mnemonicPhrase,
-                password: biometricPassword ?? password,
-              })
-            : await signUp({
-                mnemonicPhrase,
-                password: biometricPassword ?? password,
-              });
+          // Use importWallet for import flow, signUp for onboarding flow.
+          // These return false (rather than throwing) on failure — bail out so
+          // we don't clear login data / enable biometrics on a failed setup.
+          const success =
+            source === BiometricsSource.IMPORT_WALLET
+              ? await importWallet({
+                  mnemonicPhrase,
+                  password: biometricPassword ?? password,
+                })
+              : await signUp({
+                  mnemonicPhrase,
+                  password: biometricPassword ?? password,
+                });
 
-        if (!success) {
-          throw new Error("Wallet setup failed during biometric enable");
-        }
+          if (!success) {
+            throw new Error("Wallet setup failed during biometric enable");
+          }
 
-        clearLoginData(); // Clear sensitive data after successful authentication
-        setIsBiometricsEnabled(true);
-        return Promise.resolve();
-      });
+          clearLoginData(); // Clear sensitive data after successful authentication
+          setIsBiometricsEnabled(true);
+          return true;
+        }),
+      );
 
       // onboarding.completed / account_recovery.completed now fire from the
       // signUp / importWallet store actions respectively (single terminal
@@ -294,13 +304,19 @@ export const BiometricsOnboardingScreen: React.FC<
 
     try {
       // Use importWallet for import flow, signUp for onboarding flow.
-      // Both return false (rather than throwing) on failure.
-      const success =
-        source === BiometricsSource.IMPORT_WALLET
-          ? await importWallet({ mnemonicPhrase, password })
-          : await signUp({ mnemonicPhrase, password });
+      // Both return false (rather than throwing) on failure. The wallet setup
+      // screen covers the wait.
+      const success = await runWithWalletSetupOverlay(
+        walletSetupFlowFor(source),
+        () =>
+          source === BiometricsSource.IMPORT_WALLET
+            ? importWallet({ mnemonicPhrase, password })
+            : signUp({ mnemonicPhrase, password }),
+      );
 
-      if (!success) {
+      if (success) {
+        clearLoginData(); // Clear sensitive data after a successful setup
+      } else {
         notifySetupFailed();
       }
 
@@ -321,6 +337,7 @@ export const BiometricsOnboardingScreen: React.FC<
     navigation,
     mnemonicPhrase,
     password,
+    clearLoginData,
     notifySetupFailed,
   ]);
 
@@ -357,7 +374,10 @@ export const BiometricsOnboardingScreen: React.FC<
   };
 
   const iPhoneFrame = (
-    <View className="items-center justify-center -mt-[64px] relative z-0">
+    <View
+      className="items-center justify-center relative z-0"
+      style={{ marginTop: -pxValue(PHONE_UNDER_BADGE) }}
+    >
       <View className="relative">
         <Image
           source={images.iPhoneFrame}
@@ -398,16 +418,6 @@ export const BiometricsOnboardingScreen: React.FC<
     </View>
   );
 
-  const getIcon = useCallback(
-    (circle?: boolean) => {
-      if (biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
-        return <Icon.FaceId circle={circle} />;
-      }
-      return <Icon.Fingerprint01 circle={circle} />;
-    },
-    [biometryType],
-  );
-
   const biometryTitle: Record<BIOMETRY_TYPE, string> = useMemo(
     () => ({
       [BIOMETRY_TYPE.FACE_ID]: t("biometricsOnboardingScreen.faceId.title"),
@@ -439,31 +449,33 @@ export const BiometricsOnboardingScreen: React.FC<
         "biometricsOnboardingScreen.faceBiometrics.description",
       ),
       [BIOMETRY_TYPE.OPTIC_ID]: t(
-        "biometricsOnboardingScreen.opticId.footerNoteText",
+        "biometricsOnboardingScreen.opticId.description",
       ),
-      [BIOMETRY_TYPE.IRIS]: t("biometricsOnboardingScreen.iris.footerNoteText"),
+      [BIOMETRY_TYPE.IRIS]: t("biometricsOnboardingScreen.iris.description"),
     }),
     [t],
   );
 
-  const footerNoteText: Record<BIOMETRY_TYPE, string> = useMemo(
+  const enableButtonText: Record<BIOMETRY_TYPE, string> = useMemo(
     () => ({
       [BIOMETRY_TYPE.FACE_ID]: t(
-        "biometricsOnboardingScreen.faceId.footerNoteText",
+        "biometricsOnboardingScreen.faceId.enableButtonText",
       ),
       [BIOMETRY_TYPE.FINGERPRINT]: t(
-        "biometricsOnboardingScreen.fingerprint.footerNoteText",
+        "biometricsOnboardingScreen.fingerprint.enableButtonText",
       ),
       [BIOMETRY_TYPE.TOUCH_ID]: t(
-        "biometricsOnboardingScreen.touchId.footerNoteText",
+        "biometricsOnboardingScreen.touchId.enableButtonText",
       ),
       [BIOMETRY_TYPE.FACE]: t(
-        "biometricsOnboardingScreen.faceBiometrics.footerNoteText",
+        "biometricsOnboardingScreen.faceBiometrics.enableButtonText",
       ),
       [BIOMETRY_TYPE.OPTIC_ID]: t(
-        "biometricsOnboardingScreen.opticId.footerNoteText",
+        "biometricsOnboardingScreen.opticId.enableButtonText",
       ),
-      [BIOMETRY_TYPE.IRIS]: t("biometricsOnboardingScreen.iris.footerNoteText"),
+      [BIOMETRY_TYPE.IRIS]: t(
+        "biometricsOnboardingScreen.iris.enableButtonText",
+      ),
     }),
     [t],
   );
@@ -474,31 +486,30 @@ export const BiometricsOnboardingScreen: React.FC<
 
   return (
     <OnboardLayout
-      icon={getIcon()}
       title={biometryTitle[biometryType] ?? ""}
-      footerNoteText={footerNoteText[biometryType] ?? ""}
-      defaultActionButtonIcon={getIcon(false)}
-      defaultActionButtonIconPosition={IconPosition.LEFT}
-      defaultActionButtonText={t("common.enable")}
-      secondaryActionButtonText={t("common.skip")}
+      description={biometryDescription[biometryType] ?? ""}
+      defaultActionButtonText={enableButtonText[biometryType] ?? ""}
+      secondaryActionButtonText={t("biometricsOnboardingScreen.skipForNow")}
       onPressSecondaryActionButton={handleSkipPress}
       onPressDefaultActionButton={handleEnableBiometricsPress}
       isLoading={isLoading || isProcessing}
       isDefaultActionButtonDisabled={isLoading || isProcessing}
       isSecondaryActionButtonDisabled={isLoading || isProcessing}
     >
-      <View className="pr-8">
-        <Text secondary md>
-          {biometryDescription[biometryType] ?? ""}
-        </Text>
-      </View>
-      <View className="items-center">
-        <BlurredBackgroundIcon
-          iconBiometryType={biometryType}
-          iconContainerDimensions={iconContainerDimensions}
-        />
-
-        {iPhoneFrame}
+      {/* Spacers share the free height in Figma's proportions: on the
+          402x874 frame the badge sits 113pt under the description (97 past
+          the layout's 16pt gap) and the artwork ends 65pt above the buttons
+          (?node-id=1-11973). */}
+      <View className="flex-1">
+        <View className="grow-[97]" />
+        <View className="items-center">
+          <BlurredBackgroundIcon
+            iconBiometryType={biometryType}
+            iconContainerDimensions={iconContainerDimensions}
+          />
+          {iPhoneFrame}
+        </View>
+        <View className="grow-[65]" />
       </View>
     </OnboardLayout>
   );

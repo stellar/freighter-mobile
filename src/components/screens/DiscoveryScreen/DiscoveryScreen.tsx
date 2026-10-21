@@ -9,11 +9,7 @@ import {
 import DiscoverWelcomeModal from "components/screens/DiscoveryScreen/components/DiscoverWelcomeModal";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import { Text } from "components/sds/Typography";
-import {
-  BROWSER_CONSTANTS,
-  DEFAULT_PADDING,
-  STORAGE_KEYS,
-} from "config/constants";
+import { BROWSER_CONSTANTS, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
 import { BACKDROP_COLOR } from "config/theme";
@@ -26,7 +22,6 @@ import {
   isDangerousScheme,
   isHomepageUrl,
 } from "helpers/browser";
-import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -332,10 +327,11 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     );
   }
 
-  // Main Browser Screen with TabOverview overlay
+  // Main Browser Screen with TabOverview overlay. Its parts clear the
+  // status bar themselves, so their nav bars line up with the stack's.
   return (
     <BaseLayout
-      insets={{ top: true, bottom: false, left: false, right: false }}
+      insets={{ top: false, bottom: false, left: false, right: false }}
     >
       {/* Main content that fades out when tabs are shown */}
       <Animated.View
@@ -399,7 +395,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           {
             position: "absolute",
             opacity: tabOverviewFadeAnim,
-            top: insets.top + pxValue(DEFAULT_PADDING),
+            top: insets.top,
             right: 0,
             bottom: 0,
             left: 0,

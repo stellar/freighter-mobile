@@ -1187,6 +1187,9 @@ import useTheme from "hooks/useTheme";
 import React from "react";
 import { View } from "react-native";
 
+/** SDS icons are drawn on a 24-unit grid. */
+const ICON_GRID = 24;
+
 export const Icons = {
   ActivityHeart,
   Activity,
@@ -2409,6 +2412,14 @@ export interface IconProps {
   withBackground?: boolean;
   circleBackground?: string;
   circleBorder?: string;
+  /**
+   * Stroke width in rendered points, as Figma gives it. Figma keeps a
+   * stroke's width when it resizes an icon, while an SVG scales it, so a
+   * 16pt icon with a 2pt stroke needs 3 units of the 24-unit grid. Only
+   * icons that set their stroke width on the root <svg> respond (see
+   * __tests__/assets/iconStrokes.test.ts); unset, every icon keeps its own.
+   */
+  strokeWidth?: number;
 }
 
 /**
@@ -2454,6 +2465,7 @@ const IconComponent: React.FC<IconProps> = ({
   withBackground,
   circleBackground,
   circleBorder,
+  strokeWidth,
 }) => {
   const IconSvg = name ? Icons[name] : null;
   const { themeColors } = useColors();
@@ -2472,6 +2484,11 @@ const IconComponent: React.FC<IconProps> = ({
       color={themeColor ? themeColors[themeColor][9] : resolvedColor}
       testID={testID}
       onPress={onPress}
+      // Spread only when set: an explicit undefined would replace the
+      // root's width and draw the glyph at SVG's default of 1.
+      {...(strokeWidth === undefined
+        ? {}
+        : { strokeWidth: (strokeWidth * ICON_GRID) / size })}
     />
   );
 

@@ -10,6 +10,7 @@
   "common": {
     "close": "Fechar",
     "unhide": "Mostrar",
+    "back": "Voltar",
     "paste": "Colar",
     "done": "Concluído",
     "none": "Nenhum",
@@ -144,6 +145,11 @@
     "friendbotUrl": "URL do Friendbot",
     "friendbotPlaceholder": "Insira a URL do Friendbot"
   },
+  "walletSetupOverlay": {
+    "creating": "Criando sua carteira...",
+    "importing": "Importando sua carteira...",
+    "ready": "Sua carteira está pronta!"
+  },
   "welcomeScreen": {
     "title": "Bem vindo",
     "createNewWallet": "Criar uma nova carteira",
@@ -163,71 +169,67 @@
     "passwordNote": "Deve ter pelo menos 8 caracteres"
   },
   "choosePasswordScreen": {
-    "title": "Escolha uma Senha",
-    "passwordInputPlaceholder": "Digite sua senha",
-    "defaultActionButtonText": "Continuar",
-    "footerNoteText": "Não podemos recuperar sua senha.\nCertifique-se de mantê-la em um local seguro.",
-    "passwordTooLong": "Deve ter menos de 2048 caracteres"
-  },
-  "confirmPasswordScreen": {
-    "title": "Confirmar Senha",
-    "passwordInputPlaceholder": "Confirme sua senha",
-    "defaultActionButtonText": "Continuar",
-    "footerNoteText": "Não podemos recuperar sua senha.\nCertifique-se de mantê-la em um local seguro."
-  },
-  "recoveryPhraseAlertScreen": {
-    "title": "Frase de Recuperação",
-    "warningBlockOne": "Sua frase de recuperação dá acesso à sua conta e é a única maneira de acessá-la em um novo aplicativo.",
-    "warningBlockTwo": "Mantenha-a em um local seguro.",
-    "defaultActionButtonText": "Entendi, revelar minha frase"
+    "title": "Defina uma Senha",
+    "description": "Você usará essa senha para entrar na sua conta.",
+    "passwordInputPlaceholder": "Senha",
+    "confirmPasswordInputPlaceholder": "Confirme a senha",
+    "passwordTooLong": "Deve ter menos de 2048 caracteres",
+    "passwordsDontMatch": "As senhas não coincidem",
+    "importAcknowledgement": "Entendo que a frase de recuperação importada não pode ser recuperada e deve ser guardada com segurança.",
+    "importWalletButtonText": "Importar carteira"
   },
   "recoveryPhraseScreen": {
-    "title": "Sua Frase de Recuperação",
-    "warning": "Isso é só para seus olhos. Nunca compartilhe isso.",
-    "copyButtonText": "Copiar frase",
-    "footerNoteText": "Certifique-se de manter isso em um\nlocal seguro antes de continuar"
+    "hiddenTitle": "Frase de Recuperação",
+    "revealedTitle": "Você salvou, certo?",
+    "description": "Sua frase de recuperação é a única forma de restaurar sua carteira.",
+    "descriptionEmphasis": "Guarde-a em um lugar seguro.",
+    "revealButtonText": "Entendi. Revelar minha frase",
+    "hiddenPhraseAccessibilityLabel": "Frase de recuperação oculta",
+    "tapToCopy": "Toque para copiar",
+    "copied": "Copiado",
+    "warning": "Certifique-se de que você a salvou.\nSem ela, não é possível recuperar sua carteira."
   },
-  "validateRecoveryPhraseScreen": {
-    "title": "Digite a Palavra #{{number}}",
-    "instructionText": "Consulte a frase de recuperação que você acabou de salvar",
-    "errorText": "Palavra incorreta selecionada, tente novamente",
-    "defaultActionButtonText": "Continuar"
+  "recoveryPhraseField": {
+    "showPhrase": "Mostrar frase de recuperação",
+    "hidePhrase": "Ocultar frase de recuperação"
   },
   "biometricsOnboardingScreen": {
     "faceId": {
-      "title": "Habilitar Face ID",
-      "description": "Adicione outro nível de segurança ao exigir Face ID para desbloquear sua carteira ou aprovar transações.",
-      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
-    },
-    "touchId": {
-      "title": "Habilitar Touch ID",
-      "description": "Adicione outro nível de segurança ao exigir Touch ID para desbloquear sua carteira ou aprovar transações.",
-      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+      "title": "Desbloquear com Face ID",
+      "description": "Desbloqueie sua carteira e aprove transações mais rápido com o Face ID.",
+      "enableButtonText": "Habilitar Face ID"
     },
     "fingerprint": {
-      "title": "Habilitar Impressão Digital",
-      "description": "Adicione outro nível de segurança ao exigir Impressão Digital para desbloquear sua carteira ou aprovar transações.",
-      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+      "title": "Desbloquear com Impressão Digital",
+      "description": "Desbloqueie sua carteira e aprove transações mais rápido com a Impressão Digital.",
+      "enableButtonText": "Habilitar Impressão Digital"
+    },
+    "touchId": {
+      "title": "Desbloquear com Touch ID",
+      "description": "Desbloqueie sua carteira e aprove transações mais rápido com o Touch ID.",
+      "enableButtonText": "Habilitar Touch ID"
     },
     "faceBiometrics": {
-      "title": "Habilitar Reconhecimento Facial",
-      "description": "Adicione outro nível de segurança ao exigir Reconhecimento Facial para desbloquear sua carteira ou aprovar transações.",
-      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+      "title": "Desbloquear com Reconhecimento Facial",
+      "description": "Desbloqueie sua carteira e aprove transações mais rápido com o Reconhecimento Facial.",
+      "enableButtonText": "Habilitar Reconhecimento Facial"
     },
     "opticId": {
-      "title": "Habilitar Optic ID",
-      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+      "title": "Desbloquear com Optic ID",
+      "description": "Desbloqueie sua carteira e aprove transações mais rápido com o Optic ID.",
+      "enableButtonText": "Habilitar Optic ID"
     },
     "iris": {
-      "title": "Habilitar Iris",
-      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
-    }
+      "title": "Desbloquear com Íris",
+      "description": "Desbloqueie sua carteira e aprove transações mais rápido com a Íris.",
+      "enableButtonText": "Habilitar Íris"
+    },
+    "skipForNow": "Pular por enquanto"
   },
   "importWalletScreen": {
     "title": "Importar Carteira",
-    "textAreaPlaceholder": "Digite a frase de recuperação",
-    "textAreaNote": "Frases geralmente têm 12 ou 24 palavras",
-    "defaultActionButtonText": "Importar carteira"
+    "description": "Importe sua carteira com a frase de recuperação de 12 ou 24 palavras",
+    "textAreaPlaceholder": "Digite sua frase de recuperação"
   },
   "rebrandAnnouncementScreen": {
     "title": "O Freighter agora é Varial",
@@ -264,8 +266,7 @@
   },
   "onboarding": {
     "continue": "Continuar",
-    "pasteFromClipboard": "Colar da área de transferência",
-    "doThisLaterButtonText": "Fazer isso depois"
+    "next": "Avançar"
   },
   "connectedApps": {
     "title": "Aplicativos Conectados",
@@ -423,13 +424,6 @@
         "soroban": "Soroban"
       }
     }
-  },
-  "recoveryPhraseWarning": {
-    "yourRecoveryPhrase": "Sua frase de recuperação dá acesso total às suas carteiras e fundos.",
-    "ifYouForgetYourPassword": "Se você esquecer sua senha, use a frase de recuperação para acessar sua carteira",
-    "dontShareWithAnyone": "Não compartilhe esta frase com ninguém",
-    "neverAskForYourPhrase": "A Stellar Development Foundation nunca pedirá sua frase",
-    "ifYouLose": "Se você a perder, não poderemos recuperá-la"
   },
   "authStore": {
     "error": {
@@ -637,7 +631,7 @@
     "tokenAddressCopied": "Endereço do token copiado!"
   },
   "sendPaymentScreen": {
-    "title": "Enviar para",
+    "title": "Escolher destinatário",
     "inputPlaceholder": "Digite o endereço",
     "recents": "Recentes",
     "suggestions": "Sugestões",
@@ -819,6 +813,7 @@
       "max": "Máx"
     },
     "chooseRecipient": "Escolher destinatário",
+    "sendTo": "Enviar para",
     "setAmount": "Insira um valor",
     "reviewButton": "Revisar envio",
     "details": {
@@ -1051,7 +1046,9 @@
     "passwordNote": "Digite sua senha",
     "responsibilityNote": "Estou ciente de que o Varial não pode recuperar a chave secreta importada e armazená-la é minha responsabilidade.",
     "importButton": "Importar Carteira",
-    "invalidSecretKey": "Chave secreta inválida"
+    "invalidSecretKey": "Chave secreta inválida",
+    "showSecretKey": "Mostrar chave secreta",
+    "hideSecretKey": "Ocultar chave secreta"
   },
   "securityScreen": {
     "title": "Segurança",
@@ -1146,24 +1143,7 @@
       "recipientIsTokenContract": "Não é possível enviar para o contrato do próprio token"
     }
   },
-  "welcomeBanner": {
-    "welcomeMessage": "Bem vindo ao Varial!",
-    "fundingText": "Para começar a usar esta conta, ",
-    "fundingText2": "financie-a com pelo menos 2 XLM.",
-    "minimumBalanceText": "As contas Stellar exigem um saldo mínimo de 2 XLM para garantir a segurança da rede e prevenir spam.",
-    "reserveExplanationText": "Esta reserva ajuda a manter o ledger cobrindo taxas de transação e desencorajando a criação de contas desnecessárias, mantendo o sistema eficiente e funcional.",
-    "addXLM": "Adicionar XLM",
-    "doThisLater": "Fazer isso depois"
-  },
   "tokenIconAlt": "ícone do token {{code}}",
-  "recoverySkipModal": {
-    "title": "Tem certeza que deseja pular?",
-    "description1": "Sua frase de recuperação dá acesso à sua conta e é a única forma de acessá-la.",
-    "description2": "Se você perder, não poderemos recuperar. Antes de adicionar grandes quantias, certifique-se de visualizar e salvar sua frase de recuperação em um local seguro acessando ",
-    "description3": "Configurações → Segurança → Mostrar Frase de Recuperação.",
-    "confirm": "Entendi, continuar",
-    "cancel": "Voltar"
-  },
   "debug": {
     "title": "Debug",
     "actions": "Ações",
