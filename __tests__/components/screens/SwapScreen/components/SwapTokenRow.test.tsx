@@ -1,9 +1,12 @@
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import { SwapTokenRow } from "components/screens/SwapScreen/components/SwapTokenRow";
 import { NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
+import { classNameOf, hostParentOf } from "helpers/testUtils";
 import React from "react";
+import { StyleSheet } from "react-native";
+import { ReactTestInstance } from "react-test-renderer";
 
 jest.mock("hooks/useClipboard", () => ({
   useClipboard: () => ({
@@ -279,5 +282,164 @@ describe("SwapTokenRow", () => {
     // 24h% slots render "--" when their respective values are missing.
     expect(queryByText(/\$0/)).toBeNull();
     expect(getAllByText("--").length).toBeGreaterThanOrEqual(1);
+  });
+
+  describe("rowStyle", () => {
+    const styleOf = (node?: ReactTestInstance | null) =>
+      StyleSheet.flatten(node?.props.style);
+
+    const renderHeldRow = (rowStyle?: "default" | "shared") =>
+      render(
+        <SwapTokenRow
+          variant="held"
+          rowStyle={rowStyle}
+          balance={mockHeldBalance}
+          network={NETWORKS.PUBLIC}
+          onPress={jest.fn()}
+          testID="token-option-USDC"
+        />,
+      );
+
+    it("shared held row uses the shared type", () => {
+      renderHeldRow("shared");
+
+      // Text/MD/600 for the code and the fiat value; the "<n> USDC" amount
+      // takes Figma's 20pt line height instead of the app's 22.
+      expect(styleOf(screen.getByText("USDC"))).toMatchObject({
+        fontSize: 16,
+        fontWeight: "600",
+      });
+      expect(styleOf(screen.getByText(/\d\s+USDC$/))).toMatchObject({
+        lineHeight: 20,
+      });
+      expect(styleOf(screen.getByText("$100.00"))).toMatchObject({
+        fontWeight: "600",
+      });
+    });
+
+    it("shared held row sets the amount 2pt under the code", () => {
+      renderHeldRow("shared");
+
+      expect(styleOf(screen.getByText(/\d\s+USDC$/))).toMatchObject({
+        marginTop: 2,
+      });
+    });
+
+    it("shared held row pads 12pt top and bottom and drops the 24pt bottom margin", () => {
+      renderHeldRow("shared");
+
+      const row = screen.getByTestId("token-option-USDC");
+      // The padding is a style so it scales with the screen like the token
+      // rows' (pxValue is the identity in tests); NativeWind doesn't apply
+      // classes in tests, so the margin is read off the class names.
+      expect(styleOf(row)).toMatchObject({ paddingVertical: 12 });
+      expect(classNameOf(row)).toContain("flex-row");
+      expect(classNameOf(row)).not.toContain("mb-6");
+    });
+
+    it("shared held row scales the 16pt gap between the icon and the text", () => {
+      renderHeldRow("shared");
+
+      const textColumn = hostParentOf(screen.getByText("USDC"));
+      // A style, not the 14pt `ml-4`, so the text starts where the divider
+      // under the row does at every screen width.
+      expect(styleOf(textColumn)).toMatchObject({ marginLeft: 16 });
+      expect(textColumn?.props.className).not.toContain("ml-4");
+    });
+
+    it("shared held row scales the 16pt gap before the right column", () => {
+      renderHeldRow("shared");
+
+      // The view around the icon and the text column.
+      const leftBlock = hostParentOf(hostParentOf(screen.getByText("USDC")));
+      // A style, not the 14pt `mr-4`, so the right column sits where Home's
+      // rows put it at every screen width.
+      expect(styleOf(leftBlock)).toMatchObject({ marginRight: 16 });
+      expect(leftBlock?.props.className).not.toContain("mr-4");
+    });
+
+    it("shared held row shows the right column Home's rows show", () => {
+      renderHeldRow("shared");
+
+      expect(screen.getByTestId("right-section")).toBeTruthy();
+    });
+
+    it("default held row is unchanged", () => {
+      renderHeldRow("default");
+
+      const row = screen.getByTestId("token-option-USDC");
+      expect(classNameOf(row)).toContain("mb-6");
+      expect(styleOf(row)).not.toHaveProperty("paddingVertical");
+      expect(hostParentOf(screen.getByText("USDC"))?.props.className).toContain(
+        "ml-4",
+      );
+      expect(
+        hostParentOf(hostParentOf(screen.getByText("USDC")))?.props.className,
+      ).toContain("mr-4");
+      expect(styleOf(screen.getByText("USDC"))).toMatchObject({
+        fontWeight: "500",
+      });
+      expect(screen.queryByTestId("right-section")).toBeNull();
+    });
+
+    it("keeps the default row when rowStyle is left out", () => {
+      renderHeldRow();
+
+      expect(classNameOf(screen.getByTestId("token-option-USDC"))).toContain(
+        "mb-6",
+      );
+    });
+
+    it("ignores rowStyle on non-held rows", () => {
+      render(
+        <SwapTokenRow
+          variant="trending"
+          rowStyle="shared"
+          record={mockSearchRecord}
+          priceInfo={{ currentPrice: new BigNumber("0.05") }}
+          network={NETWORKS.PUBLIC}
+          onPress={jest.fn()}
+          testID="token-option-AQUA"
+        />,
+      );
+
+      expect(classNameOf(screen.getByTestId("token-option-AQUA"))).toContain(
+        "mb-6",
+      );
+      expect(styleOf(screen.getByText("AQUA"))).toMatchObject({
+        fontWeight: "500",
+      });
+    });
+
+    it("re-renders when rowStyle changes (memo comparator regression)", () => {
+      const onPress = jest.fn();
+      const { rerender } = render(
+        <SwapTokenRow
+          variant="held"
+          balance={mockHeldBalance}
+          network={NETWORKS.PUBLIC}
+          onPress={onPress}
+        />,
+      );
+
+      expect(styleOf(screen.getByText("USDC"))).toMatchObject({
+        fontWeight: "500",
+      });
+
+      // Same balance object and the same onPress, so only rowStyle differs.
+      rerender(
+        <SwapTokenRow
+          variant="held"
+          rowStyle="shared"
+          balance={mockHeldBalance}
+          network={NETWORKS.PUBLIC}
+          onPress={onPress}
+        />,
+      );
+
+      expect(styleOf(screen.getByText("USDC"))).toMatchObject({
+        fontWeight: "600",
+      });
+    });
   });
 });

@@ -4,6 +4,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import { DefaultListFooter } from "components/DefaultListFooter";
 import Spinner from "components/Spinner";
+import { TokenRowDivider } from "components/TokenRowStyle";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { SwapTokenRow } from "components/screens/SwapScreen/components/SwapTokenRow";
 import { UnverifiedTokenInfoBottomSheet } from "components/screens/SwapScreen/components/UnverifiedTokenInfoBottomSheet";
@@ -50,6 +51,12 @@ type SwapToScreenProps = NativeStackScreenProps<
   typeof SWAP_ROUTES.SWAP_SCREEN
 >;
 
+/**
+ * Swap's token picker, for the token to swap from or to. It searches as you
+ * type and lists your tokens ("Your tokens", in the shared token row, divided
+ * up to the last row) and, when picking the token to swap to, popular tokens
+ * and search results you don't hold yet.
+ */
 export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   navigation,
   route,
@@ -318,21 +325,30 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
               </View>
             );
           }}
-          renderItem={({ item, section }) => {
+          renderItem={({ item, index, section }) => {
             const isSearchActive = !!searchTerm;
+            // Only the "Your tokens" section takes the shared token row style
+            // and a divider between its rows, none under the last. A held
+            // token shown in another section keeps the default row.
+            const isYourTokens = section.kind === "held";
+            const isDivided = isYourTokens && index < section.data.length - 1;
 
             // "Your tokens" section always uses the held variant
-            if (section.kind === "held" && isHeldToken(item)) {
+            if (isYourTokens && isHeldToken(item)) {
               return (
-                <SwapTokenRow
-                  variant="held"
-                  balance={item}
-                  network={network}
-                  testID={`token-option-${item.tokenCode}`}
-                  onPress={() =>
-                    handleHeldPress(item, SwapSelectionSource.BALANCES)
-                  }
-                />
+                <>
+                  <SwapTokenRow
+                    variant="held"
+                    rowStyle="shared"
+                    balance={item}
+                    network={network}
+                    testID={`token-option-${item.tokenCode}`}
+                    onPress={() =>
+                      handleHeldPress(item, SwapSelectionSource.BALANCES)
+                    }
+                  />
+                  {isDivided ? <TokenRowDivider /> : null}
+                </>
               );
             }
 
@@ -347,20 +363,26 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
 
               if (heldMatch) {
                 return (
-                  <SwapTokenRow
-                    variant="held"
-                    balance={heldMatch}
-                    network={network}
-                    testID={`token-option-${heldMatch.tokenCode}`}
-                    onPress={() =>
-                      handleHeldPress(
-                        heldMatch,
-                        isSearchActive
-                          ? SwapSelectionSource.SEARCH
-                          : SwapSelectionSource.POPULAR,
-                      )
-                    }
-                  />
+                  <>
+                    <SwapTokenRow
+                      variant="held"
+                      // An active search lists its held matches here, as
+                      // records, under the "Your tokens" header.
+                      rowStyle={isYourTokens ? "shared" : "default"}
+                      balance={heldMatch}
+                      network={network}
+                      testID={`token-option-${heldMatch.tokenCode}`}
+                      onPress={() =>
+                        handleHeldPress(
+                          heldMatch,
+                          isSearchActive
+                            ? SwapSelectionSource.SEARCH
+                            : SwapSelectionSource.POPULAR,
+                        )
+                      }
+                    />
+                    {isDivided ? <TokenRowDivider /> : null}
+                  </>
                 );
               }
 

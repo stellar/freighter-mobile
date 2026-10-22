@@ -52,7 +52,7 @@ import { useTokenActions } from "hooks/useTokenActions";
 import useTokenDetails from "hooks/useTokenDetails";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
-import { View, Dimensions, Platform } from "react-native";
+import { View, Platform } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import {
@@ -92,7 +92,6 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
-  const { width } = Dimensions.get("window");
   const { swap_enabled: swapEnabled } = useRemoteConfigStore();
   // One shared predicate (kill switch + mainnet) for all three price-history
   // sections; each section also enforces it itself, so they cannot drift.
@@ -379,7 +378,9 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   }, [isMalicious, isSuspicious]);
 
   return (
-    <BaseLayout insets={{ top: false, bottom: false }}>
+    // The bottom inset (the safe area plus 24pt) keeps Swap and Send where
+    // Figma has them, with nothing under them.
+    <BaseLayout insets={{ top: false, bottom: true }}>
       <View testID="token-details-screen" className="flex-1 mt-5 max-xs:mt-2">
         <HistoryList
           ignoreTopInset
@@ -447,7 +448,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           }
         />
       </View>
-      <View className="mt-7 pb-3 gap-7">
+      <View className="mt-7">
         <View className="flex-row gap-3">
           {swapEnabled && isClassicAsset && (
             <View className="flex-1">
@@ -468,10 +469,6 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             </Button>
           </View>
         </View>
-        <View
-          className="border-b mb-6 -ml-7 border-border-primary"
-          style={{ width }}
-        />
       </View>
       <BottomSheet
         modalRef={securityWarningBottomSheetModalRef}

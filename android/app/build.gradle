@@ -158,6 +158,8 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    // The floating tab bar's background blur on Android 12+ (PillBlurPackage).
+    implementation 'com.github.Dimezis:BlurView:version-3.2.0'
     // Fresco implementation following react native documentation and fresco docs
     // For animated GIF support
     implementation 'com.facebook.fresco:animated-gif:3.6.0'

@@ -3,6 +3,7 @@ import { MarbleAvatar } from "components/sds/Avatar/MarbleAvatar";
 import { getTheme } from "config/theme";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { StyleSheet } from "react-native";
 
 /* eslint-disable */
 // Mock the useColors hook
@@ -28,12 +29,14 @@ describe("Avatar", () => {
   describe("Size handling", () => {
     const sizes = [
       AvatarSizes.SMALL,
+      AvatarSizes.SMALL_MEDIUM,
       AvatarSizes.MEDIUM,
       AvatarSizes.LARGE,
       AvatarSizes.EXTRA_LARGE,
     ];
     const sizeClasses = {
       [AvatarSizes.SMALL]: "w-[26px] h-[26px]",
+      [AvatarSizes.SMALL_MEDIUM]: "w-[32px] h-[32px]",
       [AvatarSizes.MEDIUM]: "w-[38px] h-[38px]",
       [AvatarSizes.LARGE]: "w-[40px] h-[40px]",
       [AvatarSizes.EXTRA_LARGE]: "w-[50px] h-[50px]",
@@ -103,6 +106,17 @@ describe("Avatar", () => {
       },
     );
 
+    it("leaves touches to whatever holds it", () => {
+      // The canvas is a native view that takes a touch for itself, so a
+      // button around the avatar, such as Discover's account switcher next
+      // to the search bar, never got the tap.
+      const { UNSAFE_getByType: getByType } = renderWithProviders(
+        <Avatar size={AvatarSizes.LARGE} publicAddress={TEST_PUBLIC_ADDRESS} />,
+      );
+
+      expect(getByType(MarbleAvatar).parent?.props.pointerEvents).toBe("none");
+    });
+
     it("renders with user name (initials)", () => {
       const { getByTestId, getByText } = renderWithProviders(
         <Avatar
@@ -124,6 +138,23 @@ describe("Avatar", () => {
           color: getTheme("light").colors.text.secondary,
         }),
       );
+    });
+
+    it.each([
+      [AvatarSizes.SMALL, 14],
+      [AvatarSizes.SMALL_MEDIUM, 14],
+      [AvatarSizes.MEDIUM, 16],
+      [AvatarSizes.LARGE, 18],
+      [AvatarSizes.EXTRA_LARGE, 20],
+      [AvatarSizes.DOUBLE_EXTRA_LARGE, 20],
+    ])("sets the initials of a %s avatar in %ipt text", (size, fontSize) => {
+      const { getByText } = renderWithProviders(
+        <Avatar size={size} userName={TEST_USER_NAME} />,
+      );
+
+      expect(StyleSheet.flatten(getByText("JD").props.style)).toMatchObject({
+        fontSize,
+      });
     });
 
     it("renders default icon when no publicAddress or userName provided", () => {
@@ -188,9 +219,16 @@ describe("Avatar", () => {
     });
 
     it("shows indicator with correct size based on avatar size", () => {
-      const sizes = [AvatarSizes.SMALL, AvatarSizes.MEDIUM, AvatarSizes.LARGE];
+      const sizes = [
+        AvatarSizes.SMALL,
+        AvatarSizes.SMALL_MEDIUM,
+        AvatarSizes.MEDIUM,
+        AvatarSizes.LARGE,
+      ];
       const indicatorSizes = {
         [AvatarSizes.SMALL]: "w-3 h-3",
+        // As the medium avatar's: the size table gives both a 10pt indicator.
+        [AvatarSizes.SMALL_MEDIUM]: "w-4 h-4",
         [AvatarSizes.MEDIUM]: "w-4 h-4",
         [AvatarSizes.LARGE]: "w-5 h-5",
       };

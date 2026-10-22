@@ -64,6 +64,11 @@
       "imported": "Importada"
     }
   },
+  "tabBar": {
+    "history": "Atividade",
+    "home": "Início",
+    "discover": "Descobrir"
+  },
   "renameAccountModal": {
     "saveName": "Salvar nome",
     "nameInputPlaceholder": "Digite um nome para sua carteira"
@@ -310,6 +315,7 @@
     "showTabs": "Mostrar {{count}} abas"
   },
   "history": {
+    "title": "Atividade",
     "emptyState": {
       "title": "Nenhuma transação para mostrar"
     },
@@ -496,20 +502,18 @@
     "title": "Tokens",
     "error": "Erro ao carregar saldos",
     "unfundedAccount": {
-      "learnMore": "Saiba mais",
       "fundAccountButton": "Adicionar XLM",
-      "title": "Um pouco vazio por aqui...",
-      "messageStart": "Adicione pelo menos",
-      "messageAmount": "2 XLM",
-      "messageEnd": "para ativar sua carteira. Depois de financiada, você poderá adicionar tokens e fazer transações."
+      "title": "Ative sua carteira",
+      "description": "Adicione pelo menos 2 XLM para começar"
     },
     "addTokenButton": "Adicionar token"
   },
   "collectiblesGrid": {
     "title": "Colecionáveis",
     "error": "Erro ao carregar colecionáveis",
-    "empty": "Nenhum colecionável ainda",
+    "empty": "Colecione seu primeiro NFT",
     "addCollectibleButton": "Adicionar colecionável",
+    "emptyButton": "Adicionar colecionável",
     "itemHiddenLabel": "{{name}}, oculto",
     "emptyDescription": "Os colecionáveis que você possui aparecerão aqui."
   },

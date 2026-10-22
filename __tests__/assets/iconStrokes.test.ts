@@ -5,7 +5,7 @@ import { join } from "path";
  * Icon's strokeWidth reaches an SVG's stroke only when the file sets its
  * stroke width on the root <svg>: svgr spreads props onto the root, and a
  * width set on a <path> would win over it. These are the icons whose stroke
- * the Varial header and onboarding screens set.
+ * the Varial header, onboarding and Home screens set.
  */
 const ICONS_WITH_ROOT_STROKE = [
   "arrow-left",
@@ -15,6 +15,13 @@ const ICONS_WITH_ROOT_STROKE = [
   "copy-01",
   "eye",
   "eye-off",
+  "clock-rewind",
+  "compass-03",
+  "chevron-down",
+  "chevron-up",
+  "plus",
+  "arrow-up",
+  "refresh-cw-02",
 ];
 
 describe.each(ICONS_WITH_ROOT_STROKE)("%s.svg", (name) => {

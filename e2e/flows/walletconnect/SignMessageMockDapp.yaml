@@ -52,11 +52,17 @@ tags:
 - tapOn:
     id: wc-e2e-helper-fab
 
-# Wait for modal to open and message input to be visible
-- extendedWaitUntil:
-    visible:
+# Wait for modal to open and bring the message input into view. The helper's
+# list is capped at 500pt, and on Android's 411pt-wide CI screen the session
+# details above it (session ID, WC URI, Copy/Pair, the auth-entry buttons)
+# leave only the top 8pt of the input's box on screen, so a plain visibility
+# wait times out. Scroll down until it shows, as the sign button below does.
+- scrollUntilVisible:
+    element:
       id: wc-e2e-message-input
-    timeout: 5000
+    direction: DOWN
+    centerElement: true
+    timeout: 10000
 
 # Fill in message
 - tapOn:

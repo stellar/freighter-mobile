@@ -18,6 +18,7 @@ import { DEFAULT_PADDING, NetworkDetails } from "config/constants";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HistorySection, HistoryData } from "hooks/useGetHistoryData";
+import { useScrollUnderHeader } from "hooks/useScrollUnderHeader";
 import React, { useCallback, useRef, useState } from "react";
 import {
   RefreshControl,
@@ -59,6 +60,19 @@ interface HistoryListProps {
    * taking over mid-drag.
    */
   scrollEnabled?: boolean;
+  /**
+   * How far up the list's content ends, so its last row scrolls clear of
+   * what floats over the list's bottom: the History tab passes the floating
+   * tab bar's clearance. The token detail screen has nothing there.
+   */
+  bottomClearance?: number;
+  /**
+   * How far down the list starts its content and its spinners. The History
+   * tab runs the list from the screen's top, under its floating Activity bar,
+   * and passes the bar's height. The token detail screen starts the list
+   * below its own header, so it has nothing here.
+   */
+  topInset?: number;
 }
 
 /**
@@ -80,6 +94,8 @@ const HistoryList: React.FC<HistoryListProps> = ({
   refreshActionPosition = "center",
   loadingPlaceholder = "spinner",
   scrollEnabled = true,
+  bottomClearance = 0,
+  topInset = 0,
 }) => {
   const { t } = useAppTranslation();
   const { width: windowWidth } = useWindowDimensions();
@@ -88,6 +104,9 @@ const HistoryList: React.FC<HistoryListProps> = ({
     useState<TransactionDetails | null>(null);
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const sectionListRef = useRef<SectionList>(null);
+  // While the navigation refresh spinner shows above the list, it takes the
+  // top inset and the list doesn't.
+  const underHeader = useScrollUnderHeader(isNavigationRefresh ? 0 : topInset);
 
   // Custom refresh indicator for navigation refreshes
   const CustomRefreshIndicator = useCallback(() => {
@@ -97,12 +116,18 @@ const HistoryList: React.FC<HistoryListProps> = ({
     // background of its own would be a second token that has to keep agreeing
     // with the page, and the list scrolls below it rather than under it, so
     // there is nothing for it to cover.
+    // It sits above the list while it shows, so it takes the top inset and
+    // the list's content doesn't.
     return (
-      <View className="flex-row justify-center items-center py-3">
+      <View
+        testID="history-navigation-refresh"
+        className="flex-row justify-center items-center py-3"
+        style={{ marginTop: topInset }}
+      >
         <Spinner size="large" />
       </View>
     );
-  }, [isNavigationRefresh]);
+  }, [isNavigationRefresh, topInset]);
 
   const handleTransactionDetails = useCallback(
     (transactionDetail: TransactionDetails) => {
@@ -265,14 +290,25 @@ const HistoryList: React.FC<HistoryListProps> = ({
           renderSectionHeader={renderSectionHeader}
           stickySectionHeadersEnabled={false}
           alwaysBounceVertical={false}
+          {...(topInset > 0 && underHeader.scrollViewProps)}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing && !isNavigationRefresh}
               onRefresh={onRefresh}
+              progressViewOffset={
+                topInset > 0 ? underHeader.progressViewOffset : undefined
+              }
             />
           }
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            minHeight: "100%",
+            // Under the History tab's bar, the list starts below it (see
+            // useScrollUnderHeader); on iOS that also replaces the fill.
+            ...(topInset > 0 && underHeader.fillStyle),
+            paddingBottom: bottomClearance,
+          }}
           ListHeaderComponent={ListHeaderComponent}
           ListFooterComponent={DefaultListFooter}
           className={className}

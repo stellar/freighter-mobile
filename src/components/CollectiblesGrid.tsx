@@ -3,7 +3,6 @@ import { DefaultListFooter } from "components/DefaultListFooter";
 import { EmptyState } from "components/EmptyState";
 import Spinner from "components/Spinner";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, DEFAULT_REFRESH_DELAY } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
@@ -31,14 +30,20 @@ interface CollectiblesGridProps {
   /** Whether to disable internal scrolling (for use in parent ScrollView) */
   disableInnerScrolling?: boolean;
   /**
-   * Renders an "Add collectible" action inside the empty state. Home turns it
-   * on while its tokens tab shows an empty state, so both tabs offer the same
-   * kind of button. Off by default — other callers have no pill to match.
+   * Press handler for the Add Collectible button in the empty card and the
+   * error view. The button only renders when one is provided.
    */
-  showEmptyStateCta?: boolean;
-  /** Press handler for the CTA; it only renders when one is provided. */
   onAddCollectiblePress?: () => void;
 }
+
+/**
+ * The 16pt Figma leaves between two collections, for the scrolling list; the
+ * non-scrolling one gets it from a gap on its container instead. Neither
+ * leaves any after the last collection.
+ */
+const CollectionSeparator: React.FC = () => (
+  <View className="h-[16px]" testID="collection-separator" />
+);
 
 /**
  * CollectiblesGrid Component
@@ -68,7 +73,6 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
   ({
     onCollectiblePress,
     disableInnerScrolling = false,
-    showEmptyStateCta = false,
     onAddCollectiblePress,
   }) => {
     const { t } = useAppTranslation();
@@ -126,25 +130,26 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       );
     }
 
-    const shouldShowEmptyStateCta =
-      showEmptyStateCta && Boolean(onAddCollectiblePress);
-
-    // Same variant/size as the tokens CTA. Shared by the empty AND error views:
-    // an error replaces the empty state, so leaving it out there would strand
-    // the tab with no way to add anything while a fetch is failing.
-    const addCollectibleCta = shouldShowEmptyStateCta ? (
+    // Figma puts it in the empty card (?node-id=372-11772), funded or not,
+    // the same pill as the tokens card's Add XLM. The error view shares it: an
+    // error replaces the empty card, so leaving it out there would strand the
+    // tab with no way to add anything while a fetch is failing.
+    const addCollectibleCta = onAddCollectiblePress ? (
       <Button
         secondary
-        xl
+        lg
         onPress={onAddCollectiblePress}
         testID="add-collectible-empty-state-button"
       >
-        {t("collectiblesGrid.addCollectibleButton")}
+        {t("collectiblesGrid.emptyButton")}
       </Button>
     ) : null;
 
+    // The error and empty views are as tall as their content, so Home's inline
+    // Add collectible button follows them instead of sitting at the bottom of
+    // the screen. Only the spinner fills the space, to sit centred in it.
     const renderErrorView = () => (
-      <View className="flex-1">
+      <View>
         <View
           className="pt-4"
           style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
@@ -153,8 +158,8 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             {t("collectiblesGrid.error")}
           </Text>
         </View>
-        {/* Matches EmptyState's 24px gap so the action sits the same distance
-        from the text in both views. */}
+        {/* The error view keeps its own layout; only its button follows the
+        empty card's. */}
         {addCollectibleCta ? (
           <View className="mt-6 items-center">{addCollectibleCta}</View>
         ) : null}
@@ -162,12 +167,16 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     );
 
     const renderEmptyView = () => (
-      <View className="flex-1">
+      <View>
         <EmptyState
-          Icon={Icon.Image01}
           title={t("collectiblesGrid.empty")}
           description={t("collectiblesGrid.emptyDescription")}
           testID="collectibles-empty-state"
+          contentPaddingHorizontal={32}
+          // Figma has the card 16pt from the screen's edges and 8pt under the
+          // tab row. The grid is full width, and its contents start 12pt under
+          // the row (TokensCollectiblesTabs), so the card starts 4pt above.
+          style={{ marginHorizontal: pxValue(16), marginTop: -pxValue(4) }}
         >
           {/* EmptyState's own gap supplies the spacing here. */}
           {addCollectibleCta}
@@ -185,8 +194,13 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
         return renderEmptyView();
       }
 
+      // A gap, not a margin on each collection: Figma leaves none after the
+      // last one. No flex either: the container is as tall as its collections,
+      // so what follows (Home's inline Add collectible button) sits under the
+      // last one. The empty and error views are as tall as their content too;
+      // only the loading spinner fills the space, to sit centred in it.
       return (
-        <View>
+        <View className="gap-[16px]">
           {filteredCollections.map((collection) =>
             renderCollection({ item: collection }),
           )}
@@ -202,6 +216,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
         keyExtractor={(collection) => collection.collectionAddress}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1 }}
+        ItemSeparatorComponent={CollectionSeparator}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}

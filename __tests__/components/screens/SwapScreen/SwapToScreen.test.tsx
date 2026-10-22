@@ -9,7 +9,8 @@ import { SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { HookStatus, TokenTypeWithCustomToken } from "config/types";
 import { useSwapStore } from "ducks/swap";
-import { renderWithProviders } from "helpers/testUtils";
+import { classNameOf, renderWithProviders } from "helpers/testUtils";
+import { useBalancesList } from "hooks/useBalancesList";
 import React from "react";
 import { InteractionManager } from "react-native";
 import { analytics } from "services/analytics";
@@ -601,6 +602,129 @@ describe("SwapToScreen", () => {
       expect(setSourceTokenSpy).toHaveBeenCalledWith("", "");
       expect(setDestinationTokenSpy).toHaveBeenCalledWith(
         expect.objectContaining({ tokenCode: "USDC" }),
+      );
+    });
+  });
+
+  describe("Your tokens row style", () => {
+    // NativeWind doesn't apply classes in tests, so the shared style is told
+    // from the default one by the default's 24pt bottom margin (`mb-6`).
+    const issuer = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+    // USDC is held, so any record for it renders as a held row.
+    const heldUsdc = {
+      ...mockHeldBalance,
+      total: new BigNumber("250"),
+      fiatTotal: new BigNumber("250"),
+      percentagePriceChange24h: new BigNumber("1.5"),
+    };
+    const heldXlm = {
+      id: "XLM",
+      tokenCode: "XLM",
+      token: { type: "native" as const, code: "XLM" as const },
+      total: new BigNumber("1000"),
+      decimals: 7,
+    } as any;
+    const usdcRecord = {
+      tokenCode: "USDC",
+      issuer,
+      isNative: false,
+      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      hasTrustline: true,
+      domain: "centre.io",
+    };
+    const xlmRecord = {
+      tokenCode: "XLM",
+      isNative: true,
+      tokenType: TokenTypeWithCustomToken.NATIVE,
+      hasTrustline: true,
+    };
+
+    beforeEach(() => {
+      (useBalancesList as jest.Mock).mockReturnValue({
+        balanceItems: [heldUsdc, heldXlm],
+      });
+    });
+
+    afterEach(() => {
+      (useBalancesList as jest.Mock).mockReturnValue({ balanceItems: [] });
+    });
+
+    it("divides only the Your tokens rows", () => {
+      // USDC shows up twice: in Your tokens, and as a held match inside the
+      // Popular tokens section.
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [heldUsdc, heldXlm],
+        popularTokens: [usdcRecord, mockPopularRecord],
+      });
+
+      const { getAllByTestId, getByText } = renderWithProviders(
+        <SwapToScreen {...mockNavProps} />,
+      );
+
+      expect(getByText("Your tokens")).toBeTruthy();
+      expect(getByText("Popular tokens")).toBeTruthy();
+
+      // One divider between the Your tokens rows (USDC and XLM): none under
+      // the section's last row, and none under the Popular tokens rows.
+      expect(getAllByTestId("token-row-divider")).toHaveLength(1);
+
+      // Same token, two rows: the one in Your tokens takes the shared style
+      // (no bottom margin), the one in Popular tokens keeps its own.
+      const [yourTokensRow, popularRow] = getAllByTestId("token-option-USDC");
+      expect(classNameOf(yourTokensRow)).not.toContain("mb-6");
+      expect(classNameOf(popularRow)).toContain("mb-6");
+      expect(classNameOf(getAllByTestId("token-option-AQUA")[0])).toContain(
+        "mb-6",
+      );
+    });
+
+    it("divides the Your tokens rows of an active search, not the held match inside Verified", () => {
+      // In a search the Your tokens section lists records for the held
+      // tokens that match, and each renders as a held row.
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        heldSearchMatches: [usdcRecord, xlmRecord],
+        verifiedSearchMatches: [usdcRecord, mockPopularRecord],
+        searchTerm: "u",
+      });
+
+      const { getAllByTestId, getByText } = renderWithProviders(
+        <SwapToScreen {...mockNavProps} />,
+      );
+
+      expect(getByText(/^Your tokens?$/)).toBeTruthy();
+      expect(getByText("Verified")).toBeTruthy();
+
+      // Between the two held matches, none under the last.
+      expect(getAllByTestId("token-row-divider")).toHaveLength(1);
+
+      const [yourTokensRow, verifiedRow] = getAllByTestId("token-option-USDC");
+      expect(classNameOf(yourTokensRow)).not.toContain("mb-6");
+      expect(classNameOf(verifiedRow)).toContain("mb-6");
+    });
+
+    it("leaves a picker with no Your tokens section undivided", () => {
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [],
+        popularTokens: [usdcRecord, mockPopularRecord],
+      });
+
+      const { queryAllByTestId, getAllByTestId } = renderWithProviders(
+        <SwapToScreen {...mockNavProps} />,
+      );
+
+      expect(queryAllByTestId("token-row-divider")).toHaveLength(0);
+      expect(classNameOf(getAllByTestId("token-option-USDC")[0])).toContain(
+        "mb-6",
       );
     });
   });

@@ -64,6 +64,11 @@
       "imported": "Imported"
     }
   },
+  "tabBar": {
+    "history": "Activity",
+    "home": "Home",
+    "discover": "Discover"
+  },
   "renameAccountModal": {
     "saveName": "Save name",
     "nameInputPlaceholder": "Enter a name for your account"
@@ -344,6 +349,7 @@
     "showTabs": "Show {{count}} tabs"
   },
   "history": {
+    "title": "Activity",
     "emptyState": {
       "title": "No transactions to show"
     },
@@ -530,20 +536,18 @@
     "title": "Tokens",
     "error": "Error loading balances",
     "unfundedAccount": {
-      "learnMore": "Learn more",
       "fundAccountButton": "Add XLM",
-      "title": "Looking a little empty...",
-      "messageStart": "Add at least",
-      "messageAmount": "2 XLM",
-      "messageEnd": "to activate your wallet. Once funded, you'll be able to add tokens and make transactions."
+      "title": "Activate your wallet",
+      "description": "Add at least 2 XLM to get started"
     },
     "addTokenButton": "Add token"
   },
   "collectiblesGrid": {
     "title": "Collectibles",
     "error": "Error loading collectibles",
-    "empty": "No collectibles yet",
+    "empty": "Collect your first NFT",
     "addCollectibleButton": "Add collectible",
+    "emptyButton": "Add Collectible",
     "itemHiddenLabel": "{{name}}, hidden",
     "emptyDescription": "Collectibles you own will appear here."
   },

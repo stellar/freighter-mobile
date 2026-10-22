@@ -1,6 +1,5 @@
 import { NativeStackHeaderProps } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
-import HomeScreenHeader from "components/screens/HomeScreen/HomeScreenHeader";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -22,9 +21,10 @@ const classNamesIn = (node: unknown): string[] => {
   return [...own, ...classNamesIn(el.children)];
 };
 
+// HomeScreenHeader paints the same color through its fade, so its own tests
+// check the fade's color; with a banner it falls back to the bar's fill.
 const headers = [
   { name: "CustomNavigationHeader", Header: CustomNavigationHeader },
-  { name: "HomeScreenHeader", Header: HomeScreenHeader },
 ];
 
 describe.each(headers)("$name", ({ Header }) => {

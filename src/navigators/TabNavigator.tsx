@@ -1,16 +1,24 @@
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import {
+  BottomTabBarProps,
+  createBottomTabNavigator,
+} from "@react-navigation/bottom-tabs";
+import { FloatingTabBar } from "components/FloatingTabBar";
+import {
+  isPillBlurSupported,
+  renderPillBlurScreenLayout,
+} from "components/FloatingTabBar/PillBlur";
 import { DiscoveryScreen } from "components/screens/DiscoveryScreen/DiscoveryScreen";
 import { HistoryScreen } from "components/screens/HistoryScreen";
 import HomeScreen from "components/screens/HomeScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
-import Icon from "components/sds/Icon";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
 import { useRecentProtocolsStore } from "ducks/recentProtocols";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
-import { px, pxValue } from "helpers/dimensions";
+import { androidApiLevel } from "helpers/device";
+import useAppTranslation from "hooks/useAppTranslation";
 import { useFetchCollectibles } from "hooks/useFetchCollectibles";
 import { useFetchPricedBalances } from "hooks/useFetchPricedBalances";
 import { useFetchTokenIcons } from "hooks/useFetchTokenIcons";
@@ -19,66 +27,32 @@ import { useHistoryPolling } from "hooks/useHistoryPolling";
 import { usePricedBalancesPolling } from "hooks/usePricedBalancesPolling";
 import { useSwapTokenListsPrewarm } from "hooks/useSwapTokenListsPrewarm";
 import { useSyncAccountsFiatTotals } from "hooks/useSyncAccountsFiatTotals";
-import useTheme from "hooks/useTheme";
+import { renderTabBarIcon } from "navigators/tabBarIcons";
 import React, { useEffect, useMemo } from "react";
-import styled from "styled-components/native";
+import { Platform } from "react-native";
 
 const MainTab = createBottomTabNavigator<MainTabStackParamList>();
 
-const TAB_ICON_SIZE = 20;
+/**
+ * The floating pill, in place of React Navigation's full-width bar. It floats
+ * over the screens, so each tab screen ends its content above it (see
+ * `useFloatingTabBarClearance`).
+ */
+const renderFloatingTabBar = (props: BottomTabBarProps) => (
+  <FloatingTabBar {...props} />
+);
 
-interface TabIconWrapperProps {
-  focused: boolean;
-  $activeBackground: string;
-  $inactiveBackground: string;
-}
-
-const TabIconWrapper = styled.View<TabIconWrapperProps>`
-  width: ${px(80)};
-  height: ${px(36)};
-  margin-top: ${px(10)};
-  border-radius: ${px(100)};
-  justify-content: center;
-  align-items: center;
-  background: ${({
-    focused,
-    $activeBackground,
-    $inactiveBackground,
-  }: TabIconWrapperProps) =>
-    focused ? $activeBackground : $inactiveBackground};
-`;
-
-const TAB_ICONS = {
-  [MAIN_TAB_ROUTES.TAB_HISTORY]: Icon.ClockRewind,
-  [MAIN_TAB_ROUTES.TAB_HOME]: Icon.Home02,
-  [MAIN_TAB_ROUTES.TAB_DISCOVERY]: Icon.Compass03,
-} as const;
-
-interface TabIconProps {
-  route: { name: keyof typeof TAB_ICONS };
-  focused: boolean;
-  color: string;
-}
-
-const TabIcon = ({ route, focused, color }: TabIconProps) => {
-  const IconComponent = TAB_ICONS[route.name];
-  const theme = useTheme();
-
-  return (
-    <TabIconWrapper
-      focused={focused}
-      $activeBackground={theme.colors.tab.activeBackground}
-      $inactiveBackground={theme.colors.tab.inactiveBackground}
-    >
-      <IconComponent size={TAB_ICON_SIZE} color={color} />
-    </TabIconWrapper>
-  );
-};
-
+/**
+ * The main tabs: History, Home and, behind the `discover_enabled` remote
+ * flag, Discover. They sit under the floating pill tab bar; on Android 12+
+ * each tab screen is wrapped in the blur target the pill blurs. It also loads
+ * Discover's protocols once, after the recent-protocols store rehydrates, and
+ * shows a loading screen until there's an active account.
+ */
 export const TabNavigator = () => {
   const { account } = useGetActiveAccount();
   const publicKey = account?.publicKey;
-  const theme = useTheme();
+  const { t } = useAppTranslation();
   const { network: activeNetwork } = useAuthenticationStore();
   const networkDetails = useMemo(
     () => mapNetworkToNetworkDetails(activeNetwork),
@@ -145,36 +119,41 @@ export const TabNavigator = () => {
   return (
     <MainTab.Navigator
       initialRouteName={MAIN_TAB_ROUTES.TAB_HOME}
+      tabBar={renderFloatingTabBar}
+      // On Android 12+ each screen sits in the blur target the pill blurs.
+      screenLayout={
+        isPillBlurSupported(Platform.OS, androidApiLevel)
+          ? renderPillBlurScreenLayout
+          : undefined
+      }
       screenOptions={({ route }) => ({
-        // eslint-disable-next-line react/no-unstable-nested-components
-        tabBarIcon: (props) => <TabIcon route={route} {...props} />,
         headerShown: false,
-        tabBarShowLabel: false,
-        tabBarActiveTintColor: theme.colors.tab.active,
-        tabBarInactiveTintColor: theme.colors.tab.inactive,
-        tabBarStyle: {
-          backgroundColor: theme.colors.base.primary,
-          borderColor: theme.colors.border.default,
-          borderTopWidth: pxValue(1),
-          borderStyle: "solid",
-          paddingHorizontal: pxValue(72),
-        },
+        tabBarIcon: (props) => renderTabBarIcon(route.name, props),
       })}
     >
+      {/* The pill draws no text, so each tab's label is what screen readers
+          announce. */}
       <MainTab.Screen
         name={MAIN_TAB_ROUTES.TAB_HISTORY}
         component={HistoryScreen}
-        options={{ tabBarButtonTestID: "tab-history" }}
+        options={{
+          tabBarButtonTestID: "tab-history",
+          tabBarAccessibilityLabel: t("tabBar.history"),
+        }}
       />
       <MainTab.Screen
         name={MAIN_TAB_ROUTES.TAB_HOME}
         component={HomeScreen}
-        options={{ tabBarButtonTestID: "tab-home" }}
+        options={{
+          tabBarButtonTestID: "tab-home",
+          tabBarAccessibilityLabel: t("tabBar.home"),
+        }}
       />
       {discoverEnabled && (
         <MainTab.Screen
           name={MAIN_TAB_ROUTES.TAB_DISCOVERY}
           component={DiscoveryScreen}
+          options={{ tabBarAccessibilityLabel: t("tabBar.discover") }}
         />
       )}
     </MainTab.Navigator>

@@ -41,6 +41,15 @@ export const getNavigationHeaderRowInsets = (topInset: number) => ({
   paddingHorizontal: pxValue(SIDE_INSET),
 });
 
+/**
+ * The bar's height from the screen's top: the row's top padding, the row and
+ * the padding under it. Home's content starts here under its floating header.
+ */
+export const getNavigationHeaderHeight = (topInset: number): number =>
+  getNavigationHeaderPaddingTop(topInset) +
+  HEADER_BUTTON_BOX.height +
+  pxValue(BOTTOM_PADDING);
+
 interface NavigationHeaderBarProps {
   title?: string;
   /** The left button. Without one, a spacer keeps the title centered. */
@@ -52,6 +61,8 @@ interface NavigationHeaderBarProps {
    * Discover's does. The bar then adds only the row's own spacing.
    */
   isBelowTopInset?: boolean;
+  /** Set when the screen draws its own background behind the bar, as Home's fade does. */
+  isTransparent?: boolean;
 }
 
 /**
@@ -64,6 +75,7 @@ export const NavigationHeaderBar: React.FC<NavigationHeaderBarProps> = ({
   left,
   right,
   isBelowTopInset = false,
+  isTransparent = false,
 }) => {
   const insets = useSafeAreaInsets();
   const rowInsets = getNavigationHeaderRowInsets(insets.top);
@@ -71,7 +83,7 @@ export const NavigationHeaderBar: React.FC<NavigationHeaderBarProps> = ({
   return (
     <View
       testID="navigation-header"
-      className="flex-row justify-between items-center bg-base-0"
+      className={`flex-row justify-between items-center${isTransparent ? "" : " bg-base-0"}`}
       style={{
         ...rowInsets,
         paddingTop: rowInsets.paddingTop - (isBelowTopInset ? insets.top : 0),

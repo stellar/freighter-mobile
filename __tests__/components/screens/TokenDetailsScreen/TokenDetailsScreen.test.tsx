@@ -1,5 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { act, waitFor } from "@testing-library/react-native";
+import { BaseLayout } from "components/layout/BaseLayout";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import { NETWORKS } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
@@ -8,6 +9,7 @@ import { usePriceHistoryStore } from "ducks/priceHistory";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { SectionList } from "react-native";
+import { ReactTestInstance } from "react-test-renderer";
 
 jest.mock("components/screens/HistoryScreen/HistoryList", () => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -187,6 +189,32 @@ describe("TokenDetailsScreen", () => {
         headerTitle: "Stellar Lumens (XLM)",
       }),
     );
+  });
+
+  it("draws no divider under the Swap and Send buttons", () => {
+    const screen = renderWithProviders(
+      <TokenDetailsScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    expect(screen.getByTestId("token-details-send-button")).toBeTruthy();
+    expect(
+      screen.UNSAFE_root.findAll(
+        (node: ReactTestInstance) =>
+          typeof node.type === "string" &&
+          /\bborder-b\b/.test(String(node.props.className ?? "")),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("keeps the buttons the bottom inset plus 24pt above the screen's edge, as Figma does", () => {
+    const screen = renderWithProviders(
+      <TokenDetailsScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    // BaseLayout's bottom inset is the safe-area inset plus 24pt.
+    expect(screen.UNSAFE_getByType(BaseLayout).props.insets).toMatchObject({
+      bottom: true,
+    });
   });
 
   it("renders without crashing", () => {

@@ -1,4 +1,3 @@
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import ContextMenuButton from "components/ContextMenuButton";
 import {
   BUTTON_SIZE,
@@ -35,12 +34,12 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     onGoBack,
     contextMenuActions,
     isHomePage,
+    bottomOffset,
     onFocusChange,
   }) => {
     const { themeColors } = useColors();
     const { account } = useGetActiveAccount();
     const { t } = useAppTranslation();
-    const tabBarHeight = useBottomTabBarHeight();
     const { height: keyboardHeight, progress } =
       useReanimatedKeyboardAnimation();
     const isOwnKeyboard = useSharedValue(false);
@@ -64,7 +63,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       isOwnKeyboard,
       progress,
       keyboardHeight,
-      tabBarHeight,
+      bottomOffset,
     });
 
     const {

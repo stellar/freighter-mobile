@@ -3,6 +3,7 @@ import { NativeStackHeaderProps } from "@react-navigation/native-stack";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader, {
   NavigationHeaderBar,
+  getNavigationHeaderHeight,
   getNavigationHeaderPaddingTop,
 } from "components/layout/CustomNavigationHeader";
 import Icon from "components/sds/Icon";
@@ -474,6 +475,27 @@ describe("CustomNavigationHeader", () => {
       expect(getByText("Back")).toBeTruthy();
       expect(getByText("More")).toBeTruthy();
       expect(queryAllByTestId("navigation-header-spacer")).toHaveLength(0);
+    });
+
+    it("paints the page color unless it's transparent", () => {
+      const { getByTestId, rerender } = renderWithProviders(
+        <NavigationHeaderBar title="Discover" />,
+      );
+      expect(getByTestId("navigation-header").props.className).toContain(
+        "bg-base-0",
+      );
+
+      // Home draws its own fading background behind the bar.
+      rerender(<NavigationHeaderBar title="Discover" isTransparent />);
+      expect(getByTestId("navigation-header").props.className).not.toContain(
+        "bg-base-0",
+      );
+    });
+
+    it("is the row's top padding, the 32pt row and the 24pt under it tall", () => {
+      expect(getNavigationHeaderHeight(62)).toBe(70 + 32 + 24);
+      // An iPhone SE's 20pt status bar: the row starts at the 45dp minimum.
+      expect(getNavigationHeaderHeight(20)).toBe(45 + 32 + 24);
     });
   });
 });
