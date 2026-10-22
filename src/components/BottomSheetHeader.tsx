@@ -24,6 +24,8 @@ export interface BottomSheetHeaderProps {
   leading?: React.ReactNode;
   /** Shows the X when set. */
   onClose?: () => void;
+  /** Disables the X, e.g. while a save is in flight. */
+  closeDisabled?: boolean;
   closeTestID?: string;
   titleTestID?: string;
 }
@@ -38,6 +40,7 @@ export const BottomSheetHeader: React.FC<BottomSheetHeaderProps> = ({
   layout,
   leading,
   onClose,
+  closeDisabled,
   closeTestID,
   titleTestID,
 }) => {
@@ -54,6 +57,7 @@ export const BottomSheetHeader: React.FC<BottomSheetHeaderProps> = ({
   const closeButton = onClose ? (
     <TouchableOpacity
       onPress={onClose}
+      disabled={closeDisabled}
       hitSlop={CLOSE_HIT_SLOP}
       accessibilityRole="button"
       accessibilityLabel={t("common.close")}

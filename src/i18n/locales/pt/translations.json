@@ -70,6 +70,7 @@
     "discover": "Descobrir"
   },
   "renameAccountModal": {
+    "title": "Renomear carteira",
     "saveName": "Salvar nome",
     "nameInputPlaceholder": "Digite um nome para sua carteira"
   },

@@ -1,7 +1,7 @@
+import { BottomSheetHeader } from "components/BottomSheetHeader";
 import Modal from "components/Modal";
 import { Avatar } from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import {
   ACCOUNT_NAME_MAX_LENGTH,
@@ -11,9 +11,8 @@ import {
 import { Account } from "config/types";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import React, { useEffect, useMemo, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 
 interface RenameAccountModalProps {
   modalVisible: boolean;
@@ -36,7 +35,6 @@ const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
   account,
   isRenamingAccount,
 }) => {
-  const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const [accountName, setAccountName] = useState(account?.name ?? "");
 
@@ -61,18 +59,17 @@ const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
       contentStyle={{ padding: pxValue(DEFAULT_PADDING) }}
     >
       <View className="gap-6">
-        <View className="items-center">
-          <View className="w-full items-end">
-            <TouchableOpacity
-              className="w-[40px] h-[40px] rounded-full bg-background-tertiary justify-center items-center"
-              onPress={() => setModalVisible(false)}
-              disabled={isRenamingAccount}
-              accessibilityRole="button"
-              accessibilityLabel={t("common.close")}
-              testID="rename-account-close-button"
-            >
-              <Icon.X size={24} color={themeColors.foreground.primary} />
-            </TouchableOpacity>
+        <View className="items-center gap-4">
+          <View className="w-full">
+            <BottomSheetHeader
+              layout="centered"
+              title={t("renameAccountModal.title")}
+              onClose={() => setModalVisible(false)}
+              // Closing mid-rename would drop the result, so the X is
+              // disabled until the save settles, like the Cancel button.
+              closeDisabled={isRenamingAccount}
+              closeTestID="rename-account-close-button"
+            />
           </View>
           <Avatar size="xxl" publicAddress={account?.publicKey ?? ""} />
         </View>

@@ -25,6 +25,26 @@ describe("BottomSheetHeader", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("disables the close button when closeDisabled is set", () => {
+    const onClose = jest.fn();
+    const { getByTestId } = renderWithProviders(
+      <BottomSheetHeader
+        title="Rename account"
+        onClose={onClose}
+        closeDisabled
+        closeTestID="sheet-close"
+      />,
+    );
+
+    const closeButton = getByTestId("sheet-close");
+    expect(closeButton.props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: true }),
+    );
+
+    fireEvent.press(closeButton);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("omits the close button when there is no onClose", () => {
     const { queryByLabelText, getByText } = renderWithProviders(
       <BottomSheetHeader title="Review" />,

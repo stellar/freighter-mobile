@@ -70,6 +70,7 @@
     "discover": "Discover"
   },
   "renameAccountModal": {
+    "title": "Rename account",
     "saveName": "Save name",
     "nameInputPlaceholder": "Enter a name for your account"
   },
