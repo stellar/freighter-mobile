@@ -1925,6 +1925,283 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
     expect(mockSetDisplayAmountFromText).toHaveBeenCalledWith("123,45");
   });
 
+  describe("token-mode Max precision", () => {
+    const solvBtcContract =
+      "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";
+    const solvBtcId = `SolvBTC:${solvBtcContract}`;
+    const mockSetTokenAmount = jest.fn();
+
+    const pressMaxWithSolvBtc = (rawUnits: string) => {
+      mockUseTransactionSettingsStore.mockReturnValue({
+        ...(mockUseTransactionSettingsStore as unknown as jest.Mock)(),
+        selectedTokenId: solvBtcId,
+      });
+      mockUseBalancesList.mockReturnValue({
+        ...(mockUseBalancesList as unknown as jest.Mock)(),
+        balanceItems: [
+          {
+            id: solvBtcId,
+            tokenId: solvBtcId,
+            contractId: solvBtcContract,
+            decimals: 8,
+            total: new BigNumber(rawUnits),
+            available: new BigNumber(rawUnits),
+            token: { code: "SolvBTC", issuer: { key: solvBtcContract } },
+          } as any,
+        ],
+      });
+      mockCalculateSpendableAmount.mockReturnValue(new BigNumber(rawUnits));
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+      fireEvent.press(getByTestId("percentage-100"));
+    };
+
+    beforeEach(() => {
+      mockUseTokenFiatConverter.mockReturnValue({
+        ...(mockUseTokenFiatConverter as unknown as jest.Mock)(),
+        showFiatAmount: false,
+        setTokenAmount: mockSetTokenAmount,
+      });
+    });
+
+    it("sets exactly the held amount for an 8-decimal token", () => {
+      pressMaxWithSolvBtc("227");
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("0.00000227");
+    });
+
+    it("keeps dust below the 7th decimal instead of rounding it to zero", () => {
+      pressMaxWithSolvBtc("4");
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("0.00000004");
+    });
+
+    it("leaves classic tokens at 7 decimals", () => {
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+      fireEvent.press(getByTestId("percentage-100"));
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("1000.0000000");
+    });
+  });
+
+  describe("fiat-mode Max for a SEP-41 token", () => {
+    const solvBtcId =
+      "SolvBTC:CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";
+    const mockUpdateFiatDisplay = jest.fn();
+    const mockSetTokenAmount = jest.fn();
+
+    beforeEach(() => {
+      mockUseTokenFiatConverter.mockReturnValue({
+        ...(mockUseTokenFiatConverter as unknown as jest.Mock)(),
+        showFiatAmount: true,
+        setTokenAmount: mockSetTokenAmount,
+        updateFiatDisplay: mockUpdateFiatDisplay,
+      });
+      mockUseTransactionSettingsStore.mockReturnValue({
+        ...(mockUseTransactionSettingsStore as unknown as jest.Mock)(),
+        selectedTokenId: solvBtcId,
+      });
+      mockUseBalancesList.mockReturnValue({
+        ...(mockUseBalancesList as unknown as jest.Mock)(),
+        balanceItems: [
+          {
+            id: solvBtcId,
+            tokenId: solvBtcId,
+            contractId:
+              "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN",
+            decimals: 8,
+            total: new BigNumber("227"),
+            available: new BigNumber("227"),
+            currentPrice: new BigNumber("81597.03"),
+            token: {
+              code: "SolvBTC",
+              issuer: {
+                key: "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN",
+              },
+            },
+          } as any,
+        ],
+      });
+      mockCalculateSpendableAmount.mockReturnValue(new BigNumber("227"));
+    });
+
+    it("derives the fiat amount from the committed token amount", () => {
+      const zeroDecContract =
+        "CDSRYSNQOZTTUQEGBYZZL4VYU5WFEQ7KV6UX2VH3QAVGDFL7ZWWL25KR";
+      mockUseTransactionSettingsStore.mockReturnValue({
+        ...(mockUseTransactionSettingsStore as unknown as jest.Mock)(),
+        selectedTokenId: `WHOLE:${zeroDecContract}`,
+      });
+      mockUseBalancesList.mockReturnValue({
+        ...(mockUseBalancesList as unknown as jest.Mock)(),
+        balanceItems: [
+          {
+            id: `WHOLE:${zeroDecContract}`,
+            tokenId: `WHOLE:${zeroDecContract}`,
+            contractId: zeroDecContract,
+            decimals: 0,
+            total: new BigNumber("5"),
+            available: new BigNumber("5"),
+            currentPrice: new BigNumber("10"),
+            token: { code: "WHOLE", issuer: { key: zeroDecContract } },
+          } as any,
+        ],
+      });
+      mockCalculateSpendableAmount.mockReturnValue(new BigNumber("5"));
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+
+      fireEvent.press(getByTestId("percentage-25"));
+
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("1");
+      expect(mockUpdateFiatDisplay).toHaveBeenLastCalledWith("10.00");
+    });
+
+    it("commits the held amount and mirrors it in fiat, like the extension", () => {
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+
+      fireEvent.press(getByTestId("percentage-100"));
+
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("0.00000227");
+      expect(mockUpdateFiatDisplay).toHaveBeenLastCalledWith("0.19");
+    });
+
+    it.each([
+      // [code, contract, decimals, raw spendable, price, token, fiat]
+      [
+        "ONE",
+        "CDSRYSNQOZTTUQEGBYZZL4VYU5WFEQ7KV6UX2VH3QAVGDFL7ZWWL25KR",
+        0,
+        "1",
+        "0.125",
+        "1",
+        "0.13",
+      ],
+      [
+        "THREE",
+        "CDSRYSNQOZTTUQEGBYZZL4VYU5WFEQ7KV6UX2VH3QAVGDFL7ZWWL25KR",
+        0,
+        "3",
+        "0.3333333",
+        "3",
+        "1.00",
+      ],
+    ])(
+      "Max on a %s 0-decimal token sends the whole balance",
+      (code, contract, decimals, raw, price, token, fiat) => {
+        const id = `${code}:${contract}`;
+        mockUseTransactionSettingsStore.mockReturnValue({
+          ...(mockUseTransactionSettingsStore as unknown as jest.Mock)(),
+          selectedTokenId: id,
+        });
+        mockUseBalancesList.mockReturnValue({
+          ...(mockUseBalancesList as unknown as jest.Mock)(),
+          balanceItems: [
+            {
+              id,
+              tokenId: id,
+              contractId: contract,
+              decimals,
+              total: new BigNumber(raw),
+              available: new BigNumber(raw),
+              currentPrice: new BigNumber(price),
+              token: { code, issuer: { key: contract } },
+            } as any,
+          ],
+        });
+        mockCalculateSpendableAmount.mockReturnValue(new BigNumber(raw));
+        const { getByTestId } = render(
+          <TransactionAmountScreen
+            navigation={mockNavigation}
+            route={mockRoute}
+          />,
+        );
+
+        fireEvent.press(getByTestId("percentage-100"));
+
+        expect(mockSetTokenAmount).toHaveBeenLastCalledWith(token);
+        expect(mockUpdateFiatDisplay).toHaveBeenLastCalledWith(fiat);
+      },
+    );
+
+    it("still commits the token amount when the price is zero, like the extension", () => {
+      mockUseBalancesList.mockReturnValue({
+        ...(mockUseBalancesList as unknown as jest.Mock)(),
+        balanceItems: [
+          {
+            ...(mockUseBalancesList as unknown as jest.Mock)().balanceItems[0],
+            currentPrice: new BigNumber("0"),
+          },
+        ],
+      });
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+
+      fireEvent.press(getByTestId("percentage-100"));
+
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("0.00000227");
+      expect(mockUpdateFiatDisplay).not.toHaveBeenCalled();
+    });
+
+    it("Max on a classic token sends the whole spendable amount", () => {
+      mockUseTransactionSettingsStore.mockReturnValue({
+        ...(mockUseTransactionSettingsStore as unknown as jest.Mock)(),
+        selectedTokenId:
+          "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      });
+      mockUseBalancesList.mockReturnValue({
+        ...(mockUseBalancesList as unknown as jest.Mock)(),
+        balanceItems: [
+          {
+            id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            tokenId:
+              "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            total: new BigNumber("1000"),
+            available: new BigNumber("1000"),
+            currentPrice: new BigNumber("0.1234567"),
+            token: {
+              code: "USDC",
+              issuer: {
+                key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+              },
+            },
+          } as any,
+        ],
+      });
+      mockCalculateSpendableAmount.mockReturnValue(new BigNumber("1000"));
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+
+      fireEvent.press(getByTestId("percentage-100"));
+
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("1000.0000000");
+      expect(mockUpdateFiatDisplay).toHaveBeenLastCalledWith("123.46");
+    });
+  });
+
   describe("pre-submit failure telemetry", () => {
     it("emits payment.failed without volume data when signing fails", async () => {
       const mockSign = jest.fn().mockReturnValue(null);

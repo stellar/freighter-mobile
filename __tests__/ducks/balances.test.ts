@@ -5,6 +5,7 @@ import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import {
   NativeBalance,
   ClassicBalance,
+  SorobanBalance,
   TokenPricesMap,
   TokenTypeWithCustomToken,
   BalanceMap,
@@ -724,6 +725,91 @@ describe("balances duck", () => {
       expect(result.current.pricedBalances.XLM.fiatTotal?.toString()).toBe(
         new BigNumber("100.5").multipliedBy("0.5").toString(),
       );
+    });
+
+    describe("SEP-41 balances", () => {
+      const solvBtcId =
+        "SolvBTC:CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";
+      // Raw i128 total: 227 at 8 decimals is 0.00000227 SolvBTC.
+      const solvBtcBalance: SorobanBalance = {
+        token: {
+          code: "SolvBTC",
+          issuer: {
+            key: "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN",
+          },
+        },
+        contractId: "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN",
+        name: "Solv BTC",
+        symbol: "SolvBTC",
+        decimals: 8,
+        total: new BigNumber("227"),
+        available: new BigNumber("227"),
+      };
+      const solvBtcPrice = new BigNumber("81597.03");
+      const expectedFiat = new BigNumber("0.00000227").multipliedBy(
+        solvBtcPrice,
+      );
+
+      it("scales the raw total by decimals when pricing", async () => {
+        mockFetchBalances.mockResolvedValueOnce({
+          balances: { ...mockBalances, [solvBtcId]: solvBtcBalance },
+        });
+        (usePricesStore.getState as jest.Mock).mockReturnValue(
+          createMockPricesStore({
+            prices: {
+              ...mockPrices,
+              [solvBtcId]: {
+                currentPrice: solvBtcPrice,
+                percentagePriceChange24h: null,
+              },
+            },
+          }),
+        );
+
+        const { result } = renderHook(() => useBalancesStore());
+        await act(async () => {
+          await result.current.fetchAccountBalances(mockParams);
+        });
+
+        expect(
+          result.current.pricedBalances[solvBtcId].fiatTotal?.toString(),
+        ).toBe(expectedFiat.toString());
+        // Classic balances are already in whole units.
+        expect(result.current.pricedBalances.XLM.fiatTotal?.toString()).toBe(
+          "50.25",
+        );
+      });
+
+      it("scales the raw total by decimals when recomputing from a carried price", async () => {
+        useBalancesStore.setState({
+          pricedBalances: {
+            [solvBtcId]: {
+              ...solvBtcBalance,
+              tokenCode: "SolvBTC",
+              displayName: "Solv BTC",
+              currentPrice: solvBtcPrice,
+            },
+          },
+        });
+        mockFetchBalances.mockResolvedValueOnce({
+          balances: { [solvBtcId]: solvBtcBalance },
+        });
+        (usePricesStore.getState as jest.Mock).mockReturnValue(
+          createMockPricesStore({
+            prices: {},
+            error: "Failed to fetch token prices",
+          }),
+        );
+
+        const { result } = renderHook(() => useBalancesStore());
+        await act(async () => {
+          await result.current.fetchAccountBalances(mockParams);
+        });
+
+        expect(
+          result.current.pricedBalances[solvBtcId].fiatTotal?.toString(),
+        ).toBe(expectedFiat.toString());
+      });
     });
 
     it("should extract scanResults from backend balance data", async () => {
