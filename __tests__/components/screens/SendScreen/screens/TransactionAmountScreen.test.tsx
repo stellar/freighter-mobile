@@ -2136,6 +2136,29 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
       },
     );
 
+    it("still commits the token amount when the price is zero, like the extension", () => {
+      mockUseBalancesList.mockReturnValue({
+        ...(mockUseBalancesList as unknown as jest.Mock)(),
+        balanceItems: [
+          {
+            ...(mockUseBalancesList as unknown as jest.Mock)().balanceItems[0],
+            currentPrice: new BigNumber("0"),
+          },
+        ],
+      });
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+
+      fireEvent.press(getByTestId("percentage-100"));
+
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("0.00000227");
+      expect(mockUpdateFiatDisplay).not.toHaveBeenCalled();
+    });
+
     it("Max on a classic token sends the whole spendable amount", () => {
       mockUseTransactionSettingsStore.mockReturnValue({
         ...(mockUseTransactionSettingsStore as unknown as jest.Mock)(),

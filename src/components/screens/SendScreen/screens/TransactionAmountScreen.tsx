@@ -482,14 +482,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     }
 
     // Matches the extension: the token amount is committed, and in fiat mode
-    // the fiat field mirrors it rounded to cents, for display only.
+    // the fiat field mirrors it rounded to cents (when priced), for display only.
     const pctAmount = decimalAwareSpendable
       .multipliedBy(percentage / 100)
       .decimalPlaces(decimals, BigNumber.ROUND_HALF_UP);
 
-    if (showFiatAmount) {
-      const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
-      if (tokenPrice.isZero()) return;
+    const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
+    if (showFiatAmount && !tokenPrice.isZero()) {
       updateFiatDisplay(
         tokenPrice.multipliedBy(pctAmount).toFixed(2, BigNumber.ROUND_HALF_UP),
       );
