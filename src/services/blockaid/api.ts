@@ -1,8 +1,10 @@
 import Blockaid from "@blockaid/client";
+import { StrKey } from "@stellar/stellar-sdk";
 import axios from "axios";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { isMainnet } from "helpers/networks";
+import { isContractId } from "helpers/soroban";
 import { scrubStrKeys } from "helpers/stellarStrKey";
 import { analytics } from "services/analytics";
 import { freighterBackendV1 } from "services/backend";
@@ -177,10 +179,23 @@ export const scanBulkTokens = async (
       throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
     }
 
-    // Build URL with query parameters for bulk scanning
+    // The backend parses each id as CODE-ISSUER and 400s the whole batch on
+    // one whose issuer isn't a G or C key, so drop those here. Must stay in
+    // step with freighter-backend's /scan-asset-bulk validator.
     const queryParams = addressList
+      .filter((address) => {
+        const parts = address.split("-");
+        return (
+          parts.length === 2 &&
+          (StrKey.isValidEd25519PublicKey(parts[1]) || isContractId(parts[1]))
+        );
+      })
       .map((address) => `asset_ids=${encodeURIComponent(address)}`)
       .join("&");
+    // The backend rejects a request with no ids.
+    if (!queryParams) {
+      return { results: {} } as Blockaid.TokenBulkScanResponse;
+    }
     const endpoint = `${BLOCKAID_ENDPOINTS.SCAN_BULK_TOKENS}?${queryParams}`;
 
     const response = await freighterBackendV1.get<
