@@ -477,55 +477,24 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       ? spendableBalance.shiftedBy(-decimals)
       : spendableBalance;
 
-    let targetAmount: BigNumber;
-
     if (percentage === 100) {
-      targetAmount = decimalAwareSpendable;
-
       analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
-    } else {
-      targetAmount = decimalAwareSpendable.multipliedBy(percentage / 100);
     }
 
-    // Ensure targetAmount never exceeds the held amount (in whole units)
-    const cappedTargetAmount = BigNumber.minimum(
-      targetAmount,
-      decimalAwareSpendable,
-    );
+    // Matches the extension: the token amount is committed, and in fiat mode
+    // the fiat field mirrors it rounded to cents, for display only.
+    const pctAmount = decimalAwareSpendable
+      .multipliedBy(percentage / 100)
+      .decimalPlaces(decimals, BigNumber.ROUND_HALF_UP);
 
     if (showFiatAmount) {
       const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
-      if (!tokenPrice.isZero()) {
-        let calculatedFiatAmount = cappedTargetAmount.multipliedBy(tokenPrice);
-        let fiatAmountString = calculatedFiatAmount.toFixed(2);
-
-        let convertedBackToTokens = new BigNumber(fiatAmountString).dividedBy(
-          tokenPrice,
-        );
-        if (convertedBackToTokens.isGreaterThan(decimalAwareSpendable)) {
-          // Subtract 1 cent to fix USD value going over max tokens
-          calculatedFiatAmount = calculatedFiatAmount.minus(0.01);
-          fiatAmountString = calculatedFiatAmount.toFixed(2);
-          convertedBackToTokens = new BigNumber(fiatAmountString).dividedBy(
-            tokenPrice,
-          );
-        }
-
-        const finalTokenAmount = BigNumber.minimum(
-          convertedBackToTokens,
-          decimalAwareSpendable,
-        ).decimalPlaces(decimals, BigNumber.ROUND_DOWN);
-        const finalFiatAmount = finalTokenAmount.multipliedBy(tokenPrice);
-        const finalFiatAmountString = finalFiatAmount.toFixed(2);
-
-        updateFiatDisplay(finalFiatAmountString);
-        setTokenAmount(finalTokenAmount.toFixed(decimals));
-      }
-    } else {
-      setTokenAmount(
-        cappedTargetAmount.toFixed(decimals, BigNumber.ROUND_DOWN),
+      if (tokenPrice.isZero()) return;
+      updateFiatDisplay(
+        tokenPrice.multipliedBy(pctAmount).toFixed(2, BigNumber.ROUND_HALF_UP),
       );
     }
+    setTokenAmount(pctAmount.toFixed(decimals));
   };
 
   useEffect(() => {

@@ -2028,7 +2028,7 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
       mockCalculateSpendableAmount.mockReturnValue(new BigNumber("227"));
     });
 
-    it("derives the fiat amount from the rounded-down token amount", () => {
+    it("derives the fiat amount from the committed token amount", () => {
       const zeroDecContract =
         "CDSRYSNQOZTTUQEGBYZZL4VYU5WFEQ7KV6UX2VH3QAVGDFL7ZWWL25KR";
       mockUseTransactionSettingsStore.mockReturnValue({
@@ -2064,7 +2064,7 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
       expect(mockUpdateFiatDisplay).toHaveBeenLastCalledWith("10.00");
     });
 
-    it("caps the fiat amount at the held balance, not the raw integer", () => {
+    it("commits the held amount and mirrors it in fiat, like the extension", () => {
       const { getByTestId } = render(
         <TransactionAmountScreen
           navigation={mockNavigation}
@@ -2074,10 +2074,105 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
 
       fireEvent.press(getByTestId("percentage-100"));
 
-      // 0.00000227 SolvBTC is $0.185; "0.19" would convert back to more than
-      // is held, so the handler must drop a cent.
-      expect(mockUpdateFiatDisplay).toHaveBeenLastCalledWith("0.18");
-      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("0.00000220");
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("0.00000227");
+      expect(mockUpdateFiatDisplay).toHaveBeenLastCalledWith("0.19");
+    });
+
+    it.each([
+      // [code, contract, decimals, raw spendable, price, token, fiat]
+      [
+        "ONE",
+        "CDSRYSNQOZTTUQEGBYZZL4VYU5WFEQ7KV6UX2VH3QAVGDFL7ZWWL25KR",
+        0,
+        "1",
+        "0.125",
+        "1",
+        "0.13",
+      ],
+      [
+        "THREE",
+        "CDSRYSNQOZTTUQEGBYZZL4VYU5WFEQ7KV6UX2VH3QAVGDFL7ZWWL25KR",
+        0,
+        "3",
+        "0.3333333",
+        "3",
+        "1.00",
+      ],
+    ])(
+      "Max on a %s 0-decimal token sends the whole balance",
+      (code, contract, decimals, raw, price, token, fiat) => {
+        const id = `${code}:${contract}`;
+        mockUseTransactionSettingsStore.mockReturnValue({
+          ...(mockUseTransactionSettingsStore as unknown as jest.Mock)(),
+          selectedTokenId: id,
+        });
+        mockUseBalancesList.mockReturnValue({
+          ...(mockUseBalancesList as unknown as jest.Mock)(),
+          balanceItems: [
+            {
+              id,
+              tokenId: id,
+              contractId: contract,
+              decimals,
+              total: new BigNumber(raw),
+              available: new BigNumber(raw),
+              currentPrice: new BigNumber(price),
+              token: { code, issuer: { key: contract } },
+            } as any,
+          ],
+        });
+        mockCalculateSpendableAmount.mockReturnValue(new BigNumber(raw));
+        const { getByTestId } = render(
+          <TransactionAmountScreen
+            navigation={mockNavigation}
+            route={mockRoute}
+          />,
+        );
+
+        fireEvent.press(getByTestId("percentage-100"));
+
+        expect(mockSetTokenAmount).toHaveBeenLastCalledWith(token);
+        expect(mockUpdateFiatDisplay).toHaveBeenLastCalledWith(fiat);
+      },
+    );
+
+    it("Max on a classic token sends the whole spendable amount", () => {
+      mockUseTransactionSettingsStore.mockReturnValue({
+        ...(mockUseTransactionSettingsStore as unknown as jest.Mock)(),
+        selectedTokenId:
+          "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      });
+      mockUseBalancesList.mockReturnValue({
+        ...(mockUseBalancesList as unknown as jest.Mock)(),
+        balanceItems: [
+          {
+            id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            tokenId:
+              "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            total: new BigNumber("1000"),
+            available: new BigNumber("1000"),
+            currentPrice: new BigNumber("0.1234567"),
+            token: {
+              code: "USDC",
+              issuer: {
+                key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+              },
+            },
+          } as any,
+        ],
+      });
+      mockCalculateSpendableAmount.mockReturnValue(new BigNumber("1000"));
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+
+      fireEvent.press(getByTestId("percentage-100"));
+
+      expect(mockSetTokenAmount).toHaveBeenLastCalledWith("1000.0000000");
+      expect(mockUpdateFiatDisplay).toHaveBeenLastCalledWith("123.46");
     });
   });
 
