@@ -8,8 +8,10 @@ import {
   getTokenIdentifier,
   getTokenIdentifiersFromBalances,
   getTotalUsdLabel,
+  omitHiddenBalances,
 } from "helpers/balances";
 import { getBalanceInWholeUnits } from "helpers/formatAmount";
+import { retrieveHiddenTokens } from "helpers/hiddenTokens";
 import { isMainnet } from "helpers/networks";
 import { fetchBalances } from "services/backend";
 import { create } from "zustand";
@@ -279,16 +281,25 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
                   // both v1 and v2, so those balances would contribute $0
                   // to the total either way — the extension's wallets list
                   // makes the same trade-off.
-                  const { balances, isFunded } = await fetchBalances({
-                    publicKey,
-                    network,
-                    useV2: useBalancesV2,
-                    shouldSkipScan: true,
-                  });
+                  const [{ balances, isFunded }, hiddenTokenIds] =
+                    await Promise.all([
+                      fetchBalances({
+                        publicKey,
+                        network,
+                        useV2: useBalancesV2,
+                        shouldSkipScan: true,
+                      }),
+                      retrieveHiddenTokens({ publicKey, network }),
+                    ]);
 
                   return {
                     publicKey,
-                    balances: balances ?? {},
+                    // Hidden tokens don't count, matching the Home header and
+                    // the active account's synced row.
+                    balances: omitHiddenBalances(
+                      balances ?? {},
+                      hiddenTokenIds,
+                    ),
                     isFunded: isFunded ?? false,
                   };
                 } catch (error) {

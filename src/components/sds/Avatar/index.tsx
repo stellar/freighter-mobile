@@ -2,7 +2,7 @@
 import { Canvas } from "@shopify/react-native-skia";
 import { MarbleAvatar } from "components/sds/Avatar/MarbleAvatar";
 import Icon from "components/sds/Icon";
-import { Text } from "components/sds/Typography";
+import { Text, TextSize } from "components/sds/Typography";
 import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
@@ -10,6 +10,7 @@ import { View } from "react-native";
 // Constants for sizes
 export const AvatarSizes = {
   SMALL: "sm",
+  SMALL_MEDIUM: "sm-md",
   MEDIUM: "md",
   LARGE: "lg",
   EXTRA_LARGE: "xl",
@@ -26,6 +27,14 @@ const AVATAR_DIMENSIONS = {
     height: 26,
     iconSize: 12,
     indicatorSize: 8,
+  },
+  [AvatarSizes.SMALL_MEDIUM]: {
+    dimension: 32,
+    fontSize: 14,
+    width: 32,
+    height: 32,
+    iconSize: 16,
+    indicatorSize: 10,
   },
   [AvatarSizes.MEDIUM]: {
     dimension: 36,
@@ -60,6 +69,16 @@ const AVATAR_DIMENSIONS = {
     indicatorSize: 16,
   },
 } as const;
+
+/** The Text size an avatar's initials are set in. */
+const INITIALS_TEXT_SIZES: Record<AvatarSize, TextSize> = {
+  [AvatarSizes.SMALL]: "sm",
+  [AvatarSizes.SMALL_MEDIUM]: "sm",
+  [AvatarSizes.MEDIUM]: "md",
+  [AvatarSizes.LARGE]: "lg",
+  [AvatarSizes.EXTRA_LARGE]: "xl",
+  [AvatarSizes.DOUBLE_EXTRA_LARGE]: "xl",
+};
 
 /**
  * Base props for the Avatar component
@@ -133,6 +152,7 @@ const AvatarWrapper: React.FC<AvatarWrapperProps> = ({
   const getSizeClasses = () => {
     const classes: Record<AvatarSize, string> = {
       sm: "w-[26px] h-[26px]",
+      "sm-md": "w-[32px] h-[32px]",
       md: "w-[38px] h-[38px]",
       lg: "w-[40px] h-[40px]",
       xl: "w-[50px] h-[50px]",
@@ -162,6 +182,7 @@ const AvatarWrapper: React.FC<AvatarWrapperProps> = ({
   const getIndicatorClasses = () => {
     const indicatorSizeClasses: Record<AvatarSize, string> = {
       sm: "w-3 h-3",
+      "sm-md": "w-4 h-4",
       md: "w-4 h-4",
       lg: "w-5 h-5",
       xl: "w-6 h-6",
@@ -239,8 +260,14 @@ export const Avatar: React.FC<AvatarProps> = ({
   const renderIdenticon = () => {
     if (!publicAddress) return null;
 
-    // The canvas fills the content area, which a border shrinks by 1px a side.
-    const canvasSize = AVATAR_DIMENSIONS[size].width - (hasBorder ? 2 : 0);
+    // The drawing fills the content area, which a border shrinks by 1px a side.
+    const drawingSize = AVATAR_DIMENSIONS[size].width - (hasBorder ? 2 : 0);
+    // On iOS, Skia truncates its view's bounds to whole points, and layout
+    // pixel-snapping at a fractional offset (the home header) makes a 40pt
+    // canvas 39.67pt, so its last point row went missing. A canvas 1pt
+    // larger, pinned top-left and clipped by the content area, always keeps
+    // the whole drawing.
+    const canvasSize = drawingSize + 1;
 
     return (
       <AvatarWrapper
@@ -251,8 +278,19 @@ export const Avatar: React.FC<AvatarProps> = ({
         hasBackground={hasBackground}
         hasDarkBackground={hasDarkBackground}
       >
-        <Canvas style={{ width: canvasSize, height: canvasSize }}>
-          <MarbleAvatar publicAddress={publicAddress} size={canvasSize} />
+        {/* A native view that would take a touch for itself, so a button
+            around the avatar would never get the tap. */}
+        <Canvas
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: canvasSize,
+            height: canvasSize,
+          }}
+        >
+          <MarbleAvatar publicAddress={publicAddress} size={drawingSize} />
         </Canvas>
       </AvatarWrapper>
     );
@@ -283,11 +321,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       hasBackground={hasBackground}
       hasDarkBackground={hasDarkBackground}
     >
-      <Text
-        bold
-        secondary
-        size={size === AvatarSizes.DOUBLE_EXTRA_LARGE ? "xl" : size}
-      >
+      <Text bold secondary size={INITIALS_TEXT_SIZES[size]}>
         {initials}
       </Text>
     </AvatarWrapper>

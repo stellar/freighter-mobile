@@ -1,9 +1,10 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { FOCUS_RING_WIDTH } from "components/FocusRing";
+import { PasswordField } from "components/PasswordField";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { BiometricToggleButton } from "components/sds/BiometricToggleButton";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { LoginType } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
@@ -12,12 +13,21 @@ import { useLoginDataStore } from "ducks/loginData";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState } from "react";
-import { View, ScrollView } from "react-native";
+import { View, ScrollView, StyleSheet } from "react-native";
 
 type ShowRecoveryPhraseScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
   typeof SETTINGS_ROUTES.SHOW_RECOVERY_PHRASE_SCREEN
 >;
+
+// A ScrollView clips what it holds, and the page's padding is outside this
+// one, so the password field's focus ring would lose its sides. The scroll
+// view reaches past the padding by the ring's width and pads its content by
+// the same, which leaves the content where it was.
+const styles = StyleSheet.create({
+  scroll: { marginHorizontal: -FOCUS_RING_WIDTH },
+  scrollContent: { paddingHorizontal: FOCUS_RING_WIDTH },
+});
 
 interface KeyExtra {
   mnemonicPhrase: string;
@@ -90,7 +100,10 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
     >
       <View className="flex-1">
         <ScrollView
+          testID="show-recovery-phrase-scroll"
           className="flex-1"
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -138,9 +151,8 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
 
           <View className="mb-6">
             {signInMethod === LoginType.PASSWORD && (
-              <Input
-                autoCapitalize="none"
-                fieldSize="lg"
+              <PasswordField
+                testID="password-input"
                 label={t("showRecoveryPhraseScreen.password")}
                 placeholder={t(
                   "showRecoveryPhraseScreen.passwordInputPlaceholder",
@@ -150,8 +162,6 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
                   setLocalPassword(text);
                   setError(undefined);
                 }}
-                secureTextEntry
-                testID="password-input"
                 error={error}
               />
             )}

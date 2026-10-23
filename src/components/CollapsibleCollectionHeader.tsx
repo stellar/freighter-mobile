@@ -1,9 +1,29 @@
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PRESS_DELAY } from "config/constants";
+import { fsValue, pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
+
+/** Figma's chevron is 12pt wide, drawn with a 1.5pt stroke. */
+const CHEVRON_SIZE = 12;
+const CHEVRON_STROKE_WIDTH = 1.5;
+
+/**
+ * Figma's chevron button: 28pt tall, with the chevron 8pt in from each side.
+ * A style, not classes, so it scales with the 12pt chevron it frames.
+ */
+const CHEVRON_BOX_STYLE = {
+  height: pxValue(28),
+  paddingHorizontal: pxValue(8),
+};
+
+/**
+ * The count sits on Figma Text/SM's 20pt line height, not `Text`'s 22:
+ * `TEXT_SIZES.sm` stays 14/22 for the rest of the app.
+ */
+const COUNT_STYLE = { lineHeight: fsValue(20) };
 
 interface CollapsibleCollectionHeaderProps {
   /** Collection name shown on the left. */
@@ -37,8 +57,9 @@ interface CollapsibleCollectionHeaderProps {
  * controlled — the expanded state and its toggling live in the parent — so it
  * can front different bodies (the Home 2-column grid, the Send vertical list).
  *
- * The count badge is a perfect 24x24 circle for single-character counts and
- * grows into a 24px-tall pill for two or more characters.
+ * The count badge is sized to its text, so a single digit comes out nearly
+ * round and a longer count a pill, and it is 24pt tall like Figma's. The
+ * chevron is 12pt, in a 28pt-tall box.
  */
 export const CollapsibleCollectionHeader: React.FC<
   CollapsibleCollectionHeaderProps
@@ -54,14 +75,14 @@ export const CollapsibleCollectionHeader: React.FC<
   const { themeColors } = useColors();
 
   const countLabel = String(count);
-  const isSingleCharCount = countLabel.length <= 1;
+  const Chevron = isExpanded ? Icon.ChevronUp : Icon.ChevronDown;
 
   return (
     <TouchableOpacity
       className="flex-row items-center justify-between"
       delayPressIn={DEFAULT_PRESS_DELAY}
-      // Extend the tap target to the ~48px minimum without changing the row's
-      // visual height/spacing (content is only ~24px tall).
+      // Extend the tap target to the ~48pt minimum without changing the row's
+      // visual height/spacing (the row is only 28pt tall).
       hitSlop={{ top: 12, bottom: 12 }}
       onPress={onToggle}
       testID={testID}
@@ -97,21 +118,28 @@ export const CollapsibleCollectionHeader: React.FC<
           testID="collection-header-divider"
         />
       )}
-      <View className="flex-row items-center gap-2">
-        <View
-          className={`flex-row items-center justify-center h-[24px] rounded-full border bg-gray-3 border-gray-6 ${
-            isSingleCharCount ? "w-[24px]" : "min-w-[24px] px-2"
-          }`}
-        >
-          <Text sm semiBold color={themeColors.gray[11]} textAlign="center">
+      <View className="flex-row items-center gap-[8px]">
+        {/* 7pt by 1pt of padding, not Figma's 8pt by 2pt: Figma draws the 1pt
+            stroke inside a 24pt-tall badge (20pt of text and 2pt of padding),
+            and a border adds to the box here, so it takes the last point. */}
+        <View className="flex-row items-center justify-center rounded-full border bg-gray-3 border-gray-6 px-[7px] py-[1px]">
+          <Text
+            sm
+            semiBold
+            color={themeColors.gray[11]}
+            textAlign="center"
+            style={COUNT_STYLE}
+          >
             {countLabel}
           </Text>
         </View>
-        {isExpanded ? (
-          <Icon.ChevronUp size={16} color={themeColors.text.primary} />
-        ) : (
-          <Icon.ChevronDown size={16} color={themeColors.text.primary} />
-        )}
+        <View className="items-center justify-center" style={CHEVRON_BOX_STYLE}>
+          <Chevron
+            size={CHEVRON_SIZE}
+            strokeWidth={CHEVRON_STROKE_WIDTH}
+            color={themeColors.gray[9]}
+          />
+        </View>
       </View>
     </TouchableOpacity>
   );

@@ -426,6 +426,12 @@ export type FormattedSearchTokenRecord = {
   securityLevel?: SecurityLevel;
   securityWarnings?: SecurityWarning[];
   /**
+   * Whether the user hid this token from the balances list. Derived at
+   * render time from the balances store so a search row flips from Unhide
+   * back to the regular menu as soon as the token is unhidden.
+   */
+  isHidden?: boolean;
+  /**
    * Spot price from the stellar.expert search response. Used as a fallback
    * when the freighter-backend /token-prices endpoint returns no entry for
    * this token (no 24h % available in this fallback case).
@@ -450,6 +456,17 @@ export type CustomToken = {
 export type CustomTokenStorage = {
   [publicKey: string]: {
     [network: string]: CustomToken[];
+  };
+};
+
+/**
+ * Hidden tokens keyed by public key and network. Each entry is the balance
+ * identifier the balances map uses as its key ("XLM", "CODE:ISSUER" or
+ * "SYMBOL:CONTRACT_ID").
+ */
+export type HiddenTokenStorage = {
+  [publicKey: string]: {
+    [network: string]: string[];
   };
 };
 

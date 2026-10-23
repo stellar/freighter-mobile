@@ -1,6 +1,5 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
-import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -31,9 +30,6 @@ export const TrustlineInfoBottomSheet: React.FC<
       onConfirm={handleConfirm}
       confirmLabel={t("swapScreen.trustlineInfo.confirm")}
       closeTestID="trustline-info-close"
-      headerElement={
-        <Icon.PlusCircle themeColor="lilac" withBackground square size={28} />
-      }
       title={t("swapScreen.trustlineInfo.title", interpolation)}
       texts={[
         {

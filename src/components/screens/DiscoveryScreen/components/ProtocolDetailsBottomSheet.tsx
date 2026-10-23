@@ -113,7 +113,6 @@ const ProtocolDetailsBottomSheet: React.FC<ProtocolDetailsBottomSheetProps> =
       <BottomSheet
         modalRef={modalRef}
         customContent={content}
-        handleCloseModal={handleClose}
         enableDynamicSizing
       />
     );

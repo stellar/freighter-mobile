@@ -307,6 +307,7 @@ import Columns03 from "assets/icons/columns-03.svg";
 import Command from "assets/icons/command.svg";
 import Compass01 from "assets/icons/compass-01.svg";
 import Compass02 from "assets/icons/compass-02.svg";
+import Compass03Filled from "assets/icons/compass-03-filled.svg";
 import Compass03 from "assets/icons/compass-03.svg";
 import Compass from "assets/icons/compass.svg";
 import Container from "assets/icons/container.svg";
@@ -593,6 +594,7 @@ import Home02 from "assets/icons/home-02.svg";
 import Home03 from "assets/icons/home-03.svg";
 import Home04 from "assets/icons/home-04.svg";
 import Home05 from "assets/icons/home-05.svg";
+import HomeFilled from "assets/icons/home-filled.svg";
 import HomeLine from "assets/icons/home-line.svg";
 import HomeSmile from "assets/icons/home-smile.svg";
 import HorizontalBarChart01 from "assets/icons/horizontal-bar-chart-01.svg";
@@ -1187,6 +1189,9 @@ import useTheme from "hooks/useTheme";
 import React from "react";
 import { View } from "react-native";
 
+/** SDS icons are drawn on a 24-unit grid. */
+const ICON_GRID = 24;
+
 export const Icons = {
   ActivityHeart,
   Activity,
@@ -1497,6 +1502,7 @@ export const Icons = {
   Command,
   Compass01,
   Compass02,
+  Compass03Filled,
   Compass03,
   Compass,
   Container,
@@ -1783,6 +1789,7 @@ export const Icons = {
   Home03,
   Home04,
   Home05,
+  HomeFilled,
   HomeLine,
   HomeSmile,
   HorizontalBarChart01,
@@ -2409,6 +2416,14 @@ export interface IconProps {
   withBackground?: boolean;
   circleBackground?: string;
   circleBorder?: string;
+  /**
+   * Stroke width in rendered points, as Figma gives it. Figma keeps a
+   * stroke's width when it resizes an icon, while an SVG scales it, so a
+   * 16pt icon with a 2pt stroke needs 3 units of the 24-unit grid. Only
+   * icons that set their stroke width on the root <svg> respond (see
+   * __tests__/assets/iconStrokes.test.ts); unset, every icon keeps its own.
+   */
+  strokeWidth?: number;
 }
 
 /**
@@ -2454,6 +2469,7 @@ const IconComponent: React.FC<IconProps> = ({
   withBackground,
   circleBackground,
   circleBorder,
+  strokeWidth,
 }) => {
   const IconSvg = name ? Icons[name] : null;
   const { themeColors } = useColors();
@@ -2472,6 +2488,11 @@ const IconComponent: React.FC<IconProps> = ({
       color={themeColor ? themeColors[themeColor][9] : resolvedColor}
       testID={testID}
       onPress={onPress}
+      // Spread only when set: an explicit undefined would replace the
+      // root's width and draw the glyph at SVG's default of 1.
+      {...(strokeWidth === undefined
+        ? {}
+        : { strokeWidth: (strokeWidth * ICON_GRID) / size })}
     />
   );
 

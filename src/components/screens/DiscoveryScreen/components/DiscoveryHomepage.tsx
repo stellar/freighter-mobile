@@ -1,7 +1,12 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { TrendingItem } from "components/TrendingCarousel";
-import { DEFAULT_HEADER_BUTTON_SIZE } from "components/layout/CustomHeaderButton";
+import { HEADER_BUTTON_BOX } from "components/layout/CustomHeaderButton";
+import {
+  NavigationHeaderBar,
+  getNavigationHeaderHeight,
+} from "components/layout/CustomNavigationHeader";
+import { HeaderFade } from "components/layout/HeaderFade";
 import ExpandedSectionView from "components/screens/DiscoveryScreen/components/ExpandedSectionView";
 import ProtocolDetailsBottomSheet from "components/screens/DiscoveryScreen/components/ProtocolDetailsBottomSheet";
 import TrendingCarouselSection from "components/screens/DiscoveryScreen/components/TrendingCarouselSection";
@@ -25,6 +30,7 @@ import React, {
   useState,
 } from "react";
 import { Animated, View, ScrollView, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
 import { analytics } from "services/analytics";
 import {
@@ -55,6 +61,10 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
     const { width: windowWidth } = useWindowDimensions();
+    // The bar floats over the list, so the list starts its content below it.
+    // The tab already pads the status bar, so that inset comes off.
+    const { top: topInset } = useSafeAreaInsets();
+    const headerHeight = getNavigationHeaderHeight(topInset) - topInset;
 
     const { goToPage, showTabOverview } = useBrowserTabsStore();
     const {
@@ -263,7 +273,8 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
           contextMenuProps={{ actions: clearRecentsMenuActions }}
         >
           <View
-            className={`${DEFAULT_HEADER_BUTTON_SIZE} items-center justify-center`}
+            className="items-center justify-center"
+            style={HEADER_BUTTON_BOX}
           >
             <Icon.DotsHorizontal color={themeColors.text.primary} size={24} />
           </View>
@@ -306,16 +317,11 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
             ],
           }}
         >
-          <View className="items-center mt-4 mb-3 bg-base-0">
-            <Text md medium>
-              {t("discovery.discover")}
-            </Text>
-          </View>
-
           <ScrollView
             className="flex-1 bg-base-0"
             showsVerticalScrollIndicator={false}
             pointerEvents={expandedSection ? "none" : "auto"}
+            contentContainerStyle={{ paddingTop: headerHeight }}
           >
             <TrendingCarouselSection
               title={t("discovery.trending")}
@@ -348,6 +354,21 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
               </Text>
             </View>
           </ScrollView>
+
+          {/* Floats over the list, after it so it draws on top: content
+              scrolls up under the bar and fades out below its row, as on
+              Home. */}
+          <View
+            testID="discover-header"
+            style={{ position: "absolute", top: 0, left: 0, right: 0 }}
+          >
+            <HeaderFade />
+            <NavigationHeaderBar
+              title={t("discovery.discover")}
+              isBelowTopInset
+              isTransparent
+            />
+          </View>
         </Animated.View>
 
         {expandedSection && (

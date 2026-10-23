@@ -14,24 +14,27 @@ interface ButtonColorConfig {
 }
 
 export const BUTTON_THEME = {
+  // Varial heights: https://www.figma.com/design/lcdj2ucnJ2BfvRvsLboBNC/Varial?node-id=1-2482
   height: {
-    sm: 26,
-    md: 32,
-    lg: 40,
-    xl: 50,
+    sm: 36,
+    md: 40,
+    lg: 48,
+    xl: 52,
   },
   padding: {
     sm: {
       vertical: 4,
       horizontal: 8,
     },
+    // md and lg pad their labels 16pt at the sides, as xl does and as
+    // Figma's Button does.
     md: {
       vertical: 6,
-      horizontal: 10,
+      horizontal: 16,
     },
     lg: {
       vertical: 8,
-      horizontal: 12,
+      horizontal: 16,
     },
     xl: {
       vertical: 12,

@@ -9,11 +9,7 @@ import {
 import DiscoverWelcomeModal from "components/screens/DiscoveryScreen/components/DiscoverWelcomeModal";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import { Text } from "components/sds/Typography";
-import {
-  BROWSER_CONSTANTS,
-  DEFAULT_PADDING,
-  STORAGE_KEYS,
-} from "config/constants";
+import { BROWSER_CONSTANTS, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
 import { BACKDROP_COLOR } from "config/theme";
@@ -26,9 +22,9 @@ import {
   isDangerousScheme,
   isHomepageUrl,
 } from "helpers/browser";
-import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
+import { useFloatingTabBarTop } from "hooks/useFloatingTabBarClearance";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Animated, Keyboard, Pressable, View } from "react-native";
@@ -46,6 +42,11 @@ type DiscoveryScreenProps = BottomTabScreenProps<
   typeof MAIN_TAB_ROUTES.TAB_DISCOVERY
 >;
 
+/**
+ * The Discover tab: an in-app browser with tabs. It shows the Discover
+ * homepage or a web page, with the search bar resting just above the floating
+ * tab bar, and the tab overview, whose footer sits where the search bar does.
+ */
 export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const webViewRef = useRef<WebView>(null);
   const manageAccountsRef = useRef<BottomSheetModal>(null);
@@ -55,6 +56,10 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const mainContentFadeAnim = useRef(new Animated.Value(1)).current;
   const tabOverviewFadeAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+  // The floating tab bar covers the screen's bottom. The search bar and the
+  // tab overview's footer both rest on the pill's top edge, their own bottom
+  // padding the gap above it, so their dividers line up.
+  const tabBarTop = useFloatingTabBarTop();
   const [isUrlBarFocused, setIsUrlBarFocused] = useState(false);
   const overlayFadeAnim = useRef(new Animated.Value(0)).current;
   const { t } = useAppTranslation();
@@ -332,18 +337,23 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     );
   }
 
-  // Main Browser Screen with TabOverview overlay
+  // Main Browser Screen with TabOverview overlay. Its parts clear the
+  // status bar themselves, so their nav bars line up with the stack's.
   return (
     <BaseLayout
-      insets={{ top: true, bottom: false, left: false, right: false }}
+      insets={{ top: false, bottom: false, left: false, right: false }}
     >
-      {/* Main content that fades out when tabs are shown */}
+      {/* Main content that fades out when tabs are shown. Its column ends
+          at the floating tab bar's top edge, search bar last. The search bar
+          rises with the keyboard by the keyboard's height less that same
+          offset. */}
       <Animated.View
         style={[
           {
             position: "relative",
             opacity: mainContentFadeAnim,
             flex: 1,
+            paddingBottom: tabBarTop,
           },
         ]}
       >
@@ -389,19 +399,22 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           contextMenuActions={browserActions.contextMenuActions}
           isHomePage={isHomepageUrl(activeTab.url)}
           onFocusChange={setIsUrlBarFocused}
+          bottomOffset={tabBarTop}
         />
       </Animated.View>
 
-      {/* Tabs overview overlay that fades out when tabs are hidden */}
+      {/* Tabs overview overlay that fades out when tabs are hidden. It ends
+          where the main column does, so its footer sits where the search
+          bar does. */}
       <Animated.View
         pointerEvents={showTabOverview ? "auto" : "none"}
         style={[
           {
             position: "absolute",
             opacity: tabOverviewFadeAnim,
-            top: insets.top + pxValue(DEFAULT_PADDING),
+            top: insets.top,
             right: 0,
-            bottom: 0,
+            bottom: tabBarTop,
             left: 0,
             zIndex: 50,
           },

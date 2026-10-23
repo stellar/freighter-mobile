@@ -2,9 +2,17 @@ import { fireEvent, within } from "@testing-library/react-native";
 import { WelcomeScreen } from "components/screens/WelcomeScreen";
 import { FREIGHTER_PRIVACY_URL, FREIGHTER_TERMS_URL } from "config/constants";
 import { AUTH_STACK_ROUTES } from "config/routes";
+import { useLoginDataStore } from "ducks/loginData";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { StyleSheet } from "react-native";
+
+jest.mock("@react-navigation/native", () => {
+  const { useEffect } = jest.requireActual("react");
+  return {
+    useFocusEffect: (effect: () => void) => useEffect(effect, [effect]),
+  };
+});
 
 const mockPush = jest.fn();
 
@@ -66,8 +74,7 @@ describe("WelcomeScreen", () => {
     fireEvent.press(importWalletButton);
 
     expect(mockPush).toHaveBeenCalledWith(
-      AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN,
-      { isImporting: true },
+      AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN,
     );
   });
 
@@ -100,5 +107,19 @@ describe("WelcomeScreen", () => {
       FREIGHTER_PRIVACY_URL,
     );
     expect(mockOpenInAppBrowser).toHaveBeenCalledTimes(2);
+  });
+
+  it("clears what an abandoned flow left in memory", () => {
+    useLoginDataStore.setState({
+      password: "password1",
+      mnemonicPhrase: "abandon ability able",
+    });
+
+    renderWelcomeScreen();
+
+    expect(useLoginDataStore.getState()).toMatchObject({
+      password: null,
+      mnemonicPhrase: null,
+    });
   });
 });

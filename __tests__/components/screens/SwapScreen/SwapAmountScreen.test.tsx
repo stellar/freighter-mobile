@@ -242,6 +242,7 @@ jest.mock("ducks/balances", () => ({
       balances: mockRawBalances,
       fetchedPublicKey: mockFetchedPublicKey,
       fetchedNetwork: mockFetchedNetwork,
+      hiddenTokenIds: [],
     };
     return selector ? selector(state) : state;
   },

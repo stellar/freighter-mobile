@@ -446,6 +446,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       isRefreshing: false,
       isFunded: true,
       localOnlyTokenIds: [],
+      hiddenBalanceItems: [],
       handleRefresh: jest.fn(),
     });
 
@@ -1197,6 +1198,7 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       isRefreshing: false,
       isFunded: true,
       localOnlyTokenIds: [],
+      hiddenBalanceItems: [],
       handleRefresh: jest.fn(),
     });
 
@@ -1871,6 +1873,7 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
       isRefreshing: false,
       isFunded: true,
       localOnlyTokenIds: [],
+      hiddenBalanceItems: [],
       handleRefresh: jest.fn(),
     });
 

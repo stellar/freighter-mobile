@@ -159,11 +159,6 @@ export const AUTO_LOCK_TIMER_MS: Record<AUTO_LOCK_TIMER, number> = {
   [AUTO_LOCK_TIMER.TWENTY_FOUR_HOURS]: 24 * HOUR_IN_MS,
 };
 
-// Recovery phrase validation constants
-export const VALIDATION_WORDS_PER_ROW: number = 3;
-export const VALIDATION_EXTRA_USER_WORDS: number = 2;
-export const VALIDATION_DECOY_WORDS: number = 6;
-
 export const DEFAULT_DECIMALS = 7;
 export const FIAT_DECIMALS = 2;
 
@@ -174,11 +169,17 @@ export const FIAT_DECIMALS = 2;
  */
 export const CLASSIC_TOKEN_MAX_AMOUNT = "922337203685.4775807";
 
-// Bottom sheet layout defaults
-export const BOTTOM_SHEET_MAX_HEIGHT_RATIO = 0.9;
-export const BOTTOM_SHEET_CONTENT_TOP_PADDING = DEFAULT_PADDING;
-export const BOTTOM_SHEET_CONTENT_BOTTOM_PADDING = 64;
-export const BOTTOM_SHEET_CONTENT_GAP = 16;
+// Bottom sheet layout defaults. A scrollable sheet stops at 726pt, or at 83%
+// of the window if that's shorter (726pt on design's 874pt screen).
+export const BOTTOM_SHEET_MAX_HEIGHT = 726;
+export const BOTTOM_SHEET_MAX_HEIGHT_RATIO = 0.83;
+
+// Floating bottom sheet: edge margin and corner radius
+export const BOTTOM_SHEET_FLOATING_MARGIN = 8;
+export const BOTTOM_SHEET_FLOATING_CORNER_RADIUS = 32;
+// Floating bottom sheet: height of the fade where content scrolls under the
+// pinned header or footer, or past the card's edge
+export const BOTTOM_SHEET_EDGE_FADE_HEIGHT = 24;
 
 // settings screen URLs
 export const FREIGHTER_BASE_URL = "https://varialwallet.com";
@@ -376,6 +377,10 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  * Formatted as: { [publicKey: string]: { [network: string]: CollectibleContract[] } } @see CollectiblesStorage
  * The HIDDEN_COLLECTIBLES_LIST is not removed during the standard logout process. It is used to keep the hidden collectibles even after the user logs out, since the API does not store hidden collectibles.
  *
+ * HIDDEN_TOKEN_LIST The hidden token list keeps track of the tokens the user chose to hide from the balances list.
+ * Formatted as: { [publicKey: string]: { [network: string]: string[] } } @see HiddenTokenStorage
+ * Each entry is the balance identifier ("CODE:ISSUER" or "SYMBOL:CONTRACT_ID"). Like the other lists it survives logout, since the API does not store hidden tokens.
+ *
  * ACTIVE_NETWORK The active network is the network that is currently being used.
  * RECENT_ADDRESSES The list of recently used addresses for sending payments.
  *
@@ -395,13 +400,13 @@ export enum STORAGE_KEYS {
   CUSTOM_TOKEN_LIST = "customTokenList",
   COLLECTIBLES_LIST = "collectiblesList",
   HIDDEN_COLLECTIBLES_LIST = "hiddenCollectiblesList",
+  HIDDEN_TOKEN_LIST = "hiddenTokenList",
   ACTIVE_NETWORK = "activeNetwork",
   RECENT_ADDRESSES = "recentAddresses",
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
   VERIFIED_TOKENS_PREFIX = "verifiedTokens_",
   STELLAR_EXPERT_TOP_TOKENS_PREFIX = "stellarExpertTopTokens_",
   BLOCKAID_TOKEN_SCANS_PREFIX = "blockaidTokenScans_",
-  WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   HAS_SEEN_DISCOVER_WELCOME = "hasSeenDiscoverWelcome",
   REBRAND_ANNOUNCEMENT_STATUS = "rebrandAnnouncementStatus",

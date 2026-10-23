@@ -243,10 +243,10 @@ const getSize = (
  * - error - Error state
  *
  * Size shorthands (alternative to size prop):
- * - sm - Small buttons (32px height)
+ * - sm - Small buttons (36px height)
  * - md - Medium buttons (40px height)
  * - lg - Large buttons (48px height)
- * - xl - Extra Large buttons (50px height, default)
+ * - xl - Extra Large buttons (52px height, default)
  */
 interface ButtonProps extends VariantProps, SizeProps {
   variant?: ButtonVariant;

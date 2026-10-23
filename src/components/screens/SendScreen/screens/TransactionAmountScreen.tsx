@@ -211,7 +211,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, [navigation]);
 
   const renderCloseHeaderButton = useCallback(
-    () => <CustomHeaderButton icon={Icon.X} onPress={handleCloseSendFlow} />,
+    () => <CustomHeaderButton variant="close" onPress={handleCloseSendFlow} />,
     [handleCloseSendFlow],
   );
 
@@ -1191,7 +1191,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       </View>
       <BottomSheet
         modalRef={reviewBottomSheetModalRef}
-        handleCloseModal={handleCancelReview}
         analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
         scrollable
         bottomSheetModalProps={{
@@ -1223,21 +1222,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={addMemoExplanationBottomSheetModalRef}
-        handleCloseModal={onCancelAddMemo}
         customContent={
           <InformationBottomSheet
             title={t("addMemoExplanationBottomSheet.title")}
             onClose={onCancelAddMemo}
             onConfirm={onConfirmAddMemo}
-            headerElement={
-              <View className="bg-red-3 p-2 rounded-[8px]">
-                <Icon.InfoOctagon
-                  color={themeColors.status.error}
-                  size={28}
-                  withBackground
-                />
-              </View>
-            }
             texts={[
               {
                 key: "description",
@@ -1257,7 +1246,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={transactionSettingsBottomSheetModalRef}
-        handleCloseModal={handleCancelTransactionSettings}
         customContent={
           <TransactionSettingsBottomSheet
             context={TransactionContext.Send}
@@ -1269,7 +1257,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={muxedAddressInfoBottomSheetModalRef}
-        handleCloseModal={handleCancelMuxedAddressWarning}
         customContent={
           <MuxedAddressWarningBottomSheet
             onCancel={handleCancelMuxedAddressWarning}
@@ -1279,7 +1266,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}
-        handleCloseModal={handleCancelSecurityWarning}
         customContent={
           <SecurityDetailBottomSheet
             warnings={transactionSecurityWarnings}

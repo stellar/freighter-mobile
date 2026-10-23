@@ -59,6 +59,30 @@ describe("useSyncAccountsFiatTotals", () => {
     });
   });
 
+  it("leaves hidden tokens out of the synced balances", () => {
+    const usdcId =
+      "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+    mockBalancesState = {
+      ...mockBalancesState,
+      pricedBalances: {
+        ...mockPricedBalances,
+        [usdcId]: { fiatTotal: new BigNumber("1000000") },
+      },
+      hiddenTokenIds: [usdcId],
+    };
+
+    renderHook(() =>
+      useSyncAccountsFiatTotals({
+        publicKey: PK_OLD,
+        network: NETWORKS.PUBLIC,
+      }),
+    );
+
+    expect(mockSyncAccountFiatTotal).toHaveBeenCalledWith(
+      expect.objectContaining({ pricedBalances: mockPricedBalances }),
+    );
+  });
+
   it("skips the sync while the snapshot still belongs to the previous account", () => {
     // Account switched to PK_NEW but the balances store still holds PK_OLD's
     // snapshot — syncing would write the old total under the new key.

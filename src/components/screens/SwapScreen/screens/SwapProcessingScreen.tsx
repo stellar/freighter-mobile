@@ -309,9 +309,6 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 
       <BottomSheet
         modalRef={transactionDetailsBottomSheetModalRef}
-        handleCloseModal={() =>
-          transactionDetailsBottomSheetModalRef.current?.dismiss()
-        }
         customContent={
           <SwapTransactionDetailsBottomSheet
             sourceAmount={displayData.sourceAmount}

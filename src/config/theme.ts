@@ -187,12 +187,6 @@ export const getTheme = (scheme: ColorScheme) => ({
       default: PALETTE[scheme].gray["06"],
       error: PALETTE[scheme].red["06"],
     },
-    tab: {
-      active: PALETTE[scheme].gray["12"],
-      inactive: PALETTE[scheme].gray["11"],
-      activeBackground: PALETTE[scheme].gray["04"],
-      inactiveBackground: "transparent",
-    },
     base: {
       primary: PALETTE[scheme].base["00"],
       secondary: PALETTE[scheme].base["01"],

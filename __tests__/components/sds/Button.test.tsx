@@ -204,6 +204,22 @@ describe("Button", () => {
       });
     });
 
+    it("pads md, lg and xl labels 16pt at the sides, as Figma's Button does", () => {
+      ["md", "lg", "xl"].forEach((prop) => {
+        const { getByTestId, unmount } = renderWithProviders(
+          <Button {...{ [prop]: true }} testID="test-button">
+            Add XLM
+          </Button>,
+        );
+
+        expect(getByTestId("test-button").props.style).toMatchObject({
+          paddingLeft: 16,
+          paddingRight: 16,
+        });
+        unmount();
+      });
+    });
+
     it("prioritizes explicit size over shorthand", () => {
       const { getByTestId } = renderWithProviders(
         <Button size={ButtonSizes.LARGE} sm testID="test-button">

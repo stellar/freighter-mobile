@@ -986,10 +986,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
       <BottomSheet
         modalRef={swapReviewBottomSheetModalRef}
-        handleCloseModal={() => {
-          swapReviewBottomSheetModalRef.current?.dismiss();
-          setActiveError(null);
-        }}
         scrollable
         bottomSheetModalProps={{
           // Clear the "opening" latch on the sheet's first state change
@@ -1023,7 +1019,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}
-        handleCloseModal={handleCancelSecurityWarning}
         customContent={
           <SecurityDetailBottomSheet
             warnings={securityWarnings}
@@ -1041,7 +1036,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={trendingSecurityWarningBottomSheetModalRef}
-        handleCloseModal={handleCancelTrendingSecurityWarning}
         bottomSheetModalProps={{
           onChange: (index: number) => {
             if (index === -1) clearTrendingSecurityRecord();
@@ -1077,9 +1071,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={transactionSettingsBottomSheetModalRef}
-        handleCloseModal={() =>
-          transactionSettingsBottomSheetModalRef.current?.dismiss()
-        }
         customContent={
           <TransactionSettingsBottomSheet
             context={TransactionContext.Swap}
@@ -1092,7 +1083,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={xlmReserveBottomSheetRef}
-        handleCloseModal={() => xlmReserveBottomSheetRef.current?.dismiss()}
         customContent={
           <XlmReserveBottomSheet
             publicKey={account?.publicKey ?? ""}
@@ -1106,10 +1096,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       {selectedTrendingRecord && (
         <BottomSheet
           modalRef={trendingDetailSheetRef}
-          handleCloseModal={() => {
-            trendingDetailSheetRef.current?.dismiss();
-            clearSelectedTrendingRecord();
-          }}
           // Clear the selected record on every dismiss path — swipe-down,
           // backdrop tap, X tap, programmatic dismiss. onChange(index=-1)
           // fires consistently for all of them. This guarantees the next

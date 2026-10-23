@@ -499,6 +499,7 @@ jest.mock("react-native-keyboard-controller", () =>
 jest.mock("hooks/useBalancesList", () => ({
   useBalancesList: jest.fn(() => ({
     balanceItems: [],
+    hiddenBalanceItems: [],
     scanResults: {},
     isLoading: false,
     error: null,
@@ -506,13 +507,6 @@ jest.mock("hooks/useBalancesList", () => ({
     isRefreshing: false,
     isFunded: false,
     handleRefresh: jest.fn(),
-  })),
-}));
-
-jest.mock("hooks/useWelcomeBanner", () => ({
-  useWelcomeBanner: jest.fn(() => ({
-    welcomeBannerBottomSheetModalRef: { current: null },
-    handleWelcomeBannerDismiss: jest.fn(),
   })),
 }));
 

@@ -1,7 +1,8 @@
 import { NETWORKS } from "config/constants";
 import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { useBalancesStore } from "ducks/balances";
-import { useEffect } from "react";
+import { omitHiddenBalances } from "helpers/balances";
+import { useEffect, useMemo } from "react";
 
 interface UseSyncAccountsFiatTotalsParams {
   publicKey: string;
@@ -20,7 +21,8 @@ export const useSyncAccountsFiatTotals = ({
   publicKey,
   network,
 }: UseSyncAccountsFiatTotalsParams) => {
-  const pricedBalances = useBalancesStore((state) => state.pricedBalances);
+  const allPricedBalances = useBalancesStore((state) => state.pricedBalances);
+  const hiddenTokenIds = useBalancesStore((state) => state.hiddenTokenIds);
   const fetchedPublicKey = useBalancesStore((state) => state.fetchedPublicKey);
   const fetchedNetwork = useBalancesStore((state) => state.fetchedNetwork);
   const isLoadingBalances = useBalancesStore((state) => state.isLoading);
@@ -30,6 +32,13 @@ export const useSyncAccountsFiatTotals = ({
   const balancesError = useBalancesStore((state) => state.error);
   const syncAccountFiatTotal = useAccountsFiatTotalsStore(
     (state) => state.syncAccountFiatTotal,
+  );
+
+  // Hidden tokens don't count towards the account's total, matching the Home
+  // header (see useTotalBalance).
+  const pricedBalances = useMemo(
+    () => omitHiddenBalances(allPricedBalances, hiddenTokenIds),
+    [allPricedBalances, hiddenTokenIds],
   );
 
   useEffect(() => {

@@ -6,11 +6,11 @@ import {
   NativeStackNavigationProp,
 } from "@react-navigation/native-stack";
 import { SplashOverlay } from "components/SplashAnimation/SplashOverlay";
+import { WalletSetupOverlay } from "components/WalletSetupOverlay";
 import AddCollectibleScreen from "components/screens/AddCollectibleScreen";
 import { BiometricsOnboardingScreen } from "components/screens/BiometricsEnableScreen/BiometricsEnableScreen";
 import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScreen";
 import { ForceUpdateScreen } from "components/screens/ForceUpdateScreen/ForceUpdateScreen";
-import HiddenCollectiblesScreen from "components/screens/HiddenCollectiblesScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import { MaintenanceScreen } from "components/screens/MaintenanceScreen/MaintenanceScreen";
 import { RebrandAnnouncementScreen } from "components/screens/RebrandAnnouncementScreen";
@@ -33,12 +33,13 @@ import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { usePreferencesStore } from "ducks/preferences";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { useWalletSetupOverlayStore } from "ducks/walletSetupOverlay";
 import { isDeviceJailbroken } from "helpers/deviceSecurity";
 import {
   getStackBottomNavigateOptions,
   getScreenOptionsNoHeader,
   getScreenBottomNavigateOptions,
-  withTransitionOverride,
+  getScanQRCodeScreenOptions,
 } from "helpers/navigationOptions";
 import { triggerFaceIdOnboarding } from "helpers/postOnboardingBiometrics";
 import {
@@ -97,6 +98,9 @@ export const RootNavigator = () => {
     useAuthenticationStore();
   const remoteConfigInitialized = useRemoteConfigStore(
     (state) => state.isInitialized,
+  );
+  const isWalletSetupOverlayUp = useWalletSetupOverlayStore(
+    (state) => state.phase !== "hidden",
   );
   const [initializing, setInitializing] = useState(true);
   const [isAuthStatusReady, setIsAuthStatusReady] = useState(false);
@@ -278,13 +282,18 @@ export const RootNavigator = () => {
         }
         accessibilityElementsHidden={isSoftLocked}
       >
-        {/* Same treatment while the rebrand announcement covers the tree. */}
+        {/* Same treatment while the rebrand announcement or the wallet
+            setup screen covers the tree. */}
         <View
           style={styles.flex}
           importantForAccessibility={
-            showRebrandAnnouncement ? "no-hide-descendants" : "auto"
+            showRebrandAnnouncement || isWalletSetupOverlayUp
+              ? "no-hide-descendants"
+              : "auto"
           }
-          accessibilityElementsHidden={showRebrandAnnouncement}
+          accessibilityElementsHidden={
+            showRebrandAnnouncement || isWalletSetupOverlayUp
+          }
         >
           <RootStack.Navigator
             initialRouteName={initialRouteName}
@@ -326,9 +335,7 @@ export const RootNavigator = () => {
                 <RootStack.Screen
                   name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
                   component={ScanQRCodeScreen}
-                  options={({ route }) =>
-                    withTransitionOverride(getScreenOptionsNoHeader(), route)
-                  }
+                  options={getScanQRCodeScreenOptions}
                 />
                 <RootStack.Screen
                   name={ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN}
@@ -358,13 +365,6 @@ export const RootNavigator = () => {
                   )}
                 />
                 <RootStack.Screen
-                  name={ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN}
-                  component={HiddenCollectiblesScreen}
-                  options={getScreenBottomNavigateOptions(
-                    t("hiddenCollectiblesScreen.title"),
-                  )}
-                />
-                <RootStack.Screen
                   name={AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN}
                   component={BiometricsOnboardingScreen}
                   options={getScreenBottomNavigateOptions("")}
@@ -385,10 +385,20 @@ export const RootNavigator = () => {
           </RootStack.Navigator>
         </View>
         {showRebrandAnnouncement && (
-          <View style={styles.overlay} accessibilityViewIsModal>
+          <View
+            style={styles.overlay}
+            accessibilityViewIsModal
+            importantForAccessibility={
+              isWalletSetupOverlayUp ? "no-hide-descendants" : "auto"
+            }
+            accessibilityElementsHidden={isWalletSetupOverlayUp}
+          >
             <RebrandAnnouncementScreen onDismiss={dismissRebrandAnnouncement} />
           </View>
         )}
+        {/* Above everything else, so it stays up while the app swaps the
+            onboarding stack for Home beneath it. */}
+        <WalletSetupOverlay />
       </View>
     );
   };

@@ -3,6 +3,7 @@ import { Textarea } from "components/sds/Textarea";
 import { fsValue } from "helpers/dimensions";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { StyleSheet } from "react-native";
 
 describe("Textarea", () => {
   const onChangeTextMock = jest.fn();
@@ -168,5 +169,26 @@ describe("Textarea", () => {
       );
       expect(getByText("Success message")).toBeTruthy();
     });
+  });
+
+  it("draws Varial's xl field: 160pt, Inter 16/24, outline only, room for a corner button", () => {
+    const { getByTestId } = renderWithProviders(
+      <Textarea
+        testID="textarea"
+        fieldSize="xl"
+        value=""
+        onChangeText={jest.fn()}
+      />,
+    );
+    const input = getByTestId("textarea");
+
+    expect(StyleSheet.flatten(input.props.style)).toMatchObject({
+      height: 160,
+      fontSize: 16,
+      lineHeight: 24,
+    });
+    expect(input.props.className).toContain("rounded-[16px]");
+    expect(input.props.className).toContain("bg-transparent");
+    expect(input.props.className).toContain("pb-[52px]");
   });
 });

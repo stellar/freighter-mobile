@@ -1,5 +1,11 @@
 import BigNumber from "bignumber.js";
+import { DefaultRightContent } from "components/BalanceRow";
 import { TokenIconWithBadge } from "components/TokenIconWithBadge";
+import {
+  TOKEN_ROW_GAP,
+  TOKEN_ROW_SECONDARY_LINE_STYLE,
+  TOKEN_ROW_VERTICAL_PADDING,
+} from "components/TokenRowStyle";
 import { TokenContextMenu } from "components/screens/SwapScreen/components/TokenContextMenu";
 import { Text } from "components/sds/Typography";
 import { NETWORKS, POSITIVE_PRICE_CHANGE_THRESHOLD } from "config/constants";
@@ -10,6 +16,7 @@ import {
   PricedBalance,
   TokenTypeWithCustomToken,
 } from "config/types";
+import { pxValue } from "helpers/dimensions";
 import {
   formatBalanceAmount,
   formatFiatAmount,
@@ -35,6 +42,23 @@ const bigEq = (
 
 export type SwapTokenRowVariant = "held" | "non-held" | "trending";
 
+/**
+ * The shared token row's geometry, as styles so it scales with the screen like
+ * Home's rows do (the token icon already does, through the SDS Token). A class
+ * can't scale, and the divider under the row is inset by
+ * `pxValue(TOKEN_ROW_TEXT_INSET)`, so a fixed padding or gap would leave the
+ * names off the divider on other widths.
+ */
+const SHARED_ROW_STYLE = {
+  paddingVertical: pxValue(TOKEN_ROW_VERTICAL_PADDING),
+};
+
+/** The 16pt between the token icon and the text. */
+const SHARED_TEXT_COLUMN_STYLE = { marginLeft: pxValue(TOKEN_ROW_GAP) };
+
+/** The 16pt between the text and the right column, as in Home's rows. */
+const SHARED_LEFT_BLOCK_STYLE = { marginRight: pxValue(TOKEN_ROW_GAP) };
+
 export interface SwapTokenRowProps {
   variant: SwapTokenRowVariant;
   /** For "held" rows: full PricedBalance. */
@@ -50,13 +74,21 @@ export interface SwapTokenRowProps {
   onPress: () => void;
   /** Forwarded to the row's TouchableOpacity so e2e flows can tap a specific token. */
   testID?: string;
+  /**
+   * "shared" gives a held row the token row Home and Send use: 12pt of
+   * padding instead of the 24pt bottom margin (the list divides the rows),
+   * the code in Text/MD/600, a 20pt amount line and Home's right column.
+   * Defaults to "default". Only "held" rows take it.
+   */
+  rowStyle?: "default" | "shared";
 }
 
 /**
  * Single row for the SwapToScreen picker and the Trending Tokens list.
  *
  * Three right-hand-slot variants:
- * - held: fiat value + 24h % (same layout as BalanceRow on the Home screen)
+ * - held: fiat value + 24h % (same layout as BalanceRow on the Home screen);
+ *   with `rowStyle="shared"` the whole row takes Home's new token row style
  * - non-held: ellipsis context menu (TokenContextMenu)
  * - trending: price + 24h %; % chip hidden when 24h data is unavailable
  */
@@ -68,8 +100,10 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
   network,
   onPress,
   testID,
+  rowStyle = "default",
 }) => {
   const { themeColors } = useColors();
+  const isShared = variant === "held" && rowStyle === "shared";
 
   // Derive display values from the appropriate data source
   const tokenCode = variant === "held" ? balance?.tokenCode : record?.tokenCode;
@@ -115,6 +149,10 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
 
   const renderRightSlot = () => {
     if (variant === "held" && balance) {
+      if (isShared) {
+        return <DefaultRightContent balance={balance} />;
+      }
+
       return (
         <View className="flex-col items-end">
           {balance.fiatTotal ? (
@@ -186,23 +224,49 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
       testID={testID}
       onPress={onPress}
       activeOpacity={0.7}
-      className="flex-row justify-between items-center mb-6"
+      className={
+        isShared
+          ? "flex-row justify-between items-center"
+          : "flex-row justify-between items-center mb-6"
+      }
+      style={isShared ? SHARED_ROW_STYLE : undefined}
     >
-      <View className="flex-row items-center flex-1 mr-4">
+      <View
+        className={
+          isShared
+            ? "flex-row items-center flex-1"
+            : "flex-row items-center flex-1 mr-4"
+        }
+        style={isShared ? SHARED_LEFT_BLOCK_STYLE : undefined}
+      >
         <TokenIconWithBadge
           token={token}
           iconUrl={iconUrl}
           securityLevel={securityLevel}
         />
-        <View className="ml-4 flex-1">
-          <Text md primary medium numberOfLines={1}>
+        <View
+          className={isShared ? "flex-1" : "ml-4 flex-1"}
+          style={isShared ? SHARED_TEXT_COLUMN_STYLE : undefined}
+        >
+          <Text
+            md
+            primary
+            weight={isShared ? "semiBold" : "medium"}
+            numberOfLines={1}
+          >
             {tokenCode}
           </Text>
           {/* Held rows show the raw token amount; non-held rows show the
               issuer's home domain. Skip when `total` is missing (defensive
               for partial test fixtures). */}
           {variant === "held" && balance?.total ? (
-            <Text sm secondary medium numberOfLines={1}>
+            <Text
+              sm
+              secondary
+              medium
+              numberOfLines={1}
+              style={isShared ? TOKEN_ROW_SECONDARY_LINE_STYLE : undefined}
+            >
               {formatBalanceAmount(balance, balance.tokenCode)}
             </Text>
           ) : null}
@@ -226,6 +290,10 @@ export const SwapTokenRow = React.memo(SwapTokenRowComponent, (prev, next) => {
   if (prev.onPress !== next.onPress) return false;
 
   if (prev.variant === "held") {
+    // The shared style swaps the row's layout and its right column.
+    if ((prev.rowStyle ?? "default") !== (next.rowStyle ?? "default")) {
+      return false;
+    }
     const pb = prev.balance;
     const nb = next.balance;
     if (pb === nb) return true;

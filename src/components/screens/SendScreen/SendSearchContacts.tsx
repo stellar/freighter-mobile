@@ -45,6 +45,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { analytics } from "services/analytics";
 
+/** The header's scan icon, at the size Home's is. */
+const SCAN_ICON_SIZE = 24;
+
 type SendSearchContactsProps = NativeStackScreenProps<
   RootStackParamList & SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN
@@ -488,11 +491,14 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     });
   }, [navigation]);
 
-  // Set up the QR code button in the header
+  // The QR code button in the header: Home's scan button (useHomeHeaders),
+  // in the back arrow's color.
   useRightHeaderButton({
     onPress: handleOpenQRScanner,
-    icon: Icon.Scan,
-    iconSize: 20,
+    icon: Icon.ScanCircle,
+    iconSize: SCAN_ICON_SIZE,
+    iconColor: themeColors.text.primary,
+    accessibilityLabel: t("homeScanner.title"),
   });
 
   return (

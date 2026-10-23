@@ -6,7 +6,8 @@ import { BalanceRow, DefaultRightContent } from "components/BalanceRow";
 import Icon from "components/sds/Icon";
 import { PricedBalance } from "config/types";
 import React from "react";
-import { Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
+import { ReactTestInstance } from "react-test-renderer";
 
 import {
   benignTokenScan,
@@ -28,6 +29,12 @@ jest.mock("hooks/useColors", () => ({
     themeColors: {
       status: {
         success: "#30a46c",
+      },
+      green: {
+        10: "#299764",
+      },
+      border: {
+        primary: "#e2e2e2",
       },
       text: {
         secondary: "#a0a0a0",
@@ -106,6 +113,57 @@ describe("BalanceRow", () => {
     expect(queryByText("$50.25")).toBeNull();
   });
 
+  describe("row styling", () => {
+    // The row's own box: the nearest native view around the right section,
+    // past the styled-components wrappers.
+    const rowContainerOf = (rightSection: ReactTestInstance) => {
+      let node = rightSection.parent;
+      while (node && typeof node.type !== "string") node = node.parent;
+      return node;
+    };
+
+    it("shows the name in Text/MD/600", () => {
+      const { getByText } = render(<BalanceRow balance={mockBalance} />);
+
+      expect(StyleSheet.flatten(getByText("XLM").props.style)).toMatchObject({
+        fontSize: 16,
+        fontWeight: "600",
+      });
+    });
+
+    it("shows the amount in Text/SM/500 at a 20pt line height", () => {
+      const { getByText } = render(<BalanceRow balance={mockBalance} />);
+
+      expect(
+        StyleSheet.flatten(getByText("100.50 XLM").props.style),
+      ).toMatchObject({ fontSize: 14, fontWeight: "500", lineHeight: 20 });
+    });
+
+    it("sets the amount 2pt under the name", () => {
+      const { getByText } = render(<BalanceRow balance={mockBalance} />);
+
+      expect(
+        StyleSheet.flatten(getByText("100.50 XLM").props.style),
+      ).toMatchObject({ marginTop: 2 });
+    });
+
+    it("pads the row 12pt top and bottom with no bottom margin", () => {
+      const { getByTestId } = render(<BalanceRow balance={mockBalance} />);
+
+      const row = StyleSheet.flatten(
+        rowContainerOf(getByTestId("right-section"))?.props.style,
+      );
+
+      expect(row).toMatchObject({
+        flexDirection: "row",
+        paddingTop: 12,
+        paddingBottom: 12,
+      });
+      expect(row).not.toHaveProperty("height");
+      expect(row).not.toHaveProperty("marginBottom");
+    });
+  });
+
   describe("DefaultRightContent", () => {
     it("should render fiat values for regular tokens", () => {
       const { getByText } = render(
@@ -114,6 +172,36 @@ describe("BalanceRow", () => {
 
       expect(getByText("$50.25")).toBeTruthy();
       expect(getByText("+0.02%")).toBeTruthy();
+    });
+
+    it("shows the fiat value in Text/MD/600", () => {
+      const { getByText } = render(
+        <DefaultRightContent balance={mockBalance} />,
+      );
+
+      expect(StyleSheet.flatten(getByText("$50.25").props.style)).toMatchObject(
+        { fontSize: 16, fontWeight: "600" },
+      );
+    });
+
+    it("shows the price change in Text/SM/500 at a 20pt line height", () => {
+      const { getByText } = render(
+        <DefaultRightContent balance={mockBalance} />,
+      );
+
+      expect(StyleSheet.flatten(getByText("+0.02%").props.style)).toMatchObject(
+        { fontSize: 14, fontWeight: "500", lineHeight: 20 },
+      );
+    });
+
+    it("sets the price change 2pt under the fiat value", () => {
+      const { getByText } = render(
+        <DefaultRightContent balance={mockBalance} />,
+      );
+
+      expect(StyleSheet.flatten(getByText("+0.02%").props.style)).toMatchObject(
+        { marginTop: 2 },
+      );
     });
 
     it("should render placeholder when no fiat values available", () => {
@@ -130,15 +218,15 @@ describe("BalanceRow", () => {
       expect(getByText("--")).toBeTruthy();
     });
 
-    it("should use success color for positive price changes at or above threshold", () => {
+    it("should use green 10 for positive price changes at or above threshold", () => {
       const { getByText: getByTextAbove } = render(
         <DefaultRightContent balance={mockBalance} />,
       );
       const priceChangeElementAbove = getByTextAbove("+0.02%");
 
-      expect(priceChangeElementAbove.props.style).toMatchObject({
-        color: "#30a46c",
-      });
+      expect(
+        StyleSheet.flatten(priceChangeElementAbove.props.style),
+      ).toMatchObject({ color: "#299764" });
 
       const balanceAtThreshold = {
         ...mockBalance,
@@ -149,9 +237,9 @@ describe("BalanceRow", () => {
       );
       const priceChangeElementAt = getByTextAt("+0.01%");
 
-      expect(priceChangeElementAt.props.style).toMatchObject({
-        color: "#30a46c",
-      });
+      expect(
+        StyleSheet.flatten(priceChangeElementAt.props.style),
+      ).toMatchObject({ color: "#299764" });
     });
 
     it("should use secondary color for negative price changes and positive changes below threshold", () => {
@@ -164,9 +252,9 @@ describe("BalanceRow", () => {
       );
       const priceChangeElementNegative = getByTextNegative("-0.02%");
 
-      expect(priceChangeElementNegative.props.style).toMatchObject({
-        color: "#a0a0a0",
-      });
+      expect(
+        StyleSheet.flatten(priceChangeElementNegative.props.style),
+      ).toMatchObject({ color: "#a0a0a0" });
 
       const balanceBelowThreshold = {
         ...mockBalance,
@@ -177,9 +265,9 @@ describe("BalanceRow", () => {
       );
       const priceChangeElementBelow = getByTextBelow("+0.00%");
 
-      expect(priceChangeElementBelow.props.style).toMatchObject({
-        color: "#a0a0a0",
-      });
+      expect(
+        StyleSheet.flatten(priceChangeElementBelow.props.style),
+      ).toMatchObject({ color: "#a0a0a0" });
     });
 
     it("should adjust width for liquidity pool tokens", () => {

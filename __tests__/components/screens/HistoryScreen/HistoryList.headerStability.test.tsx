@@ -2,7 +2,8 @@ import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { SectionList, Text } from "react-native";
+import { SectionList, StyleSheet, Text } from "react-native";
+import { ReactTestInstance } from "react-test-renderer";
 
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => key,
@@ -189,5 +190,36 @@ describe("HistoryList header stability", () => {
       <HistoryList {...props(loaded)} />,
     );
     expect(getByType(SectionList).props.scrollEnabled).toBe(true);
+  });
+
+  /**
+   * The History tab's list runs under the floating tab bar, so it ends that
+   * far up to let its last row scroll clear of it. The token detail screen
+   * has no tab bar and passes nothing.
+   */
+  it("pads the list end with bottomClearance", () => {
+    const loaded = {
+      historyData: {
+        history: [{ monthYear: "September 2026", operations: [] }],
+      },
+      isLoading: false,
+      error: null,
+    };
+    const containerStyleOf = (list: ReactTestInstance) =>
+      StyleSheet.flatten(list.props.contentContainerStyle);
+
+    const cleared = renderWithProviders(
+      <HistoryList {...props({ ...loaded, bottomClearance: 120 })} />,
+    );
+    // Added to the container's style, which still stretches to the viewport
+    // so the empty state can centre in it.
+    expect(
+      containerStyleOf(cleared.UNSAFE_getByType(SectionList)),
+    ).toMatchObject({ flexGrow: 1, minHeight: "100%", paddingBottom: 120 });
+
+    const unset = renderWithProviders(<HistoryList {...props(loaded)} />);
+    expect(
+      containerStyleOf(unset.UNSAFE_getByType(SectionList)).paddingBottom,
+    ).toBe(0);
   });
 });

@@ -60,16 +60,12 @@ export const ROOT_NAVIGATOR_ROUTES = {
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
   COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
   ADD_COLLECTIBLE_SCREEN: "AddCollectibleScreen",
-  HIDDEN_COLLECTIBLES_SCREEN: "HiddenCollectiblesScreen",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
   WELCOME_SCREEN: "WelcomeScreen",
   CHOOSE_PASSWORD_SCREEN: "ChoosePasswordScreen",
-  CONFIRM_PASSWORD_SCREEN: "ConfirmPasswordScreen",
-  RECOVERY_PHRASE_ALERT_SCREEN: "RecoveryPhraseAlertScreen",
   RECOVERY_PHRASE_SCREEN: "RecoveryPhraseScreen",
-  VALIDATE_RECOVERY_PHRASE_SCREEN: "ValidateRecoveryPhraseScreen",
   IMPORT_WALLET_SCREEN: "ImportWalletScreen",
   BIOMETRICS_ENABLE_SCREEN: "BiometricsOnboardingScreen",
 
@@ -175,7 +171,6 @@ export type RootStackParamList = {
     tokenId: string;
   };
   [ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN]: undefined;
-  [ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN]: undefined;
 };
 
 export type AuthStackParamList = {
@@ -183,17 +178,12 @@ export type AuthStackParamList = {
   [AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN]: {
     isImporting?: boolean;
   };
-  [AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN]: {
-    isImporting?: boolean;
-  };
-  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN]: {
     source: BiometricsSource;
   };
   [AUTH_STACK_ROUTES.LOCK_SCREEN]: undefined;
-  [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: undefined;
 };
 
 export type MainTabStackParamList = {

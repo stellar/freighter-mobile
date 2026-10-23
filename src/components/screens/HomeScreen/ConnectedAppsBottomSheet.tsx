@@ -9,7 +9,6 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useMemo } from "react";
 import { TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export interface ConnectedDapp {
   topic: string;
@@ -32,7 +31,6 @@ const ConnectedAppsBottomSheet: React.FC<ConnectedAppsBottomSheetProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const insets = useSafeAreaInsets();
 
   const listItems = useMemo<ListItemProps[]>(
     () =>
@@ -61,9 +59,10 @@ const ConnectedAppsBottomSheet: React.FC<ConnectedAppsBottomSheetProps> = ({
     <List items={listItems} variant="secondary" />
   ) : (
     <View
-      className="w-full items-center px-4 pt-6 gap-4"
+      className="w-full items-center px-4 gap-4"
+      // The sheet adds another 24pt below, for 48pt in all.
       style={{
-        paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING * 2),
+        paddingBottom: pxValue(DEFAULT_PADDING),
       }}
     >
       <View className="size-16 items-center justify-center rounded-full bg-background-tertiary">

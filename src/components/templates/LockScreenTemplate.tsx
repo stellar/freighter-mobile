@@ -1,8 +1,8 @@
+import { PasswordField } from "components/PasswordField";
 import { WelcomeHeader } from "components/WelcomeHeader";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { Input } from "components/sds/Input";
 import { LoginType } from "config/constants";
 import { isValidPasswordLength } from "helpers/passwordValidation";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -26,7 +26,7 @@ interface LockScreenTemplateProps {
   autoFocus: boolean;
   /**
    * How biometrics unlock this wallet. Null when they can't, in which case the
-   * password field offers to show the password instead.
+   * password field keeps its eye, which shows the password.
    */
   biometricLoginType: BiometricLoginType | null;
   onUnlock: (password: string) => void | Promise<unknown>;
@@ -39,6 +39,10 @@ interface LockScreenTemplateProps {
  * field above the unlock actions, all centered on the screen as one block.
  * BaseLayout's keyboard avoidance, the one the other form screens use,
  * re-centers the block in the space left above the keyboard.
+ *
+ * The field is the shared PasswordField, with onboarding's look: 16pt text,
+ * the focus ring, and an eye that's slashed while the password is masked.
+ * Where biometrics unlock the wallet, their button takes the eye's place.
  *
  * Design: https://www.figma.com/design/lcdj2ucnJ2BfvRvsLboBNC/Varial?node-id=2554-154967
  * (biometrics) and ?node-id=2554-155239 (password only).
@@ -55,7 +59,6 @@ const LockScreenTemplate: React.FC<LockScreenTemplateProps> = ({
   const { t } = useAppTranslation();
   const theme = useTheme();
   const [password, setPassword] = useState("");
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const canUnlock = isValidPasswordLength(password);
   const iconColor = theme.colors.foreground.primary;
@@ -68,11 +71,9 @@ const LockScreenTemplate: React.FC<LockScreenTemplateProps> = ({
     }
   }, [canUnlock, onUnlock, password]);
 
-  const togglePasswordVisibility = useCallback(() => {
-    setIsPasswordVisible((isVisible) => !isVisible);
-  }, []);
-
-  const passwordAccessory = biometricLoginType ? (
+  // Where biometrics unlock the wallet, their button takes the eye's place
+  // in the field and prompts for them.
+  const biometricsButton = biometricLoginType ? (
     <TouchableOpacity
       testID="biometrics-button"
       onPress={onBiometricUnlock}
@@ -87,25 +88,7 @@ const LockScreenTemplate: React.FC<LockScreenTemplateProps> = ({
         <Icon.Fingerprint01 size={ICON_SIZE} color={iconColor} />
       )}
     </TouchableOpacity>
-  ) : (
-    <TouchableOpacity
-      testID="password-visibility-button"
-      onPress={togglePasswordVisibility}
-      hitSlop={ICON_HIT_SLOP}
-      accessibilityRole="button"
-      accessibilityLabel={
-        isPasswordVisible
-          ? t("lockScreen.hidePassword")
-          : t("lockScreen.showPassword")
-      }
-    >
-      {isPasswordVisible ? (
-        <Icon.EyeOff size={ICON_SIZE} color={iconColor} />
-      ) : (
-        <Icon.Eye size={ICON_SIZE} color={iconColor} />
-      )}
-    </TouchableOpacity>
-  );
+  ) : undefined;
 
   return (
     <BaseLayout useSafeArea useKeyboardAvoidingView testID="lock-screen">
@@ -113,15 +96,9 @@ const LockScreenTemplate: React.FC<LockScreenTemplateProps> = ({
         <View className="items-center gap-[40px]">
           <WelcomeHeader title={t("lockScreen.title")} />
           <View className="self-stretch">
-            <Input
+            <PasswordField
               testID="password-input"
-              fieldSize="xl"
-              isPassword
-              secureTextEntry={!isPasswordVisible}
               placeholder={t("lockScreen.passwordInputPlaceholder")}
-              placeholderTextColor={theme.colors.foreground.primary}
-              autoCapitalize="none"
-              autoCorrect={false}
               value={password}
               onChangeText={setPassword}
               error={error}
@@ -131,7 +108,7 @@ const LockScreenTemplate: React.FC<LockScreenTemplateProps> = ({
               // straight away
               submitBehavior="submit"
               onSubmitEditing={handleUnlock}
-              rightElement={passwordAccessory}
+              rightElement={biometricsButton}
             />
           </View>
         </View>

@@ -582,9 +582,8 @@ describe("semantic tokens", () => {
    * a few components read both, so a disagreement paints one token in two shades
    * on a single screen.
    *
-   * Tokens only one side defines are out of scope: getTheme's `tab` and `list`
-   * groups, colors.ts's numeric ramps. There is nothing for those to disagree
-   * with.
+   * Tokens only one side defines are out of scope: getTheme's `list` group,
+   * colors.ts's numeric ramps. There is nothing for those to disagree with.
    */
   const shared = (scheme: "light" | "dark") => {
     const theme = getTheme(scheme).colors;
@@ -689,7 +688,7 @@ describe("history refresh indicator", () => {
       "utf8",
     );
     const indicator =
-      /const CustomRefreshIndicator[\s\S]*?\[isNavigationRefresh\]\);/.exec(
+      /const CustomRefreshIndicator[\s\S]*?\[isNavigationRefresh[^\]]*\]\);/.exec(
         list,
       )?.[0] ?? "";
 

@@ -1390,6 +1390,8 @@ export function clearAccountData(
     fetchedPublicKey: null,
     fetchedNetwork: null,
     subentryCount: 0,
+    // Account-scoped, so the next account must not inherit it
+    hiddenTokenIds: [],
     error: null,
   });
 

@@ -1,16 +1,14 @@
+import { PasswordField } from "components/PasswordField";
 import { VarialLogo } from "components/VarialLogo";
 import { BaseLayout, BaseLayoutInsets } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import { BiometricToggleButton } from "components/sds/BiometricToggleButton";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
-import { Input } from "components/sds/Input";
 import { Display, Text } from "components/sds/Typography";
 import { LoginType } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import { isValidPasswordLength } from "helpers/passwordValidation";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
 
@@ -51,9 +49,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   forgotPasswordButtonTestID,
 }) => {
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
   const [passwordValue, setPasswordValue] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const { signInMethod } = useAuthenticationStore();
 
@@ -92,32 +88,14 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
           </Text>
           <View className="w-full gap-4 mt-8">
             {signInMethod === LoginType.PASSWORD && (
-              <Input
+              <PasswordField
                 ref={inputRef}
-                secureTextEntry={!showPassword}
-                isPassword
+                testID="password-input"
                 placeholder={t("lockScreen.passwordInputPlaceholder")}
-                fieldSize="lg"
-                autoCapitalize="none"
                 value={passwordValue}
                 onChangeText={handlePasswordChange}
                 error={error}
                 autoFocus={autoFocus}
-                rightElement={
-                  showPassword ? (
-                    <Icon.EyeOff
-                      size={16}
-                      color={themeColors.foreground.primary}
-                      onPress={() => setShowPassword(false)}
-                    />
-                  ) : (
-                    <Icon.Eye
-                      size={16}
-                      color={themeColors.foreground.primary}
-                      onPress={() => setShowPassword(true)}
-                    />
-                  )
-                }
               />
             )}
             <Button

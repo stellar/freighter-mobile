@@ -1,3 +1,4 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { WelcomeHeader } from "components/WelcomeHeader";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -5,8 +6,9 @@ import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
 import { FREIGHTER_TERMS_URL, FREIGHTER_PRIVACY_URL } from "config/constants";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
+import { useLoginDataStore } from "ducks/loginData";
 import useAppTranslation from "hooks/useAppTranslation";
-import React from "react";
+import React, { useCallback } from "react";
 import { StyleSheet, View } from "react-native";
 
 type WelcomeScreenProps = {
@@ -34,11 +36,23 @@ const styles = StyleSheet.create({
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
 
-  const navigateToScreen = (isImporting: boolean) => {
+  const clearLoginData = useLoginDataStore((state) => state.clearLoginData);
+
+  // Whenever Welcome shows, no onboarding flow is under way: clear what an
+  // abandoned one left in memory, and anything a wipe left behind.
+  useFocusEffect(
+    useCallback(() => {
+      clearLoginData();
+    }, [clearLoginData]),
+  );
+
+  const startCreating = () =>
     navigation.push(AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN, {
-      isImporting,
+      isImporting: false,
     });
-  };
+
+  const startImporting = () =>
+    navigation.push(AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN);
 
   // The spacers share the free height in the Figma frame's proportions: on
   // the 402x874 phone it was drawn on, the header and the buttons land at the
@@ -56,7 +70,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
             secondary
             xl
             testID="create-wallet-button"
-            onPress={() => navigateToScreen(false)}
+            onPress={startCreating}
           >
             {t("welcomeScreen.createNewWallet")}
           </Button>
@@ -64,7 +78,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
             tertiary
             xl
             testID="import-wallet-button"
-            onPress={() => navigateToScreen(true)}
+            onPress={startImporting}
           >
             {t("welcomeScreen.importWallet")}
           </Button>

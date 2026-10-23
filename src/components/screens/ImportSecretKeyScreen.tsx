@@ -1,9 +1,10 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { StrKey } from "@stellar/stellar-sdk";
+import { PasswordField } from "components/PasswordField";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
+import { Checkbox } from "components/sds/Checkbox";
 import Icon from "components/sds/Icon";
-import { Input } from "components/sds/Input";
 import { Text, Display } from "components/sds/Typography";
 import {
   MANAGE_WALLETS_ROUTES,
@@ -11,11 +12,9 @@ import {
   ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
-import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import React, { useState, useEffect } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 
 type ImportSecretKeyScreenProps = NativeStackScreenProps<
   ManageWalletsStackParamList,
@@ -26,13 +25,10 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
   const [secretKey, setSecretKey] = useState("");
   const [password, setPassword] = useState("");
   const [isAwareChecked, setIsAwareChecked] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [showSecretKey, setShowSecretKey] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const { importSecretKey, isLoading, clearError } = useAuthenticationStore();
 
   // Clear errors when unmounting
@@ -85,67 +81,25 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
 
         <View className="space-y-4">
           <View>
-            <Input
+            <PasswordField
+              testID="secret-key-input"
               value={secretKey}
               onChangeText={setSecretKey}
-              secureTextEntry={!showSecretKey}
-              isPassword
-              fieldSize="lg"
-              autoCapitalize="none"
-              autoCorrect={false}
               placeholder={t("importSecretKeyScreen.secretKeyPlaceholder")}
-              rightElement={
-                showSecretKey ? (
-                  <Icon.EyeOff
-                    size={16}
-                    color={themeColors.foreground.primary}
-                    onPress={() => setShowSecretKey(false)}
-                  />
-                ) : (
-                  <Icon.Eye
-                    size={16}
-                    color={themeColors.foreground.primary}
-                    onPress={() => setShowSecretKey(true)}
-                  />
-                )
-              }
+              visibilityLabels={{
+                show: t("importSecretKeyScreen.showSecretKey"),
+                hide: t("importSecretKeyScreen.hideSecretKey"),
+              }}
+              error={validationError}
             />
-            {validationError && (
-              <Text
-                sm
-                color={themeColors.status.error}
-                style={{ marginTop: pxValue(4) }}
-              >
-                {t("importSecretKeyScreen.invalidSecretKey")}
-              </Text>
-            )}
           </View>
 
           <View className="mt-3">
-            <Input
+            <PasswordField
+              testID="secret-key-password-input"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              isPassword
-              fieldSize="lg"
-              autoCapitalize="none"
-              autoCorrect={false}
               placeholder={t("importSecretKeyScreen.passwordPlaceholder")}
-              rightElement={
-                showPassword ? (
-                  <Icon.EyeOff
-                    size={16}
-                    color={themeColors.foreground.primary}
-                    onPress={() => setShowPassword(false)}
-                  />
-                ) : (
-                  <Icon.Eye
-                    size={16}
-                    color={themeColors.foreground.primary}
-                    onPress={() => setShowPassword(true)}
-                  />
-                )
-              }
             />
             <View className="mt-2">
               <Text md secondary>
@@ -154,24 +108,13 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
             </View>
           </View>
 
-          <View className="mt-2 flex-row items-center">
-            <Pressable onPress={() => setIsAwareChecked(!isAwareChecked)}>
-              <View
-                className={`h-5 w-5 items-center justify-center rounded-sm ${isAwareChecked ? "bg-primary" : "bg-transparent"}`}
-              >
-                {isAwareChecked ? (
-                  <Icon.Check size={15} color={themeColors.white} />
-                ) : (
-                  <Icon.Square
-                    size={21}
-                    color={themeColors.foreground.secondary}
-                  />
-                )}
-              </View>
-            </Pressable>
-            <View className="flex-1 ml-2 pt-5">
-              <Text sm>{t("importSecretKeyScreen.responsibilityNote")}</Text>
-            </View>
+          <View className="mt-2">
+            <Checkbox
+              testID="import-secret-key-aware-checkbox"
+              checked={isAwareChecked}
+              onChange={setIsAwareChecked}
+              label={t("importSecretKeyScreen.responsibilityNote")}
+            />
           </View>
         </View>
 

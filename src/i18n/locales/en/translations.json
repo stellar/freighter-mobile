@@ -9,6 +9,8 @@
   },
   "common": {
     "close": "Close",
+    "unhide": "Unhide",
+    "back": "Back",
     "paste": "Paste",
     "done": "Done",
     "none": "None",
@@ -62,7 +64,13 @@
       "imported": "Imported"
     }
   },
+  "tabBar": {
+    "history": "Activity",
+    "home": "Home",
+    "discover": "Discover"
+  },
   "renameAccountModal": {
+    "title": "Rename account",
     "saveName": "Save name",
     "nameInputPlaceholder": "Enter a name for your account"
   },
@@ -177,6 +185,11 @@
     "friendbotUrl": "Friendbot URL",
     "friendbotPlaceholder": "Enter Friendbot URL"
   },
+  "walletSetupOverlay": {
+    "creating": "Creating your wallet...",
+    "importing": "Importing your wallet...",
+    "ready": "Your wallet is ready!"
+  },
   "welcomeScreen": {
     "title": "Welcome",
     "createNewWallet": "Create a new wallet",
@@ -196,71 +209,67 @@
     "passwordNote": "Must be at least 8 characters long"
   },
   "choosePasswordScreen": {
-    "title": "Choose a Password",
-    "passwordInputPlaceholder": "Type your password",
-    "defaultActionButtonText": "Continue",
-    "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place.",
-    "passwordTooLong": "Must be less than 2048 characters"
-  },
-  "confirmPasswordScreen": {
-    "title": "Confirm Password",
-    "passwordInputPlaceholder": "Confirm your password",
-    "defaultActionButtonText": "Continue",
-    "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place."
-  },
-  "recoveryPhraseAlertScreen": {
-    "title": "Recovery Phrase",
-    "warningBlockOne": "Your recovery phrase gives you access to your account and is the only way to access it in a new app.",
-    "warningBlockTwo": "Keep it in a safe place.",
-    "defaultActionButtonText": "I understand, reveal my phrase"
+    "title": "Set Password",
+    "description": "You'll use this password to sign in to your account.",
+    "passwordInputPlaceholder": "Password",
+    "confirmPasswordInputPlaceholder": "Confirm password",
+    "passwordTooLong": "Must be less than 2048 characters",
+    "passwordsDontMatch": "Passwords don't match",
+    "importAcknowledgement": "I understand imported recovery phrase can't be recovered and must be stored securely.",
+    "importWalletButtonText": "Import wallet"
   },
   "recoveryPhraseScreen": {
-    "title": "Your Recovery Phrase",
-    "warning": "This is for your eyes only. Never share this.",
-    "copyButtonText": "Copy to clipboard",
-    "footerNoteText": "Make sure you keep this in a safe\nplace before continuing"
+    "hiddenTitle": "Recovery Phrase",
+    "revealedTitle": "You saved it, right?",
+    "description": "Your recovery phrase is the only way to restore your wallet.",
+    "descriptionEmphasis": "Store it somewhere safe.",
+    "revealButtonText": "I understand. Reveal my phrase",
+    "hiddenPhraseAccessibilityLabel": "Recovery phrase hidden",
+    "tapToCopy": "Tap to copy",
+    "copied": "Copied",
+    "warning": "Make sure you've saved it.\nYou can't recover your wallet without it."
   },
-  "validateRecoveryPhraseScreen": {
-    "title": "Enter Word #{{number}}",
-    "instructionText": "Refer to the recovery phrase you just saved",
-    "errorText": "Incorrect word selected, try again",
-    "defaultActionButtonText": "Continue"
+  "recoveryPhraseField": {
+    "showPhrase": "Show recovery phrase",
+    "hidePhrase": "Hide recovery phrase"
   },
   "biometricsOnboardingScreen": {
     "faceId": {
-      "title": "Enable Face ID",
-      "description": "Add another layer of security by requiring Face ID to unlock your wallet or approve transactions.",
-      "footerNoteText": "You can change this later in Settings."
-    },
-    "touchId": {
-      "title": "Enable Touch ID",
-      "description": "Add another layer of security by requiring Touch ID to unlock your wallet or approve transactions.",
-      "footerNoteText": "You can change this later in Settings."
+      "title": "Unlock with Face ID",
+      "description": "Unlock your wallet and approve transactions faster with Face ID.",
+      "enableButtonText": "Enable Face ID"
     },
     "fingerprint": {
-      "title": "Enable Fingerprint",
-      "description": "Add another layer of security by requiring Fingerprint to unlock your wallet or approve transactions.",
-      "footerNoteText": "You can change this later in Settings."
+      "title": "Unlock with Fingerprint",
+      "description": "Unlock your wallet and approve transactions faster with Fingerprint.",
+      "enableButtonText": "Enable Fingerprint"
+    },
+    "touchId": {
+      "title": "Unlock with Touch ID",
+      "description": "Unlock your wallet and approve transactions faster with Touch ID.",
+      "enableButtonText": "Enable Touch ID"
     },
     "faceBiometrics": {
-      "title": "Enable Face Recognition",
-      "description": "Add another layer of security by requiring Face Recognition to unlock your wallet or approve transactions.",
-      "footerNoteText": "You can change this later in Settings."
+      "title": "Unlock with Face Recognition",
+      "description": "Unlock your wallet and approve transactions faster with Face Recognition.",
+      "enableButtonText": "Enable Face Recognition"
     },
     "opticId": {
-      "title": "Enable Optic ID",
-      "footerNoteText": "You can change this later in Settings."
+      "title": "Unlock with Optic ID",
+      "description": "Unlock your wallet and approve transactions faster with Optic ID.",
+      "enableButtonText": "Enable Optic ID"
     },
     "iris": {
-      "title": "Enable Iris",
-      "footerNoteText": "You can change this later in Settings."
-    }
+      "title": "Unlock with Iris",
+      "description": "Unlock your wallet and approve transactions faster with Iris.",
+      "enableButtonText": "Enable Iris"
+    },
+    "skipForNow": "Skip for now"
   },
   "importWalletScreen": {
     "title": "Import Wallet",
-    "textAreaPlaceholder": "Enter recovery phrase",
-    "textAreaNote": "Phrases are usually 12 or 24 words",
-    "defaultActionButtonText": "Import wallet"
+    "description": "Import your wallet with the 12 or 24-word recovery phrase",
+    "textAreaPlaceholder": "Enter your recovery phrase"
   },
   "rebrandAnnouncementScreen": {
     "title": "Freighter is now Varial",
@@ -290,15 +299,14 @@
     "failedToLoadAccountTitle": "Account not loaded",
     "failedToLoadAccountMessage": "Your account could not be loaded after sign-in. Please try again.",
     "forgotPasswordWarningTitle": "Forgot your password?",
-    "forgotPasswordWarningMessage1": "Your password is stored only on this device and can’t be recovered.",
+    "forgotPasswordWarningMessage1": "Your password is stored only on this device and can't be recovered.",
     "forgotPasswordWarningMessage2": "You can reset Varial with your recovery phrase, set a new password, and re-import.",
     "forgotPasswordWarningMessage3": "Make sure you have your recovery phrase before continuing.",
     "forgotPasswordWarningResetButton": "Reset wallet"
   },
   "onboarding": {
     "continue": "Continue",
-    "pasteFromClipboard": "Paste from clipboard",
-    "doThisLaterButtonText": "Do this later"
+    "next": "Next"
   },
   "connectedApps": {
     "title": "Connected Apps",
@@ -342,6 +350,7 @@
     "showTabs": "Show {{count}} tabs"
   },
   "history": {
+    "title": "Activity",
     "emptyState": {
       "title": "No transactions to show"
     },
@@ -392,7 +401,17 @@
     "loadingBalanceA11yLabel": "Loading balance",
     "listHeader": "Your {{tokenName}} activity",
     "swap": "Swap",
-    "send": "Send"
+    "send": "Send",
+    "hideToken": "Hide {{tokenCode}}"
+  },
+  "hiddenTokens": {
+    "showHidden": "Show hidden",
+    "title": "Hidden tokens",
+    "empty": "No hidden tokens",
+    "hidden": "{{tokenCode}} hidden",
+    "unhidden": "{{tokenCode}} unhidden",
+    "hideError": "Error hiding {{tokenCode}}",
+    "unhideError": "Error unhiding {{tokenCode}}"
   },
   "priceHistory": {
     "notice": {
@@ -446,13 +465,6 @@
         "soroban": "Soroban"
       }
     }
-  },
-  "recoveryPhraseWarning": {
-    "yourRecoveryPhrase": "Your recovery phrase gives you full access to your wallets and funds.",
-    "ifYouForgetYourPassword": "If you forget your password, use the recovery phrase to access your wallet",
-    "dontShareWithAnyone": "Don't share this phrase with anyone",
-    "neverAskForYourPhrase": "Stellar Development Foundation will never ever ask for your phrase",
-    "ifYouLose": "If you lose it, we can't recover it"
   },
   "authStore": {
     "error": {
@@ -525,21 +537,18 @@
     "title": "Tokens",
     "error": "Error loading balances",
     "unfundedAccount": {
-      "learnMore": "Learn more",
       "fundAccountButton": "Add XLM",
-      "title": "Looking a little empty...",
-      "messageStart": "Add at least",
-      "messageAmount": "2 XLM",
-      "messageEnd": "to activate your wallet. Once funded, you'll be able to add tokens and make transactions."
+      "title": "Activate your wallet",
+      "description": "Add at least 2 XLM to get started"
     },
     "addTokenButton": "Add token"
   },
   "collectiblesGrid": {
     "title": "Collectibles",
     "error": "Error loading collectibles",
-    "empty": "No collectibles yet",
-    "emptyHidden": "No hidden collectibles",
+    "empty": "Collect your first NFT",
     "addCollectibleButton": "Add collectible",
+    "emptyButton": "Add Collectible",
     "itemHiddenLabel": "{{name}}, hidden",
     "emptyDescription": "Collectibles you own will appear here."
   },
@@ -559,10 +568,14 @@
     "imageSavedToPhotos": "Image saved to photos",
     "imageSaveFailed": "Failed to save image to photos",
     "imageSaveAttempted": "Save attempted, check your photos",
-    "hideCollectible": "Hide collectible",
-    "showCollectible": "Show collectible",
-    "hideSuccess": "Successfully hid collectible",
-    "hiddenBanner": "This collectible is hidden"
+    "hideCollectible": "Hide collectible"
+  },
+  "hiddenCollectibles": {
+    "title": "Hidden collectibles",
+    "empty": "No hidden collectibles",
+    "hidden": "Collectible hidden",
+    "unhidden": "Collectible unhidden",
+    "unhideError": "Error unhiding collectible"
   },
   "addCollectibleScreen": {
     "title": "Add Collectible",
@@ -579,9 +592,7 @@
     "alreadyInWallet": "This collectible is already in your wallet",
     "showHidden": "Show hidden"
   },
-  "hiddenCollectiblesScreen": {
-    "title": "Hidden Collectibles"
-  },
+
   "collectibles": {
     "errors": {
       "collectionNotFound": "Collection not found for the given address.",
@@ -608,16 +619,16 @@
     "removeTokenError": "Error removing token {{tokenCode}}",
     "removeTokenSuccess": "{{tokenCode}} successfully removed",
     "cantRemoveXlm": {
-      "title": "Can’t remove XLM",
-      "description": "XLM is the native token of the Stellar network and cannot be removed. It’s required to maintain your account and pay for transaction fees."
+      "title": "Can't remove XLM",
+      "description": "XLM is the native token of the Stellar network and cannot be removed. It's required to maintain your account and pay for transaction fees."
     },
     "cantRemoveBalance": {
       "title": "Token still has a balance",
-      "description": "You can’t remove this token yet. To remove a token, your balance for this token must be 0. You must send or sell the remaining balance before trying again."
+      "description": "You can't remove this token yet. To remove a token, your balance for this token must be 0. You must send or sell the remaining balance before trying again."
     },
     "cantRemoveNotLocallyAdded": {
-      "title": "Can’t remove this token",
-      "description": "This token was added to your wallet automatically because your account interacts with it, so removing it won’t take it off the list. You can hide it instead."
+      "title": "Can't remove this token",
+      "description": "This token was added to your wallet automatically because your account interacts with it, so removing it won't take it off the list. You can hide it instead."
     }
   },
   "addTokenScreen": {
@@ -659,7 +670,7 @@
     "tokenAddressCopied": "Token address copied!"
   },
   "sendPaymentScreen": {
-    "title": "Send to",
+    "title": "Choose recipient",
     "inputPlaceholder": "Enter address",
     "recents": "Recents",
     "suggestions": "Suggestions",
@@ -670,7 +681,7 @@
   "sendSearchContacts": {
     "myWallets": "My Wallets",
     "unfunded": {
-      "title": "The destination account doesn’t exist",
+      "title": "The destination account doesn't exist",
       "action": "Send at least 1 XLM to create the account.",
       "learnMore": "Learn more about account creation"
     }
@@ -697,7 +708,8 @@
       "minimum": "Minimum",
       "rate": "Rate",
       "fee": "Fee",
-      "xdr": "XDR"
+      "xdr": "XDR",
+      "sheetTitle": "Review swap"
     },
     "errors": {
       "failedToSetupTransaction": "Failed to setup swap transaction",
@@ -840,6 +852,7 @@
       "max": "Max"
     },
     "chooseRecipient": "Choose recipient",
+    "sendTo": "Send to",
     "setAmount": "Enter an amount",
     "reviewButton": "Review send",
     "details": {
@@ -915,7 +928,8 @@
   "medium": "Medium",
   "high": "High",
   "transactionReviewScreen": {
-    "title": "You are sending"
+    "title": "You are sending",
+    "sheetTitle": "Review send"
   },
   "transactionProcessingScreen": {
     "sending": "Sending",
@@ -1037,7 +1051,9 @@
     "passwordNote": "Enter your password",
     "responsibilityNote": "I'm aware Varial can't recover the imported secret key and storing it is my responsibility.",
     "importButton": "Import Wallet",
-    "invalidSecretKey": "Invalid secret key"
+    "invalidSecretKey": "Invalid secret key",
+    "showSecretKey": "Show secret key",
+    "hideSecretKey": "Hide secret key"
   },
   "securityScreen": {
     "title": "Security",
@@ -1132,24 +1148,7 @@
       "recipientIsTokenContract": "Cannot send to the token's own contract"
     }
   },
-  "welcomeBanner": {
-    "welcomeMessage": "Welcome to Varial!",
-    "fundingText": "To start using this account, ",
-    "fundingText2": "fund it with at least 2 XLM.",
-    "minimumBalanceText": "Stellar accounts require a minimum balance of 2 XLM to ensure network security and prevent spam.",
-    "reserveExplanationText": "This reserve helps maintain the ledger by covering transaction fees and discouraging the creation of unnecessary accounts, keeping the system efficient and functional.",
-    "addXLM": "Add XLM",
-    "doThisLater": "Do this later"
-  },
   "tokenIconAlt": "{{code}} token icon",
-  "recoverySkipModal": {
-    "title": "Are you sure you want to skip?",
-    "description1": "Your recovery phrase gives you access to your account and is the only way to access it.",
-    "description2": "If you lose, we can't recover it. Before adding large amounts, make sure to view and save your recovery phrase in a safe place by going to ",
-    "description3": "Settings → Security → Reveal Recovery Phrase.",
-    "confirm": "I understand, continue",
-    "cancel": "Go back"
-  },
   "debug": {
     "title": "Debug",
     "actions": "Actions",

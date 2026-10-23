@@ -1,7 +1,6 @@
 import { NativeStackNavigationOptions } from "@react-navigation/native-stack";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
-import Icon from "components/sds/Icon";
 import { ScreenTransition } from "config/routes";
 import React from "react";
 
@@ -23,7 +22,7 @@ export const getScreenBottomNavigateOptions = (
   headerTitle: title,
   headerShown: true,
   header: (props) => <CustomNavigationHeader {...props} />,
-  headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
+  headerLeft: () => <CustomHeaderButton variant="close" />,
   ...getStackBottomNavigateOptions(),
 });
 
@@ -80,3 +79,40 @@ export const withTransitionOverride = (
       }
     : options;
 };
+
+interface SetPasswordScreenOptionsArgs {
+  route: { params?: { isImporting?: boolean } };
+}
+
+/**
+ * Set Password's transition and header.
+ *
+ * Creating a wallet, it is the flow's first step: it slides up from the
+ * bottom like the app's other sheets, and its X slides it back down to
+ * Welcome. Importing, it is the second step, after Import Wallet, and keeps
+ * the stack's defaults: it slides in from the side, and its back arrow
+ * returns to Import Wallet.
+ */
+export const getSetPasswordScreenOptions = ({
+  route,
+}: SetPasswordScreenOptionsArgs): NativeStackNavigationOptions =>
+  route.params?.isImporting
+    ? {}
+    : {
+        ...getStackBottomNavigateOptions(),
+        headerLeft: () => <CustomHeaderButton variant="close" />,
+      };
+
+interface ScanQRCodeScreenOptionsArgs {
+  route: { params?: { transition?: ScreenTransition } };
+}
+
+/**
+ * Scan QR's transition. Opened over Send's recipient search, it slides up
+ * from the bottom and closes with an X, and draws its own header over the
+ * camera.
+ */
+export const getScanQRCodeScreenOptions = ({
+  route,
+}: ScanQRCodeScreenOptionsArgs): NativeStackNavigationOptions =>
+  withTransitionOverride(getScreenOptionsNoHeader(), route);

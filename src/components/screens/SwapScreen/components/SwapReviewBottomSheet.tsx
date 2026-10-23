@@ -1,7 +1,10 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
+import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { List } from "components/List";
-import SignTransactionDetailsBottomSheet from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
+import SignTransactionDetailsBottomSheet, {
+  SignTransactionDetailsHeader,
+} from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { SwapReviewTokenRow } from "components/screens/SwapScreen/components/SwapReviewTokenRow";
 import { TrustlineInfoBottomSheet } from "components/screens/SwapScreen/components/TrustlineInfoBottomSheet";
@@ -13,6 +16,7 @@ import {
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
+import { BUTTON_THEME } from "components/sds/Button/theme";
 import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
@@ -30,9 +34,8 @@ import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import { useFeeDetailsBottomSheet } from "hooks/useFeeDetailsBottomSheet";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { SecurityAssessment } from "services/blockaid/types";
 
 type SwapReviewBottomSheetProps = {
@@ -82,9 +85,14 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     swapTransactionDetailsBottomSheetModalRef.current?.present();
   };
 
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     swapTransactionDetailsBottomSheetModalRef.current?.dismiss();
-  };
+  }, []);
+
+  const renderDetailsHeader = useCallback(
+    () => <SignTransactionDetailsHeader onDismiss={handleDismiss} />,
+    [handleDismiss],
+  );
 
   const { stableConversionRate } = useStableConversionRate({
     pathResult,
@@ -132,6 +140,12 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   return (
     <View className="flex-1" testID="swap-review-sheet">
+      <View className="mb-[24px]">
+        <BottomSheetHeader
+          title={t("swapScreen.review.sheetTitle")}
+          layout="centered"
+        />
+      </View>
       <View className="rounded-[16px] p-[16px] gap-[16px] bg-background-tertiary">
         <Text lg medium>
           {t("swapScreen.review.title")}
@@ -271,25 +285,17 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
       {transactionDetails && (
         <BottomSheet
           modalRef={swapTransactionDetailsBottomSheetModalRef}
-          handleCloseModal={() =>
-            swapTransactionDetailsBottomSheetModalRef.current?.dismiss()
-          }
-          enableDynamicSizing={false}
-          useInsetsBottomPadding={false}
+          scrollable
           enablePanDownToClose={false}
           analyticsEvent={AnalyticsEvent.VIEW_SWAP_TRANSACTION_DETAILS}
-          snapPoints={["90%"]}
+          scrollViewHeaderComponent={renderDetailsHeader}
           customContent={
-            <SignTransactionDetailsBottomSheet
-              data={transactionDetails}
-              onDismiss={handleDismiss}
-            />
+            <SignTransactionDetailsBottomSheet data={transactionDetails} />
           }
         />
       )}
       <BottomSheet
         modalRef={trustlineInfoRef}
-        handleCloseModal={() => trustlineInfoRef.current?.dismiss()}
         customContent={
           <TrustlineInfoBottomSheet
             bottomSheetModalRef={trustlineInfoRef}
@@ -315,7 +321,6 @@ type SwapReviewFooterProps = {
 export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
   (props) => {
     const { t } = useAppTranslation();
-    const insets = useSafeAreaInsets();
 
     const {
       isMalicious,
@@ -349,10 +354,11 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
         <TouchableOpacity
           onPress={onSettingsPress}
           className="border border-gray-6 items-center justify-center"
+          // Sized to sit flush beside the xl Button next to it
           style={{
-            height: pxValue(50),
-            borderRadius: pxValue(25),
-            width: pxValue(50),
+            height: pxValue(BUTTON_THEME.height.xl),
+            borderRadius: pxValue(BUTTON_THEME.height.xl / 2),
+            width: pxValue(BUTTON_THEME.height.xl),
           }}
         >
           <Icon.Settings04 size={24} themeColor="gray" />
@@ -404,9 +410,9 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
 
     return (
       <View
-        className={`${isTrusted ? "flex-row" : "flex-col"} bg-background-primary w-full gap-[12px] mt-[24px] px-6 py-6`}
+        className={`${isTrusted ? "flex-row" : "flex-col"} bg-background-primary w-full gap-[12px] px-6 pt-[24px]`}
         style={{
-          paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
+          paddingBottom: pxValue(DEFAULT_PADDING),
           gap: pxValue(12),
         }}
       >

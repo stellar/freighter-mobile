@@ -30,6 +30,13 @@ export const isIOS = Platform.OS === "ios";
 export const isAndroid = Platform.OS === "android";
 
 /**
+ * The Android API level the app runs on, or 0 off Android. Some styles only
+ * take effect from a given level, as `filter: blur` does from 31 (Android
+ * 12).
+ */
+export const androidApiLevel = isAndroid ? Number(Platform.Version) : 0;
+
+/**
  * Boolean flag indicating whether the current device has a notch
  * Useful for conditionals and platform-specific code
  *

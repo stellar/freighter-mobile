@@ -9,8 +9,7 @@ appId: org.stellar.freighterdev
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
 
-# Switch to Testnet — the shared sub-flow waits for the post-import "Welcome to
-# Varial!" bottom sheet and any "Account not loaded" toast, dismisses them,
-# then performs the network switch.
+# Switch to Testnet — the shared sub-flow waits for Home to settle, dismisses
+# any "Account not loaded" toast, then performs the network switch.
 - runFlow:
     file: ../shared/SwitchToTestnet.yaml
