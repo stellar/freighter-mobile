@@ -1,3 +1,4 @@
+import { Keypair, StrKey } from "@stellar/stellar-sdk";
 import axios from "axios";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
@@ -19,6 +20,9 @@ const mockGet = freighterBackendV1.get as jest.Mock;
 const mockPost = freighterBackendV1.post as jest.Mock;
 const mockTrack = analytics.track as jest.Mock;
 
+const ISSUER = Keypair.random().publicKey();
+const CONTRACT = StrKey.encodeContract(Buffer.alloc(32, 1));
+
 describe("scanBulkTokens error handling", () => {
   beforeEach(() => jest.clearAllMocks());
 
@@ -28,7 +32,7 @@ describe("scanBulkTokens error handling", () => {
 
     await expect(
       scanBulkTokens({
-        addressList: ["USDC-GISSUER"],
+        addressList: [`USDC-${ISSUER}`],
         network: NETWORKS.PUBLIC,
       }),
     ).rejects.toMatchObject({
@@ -43,10 +47,61 @@ describe("scanBulkTokens error handling", () => {
 
     await expect(
       scanBulkTokens({
-        addressList: ["USDC-GISSUER"],
+        addressList: [`USDC-${ISSUER}`],
         network: NETWORKS.PUBLIC,
       }),
     ).rejects.toBe(cancel);
+  });
+});
+
+describe("scanBulkTokens id validation", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // freighter-backend reads each id's key as split("-")[1] and rejects the
+  // whole batch if any one fails, so a SEP-41 symbol like "USDC-SEAV" would
+  // cost every other token in the request its verdict.
+  it("leaves out ids whose code contains a hyphen so the rest of the batch is still scanned", async () => {
+    mockGet.mockResolvedValue({
+      data: {
+        data: { results: { [`USDC-${ISSUER}`]: { result_type: "Benign" } } },
+      },
+    });
+
+    await scanBulkTokens({
+      addressList: [`USDC-${ISSUER}`, `USDC-SEAV-${CONTRACT}`],
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockGet).toHaveBeenCalledWith(
+      `/scan-asset-bulk?asset_ids=USDC-${ISSUER}`,
+      expect.anything(),
+    );
+  });
+
+  // A symbol "SC:AM" gives the balance key "SC:AM:C…", which maps to
+  // "SC-AM:C…": one hyphen, but the backend reads "AM:C…" as the key.
+  it("leaves out ids whose code contains a colon so the rest of the batch is still scanned", async () => {
+    mockGet.mockResolvedValue({ data: { data: { results: {} } } });
+
+    await scanBulkTokens({
+      addressList: [`USDC-${ISSUER}`, `SC-AM:${CONTRACT}`],
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockGet).toHaveBeenCalledWith(
+      `/scan-asset-bulk?asset_ids=USDC-${ISSUER}`,
+      expect.anything(),
+    );
+  });
+
+  it("returns no results without calling the backend when every id is left out", async () => {
+    const result = await scanBulkTokens({
+      addressList: [`USDC-SEAV-${CONTRACT}`],
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockGet).not.toHaveBeenCalled();
+    expect(result).toEqual({ results: {} });
   });
 });
 
@@ -99,12 +154,12 @@ describe("blockaid scan analytics (#2883 consolidation)", () => {
   it("emits the consolidated scan_completed event with scan_target=asset_bulk", async () => {
     mockGet.mockResolvedValue({
       data: {
-        data: { results: { "USDC-GISSUER": { result_type: "Benign" } } },
+        data: { results: { [`USDC-${ISSUER}`]: { result_type: "Benign" } } },
       },
     });
 
     await scanBulkTokens({
-      addressList: ["USDC-GISSUER"],
+      addressList: [`USDC-${ISSUER}`],
       network: NETWORKS.PUBLIC,
     });
 
@@ -136,12 +191,12 @@ describe("blockaid scan analytics (#2883 consolidation)", () => {
   it("reports result=unknown for an unrecognized result_type on a bulk scan", async () => {
     mockGet.mockResolvedValue({
       data: {
-        data: { results: { "NOVEL-GISSUER": { result_type: "Weird" } } },
+        data: { results: { [`NOVEL-${ISSUER}`]: { result_type: "Weird" } } },
       },
     });
 
     await scanBulkTokens({
-      addressList: ["NOVEL-GISSUER"],
+      addressList: [`NOVEL-${ISSUER}`],
       network: NETWORKS.PUBLIC,
     });
 
