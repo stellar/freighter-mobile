@@ -100,6 +100,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     searchResults,
     verifiedTokens,
     unverifiedTokens,
+    hasScanFailed,
     status,
     handleSearch,
     resetSearch,
@@ -108,11 +109,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     publicKey: account?.publicKey,
     balanceItems,
   });
-
-  const hasUnableToScanTokens = useMemo(
-    () => searchResults.some((token) => token.isUnableToScan),
-    [searchResults],
-  );
 
   const isTokenMalicious = scannedToken.isMalicious;
   const isTokenSuspicious = scannedToken.isSuspicious;
@@ -610,7 +606,9 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
           >
             {searchResults.length > 0 ? (
               <>
-                {hasUnableToScanTokens && (
+                {/* Only when the scan failed as a whole: a token that alone
+                    went unscanned warns when it's picked. */}
+                {hasScanFailed && (
                   <View className="mb-4 mt-4 p-4 bg-gray-3 rounded-[16px] flex-row items-center gap-2">
                     <Icon.Cube01 size={16} color={themeColors.gray[11]} />
                     <Text md color={themeColors.gray[11]}>

@@ -647,6 +647,127 @@ describe("useTokenLookup — native asset consolidation in bulk-scan results", (
     expect(nativeRecord?.hasTrustline).toBe(true);
   });
 
+  it("reports a failed scan when the bulk scan request fails", async () => {
+    mockScanBulkTokens.mockRejectedValueOnce(new Error("scan unavailable"));
+
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockMainnet,
+        publicKey: mockPublicKey,
+        balanceItems: [],
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("test");
+      await flushPromises();
+    });
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+    expect(result.current.hasScanFailed).toBe(true);
+  });
+
+  it("reports a failed scan when no result gets a verdict", async () => {
+    mockScanBulkTokens.mockResolvedValueOnce({ results: {} } as never);
+
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockMainnet,
+        publicKey: mockPublicKey,
+        balanceItems: [],
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("test");
+      await flushPromises();
+    });
+
+    expect(result.current.hasScanFailed).toBe(true);
+  });
+
+  // Each unscanned token already warns on its own when the user taps it, so
+  // a few of them shouldn't raise the list-wide notice.
+  it("doesn't report a failed scan when only some results go unscanned", async () => {
+    mockScanBulkTokens.mockResolvedValueOnce({
+      results: {
+        "FOO-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN": {
+          result_type: "Benign",
+        },
+      },
+    } as never);
+
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockMainnet,
+        publicKey: mockPublicKey,
+        balanceItems: [],
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("test");
+      await flushPromises();
+    });
+
+    const usdc = result.current.searchResults.find(
+      (t) => t.tokenCode === "USDC",
+    );
+    expect(usdc?.isUnableToScan).toBe(true);
+    expect(result.current.hasScanFailed).toBe(false);
+  });
+
+  it("doesn't report a failed scan when the only result is the native asset", async () => {
+    mockScanBulkTokens.mockResolvedValueOnce({ results: {} } as never);
+
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockMainnet,
+        publicKey: mockPublicKey,
+        balanceItems: [],
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("xlm");
+      await flushPromises();
+    });
+
+    expect(result.current.hasScanFailed).toBe(false);
+  });
+
+  it("clears a failed scan once a later search is scanned", async () => {
+    mockScanBulkTokens
+      .mockRejectedValueOnce(new Error("scan unavailable"))
+      .mockResolvedValueOnce({
+        results: {
+          "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5": {
+            result_type: "Benign",
+          },
+        },
+      } as never);
+
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockMainnet,
+        publicKey: mockPublicKey,
+        balanceItems: [],
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("test");
+      await flushPromises();
+    });
+    expect(result.current.hasScanFailed).toBe(true);
+
+    await act(async () => {
+      result.current.handleSearch("USDC");
+      await flushPromises();
+    });
+    expect(result.current.hasScanFailed).toBe(false);
+  });
+
   it("keeps the native record safe when the bulk scan fails, unlike other records", async () => {
     mockScanBulkTokens.mockRejectedValueOnce(new Error("scan unavailable"));
 
