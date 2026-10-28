@@ -93,6 +93,18 @@ const getFallbackSecurityFields = (
   };
 };
 
+// True when Blockaid gave no verdict for any scannable record, i.e. the scan
+// as a whole failed. A few unscanned records don't count: each one warns on
+// its own when the user picks it. The native record is never scanned.
+const hasNoScanVerdicts = (tokens: FormattedSearchTokenRecord[]): boolean => {
+  const scannableTokens = tokens.filter((token) => !token.isNative);
+
+  return (
+    scannableTokens.length > 0 &&
+    scannableTokens.every((token) => token.isUnableToScan)
+  );
+};
+
 export const useTokenLookup = ({
   network,
   publicKey,
@@ -110,6 +122,7 @@ export const useTokenLookup = ({
     FormattedSearchTokenRecord[]
   >([]);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
+  const [hasScanFailed, setHasScanFailed] = useState(false);
   const { overriddenBlockaidResponse } = useDebugStore();
 
   // Group tokens by security level while preserving stellar.expert's original order
@@ -322,6 +335,7 @@ export const useTokenLookup = ({
       setSearchResults([]);
       setVerifiedTokens([]);
       setUnverifiedTokens([]);
+      setHasScanFailed(false);
       return;
     }
 
@@ -419,6 +433,7 @@ export const useTokenLookup = ({
 
         if (signal.aborted) return;
         setSearchResults(groupedSearchResults);
+        setHasScanFailed(hasNoScanVerdicts(enhancedSearchResults));
         await categorizeTokens(groupedSearchResults);
       } catch (error) {
         const fallbackSearchResults: FormattedSearchTokenRecord[] =
@@ -433,6 +448,7 @@ export const useTokenLookup = ({
 
         if (signal.aborted) return;
         setSearchResults(groupedFallbackResults);
+        setHasScanFailed(true);
         await categorizeTokens(groupedFallbackResults);
       }
     } else {
@@ -448,6 +464,7 @@ export const useTokenLookup = ({
         groupTokensBySecurityLevel(defaultSearchResults);
 
       setSearchResults(groupedDefaultResults);
+      setHasScanFailed(false);
       await categorizeTokens(groupedDefaultResults);
     }
 
@@ -466,12 +483,14 @@ export const useTokenLookup = ({
     setSearchResults([]);
     setVerifiedTokens([]);
     setUnverifiedTokens([]);
+    setHasScanFailed(false);
   };
 
   return {
     searchResults,
     verifiedTokens,
     unverifiedTokens,
+    hasScanFailed,
     status,
     handleSearch,
     resetSearch,
