@@ -5,9 +5,7 @@ permissions:
 
 on:
   pull_request:
-    # "rebrand/varial" is a MIRROR-ONLY entry so rebrand PRs get CI. Remove it
-    # during the launch-day hygiene pass, before pushing this branch public.
-    branches: [main, release, emergency-release, "v*.*.*", "rebrand/varial"]
+    branches: [main, release, emergency-release, "v*.*.*"]
   push:
     branches: [main, release, emergency-release]
   workflow_dispatch:
