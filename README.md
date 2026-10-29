@@ -1,11 +1,15 @@
-<a href="https://deepwiki.com/stellar/freighter-mobile"><img height="24" alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg" /></a>
+# Varial Mobile
+
+<a href="https://deepwiki.com/stellar/freighter-mobile"><img height="24" alt="Ask DeepWiki" src="https://img.shields.io/badge/Ask-DeepWiki-blue" /></a>
 <a href="https://play.google.com/store/apps/details?id=org.stellar.freighterwallet"><img height="24" alt="Get app on Google Play" src="https://github.com/user-attachments/assets/67fa5ac5-b77e-4019-8bc0-4cc9d43dc69b" /></a>
-<a href="https://apps.apple.com/app/freighter/id6743947720"><img height="24" alt="Get app on App Store" src="https://github.com/user-attachments/assets/2b002c9f-4ec5-49f2-8f4d-d04b7e4cd34a" /></a>
+<a href="https://apps.apple.com/app/varial-wallet/id6743947720"><img height="24" alt="Get app on App Store" src="https://github.com/user-attachments/assets/2b002c9f-4ec5-49f2-8f4d-d04b7e4cd34a" /></a>
+
+Varial (formerly Freighter) is a non-custodial wallet for the Stellar network on
+iOS and Android. Learn more at [varialwallet.com](https://varialwallet.com/).
 
 ## Quick Start Dev Environment Setup
 
-This guide will help you set up your development environment for Freighter
-Mobile.
+This guide will help you set up your development environment for Varial Mobile.
 
 ### Prerequisites
 
@@ -21,8 +25,8 @@ Mobile.
 - **Android Studio**: SDK 36, Build-Tools 36.0.0, NDK 28.2.13676358
 
 For the full list of prerequisites, environment variable setup, and LLM-assisted
-quick setup, see [DEVELOPMENT.md](DEVELOPMENT.md). Before opening a pull request,
-read [CONTRIBUTING.md](CONTRIBUTING.md).
+quick setup, see [DEVELOPMENT.md](DEVELOPMENT.md). Before opening a pull
+request, read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Platform Specific Setup
 
@@ -120,7 +124,7 @@ The app supports two different bundle IDs for different environments:
 - The development variant will have "Dev" in the app name to distinguish it from
   production
 
-This should get you up and running with the Freighter Mobile app in your
+This should get you up and running with the Varial Mobile app in your
 development environment. If you encounter any issues, please refer to the React
 Native documentation or open an issue in the repository.
 
