@@ -33,13 +33,13 @@ const SignTransactionSummary = ({ summary }: SignTransactionSummaryProps) => {
   const summaryItems = [
     {
       title: t("signTransactionDetails.summary.operationsCount"),
-      trailingContent: <Text>{operationsCount}</Text>,
+      trailingContent: <Text medium>{operationsCount}</Text>,
       titleColor: themeColors.text.secondary,
     },
     {
       title: t("signTransactionDetails.summary.fee"),
       trailingContent: (
-        <Text>{formatTokenForDisplay(feeXlm, NATIVE_TOKEN_CODE)}</Text>
+        <Text medium>{formatTokenForDisplay(feeXlm, NATIVE_TOKEN_CODE)}</Text>
       ),
       titleColor: themeColors.text.secondary,
     },
@@ -52,7 +52,7 @@ const SignTransactionSummary = ({ summary }: SignTransactionSummaryProps) => {
             themeColor="gray"
             onPress={() => copyToClipboard(sequenceNumber)}
           />
-          <Text>{truncateAddress(String(sequenceNumber), 11, 0)}</Text>
+          <Text medium>{truncateAddress(String(sequenceNumber), 11, 0)}</Text>
         </View>
       ),
       titleColor: themeColors.text.secondary,
@@ -68,7 +68,9 @@ const SignTransactionSummary = ({ summary }: SignTransactionSummaryProps) => {
                   themeColor="gray"
                   onPress={() => copyToClipboard(String(memo.value))}
                 />
-                <Text>{`${memo.value} (${mapMemoLabel[memo.type]})`}</Text>
+                <Text
+                  medium
+                >{`${memo.value} (${mapMemoLabel[memo.type]})`}</Text>
               </View>
             ),
             titleColor: themeColors.text.secondary,
@@ -84,7 +86,7 @@ const SignTransactionSummary = ({ summary }: SignTransactionSummaryProps) => {
             themeColor="gray"
             onPress={() => copyToClipboard(xdr)}
           />
-          <Text>{truncateAddress(String(xdr), 10, 0)}</Text>
+          <Text medium>{truncateAddress(String(xdr), 10, 0)}</Text>
         </View>
       ),
       titleColor: themeColors.text.secondary,

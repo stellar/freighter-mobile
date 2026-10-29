@@ -19,20 +19,20 @@ class SecureClipboard: NSObject, RCTBridgeModule {
   func setString(_ text: String, expirationMs: NSNumber, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.main.async {
       let pasteboard = UIPasteboard.general
-      
-      // Always treat data as sensitive for secure clipboard service
-      let expirationSeconds = Double(expirationMs.intValue) / 1000.0
-      
+      let item = [UTType.utf8PlainText.identifier: text]
+
+      // Local only: Universal Clipboard would otherwise copy a recovery
+      // phrase to the user's other Apple devices.
+      var options: [UIPasteboard.OptionsKey: Any] = [.localOnly: true]
+
       // Set expiration time using native iOS pasteboard expiration (iOS 15.1+)
+      let expirationSeconds = Double(expirationMs.intValue) / 1000.0
       if expirationSeconds > 0, #available(iOS 15.1, *) {
-        pasteboard.setItems([[UTType.utf8PlainText.identifier: text]], options: [
-          UIPasteboard.OptionsKey.expirationDate: Date().addingTimeInterval(expirationSeconds)
-        ])
-      } else {
-        // No expiration or older iOS version, just set the text
-        pasteboard.string = text
+        options[.expirationDate] = Date().addingTimeInterval(expirationSeconds)
       }
-      
+
+      pasteboard.setItems([item], options: options)
+
       resolver(nil)
     }
   }
@@ -49,8 +49,9 @@ class SecureClipboard: NSObject, RCTBridgeModule {
   @objc
   func clearString(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.main.async {
-      let pasteboard = UIPasteboard.general
-      pasteboard.string = ""
+      // Empty and local only, so the clear doesn't reach other devices
+      // either.
+      UIPasteboard.general.setItems([], options: [.localOnly: true])
       resolver(nil)
     }
   }

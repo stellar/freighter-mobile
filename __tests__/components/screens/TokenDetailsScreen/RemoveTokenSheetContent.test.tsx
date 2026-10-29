@@ -3,6 +3,7 @@ import { render } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import {
   getRemoveTokenSheetVariant,
+  isTokenRemovable,
   RemoveTokenSheetContent,
   RemoveTokenSheetVariant,
 } from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
@@ -62,6 +63,38 @@ const makeToken = (over: Record<string, unknown>) =>
     token: { issuer: { key: "GA123" } },
     ...over,
   }) as never;
+
+describe("isTokenRemovable", () => {
+  it("is false for a contract token the backend reports, whatever its balance", () => {
+    expect(isTokenRemovable(makeCustomToken(), [])).toBe(false);
+    expect(
+      isTokenRemovable(
+        { ...(makeCustomToken() as object), total: new BigNumber(5) } as never,
+        [],
+      ),
+    ).toBe(false);
+  });
+
+  it("is true for a hand-added contract token the backend doesn't report", () => {
+    expect(isTokenRemovable(makeCustomToken(), [CONTRACT_ID])).toBe(true);
+  });
+
+  it("is true for classic trustlines, XLM and no selection", () => {
+    expect(isTokenRemovable(makeToken({}), [])).toBe(true);
+    expect(
+      isTokenRemovable(
+        makeToken({
+          id: "XLM",
+          tokenCode: "XLM",
+          tokenType: TokenTypeWithCustomToken.NATIVE,
+          token: { type: "native", code: "XLM" },
+        }),
+        [],
+      ),
+    ).toBe(true);
+    expect(isTokenRemovable(null, [])).toBe(true);
+  });
+});
 
 describe("RemoveTokenSheetContent", () => {
   it("shows the native cannot-remove sheet for XLM", () => {

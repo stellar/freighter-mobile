@@ -1,7 +1,6 @@
 {
   "wallet": "Wallet",
   "network": "Network",
-  "freighterWallet": "Freighter Wallet",
   "noInternetConnection": "No internet connection",
   "accountAddressCopied": "Account address copied!",
   "tokenAddress": "Token Address",
@@ -10,6 +9,8 @@
   },
   "common": {
     "close": "Close",
+    "unhide": "Unhide",
+    "back": "Back",
     "paste": "Paste",
     "done": "Done",
     "none": "None",
@@ -25,7 +26,6 @@
     "loading": "Loading...",
     "error": "Error: {{errorMessage}}",
     "unknownError": "Unknown error",
-    "and": " and ",
     "available": "available",
     "addMemoShorthand": "Add memo",
     "addMemo": "Add memo",
@@ -64,7 +64,13 @@
       "imported": "Imported"
     }
   },
+  "tabBar": {
+    "history": "Activity",
+    "home": "Home",
+    "discover": "Discover"
+  },
   "renameAccountModal": {
+    "title": "Rename account",
     "saveName": "Save name",
     "nameInputPlaceholder": "Enter a name for your account"
   },
@@ -79,25 +85,25 @@
     "about": "About",
     "security": "Security",
     "deleteAccount": "Delete account",
-    "deleteAccountDisclaimer": "Accounts on the Stellar network are immutable and cannot be deleted. However you can remove any account from your Freighter App at any time using the 'Delete account' option. Verify your recovery phrase works before you do this.",
+    "deleteAccountDisclaimer": "Accounts on the Stellar network are immutable and cannot be deleted. However you can remove any account from your Varial App at any time using the 'Delete account' option. Verify your recovery phrase works before you do this.",
     "deleteAccountConfirmTitle": "Are you sure?",
     "deleteAccountConfirmMessage": "Make sure you have your recovery phrase in a safe place. You will not be able to recover your wallet without it."
   },
   "preferences": {
     "usageDataSharing": {
       "title": "Usage data sharing",
-      "description": "Help us improve Freighter by sharing usage, device, and activity data, including your public keys, IP address, and a persistent ID that links your wallet across extension and mobile, with our analytics and crash-reporting providers. You can turn this off at any time. See our Privacy Policy for details."
+      "description": "Help us improve Varial by sharing usage, device, and activity data, including your public keys, IP address, and a persistent ID that links your wallet across extension and mobile, with our analytics and crash-reporting providers. You can turn this off at any time. See our Privacy Policy for details."
     },
     "permissionModal": {
       "enable": {
         "title": "Enable Analytics",
         "description": "To enable usage data sharing, you'll need to allow tracking permissions in your device settings.",
-        "instruction": "Tap \"Open Settings\" below, then find Freighter and enable \"Allow Tracking\"."
+        "instruction": "Tap \"Open Settings\" below, then find Varial and enable \"Allow Tracking\"."
       },
       "disable": {
         "title": "Disable Analytics",
         "description": "To disable usage data sharing, you'll need to change tracking permissions in your device settings.",
-        "instruction": "Tap \"Open Settings\" below, then find Freighter and disable \"Allow Tracking\"."
+        "instruction": "Tap \"Open Settings\" below, then find Varial and disable \"Allow Tracking\"."
       },
       "openSettings": "Open Settings",
       "notNow": "Not now"
@@ -117,11 +123,11 @@
   },
   "aboutScreen": {
     "title": "About",
-    "freighterDescription": "Freighter is a non-custodial wallet for the Stellar blockchain",
+    "freighterDescription": "Varial is a non-custodial wallet for the Stellar blockchain",
     "listTitle": "Links",
     "stellarFoundation": "© {{year}} Stellar Development Foundation",
     "links": {
-      "freighter": "freighter.app",
+      "freighter": "varialwallet.com",
       "stellar": "stellar.org",
       "privacyPolicy": "Privacy Policy",
       "termsOfService": "Terms of Service"
@@ -179,89 +185,106 @@
     "friendbotUrl": "Friendbot URL",
     "friendbotPlaceholder": "Enter Friendbot URL"
   },
+  "walletSetupOverlay": {
+    "creating": "Creating your wallet...",
+    "importing": "Importing your wallet...",
+    "ready": "Your wallet is ready!"
+  },
   "welcomeScreen": {
+    "title": "Welcome",
     "createNewWallet": "Create a new wallet",
-    "iAlreadyHaveWallet": "I already have a wallet",
+    "importWallet": "Import wallet",
     "terms": {
-      "byProceeding": "By proceeding, you agree to Freighter's ",
-      "termsOfService": "terms of use",
-      "privacyPolicy": "privacy policy"
+      "beforeTermsLink": "By continuing, you agree to the ",
+      "termsLink": "Terms",
+      "betweenLinks": " and ",
+      "privacyPolicyLink": "Privacy Policy",
+      "afterPrivacyPolicyLink": "."
     }
+  },
+  "welcomeHeader": {
+    "rebrandNotice": "Freighter is now Varial"
   },
   "passwordInput": {
     "passwordNote": "Must be at least 8 characters long"
   },
   "choosePasswordScreen": {
-    "title": "Choose a Password",
-    "passwordInputPlaceholder": "Type your password",
-    "defaultActionButtonText": "Continue",
-    "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place.",
-    "passwordTooLong": "Must be less than 2048 characters"
-  },
-  "confirmPasswordScreen": {
-    "title": "Confirm Password",
-    "passwordInputPlaceholder": "Confirm your password",
-    "defaultActionButtonText": "Continue",
-    "footerNoteText": "We cannot recover your password for you.\nMake sure you keep this in a safe place."
-  },
-  "recoveryPhraseAlertScreen": {
-    "title": "Recovery Phrase",
-    "warningBlockOne": "Your recovery phrase gives you access to your account and is the only way to access it in a new app.",
-    "warningBlockTwo": "Keep it in a safe place.",
-    "defaultActionButtonText": "I understand, reveal my phrase"
+    "title": "Set Password",
+    "description": "You'll use this password to sign in to your account.",
+    "passwordInputPlaceholder": "Password",
+    "confirmPasswordInputPlaceholder": "Confirm password",
+    "passwordTooLong": "Must be less than 2048 characters",
+    "passwordsDontMatch": "Passwords don't match",
+    "importAcknowledgement": "I understand imported recovery phrase can't be recovered and must be stored securely.",
+    "importWalletButtonText": "Import wallet"
   },
   "recoveryPhraseScreen": {
-    "title": "Your Recovery Phrase",
-    "warning": "This is for your eyes only. Never share this.",
-    "copyButtonText": "Copy to clipboard",
-    "footerNoteText": "Make sure you keep this in a safe\nplace before continuing"
+    "hiddenTitle": "Recovery Phrase",
+    "revealedTitle": "You saved it, right?",
+    "description": "Your recovery phrase is the only way to restore your wallet.",
+    "descriptionEmphasis": "Store it somewhere safe.",
+    "revealButtonText": "I understand. Reveal my phrase",
+    "hiddenPhraseAccessibilityLabel": "Recovery phrase hidden",
+    "tapToCopy": "Tap to copy",
+    "copied": "Copied",
+    "warning": "Make sure you've saved it.\nYou can't recover your wallet without it."
   },
-  "validateRecoveryPhraseScreen": {
-    "title": "Enter Word #{{number}}",
-    "instructionText": "Refer to the recovery phrase you just saved",
-    "errorText": "Incorrect word selected, try again",
-    "defaultActionButtonText": "Continue"
+  "recoveryPhraseField": {
+    "showPhrase": "Show recovery phrase",
+    "hidePhrase": "Hide recovery phrase"
   },
   "biometricsOnboardingScreen": {
     "faceId": {
-      "title": "Enable Face ID",
-      "description": "Add another layer of security by requiring Face ID to unlock your wallet or approve transactions.",
-      "footerNoteText": "You can change this later in Settings."
-    },
-    "touchId": {
-      "title": "Enable Touch ID",
-      "description": "Add another layer of security by requiring Touch ID to unlock your wallet or approve transactions.",
-      "footerNoteText": "You can change this later in Settings."
+      "title": "Unlock with Face ID",
+      "description": "Unlock your wallet and approve transactions faster with Face ID.",
+      "enableButtonText": "Enable Face ID"
     },
     "fingerprint": {
-      "title": "Enable Fingerprint",
-      "description": "Add another layer of security by requiring Fingerprint to unlock your wallet or approve transactions.",
-      "footerNoteText": "You can change this later in Settings."
+      "title": "Unlock with Fingerprint",
+      "description": "Unlock your wallet and approve transactions faster with Fingerprint.",
+      "enableButtonText": "Enable Fingerprint"
+    },
+    "touchId": {
+      "title": "Unlock with Touch ID",
+      "description": "Unlock your wallet and approve transactions faster with Touch ID.",
+      "enableButtonText": "Enable Touch ID"
     },
     "faceBiometrics": {
-      "title": "Enable Face Recognition",
-      "description": "Add another layer of security by requiring Face Recognition to unlock your wallet or approve transactions.",
-      "footerNoteText": "You can change this later in Settings."
+      "title": "Unlock with Face Recognition",
+      "description": "Unlock your wallet and approve transactions faster with Face Recognition.",
+      "enableButtonText": "Enable Face Recognition"
     },
     "opticId": {
-      "title": "Enable Optic ID",
-      "footerNoteText": "You can change this later in Settings."
+      "title": "Unlock with Optic ID",
+      "description": "Unlock your wallet and approve transactions faster with Optic ID.",
+      "enableButtonText": "Enable Optic ID"
     },
     "iris": {
-      "title": "Enable Iris",
-      "footerNoteText": "You can change this later in Settings."
-    }
+      "title": "Unlock with Iris",
+      "description": "Unlock your wallet and approve transactions faster with Iris.",
+      "enableButtonText": "Enable Iris"
+    },
+    "skipForNow": "Skip for now"
   },
   "importWalletScreen": {
     "title": "Import Wallet",
-    "textAreaPlaceholder": "Enter recovery phrase",
-    "textAreaNote": "Phrases are usually 12 or 24 words",
-    "defaultActionButtonText": "Import wallet"
+    "description": "Import your wallet with the 12 or 24-word recovery phrase",
+    "textAreaPlaceholder": "Enter your recovery phrase"
+  },
+  "rebrandAnnouncementScreen": {
+    "title": "Freighter is now Varial",
+    "description": "Your Freighter wallet, now with a new name and look.",
+    "continueButton": "Continue to Varial",
+    "closeAccessibilityLabel": "Close",
+    "illustrationAccessibilityLabel": "The Varial logo"
   },
   "lockScreen": {
     "title": "Welcome back",
-    "description": "Enter password to unlock Freighter",
-    "passwordInputPlaceholder": "Type your password",
+    "description": "Enter password to unlock Varial",
+    "passwordInputPlaceholder": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "unlockWithBiometrics": "Unlock with biometrics",
     "unlockButtonText": "Unlock",
     "forgotPasswordButtonText": "Forgot password",
     "useFaceIdInstead": "Use Face ID instead",
@@ -275,16 +298,15 @@
     "errorUnlockingWalletMessage": "If the problem persists, please tap on \"Forgot password\" and re-import your wallet.",
     "failedToLoadAccountTitle": "Account not loaded",
     "failedToLoadAccountMessage": "Your account could not be loaded after sign-in. Please try again.",
-    "forgotPasswordWarningTitle": "Are you sure?",
-    "forgotPasswordWarningMessage1": "We cannot recover your password for you. This process will erase your wallet and you'll need to go through the import wallet flow to re-import your wallet with your recovery phrase.",
-    "forgotPasswordWarningMessage2": "You will permanently lose access to the account currently stored in Freighter.",
-    "forgotPasswordWarningMessage3": "Only do this if you have your phrase backed up safely somewhere else.",
-    "forgotPasswordWarningResetButton": "Reset Freighter"
+    "forgotPasswordWarningTitle": "Forgot your password?",
+    "forgotPasswordWarningMessage1": "Your password is stored only on this device and can't be recovered.",
+    "forgotPasswordWarningMessage2": "You can reset Varial with your recovery phrase, set a new password, and re-import.",
+    "forgotPasswordWarningMessage3": "Make sure you have your recovery phrase before continuing.",
+    "forgotPasswordWarningResetButton": "Reset wallet"
   },
   "onboarding": {
     "continue": "Continue",
-    "pasteFromClipboard": "Paste from clipboard",
-    "doThisLaterButtonText": "Do this later"
+    "next": "Next"
   },
   "connectedApps": {
     "title": "Connected Apps",
@@ -303,7 +325,7 @@
     "defaultTabTitle": "New Tab",
     "recent": "Recent",
     "trending": "Trending",
-    "legalDisclaimer": "These services are operated by independent third parties, not by Freighter or SDF. Inclusion here is not an endorsement. DeFi carries risk, including loss of funds. Use at your own risk.",
+    "legalDisclaimer": "These services are operated by independent third parties, not by Varial or SDF. Inclusion here is not an endorsement. DeFi carries risk, including loss of funds. Use at your own risk.",
     "oneTab": "1 Tab",
     "tabs": "{{count}} Tabs",
     "urlBarPlaceholder": "Search",
@@ -328,10 +350,12 @@
     "showTabs": "Show {{count}} tabs"
   },
   "history": {
+    "title": "Activity",
     "emptyState": {
       "title": "No transactions to show"
     },
     "error": "Error loading history",
+    "loadingA11yLabel": "Loading history",
     "refresh": "Refresh",
     "refreshing": "Refreshing...",
     "transactionHistory": {
@@ -373,16 +397,74 @@
     "sorobanToken": "Soroban Token",
     "balance": "Balance",
     "value": "Value",
+    "loadingPriceA11yLabel": "Loading price",
+    "loadingBalanceA11yLabel": "Loading balance",
     "listHeader": "Your {{tokenName}} activity",
     "swap": "Swap",
-    "send": "Send"
+    "send": "Send",
+    "hideToken": "Hide {{tokenCode}}"
   },
-  "recoveryPhraseWarning": {
-    "yourRecoveryPhrase": "Your recovery phrase gives you full access to your wallets and funds.",
-    "ifYouForgetYourPassword": "If you forget your password, use the recovery phrase to access your wallet",
-    "dontShareWithAnyone": "Don't share this phrase with anyone",
-    "neverAskForYourPhrase": "Stellar Development Foundation will never ever ask for your phrase",
-    "ifYouLose": "If you lose it, we can't recover it"
+  "hiddenTokens": {
+    "showHidden": "Show hidden",
+    "title": "Hidden tokens",
+    "empty": "No hidden tokens",
+    "hidden": "{{tokenCode}} hidden",
+    "unhidden": "{{tokenCode}} unhidden",
+    "hideError": "Error hiding {{tokenCode}}",
+    "unhideError": "Error unhiding {{tokenCode}}"
+  },
+  "priceHistory": {
+    "notice": {
+      "lowVolume": {
+        "title": "Low trading volume",
+        "body": "This token has low trading volume, so price data may be less reliable."
+      },
+      "limitedData": {
+        "title": "Limited trading data",
+        "body": "Price history is limited for this period."
+      },
+      "newlyTraded": {
+        "title": "Newly traded token",
+        "body": "Price history is limited because this token started trading recently."
+      },
+      "verdictUnavailable": {
+        "title": "Couldn't verify trading activity",
+        "body": "Price data may be less reliable for this token."
+      }
+    },
+    "emptyState": "No price data for this period",
+    "errorState": "Unable to load price data",
+    "retry": "Retry",
+    "loadingA11yLabel": "Loading price chart",
+    "chartA11yLabel": "Price chart, {{range}}: {{start}} to {{end}}, {{delta}}",
+    "noDelta": "no change data",
+    "inspectedAt": "{{date}} at {{time}}",
+    "loadingDeltaA11yLabel": "Loading price change",
+    "timeframeSelectorA11yLabel": "Timeframe",
+    "ranges": {
+      "1H": "1H",
+      "1D": "1D",
+      "1W": "1W",
+      "1M": "1M",
+      "1Y": "1Y",
+      "ALL": "ALL"
+    },
+    "tokenStats": {
+      "title": "Token Stats",
+      "supplyOnStellar": "Supply on Stellar",
+      "holders": "Holders"
+    },
+    "about": {
+      "title": "About",
+      "issuer": "Issuer",
+      "type": "Type",
+      "domain": "Domain",
+      "tokenType": {
+        "native": "Native",
+        "classic": "Stellar Classic",
+        "soroban": "Soroban"
+      }
+    }
   },
   "authStore": {
     "error": {
@@ -455,21 +537,18 @@
     "title": "Tokens",
     "error": "Error loading balances",
     "unfundedAccount": {
-      "learnMore": "Learn more",
       "fundAccountButton": "Add XLM",
-      "title": "Looking a little empty...",
-      "messageStart": "Add at least",
-      "messageAmount": "2 XLM",
-      "messageEnd": "to activate your wallet. Once funded, you'll be able to add tokens and make transactions."
+      "title": "Activate your wallet",
+      "description": "Add at least 2 XLM to get started"
     },
     "addTokenButton": "Add token"
   },
   "collectiblesGrid": {
     "title": "Collectibles",
     "error": "Error loading collectibles",
-    "empty": "No collectibles yet",
-    "emptyHidden": "No hidden collectibles",
+    "empty": "Collect your first NFT",
     "addCollectibleButton": "Add collectible",
+    "emptyButton": "Add Collectible",
     "itemHiddenLabel": "{{name}}, hidden",
     "emptyDescription": "Collectibles you own will appear here."
   },
@@ -489,10 +568,14 @@
     "imageSavedToPhotos": "Image saved to photos",
     "imageSaveFailed": "Failed to save image to photos",
     "imageSaveAttempted": "Save attempted, check your photos",
-    "hideCollectible": "Hide collectible",
-    "showCollectible": "Show collectible",
-    "hideSuccess": "Successfully hid collectible",
-    "hiddenBanner": "This collectible is hidden"
+    "hideCollectible": "Hide collectible"
+  },
+  "hiddenCollectibles": {
+    "title": "Hidden collectibles",
+    "empty": "No hidden collectibles",
+    "hidden": "Collectible hidden",
+    "unhidden": "Collectible unhidden",
+    "unhideError": "Error unhiding collectible"
   },
   "addCollectibleScreen": {
     "title": "Add Collectible",
@@ -509,9 +592,7 @@
     "alreadyInWallet": "This collectible is already in your wallet",
     "showHidden": "Show hidden"
   },
-  "hiddenCollectiblesScreen": {
-    "title": "Hidden Collectibles"
-  },
+
   "collectibles": {
     "errors": {
       "collectionNotFound": "Collection not found for the given address.",
@@ -538,16 +619,16 @@
     "removeTokenError": "Error removing token {{tokenCode}}",
     "removeTokenSuccess": "{{tokenCode}} successfully removed",
     "cantRemoveXlm": {
-      "title": "Can’t remove XLM",
-      "description": "XLM is the native token of the Stellar network and cannot be removed. It’s required to maintain your account and pay for transaction fees."
+      "title": "Can't remove XLM",
+      "description": "XLM is the native token of the Stellar network and cannot be removed. It's required to maintain your account and pay for transaction fees."
     },
     "cantRemoveBalance": {
       "title": "Token still has a balance",
-      "description": "You can’t remove this token yet. To remove a token, your balance for this token must be 0. You must send or sell the remaining balance before trying again."
+      "description": "You can't remove this token yet. To remove a token, your balance for this token must be 0. You must send or sell the remaining balance before trying again."
     },
     "cantRemoveNotLocallyAdded": {
-      "title": "Can’t remove this token",
-      "description": "This token was added to your wallet automatically because your account interacts with it, so removing it won’t take it off the list. You can hide it instead."
+      "title": "Can't remove this token",
+      "description": "This token was added to your wallet automatically because your account interacts with it, so removing it won't take it off the list. You can hide it instead."
     }
   },
   "addTokenScreen": {
@@ -589,18 +670,18 @@
     "tokenAddressCopied": "Token address copied!"
   },
   "sendPaymentScreen": {
-    "title": "Send to",
+    "title": "Choose recipient",
     "inputPlaceholder": "Enter address",
     "recents": "Recents",
     "suggestions": "Suggestions",
     "cannotSendToSelf": "Cannot send to yourself",
     "invalidAddress": "Invalid Stellar address",
-    "scanQRCodeText": "Scan a Freighter QR Code"
+    "scanQRCodeText": "Scan a Varial QR Code"
   },
   "sendSearchContacts": {
     "myWallets": "My Wallets",
     "unfunded": {
-      "title": "The destination account doesn’t exist",
+      "title": "The destination account doesn't exist",
       "action": "Send at least 1 XLM to create the account.",
       "learnMore": "Learn more about account creation"
     }
@@ -627,7 +708,8 @@
       "minimum": "Minimum",
       "rate": "Rate",
       "fee": "Fee",
-      "xdr": "XDR"
+      "xdr": "XDR",
+      "sheetTitle": "Review swap"
     },
     "errors": {
       "failedToSetupTransaction": "Failed to setup swap transaction",
@@ -770,6 +852,7 @@
       "max": "Max"
     },
     "chooseRecipient": "Choose recipient",
+    "sendTo": "Send to",
     "setAmount": "Enter an amount",
     "reviewButton": "Review send",
     "details": {
@@ -805,7 +888,7 @@
   "addMemoExplanationBottomSheet": {
     "title": "Memo is required",
     "description": "A destination account requires the use of the memo field which is not present in the transaction you're about to sign.",
-    "disabledWarning": "Freighter automatically disabled the option to sign this transaction.",
+    "disabledWarning": "Varial automatically disabled the option to sign this transaction.",
     "checkMemoRequirements": "Check the destination account memo requirements and include it in the transaction."
   },
   "addAnotherWalletScreen": {
@@ -845,7 +928,8 @@
   "medium": "Medium",
   "high": "High",
   "transactionReviewScreen": {
-    "title": "You are sending"
+    "title": "You are sending",
+    "sheetTitle": "Review send"
   },
   "transactionProcessingScreen": {
     "sending": "Sending",
@@ -903,13 +987,13 @@
     "errorSubmitting": "Failed to submit transaction",
     "errorRespondingRequest": "Failed to respond transaction request",
     "errorWrongNetwork": "Wrong Network",
-    "errorWrongNetworkMessage": "Please switch to {{targetNetworkName}} on Freighter Settings and try again",
+    "errorWrongNetworkMessage": "Please switch to {{targetNetworkName}} in Varial Settings and try again",
     "errorUnsupportedChain": "Unsupported Chain",
     "errorUnsupportedChainMessage": "Please make sure the App you are trying to connect with supports the Stellar chain",
     "errorUnsupportedTransactionChain": "Unsupported Chain",
     "errorUnsupportedTransactionChainMessage": "The chain {{chainId}} is not supported. Please make sure the transaction you are trying to sign was built on a supported Stellar chain",
     "errorUnsupportedMethodTitle": "Unsupported Method",
-    "errorUnsupportedMethod": "The method '{{method}}' is not supported by Freighter wallet",
+    "errorUnsupportedMethod": "The method '{{method}}' is not supported by Varial wallet",
     "pleaseTryAgainLater": "Please try again later",
     "notAuthenticated": "Logged out",
     "pleaseLoginToConnect": "Please log in to your wallet and try again to connect to this App",
@@ -918,10 +1002,10 @@
     "pleaseUnlockToConnect": "Please unlock your wallet to connect to this App",
     "pleaseUnlockToSignTransaction": "Please unlock your wallet to sign this transaction",
     "connectionNotFound": "Connection not found",
-    "connectionNotFoundMessage": "Please try creating a new connection or switch to another account which has the connection in your Freighter wallet",
+    "connectionNotFoundMessage": "Please try creating a new connection or switch to another account which has the connection in your Varial wallet",
     "userNotAuthenticated": "User not authenticated",
     "invalidTransactionOrigin": "Untrusted Transaction Domain",
-    "invalidTransactionOriginMessage": "A WalletConnect transaction was received from {{transactionRequestOrigin}}, but this domain is not connected in your Freighter wallet.",
+    "invalidTransactionOriginMessage": "A WalletConnect transaction was received from {{transactionRequestOrigin}}, but this domain is not connected in your Varial wallet.",
     "unableToLoadAuthEntry": "Unable to load request details",
     "failedToProcessAuthEntry": "Unable to sign — authorization entry is malformed or invalid",
     "e2eHelper": {
@@ -965,9 +1049,11 @@
     "secretKeyPlaceholder": "Your secret key",
     "passwordPlaceholder": "Password",
     "passwordNote": "Enter your password",
-    "responsibilityNote": "I'm aware Freighter can't recover the imported secret key and storing it is my responsibility.",
+    "responsibilityNote": "I'm aware Varial can't recover the imported secret key and storing it is my responsibility.",
     "importButton": "Import Wallet",
-    "invalidSecretKey": "Invalid secret key"
+    "invalidSecretKey": "Invalid secret key",
+    "showSecretKey": "Show secret key",
+    "hideSecretKey": "Hide secret key"
   },
   "securityScreen": {
     "title": "Security",
@@ -1062,24 +1148,7 @@
       "recipientIsTokenContract": "Cannot send to the token's own contract"
     }
   },
-  "welcomeBanner": {
-    "welcomeMessage": "Welcome to Freighter!",
-    "fundingText": "To start using this account, ",
-    "fundingText2": "fund it with at least 2 XLM.",
-    "minimumBalanceText": "Stellar accounts require a minimum balance of 2 XLM to ensure network security and prevent spam.",
-    "reserveExplanationText": "This reserve helps maintain the ledger by covering transaction fees and discouraging the creation of unnecessary accounts, keeping the system efficient and functional.",
-    "addXLM": "Add XLM",
-    "doThisLater": "Do this later"
-  },
   "tokenIconAlt": "{{code}} token icon",
-  "recoverySkipModal": {
-    "title": "Are you sure you want to skip?",
-    "description1": "Your recovery phrase gives you access to your account and is the only way to access it.",
-    "description2": "If you lose, we can't recover it. Before adding large amounts, make sure to view and save your recovery phrase in a safe place by going to ",
-    "description3": "Settings → Security → Reveal Recovery Phrase.",
-    "confirm": "I understand, continue",
-    "cancel": "Go back"
-  },
   "debug": {
     "title": "Debug",
     "actions": "Actions",
@@ -1182,7 +1251,7 @@
       "executableTag": "Executable tag",
       "executableNote": "This contract's code is managed by the executable owner and can change after you sign.",
       "unrecognizedInvocation": "Unrecognized invocation",
-      "unrecognizedInvocationWarning": "Freighter could not read this authorization. Do not sign unless you trust this site.",
+      "unrecognizedInvocationWarning": "Varial could not read this authorization. Do not sign unless you trust this site.",
       "address": "Signer address"
     },
     "operations": {
@@ -1281,11 +1350,11 @@
     "defaultMessage": "Please update your app to the latest version.",
     "forceUpdate": {
       "title": "Update Required",
-      "description": "A new version of Freighter is available. Please update to ensure your wallet performs correctly and securely. Your funds are not affected.",
+      "description": "A new version of Varial is available. Please update to ensure your wallet performs correctly and securely. Your funds are not affected.",
       "updateButton": "Update app",
       "laterButton": "I'll update later",
       "skipTitle": "Proceed without update?",
-      "skipMessage": "Using an outdated version may cause errors or failed transactions. By continuing, you accept full responsibility for any issues until you update Freighter."
+      "skipMessage": "Using an outdated version may cause errors or failed transactions. By continuing, you accept full responsibility for any issues until you update Varial."
     }
   },
   "jailbreakDetected": {

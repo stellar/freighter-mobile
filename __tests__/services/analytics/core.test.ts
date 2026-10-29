@@ -21,6 +21,7 @@
 //     it, which crashes in the Jest env on native async-storage
 //     (`PlatformLocalStorage`). The factory stubs only what core.ts touches.
 import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
+import { DEFAULT_COLOR_SCHEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 
@@ -34,7 +35,10 @@ jest.mock("@amplitude/analytics-react-native", () => ({
 jest.mock("@amplitude/experiment-react-native-client", () => ({
   Experiment: { initializeWithAmplitudeAnalytics: jest.fn(() => ({})) },
 }));
-jest.mock("react-native", () => ({ Platform: { OS: "ios", Version: "17.0" } }));
+jest.mock("react-native", () => ({
+  Platform: { OS: "ios", Version: "17.0" },
+  Appearance: { getColorScheme: jest.fn(() => "light") },
+}));
 jest.mock("react-native-device-info", () => ({
   getVersion: jest.fn(() => "9.9.9"),
   getBuildNumber: jest.fn(() => "42"),
@@ -241,6 +245,33 @@ describe("buildCommonContext (four-bucket model)", () => {
   });
 });
 
+describe("color_scheme common property", () => {
+  // buildCommonContext reads Appearance at call time, so we swap the shared
+  // react-native mock's return value per-test and restore it afterwards.
+  const { Appearance } = jest.requireMock<{
+    Appearance: { getColorScheme: jest.Mock };
+  }>("react-native");
+
+  afterEach(() => {
+    Appearance.getColorScheme.mockReturnValue("light");
+  });
+
+  it("stamps the scheme the app is rendering", () => {
+    Appearance.getColorScheme.mockReturnValue("dark");
+    expect(buildCommonContext().color_scheme).toBe("dark");
+
+    Appearance.getColorScheme.mockReturnValue("light");
+    expect(buildCommonContext().color_scheme).toBe("light");
+  });
+
+  it("falls back to the theme default when the device reports no scheme", () => {
+    // Must match the fallback the theme hooks render with, or the event would
+    // report a scheme the user is not seeing.
+    Appearance.getColorScheme.mockReturnValue(null);
+    expect(buildCommonContext().color_scheme).toBe(DEFAULT_COLOR_SCHEME);
+  });
+});
+
 describe("privacy guard", () => {
   const PK = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 
@@ -366,6 +397,120 @@ describe("screen.viewed emission (hard cutover)", () => {
       expect(name).toBe(AnalyticsEvent.SCREEN_VIEWED);
       expect(name.startsWith("loaded screen:")).toBe(false);
     });
+  });
+});
+
+describe("token_chart throttling (per-occurrence event contracts)", () => {
+  // Same production-throttle setup as the screen.viewed suite below. The chart
+  // events are each specified as one event per occurrence — per network fetch,
+  // per (token, range) shown, per settled range — and the hook settles ranges
+  // 250ms apart against a 500ms window, so a shared event-name bucket drops
+  // observations outright (`leading: false` discards the earlier payload
+  // rather than queueing it). The extension does not throttle at all, so a
+  // collapse here also makes the two platforms' §12 counts incomparable.
+  const THROTTLE_DELAY_MS = 500;
+
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  const constantsMock = require("services/analytics/constants");
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  const amplitudeMock = require("@amplitude/analytics-react-native");
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    constantsMock.ANALYTICS_CONFIG.THROTTLE_DUPLICATE_EVENTS = true;
+    initAnalytics();
+    (amplitudeMock.track as jest.Mock).mockClear();
+  });
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+    constantsMock.ANALYTICS_CONFIG.THROTTLE_DUPLICATE_EVENTS = false;
+  });
+
+  it("keeps every settled range in a rapid switch burst", () => {
+    track(AnalyticsEvent.TOKEN_CHART_RANGE_CHANGED, { range: "1D" });
+    track(AnalyticsEvent.TOKEN_CHART_RANGE_CHANGED, { range: "1W" });
+    track(AnalyticsEvent.TOKEN_CHART_RANGE_CHANGED, { range: "1M" });
+
+    // Dispatched immediately: chart events bypass the throttle entirely, so
+    // there is no trailing window in which an earlier payload can be dropped.
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(3);
+    jest.advanceTimersByTime(THROTTLE_DELAY_MS + 1);
+
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(3);
+    const ranges = (amplitudeMock.track as jest.Mock).mock.calls.map(
+      (call) => (call[1] as { range: string }).range,
+    );
+    expect(ranges).toEqual(["1D", "1W", "1M"]);
+  });
+
+  it("keeps a viewed event per range for the same token", () => {
+    const identity = { token_type: "classic", asset_code: "USDC" };
+    track(AnalyticsEvent.TOKEN_CHART_VIEWED, {
+      ...identity,
+      range: "1D",
+      has_data: true,
+    });
+    track(AnalyticsEvent.TOKEN_CHART_VIEWED, {
+      ...identity,
+      range: "1W",
+      has_data: true,
+    });
+
+    jest.advanceTimersByTime(THROTTLE_DELAY_MS + 1);
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps a loaded event per range so has_data counts every fetch", () => {
+    track(AnalyticsEvent.TOKEN_CHART_LOADED, {
+      token_type: "native",
+      range: "1D",
+      has_data: true,
+    });
+    track(AnalyticsEvent.TOKEN_CHART_LOADED, {
+      token_type: "native",
+      range: "1W",
+      has_data: false,
+    });
+
+    jest.advanceTimersByTime(THROTTLE_DELAY_MS + 1);
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps two loads of the same range for DIFFERENT tokens", () => {
+    // `token_chart.loaded` carries no per-token property — its frozen payload
+    // is token_type / has_data / low_volume / range — so no throttle key built
+    // from the payload can tell these apart. Each is a real network fetch and
+    // each must count.
+    track(AnalyticsEvent.TOKEN_CHART_LOADED, {
+      token_type: "classic",
+      range: "1D",
+      has_data: true,
+    });
+    track(AnalyticsEvent.TOKEN_CHART_LOADED, {
+      token_type: "classic",
+      range: "1D",
+      has_data: false,
+    });
+
+    jest.advanceTimersByTime(THROTTLE_DELAY_MS + 1);
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(2);
+    const hasData = (amplitudeMock.track as jest.Mock).mock.calls.map(
+      (call) => (call[1] as { has_data: boolean }).has_data,
+    );
+    expect(hasData).toEqual([true, false]);
+  });
+
+  it("keeps both brush activations in a rapid double-drag", () => {
+    // `token_chart.brushed` is once-per-activation (§7.5): two separate
+    // drags 100ms apart are two distinct occurrences, and the shared
+    // event-name bucket must not drop the earlier one.
+    track(AnalyticsEvent.TOKEN_CHART_BRUSHED, { range: "1D" });
+    jest.advanceTimersByTime(100);
+    track(AnalyticsEvent.TOKEN_CHART_BRUSHED, { range: "1D" });
+
+    jest.advanceTimersByTime(THROTTLE_DELAY_MS + 1);
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(2);
   });
 });
 

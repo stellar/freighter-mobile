@@ -1,0 +1,1392 @@
+import { act, fireEvent, waitFor } from "@testing-library/react-native";
+import BigNumber from "bignumber.js";
+import { deltaRowHeight } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceDelta";
+import TokenPriceHistorySection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection";
+import TokenBalanceHeader, {
+  priceRowHeight,
+  TokenBalanceDetails,
+} from "components/screens/TokenDetailsScreen/components/TokenBalanceHeader";
+import { TEXT_SIZES } from "components/sds/Typography";
+import { getThemeColors } from "config/colors";
+import { NETWORKS } from "config/constants";
+import { PricedBalance, TokenPriceHistory } from "config/types";
+import { useBalancesStore } from "ducks/balances";
+import {
+  usePriceHistoryStore,
+  resetInFlightRequests,
+} from "ducks/priceHistory";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { fsValue, pxValue } from "helpers/dimensions";
+import { formatFiatAmount } from "helpers/formatAmount";
+import {
+  formatPriceHistoryLabel,
+  formatPriceHistoryRangeDelta,
+} from "helpers/priceHistoryChart";
+import { renderWithProviders } from "helpers/testUtils";
+import React from "react";
+import {
+  Dimensions,
+  StyleProp,
+  StyleSheet,
+  TextStyle,
+  View,
+} from "react-native";
+import { ReactTestInstance } from "react-test-renderer";
+import { fetchTokenPriceHistory } from "services/backend";
+
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
+jest.mock("services/backend", () => ({
+  fetchTokenPriceHistory: jest.fn(),
+  fetchTokenStats: jest.fn(),
+}));
+
+jest.mock("config/logger", () => ({
+  logger: {
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
+jest.mock("hooks/useIsReduceMotionEnabled", () => () => false);
+
+const mockFetchHistory = fetchTokenPriceHistory as jest.MockedFunction<
+  typeof fetchTokenPriceHistory
+>;
+
+const densePoints = Array.from({ length: 40 }, (_, i) => ({
+  t: 1786636800 + i * 900,
+  p: (0.15 + i * 0.001).toFixed(6),
+}));
+
+const makeHistory = (
+  overrides: Partial<TokenPriceHistory> = {},
+): TokenPriceHistory => ({
+  token: "native",
+  range: "1D",
+  resolutionSeconds: 900,
+  currency: "USD",
+  lowVolume: false,
+  change: { absolute: "0.0602", percent: "32.12" },
+  points: densePoints,
+  ...overrides,
+});
+
+/** Requests issued for ONE range, across the whole warm pass. */
+const callsForRange = (range: string): number =>
+  mockFetchHistory.mock.calls.filter(([params]) => params.range === range)
+    .length;
+
+const nativeBalance = {
+  token: { type: "native", code: "XLM" },
+  total: new BigNumber("100"),
+  available: new BigNumber("99"),
+  minimumBalance: new BigNumber("1"),
+  buyingLiabilities: "0",
+  sellingLiabilities: "0",
+  tokenCode: "XLM",
+  displayName: "Stellar Lumens",
+  id: "XLM",
+  fiatCode: "USD",
+  fiatTotal: new BigNumber("28"),
+  currentPrice: new BigNumber("0.28"),
+  // The 24h number the header shows today — the non-chart fallback.
+  percentagePriceChange24h: new BigNumber("1.23"),
+} as unknown as PricedBalance;
+
+/**
+ * The detail-view arrangement: the header and the chart section side by side,
+ * exactly as TokenDetailsScreen renders them. The header's delta must follow
+ * the section's selector without the two ever fetching twice.
+ */
+const renderDetailView = (network: NETWORKS = NETWORKS.PUBLIC) =>
+  renderWithProviders(
+    <View>
+      <TokenBalanceHeader
+        tokenId="native"
+        tokenSymbol="XLM"
+        network={network}
+      />
+      <TokenPriceHistorySection tokenId="native" network={network} />
+    </View>,
+  );
+
+describe("TokenBalanceHeader range delta", () => {
+  beforeEach(() => {
+    resetInFlightRequests();
+    jest.clearAllMocks();
+    useRemoteConfigStore.setState({
+      isInitialized: true,
+      use_token_price_history: true,
+    });
+    usePriceHistoryStore.setState({
+      historyByNetwork: {},
+      statsByNetwork: {},
+      historyStatusByKey: {},
+      selectedRange: null,
+    });
+    useBalancesStore.setState({
+      pricedBalances: { native: nativeBalance },
+      isLoading: false,
+    });
+    mockFetchHistory.mockResolvedValue(makeHistory());
+  });
+
+  it("shows the selected range's delta — absolute and percent — in the header", async () => {
+    const { getByTestId } = renderDetailView();
+
+    await waitFor(() => {
+      expect(getByTestId("token-price-delta").props.children).toBe(
+        "+$0.0602 (32.12%)",
+      );
+    });
+  });
+
+  it("renders exactly one delta in the detail view — the chart section renders none", async () => {
+    const { getByTestId, queryByTestId, queryAllByTestId } = renderDetailView();
+
+    await waitFor(() => {
+      expect(getByTestId("price-history-chart")).toBeTruthy();
+    });
+
+    expect(queryByTestId("price-history-delta")).toBeNull();
+    expect(queryAllByTestId("token-price-delta")).toHaveLength(1);
+  });
+
+  it("keeps the row's height but shows no text when change is null", async () => {
+    mockFetchHistory.mockResolvedValue(makeHistory({ change: null }));
+
+    const { getByTestId, queryByTestId } = renderDetailView();
+
+    await waitFor(() => {
+      expect(getByTestId("price-history-chart")).toBeTruthy();
+    });
+
+    expect(queryByTestId("token-price-delta")).toBeNull();
+    const row = getByTestId("token-price-delta-row");
+    expect(StyleSheet.flatten(row.props.style).minHeight).toBeGreaterThan(0);
+  });
+
+  it("reserves the row from the live text scale, like the chart labels", async () => {
+    // `Text md` scales its line height with the OS text size. A fixed reserve
+    // leaves the placeholder row short, so a range resolving would jump the
+    // header and the chart below it for large-text users.
+    const window = Dimensions.get("window");
+    const screen = Dimensions.get("screen");
+    act(() => {
+      Dimensions.set({ window: { ...window, fontScale: 2 }, screen });
+    });
+    try {
+      mockFetchHistory.mockResolvedValue(makeHistory({ change: null }));
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      const row = getByTestId("token-price-delta-row");
+      expect(StyleSheet.flatten(row.props.style).minHeight).toBe(
+        fsValue(TEXT_SIZES.md.lineHeight) * 2,
+      );
+    } finally {
+      act(() => {
+        Dimensions.set({ window, screen });
+      });
+    }
+  });
+
+  it("shows no range delta for a one-point series, even with a change", async () => {
+    // The backend computes `change` from a single point, so without the
+    // drawable-series gate the header prints a signed delta above a canvas
+    // reading "No price data for this period".
+    mockFetchHistory.mockResolvedValue(
+      makeHistory({ points: [densePoints[0]] }),
+    );
+
+    const { getByTestId, queryByTestId } = renderDetailView();
+
+    await waitFor(() => {
+      expect(getByTestId("price-history-empty")).toBeTruthy();
+    });
+    expect(queryByTestId("token-price-delta")).toBeNull();
+  });
+
+  it("falls back to the 24h percentage when the 1D fetch fails", async () => {
+    mockFetchHistory.mockRejectedValue(new Error("backend 503"));
+
+    const { getByTestId } = renderDetailView();
+
+    await waitFor(() => {
+      expect(getByTestId("price-history-error")).toBeTruthy();
+    });
+    expect(getByTestId("token-price-delta").props.children).toBe("+1.23%");
+  });
+
+  describe("with the chart disabled (the non-chart path)", () => {
+    it("shows exactly today's 24h percentage when the kill switch is off", async () => {
+      useRemoteConfigStore.setState({
+        isInitialized: true,
+        use_token_price_history: false,
+      });
+
+      const { getByTestId, queryByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(getByTestId("token-price-delta").props.children).toBe("+1.23%");
+      // No reserved row, no skeleton: the header is byte-for-byte what it was
+      // before the chart existed.
+      expect(queryByTestId("token-price-delta-row")).toBeNull();
+      expect(queryByTestId("token-price-delta-skeleton")).toBeNull();
+      expect(mockFetchHistory).not.toHaveBeenCalled();
+    });
+
+    it("stays dark until the flag fetch settles — the switch fails closed", async () => {
+      // The flag defaults to true and the screen renders before
+      // `fetchFeatureFlags` resolves. Reading it bare would mount the block
+      // and fire its requests during exactly the window an incident response
+      // is trying to stop them (§11).
+      useRemoteConfigStore.setState({
+        isInitialized: false,
+        use_token_price_history: true,
+      });
+
+      const { getByTestId, queryByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(getByTestId("token-price-delta").props.children).toBe("+1.23%");
+      expect(queryByTestId("token-price-delta-row")).toBeNull();
+      expect(mockFetchHistory).not.toHaveBeenCalled();
+    });
+
+    it("shows exactly today's 24h percentage off mainnet", async () => {
+      const { getByTestId, queryByTestId } = renderDetailView(NETWORKS.TESTNET);
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(getByTestId("token-price-delta").props.children).toBe("+1.23%");
+      expect(queryByTestId("token-price-delta-row")).toBeNull();
+      expect(mockFetchHistory).not.toHaveBeenCalled();
+    });
+
+    it("renders no delta at all when there is no 24h number, as today", async () => {
+      useRemoteConfigStore.setState({
+        isInitialized: true,
+        use_token_price_history: false,
+      });
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            percentagePriceChange24h: null,
+          } as PricedBalance,
+        },
+      });
+
+      const { queryByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(queryByTestId("token-price-delta")).toBeNull();
+      expect(queryByTestId("token-price-delta-row")).toBeNull();
+    });
+  });
+
+  describe("range switching", () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("updates the header delta to the newly selected range's change", async () => {
+      mockFetchHistory.mockImplementation(({ range }) =>
+        Promise.resolve(
+          range === "1Y"
+            ? makeHistory({
+                range: "1Y",
+                change: { absolute: "-0.1234", percent: "-45.6" },
+              })
+            : makeHistory(),
+        ),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(getByTestId("token-price-delta").props.children).toBe(
+        "+$0.0602 (32.12%)",
+      );
+
+      act(() => {
+        fireEvent.press(getByTestId("timeframe-selector-1Y"));
+      });
+      await act(async () => {
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
+      });
+
+      expect(getByTestId("token-price-delta").props.children).toBe(
+        "-$0.1234 (45.60%)",
+      );
+    });
+
+    it("shows the placeholder — never the previous range's number — while an uncached range loads", async () => {
+      // Resolve only the range the view opens on, leaving the deferred warm
+      // pass hanging on its first request: 1W is then genuinely uncached, the
+      // state a user hits while warming is still working down the queue.
+      mockFetchHistory.mockImplementation(({ range }) =>
+        range === "1D"
+          ? Promise.resolve(makeHistory())
+          : new Promise<TokenPriceHistory>(() => {}),
+      );
+
+      const { getByTestId, queryByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(getByTestId("token-price-delta")).toBeTruthy();
+
+      act(() => {
+        fireEvent.press(getByTestId("timeframe-selector-1W"));
+      });
+
+      // Still inside the debounce window: the request has not started, but the
+      // 1D number must already be gone.
+      expect(queryByTestId("token-price-delta")).toBeNull();
+      // The pill is decorative, so it resolves only with hidden elements
+      // included; the row it sits in is what announces the loading state.
+      expect(
+        getByTestId("token-price-delta-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeTruthy();
+      const row = getByTestId("token-price-delta-row");
+      expect(row.props.accessibilityState).toEqual({ busy: true });
+      expect(row.props.accessibilityLabel).toBe("Loading price change");
+    });
+
+    it("draws the loading pill at the frame's 146pt width and the row's live height", () => {
+      // The pill must grow with the OS text size like the row.
+      const window = Dimensions.get("window");
+      const screen = Dimensions.get("screen");
+      act(() => {
+        Dimensions.set({ window: { ...window, fontScale: 2 }, screen });
+      });
+      try {
+        mockFetchHistory.mockImplementation(() => new Promise(() => {}));
+        const { getByTestId } = renderDetailView();
+
+        const pill = getByTestId("token-price-delta-skeleton", {
+          includeHiddenElements: true,
+        });
+        expect(StyleSheet.flatten(pill.props.style)).toEqual({
+          width: pxValue(146),
+          height: deltaRowHeight(2),
+        });
+      } finally {
+        act(() => {
+          Dimensions.set({ window, screen });
+        });
+      }
+    });
+
+    it("shows no number when a non-1D range fails — a 24h figure is the wrong timeframe", async () => {
+      mockFetchHistory.mockImplementation(({ range }) =>
+        range === "1Y"
+          ? Promise.reject(new Error("backend 503"))
+          : Promise.resolve(makeHistory()),
+      );
+
+      const { getByTestId, queryByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      act(() => {
+        fireEvent.press(getByTestId("timeframe-selector-1Y"));
+      });
+      await act(async () => {
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
+      });
+
+      expect(getByTestId("price-history-error")).toBeTruthy();
+      expect(queryByTestId("token-price-delta")).toBeNull();
+      expect(
+        queryByTestId("token-price-delta-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+    });
+
+    it("fetches once per range — the header never triggers its own request", async () => {
+      const { getByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(callsForRange("1D")).toBe(1);
+
+      act(() => {
+        fireEvent.press(getByTestId("timeframe-selector-1W"));
+      });
+      await act(async () => {
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
+      });
+
+      // Exactly one request per range with both components mounted: 1W's came
+      // from the background warm pass and the switch was a cache hit, so a
+      // header that fetched for itself would show up as a second call.
+      expect(callsForRange("1W")).toBe(1);
+      expect(callsForRange("1D")).toBe(1);
+    });
+  });
+
+  describe("direction colours (supersedes the doc's two-state §B.2 rule)", () => {
+    // `useColorScheme` reports "light" under the react-native jest preset, so
+    // the component resolves its palette through the light theme. The two
+    // status colours are the same hex in both themes; only neutral differs.
+    const themeColors = getThemeColors("light");
+    const deltaColor = (node: ReactTestInstance) =>
+      StyleSheet.flatten(node.props.style as StyleProp<TextStyle>)?.color;
+
+    it("renders a negative range change in red, sign and all", async () => {
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({ change: { absolute: "-0.0602", percent: "-12.12" } }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+      const delta = getByTestId("token-price-delta");
+      // Colour never carries the meaning alone: the leading "-" stays (§7.4).
+      expect(delta.props.children).toBe("-$0.0602 (12.12%)");
+      expect(deltaColor(delta)).toBe(themeColors.status.error);
+    });
+
+    it("still renders a positive range change in green", async () => {
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+      expect(deltaColor(getByTestId("token-price-delta"))).toBe(
+        themeColors.status.success,
+      );
+    });
+
+    it("renders a flat (zero percent) change neutral, never red", async () => {
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({ change: { absolute: "0", percent: "0" } }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+      const delta = getByTestId("token-price-delta");
+      // Genuinely flat: no sign at all, and no dollar term to sign either.
+      expect(delta.props.children).toBe("0.00%");
+      expect(deltaColor(delta)).toBe(themeColors.text.secondary);
+      expect(deltaColor(delta)).not.toBe(themeColors.status.error);
+    });
+
+    it("signs and colours a real move the rounded percent hides", async () => {
+      // USDC over 1D: the backend rounds `percent` to 2dp so the 1D value
+      // equals `percentagePriceChange24h` exactly (D8), so a live absolute
+      // arrives beside "0". The dollar term already carries the sign, so the
+      // colour has to agree with it — an unsigned grey figure would say the
+      // price moved without saying which way.
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.000019827880302", percent: "0" },
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+      const delta = getByTestId("token-price-delta");
+      const text = delta.props.children as string;
+      expect(text.startsWith("+$")).toBe(true);
+      // The percent in parentheses stays magnitude-only, rounded to nothing.
+      expect(text.endsWith(" (0.00%)")).toBe(true);
+      expect(deltaColor(delta)).toBe(themeColors.status.success);
+    });
+
+    it("renders the same hidden move downward in red", async () => {
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "-0.000019827880302", percent: "0" },
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+      const delta = getByTestId("token-price-delta");
+      const text = delta.props.children as string;
+      expect(text.startsWith("-$")).toBe(true);
+      expect(text.endsWith(" (0.00%)")).toBe(true);
+      expect(deltaColor(delta)).toBe(themeColors.status.error);
+    });
+
+    it("colours the 1D fallback by direction too — it is the chart's delta", async () => {
+      // The chart is enabled here; only the number's source differs, so the
+      // price-history delta keeps its three-state colour.
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            percentagePriceChange24h: new BigNumber("-1.23"),
+          } as PricedBalance,
+        },
+      });
+      mockFetchHistory.mockRejectedValue(new Error("backend 503"));
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-error")).toBeTruthy();
+      });
+      const delta = getByTestId("token-price-delta");
+      expect(delta.props.children).toBe("-1.23%");
+      expect(deltaColor(delta)).toBe(themeColors.status.error);
+    });
+
+    it("leaves the non-chart header path on today's two-state colours", async () => {
+      // Out of scope by decision 5: reconciling the flag-off / non-mainnet
+      // header with the rest of the app is the doc's §13 follow-up.
+      useRemoteConfigStore.setState({
+        isInitialized: true,
+        use_token_price_history: false,
+      });
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            percentagePriceChange24h: new BigNumber("-1.23"),
+          } as PricedBalance,
+        },
+      });
+
+      const { getByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const delta = getByTestId("token-price-delta");
+      expect(delta.props.children).toBe("-1.23%");
+      expect(deltaColor(delta)).toBe(themeColors.text.secondary);
+    });
+  });
+
+  describe("drag-to-inspect (M6)", () => {
+    const inspectedPoints = [
+      { t: densePoints[0].t, p: "0.20" },
+      { t: densePoints[1].t, p: "0.22" },
+      { t: densePoints[2].t, p: "0.26" },
+    ];
+
+    it("while inspecting, the delta is close-to-close from the first point to the inspected one", async () => {
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.06", percent: "30.00" },
+          points: inspectedPoints,
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      expect(getByTestId("token-price-delta")).toHaveTextContent(
+        formatPriceHistoryRangeDelta({ absolute: "0.02", percent: "10.00" }),
+      );
+    });
+
+    it("while inspecting, the header price is the inspected point's price", async () => {
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.06", percent: "30.00" },
+          points: inspectedPoints,
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount("0.22"),
+      );
+    });
+
+    it("while inspecting a sub-dollar point, the header price uses the chart's precision", async () => {
+      const subDollarPoints = [
+        { t: densePoints[0].t, p: "0.2196" },
+        { t: densePoints[1].t, p: "0.2213" },
+        { t: densePoints[2].t, p: "0.2267" },
+      ];
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.0017", percent: "0.77" },
+          points: subDollarPoints,
+        }),
+      );
+
+      // Spot with more than two decimals, so the release assertion can tell
+      // the fiat format ("$0.28") from the chart's ("$0.2813").
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            currentPrice: new BigNumber("0.2813"),
+            fiatTotal: new BigNumber("28.13"),
+          },
+        } as never,
+        isLoading: false,
+      });
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatPriceHistoryLabel("0.2213"),
+      );
+
+      act(() => {
+        usePriceHistoryStore
+          .getState()
+          .clearInspectedPoint({ network: NETWORKS.PUBLIC, tokenId: "native" });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount("0.2813"),
+      );
+    });
+
+    it("while inspecting a sub-cent point, the header price keeps significant digits instead of rounding to zero", async () => {
+      const subCentPoints = [
+        { t: densePoints[0].t, p: "0.00001200" },
+        { t: densePoints[1].t, p: "0.00001234" },
+        { t: densePoints[2].t, p: "0.00001300" },
+      ];
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.00000034", percent: "2.83" },
+          points: subCentPoints,
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatPriceHistoryLabel("0.00001234"),
+      );
+    });
+
+    it("clearing the inspection restores the server delta and the live price", async () => {
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.06", percent: "30.00" },
+          points: inspectedPoints,
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      act(() => {
+        usePriceHistoryStore
+          .getState()
+          .clearInspectedPoint({ network: NETWORKS.PUBLIC, tokenId: "native" });
+      });
+
+      expect(getByTestId("token-price-delta")).toHaveTextContent(
+        formatPriceHistoryRangeDelta({ absolute: "0.06", percent: "30.00" }),
+      );
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
+      );
+    });
+
+    it("an inspection on a range other than the selected one is ignored", async () => {
+      jest.useFakeTimers();
+      mockFetchHistory.mockImplementation(({ range }) =>
+        Promise.resolve(
+          range === "1W"
+            ? makeHistory({
+                range: "1W",
+                change: { absolute: "-0.05", percent: "-11.11" },
+              })
+            : makeHistory({ points: inspectedPoints }),
+        ),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      act(() => {
+        fireEvent.press(getByTestId("timeframe-selector-1W"));
+      });
+      await act(async () => {
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
+      });
+
+      expect(getByTestId("token-price-delta")).toHaveTextContent(
+        formatPriceHistoryRangeDelta({ absolute: "-0.05", percent: "-11.11" }),
+      );
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      // The selected range (1W) still shows the server's 1W delta — the
+      // stale 1D inspection is never mistaken for one on the visible range.
+      expect(getByTestId("token-price-delta")).toHaveTextContent(
+        formatPriceHistoryRangeDelta({ absolute: "-0.05", percent: "-11.11" }),
+      );
+
+      jest.useRealTimers();
+    });
+
+    it("an inspection on a range other than the selected one leaves the header price on spot", async () => {
+      jest.useFakeTimers();
+      mockFetchHistory.mockImplementation(({ range }) =>
+        Promise.resolve(
+          range === "1W"
+            ? makeHistory({
+                range: "1W",
+                change: { absolute: "-0.05", percent: "-11.11" },
+              })
+            : makeHistory({ points: inspectedPoints }),
+        ),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      act(() => {
+        fireEvent.press(getByTestId("timeframe-selector-1W"));
+      });
+      await act(async () => {
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
+      );
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      // The selected range (1W) still shows spot — the stale 1D inspection
+      // is never mistaken for one on the visible range.
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
+      );
+
+      jest.useRealTimers();
+    });
+
+    it("falls back to spot when the kill switch flips off mid-drag, like the delta", () => {
+      // Seeds the cache and the inspection directly (no section mounted), so
+      // nothing else in the tree can clear the duck — isolating the header's
+      // OWN gate rather than a race with the section's disable-effect.
+      usePriceHistoryStore.setState({
+        historyByNetwork: {
+          [NETWORKS.PUBLIC]: {
+            native: {
+              "1D": {
+                data: makeHistory({ points: inspectedPoints }),
+                updatedAt: Date.now(),
+              },
+            },
+          },
+        },
+      });
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <TokenBalanceHeader
+          tokenId="native"
+          tokenSymbol="XLM"
+          network={NETWORKS.PUBLIC}
+        />,
+      );
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount("0.22"),
+      );
+
+      act(() => {
+        useRemoteConfigStore.setState({
+          isInitialized: true,
+          use_token_price_history: false,
+        });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
+      );
+    });
+
+    it("shows the inspected price even when the token has no spot quote", () => {
+      // No section mounted (direct-seed, like the kill-switch test above):
+      // isolates the header's own gate from anything that could clear the
+      // duck. `currentPrice`/`fiatTotal` are absent, as on a spot-price
+      // failure, but a drawable 1D series exists and is being inspected.
+      usePriceHistoryStore.setState({
+        historyByNetwork: {
+          [NETWORKS.PUBLIC]: {
+            native: {
+              "1D": {
+                data: makeHistory({ points: inspectedPoints }),
+                updatedAt: Date.now(),
+              },
+            },
+          },
+        },
+      });
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            currentPrice: undefined,
+            fiatTotal: undefined,
+          } as PricedBalance,
+        },
+      });
+
+      const { getByTestId, queryByTestId } = renderWithProviders(
+        <TokenBalanceHeader
+          tokenId="native"
+          tokenSymbol="XLM"
+          network={NETWORKS.PUBLIC}
+        />,
+      );
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatPriceHistoryLabel("0.22"),
+      );
+      expect(getByTestId("token-price-delta")).toBeTruthy();
+
+      act(() => {
+        usePriceHistoryStore
+          .getState()
+          .clearInspectedPoint({ network: NETWORKS.PUBLIC, tokenId: "native" });
+      });
+
+      expect(queryByTestId("token-price-header-price")).toBeNull();
+    });
+  });
+
+  describe("loading placeholders", () => {
+    beforeEach(() => {
+      // Deterministic chart section: these tests assert on the header's own
+      // pills, not the price-history delta, so the history fetch is left
+      // hanging rather than resolving mid-assertion.
+      mockFetchHistory.mockImplementation(() => new Promise(() => {}));
+    });
+
+    it("shows the price and delta pills while balances load and none exists yet", () => {
+      // Pinned to fontScale 1 (the RN jest preset defaults to 2) so this is
+      // the unscaled baseline; the 2x case is the dedicated test below.
+      const window = Dimensions.get("window");
+      const screen = Dimensions.get("screen");
+      act(() => {
+        Dimensions.set({ window: { ...window, fontScale: 1 }, screen });
+      });
+      try {
+        useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+
+        const { getByTestId, getByText, queryByTestId } = renderDetailView();
+
+        const wrapper = getByTestId("token-price-header-loading");
+        expect(wrapper.props.accessibilityState).toEqual({ busy: true });
+        expect(wrapper.props.accessibilityLabel).toBe("Loading price");
+        // Named as the loaded header will name it; there is no icon without a balance.
+        expect(getByText("Stellar Lumens")).toBeTruthy();
+        const price = getByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        });
+        expect(StyleSheet.flatten(price.props.style)).toEqual({
+          width: pxValue(146),
+          height: priceRowHeight(1),
+        });
+        const delta = getByTestId("token-price-header-delta-skeleton", {
+          includeHiddenElements: true,
+        });
+        expect(StyleSheet.flatten(delta.props.style)).toEqual({
+          width: pxValue(146),
+          height: deltaRowHeight(1),
+        });
+        expect(queryByTestId("token-price-header-price")).toBeNull();
+      } finally {
+        act(() => {
+          Dimensions.set({ window, screen });
+        });
+      }
+    });
+
+    it("shows the amount, not pills, for a balance that settled unpriced, even while isLoading is true (a refresh)", () => {
+      // The store sets isLoading on every fetch, and a token that already
+      // settled unpriced keeps no price — the pills must not replace it.
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            currentPrice: undefined,
+            fiatTotal: undefined,
+          },
+        } as never,
+        isLoading: true,
+      });
+
+      const { getByText, queryByTestId } = renderDetailView();
+
+      expect(queryByTestId("token-price-header-loading")).toBeNull();
+      expect(
+        queryByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+      expect(
+        queryByTestId("token-price-header-delta-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+      expect(getByText("100.00 XLM")).toBeTruthy();
+    });
+
+    it("shows the amount for an unpriced balance once loading settles", () => {
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            currentPrice: undefined,
+            fiatTotal: undefined,
+          },
+        } as never,
+        isLoading: false,
+      });
+
+      const { queryByTestId, getByText } = renderDetailView();
+
+      expect(queryByTestId("token-price-header-loading")).toBeNull();
+      expect(
+        queryByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+      expect(getByText("100.00 XLM")).toBeTruthy();
+      expect(queryByTestId("token-price-delta-row")).toBeNull();
+    });
+
+    it("shows no delta pill off mainnet, where no delta row renders", () => {
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+      const { getByTestId, queryByTestId } = renderDetailView(NETWORKS.TESTNET);
+
+      expect(
+        getByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeTruthy();
+      expect(
+        queryByTestId("token-price-header-delta-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+    });
+
+    it("shows no delta pill on mainnet with the price-history kill switch off", () => {
+      useRemoteConfigStore.setState({
+        isInitialized: true,
+        use_token_price_history: false,
+      });
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+      const { queryByTestId } = renderDetailView();
+
+      expect(
+        queryByTestId("token-price-header-delta-skeleton", {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+    });
+
+    it("names a Soroban token by the loaded name's rules, not its contract ID", () => {
+      const contractId =
+        "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+      const { getByText, queryByText } = renderWithProviders(
+        <TokenBalanceHeader
+          tokenId={contractId}
+          tokenSymbol={contractId}
+          network={NETWORKS.PUBLIC}
+        />,
+      );
+
+      expect(getByText("Soroban Token")).toBeTruthy();
+      expect(queryByText(contractId)).toBeNull();
+    });
+
+    it("renders nothing while nothing is loading and there is no balance", () => {
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: false });
+      const { toJSON, queryByTestId } = renderDetailView();
+      expect(queryByTestId("token-price-header-loading")).toBeNull();
+      expect(toJSON()).not.toBeNull(); // the section beside it still renders
+    });
+
+    it("scales the price pill with the OS text size", () => {
+      const window = Dimensions.get("window");
+      const screen = Dimensions.get("screen");
+      act(() => {
+        Dimensions.set({ window: { ...window, fontScale: 2 }, screen });
+      });
+      try {
+        useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+        const { getByTestId } = renderDetailView();
+        const price = getByTestId("token-price-header-price-skeleton", {
+          includeHiddenElements: true,
+        });
+        expect(StyleSheet.flatten(price.props.style).height).toBe(
+          priceRowHeight(2),
+        );
+      } finally {
+        act(() => {
+          Dimensions.set({ window, screen });
+        });
+      }
+    });
+  });
+});
+
+describe("TokenBalanceDetails loading placeholders", () => {
+  const renderDetails = (network: NETWORKS = NETWORKS.PUBLIC) =>
+    renderWithProviders(
+      <TokenBalanceDetails tokenId="native" network={network} />,
+    );
+
+  beforeEach(() => {
+    useBalancesStore.setState({ balances: {} });
+  });
+
+  it("shows both pills while balances load and none exists yet", () => {
+    // Pinned to fontScale 1 (the RN jest preset defaults to 2) so this is the
+    // unscaled baseline, matching the header's own pinned-scale test above.
+    const window = Dimensions.get("window");
+    const screen = Dimensions.get("screen");
+    act(() => {
+      Dimensions.set({ window: { ...window, fontScale: 1 }, screen });
+    });
+    try {
+      useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+      const { getByTestId, getByText } = renderDetails();
+
+      const wrapper = getByTestId("token-balance-details-loading");
+      expect(wrapper.props.accessibilityState).toEqual({ busy: true });
+      expect(wrapper.props.accessibilityLabel).toBe("Loading balance");
+      expect(getByText("Balance")).toBeTruthy();
+      expect(getByText("Value")).toBeTruthy();
+      expect(
+        StyleSheet.flatten(
+          getByTestId("token-balance-skeleton", {
+            includeHiddenElements: true,
+          }).props.style,
+        ),
+      ).toEqual({ width: pxValue(102), height: deltaRowHeight(1) });
+      expect(
+        StyleSheet.flatten(
+          getByTestId("token-value-skeleton", {
+            includeHiddenElements: true,
+          }).props.style,
+        ),
+      ).toEqual({ width: pxValue(64), height: deltaRowHeight(1) });
+    } finally {
+      act(() => {
+        Dimensions.set({ window, screen });
+      });
+    }
+  });
+
+  it("shows the amount from the raw balances while prices are still in flight", () => {
+    // The store publishes raw balances before the price fetch (or its 3 s
+    // timeout) fills pricedBalances.
+    const rawNative = {
+      token: { type: "native", code: "XLM" },
+      total: new BigNumber("100"),
+      available: new BigNumber("99"),
+      minimumBalance: new BigNumber("1"),
+      buyingLiabilities: "0",
+      sellingLiabilities: "0",
+    };
+    useBalancesStore.setState({
+      balances: { native: rawNative } as never,
+      pricedBalances: {},
+      isLoading: true,
+    });
+    const { getByText, queryByTestId } = renderDetails();
+
+    expect(getByText("100.00 XLM")).toBeTruthy();
+    expect(
+      queryByTestId("token-balance-skeleton", { includeHiddenElements: true }),
+    ).toBeNull();
+    // The price is genuinely pending, so the Value pill stays.
+    expect(
+      queryByTestId("token-value-skeleton", { includeHiddenElements: true }),
+    ).toBeTruthy();
+    // But the card no longer announces "Loading balance" over the amount it
+    // shows, or hides that amount behind its label.
+    expect(queryByTestId("token-balance-details-loading")).toBeNull();
+  });
+
+  it("names a liquidity pool share by its pair while prices are in flight, as once priced", () => {
+    const lpId = "pool-id:lp";
+    const rawLp = {
+      liquidityPoolId: "pool-id",
+      reserves: [
+        { asset: "native", amount: "10" },
+        {
+          asset:
+            "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          amount: "20",
+        },
+      ],
+      total: new BigNumber("100"),
+      limit: new BigNumber("1000"),
+    };
+    useBalancesStore.setState({
+      balances: { [lpId]: rawLp } as never,
+      pricedBalances: {},
+      isLoading: true,
+    });
+    const { getByText } = renderWithProviders(
+      <TokenBalanceDetails tokenId={lpId} network={NETWORKS.PUBLIC} />,
+    );
+
+    expect(getByText("100.00 XLM / USDC")).toBeTruthy();
+  });
+
+  it("shows no Value pill off mainnet, where no Value row can render", () => {
+    useBalancesStore.setState({ pricedBalances: {}, isLoading: true });
+    const { getByTestId, queryByTestId, queryByText } = renderDetails(
+      NETWORKS.TESTNET,
+    );
+
+    expect(
+      getByTestId("token-balance-skeleton", { includeHiddenElements: true }),
+    ).toBeTruthy();
+    expect(
+      queryByTestId("token-value-skeleton", { includeHiddenElements: true }),
+    ).toBeNull();
+    expect(queryByText("Value")).toBeNull();
+  });
+
+  it("shows the Balance row only for a balance that settled unpriced, even while isLoading is true (a refresh)", () => {
+    // The store sets isLoading on every fetch, and a token that already
+    // settled unpriced keeps no price — the Value pill must not reappear.
+    useBalancesStore.setState({
+      pricedBalances: {
+        native: {
+          ...nativeBalance,
+          currentPrice: undefined,
+          fiatTotal: undefined,
+        },
+      } as never,
+      isLoading: true,
+    });
+    const { queryByTestId, queryByText, getByText } = renderDetails();
+
+    expect(queryByTestId("token-balance-details-loading")).toBeNull();
+    expect(
+      queryByTestId("token-value-skeleton", { includeHiddenElements: true }),
+    ).toBeNull();
+    expect(queryByText("Value")).toBeNull();
+    expect(getByText("Balance")).toBeTruthy();
+    expect(getByText(/XLM/)).toBeTruthy(); // the real amount
+  });
+
+  it("omits the Value row once loading ends unpriced, as before", () => {
+    useBalancesStore.setState({
+      pricedBalances: {
+        native: {
+          ...nativeBalance,
+          currentPrice: undefined,
+          fiatTotal: undefined,
+        },
+      } as never,
+      isLoading: false,
+    });
+    const { queryByTestId, queryByText } = renderDetails();
+
+    expect(queryByTestId("token-balance-details-loading")).toBeNull();
+    expect(queryByText("Value")).toBeNull();
+  });
+
+  it("renders nothing with no balance and nothing loading", () => {
+    // `renderWithProviders` always wraps with the Toast overlay, so `toJSON()`
+    // is never literally null; assert the component's own output is absent.
+    useBalancesStore.setState({ pricedBalances: {}, isLoading: false });
+    const { queryByTestId, queryByText } = renderDetails();
+
+    expect(queryByTestId("token-balance-details-loading")).toBeNull();
+    expect(queryByText("Balance")).toBeNull();
+  });
+});

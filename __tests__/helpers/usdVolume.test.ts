@@ -267,9 +267,9 @@ describe("canonicalIdFromIdentity", () => {
 
   it("does not resolve an issuerless non-native code to the native id", () => {
     // Otherwise the degenerate identity above would be priced as lumens.
-    expect(
-      canonicalIdFromIdentity({ code: "", type: AssetKind.CLASSIC }),
-    ).toBe("");
+    expect(canonicalIdFromIdentity({ code: "", type: AssetKind.CLASSIC })).toBe(
+      "",
+    );
   });
 
   it("is CODE:ISSUER for a classic or soroban asset", () => {

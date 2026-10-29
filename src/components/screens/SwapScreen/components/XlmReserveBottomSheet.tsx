@@ -1,18 +1,15 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { TokenIcon } from "components/TokenIcon";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { NATIVE_TOKEN_CODE, UNFUNDED_ACCOUNT_HELP_URL } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useState } from "react";
-import { TouchableOpacity, View } from "react-native";
-
-const HELP_ARTICLE_URL =
-  "https://help.freighter.app/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet";
+import { View } from "react-native";
 
 export interface XlmReserveBottomSheetProps {
   publicKey: string;
@@ -57,7 +54,7 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
   };
 
   const handleWhyXlm = () => {
-    openInAppBrowser(HELP_ARTICLE_URL);
+    openInAppBrowser(UNFUNDED_ACCOUNT_HELP_URL);
   };
 
   const handleClose = () => {
@@ -66,36 +63,29 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
 
   return (
     <View className="gap-[24px]">
-      <View className="flex-row items-center justify-between">
-        <Icon.PlusCircle themeColor="lilac" withBackground square size={28} />
-        <TouchableOpacity onPress={handleClose} testID="xlm-reserve-close">
-          <Icon.X
-            color={themeColors.foreground.secondary}
-            size={22}
-            circle
-            circleBorder={themeColors.background.tertiary}
-            circleBackground={themeColors.background.tertiary}
-          />
-        </TouchableOpacity>
-      </View>
+      {/* Stacked layout from the "Not enough XLM" frame: the XLM token icon
+          leads the top row, the X sits on the right, the title below. */}
+      <BottomSheetHeader
+        title={t("swapScreen.xlmReserve.title")}
+        leading={
+          <TokenIcon token={{ type: "native", code: NATIVE_TOKEN_CODE }} />
+        }
+        onClose={handleClose}
+        closeTestID="xlm-reserve-close"
+      />
 
-      <View className="gap-[8px]">
-        <Text xl medium>
-          {t("swapScreen.xlmReserve.title")}
+      <Text md regular secondary>
+        {t("swapScreen.xlmReserve.bodyPrefix", interpolation)}
+        <Text
+          md
+          medium
+          color={themeColors.lilac[11]}
+          onPress={handleWhyXlm}
+          testID="xlm-reserve-why-link"
+        >
+          {t("swapScreen.xlmReserve.whyDoINeedXlm")}
         </Text>
-        <Text md regular secondary>
-          {t("swapScreen.xlmReserve.bodyPrefix", interpolation)}
-          <Text
-            md
-            medium
-            color={themeColors.lilac[11]}
-            onPress={handleWhyXlm}
-            testID="xlm-reserve-why-link"
-          >
-            {t("swapScreen.xlmReserve.whyDoINeedXlm")}
-          </Text>
-        </Text>
-      </View>
+      </Text>
 
       <View className="rounded-[16px] bg-background-tertiary p-4 flex-row items-center gap-3">
         <TokenIcon
@@ -115,14 +105,14 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
       {canOfferSwapToXlm && (
         <Button
           onPress={handleSwapForXlm}
-          tertiary
+          secondary
           isLoading={isSwapping}
           testID="xlm-reserve-swap-button"
         >
           {t("swapScreen.xlmReserve.swapXlm")}
         </Button>
       )}
-      <Button onPress={handleCopyAddress} secondary>
+      <Button onPress={handleCopyAddress} tertiary>
         {t("swapScreen.xlmReserve.copyAddress")}
       </Button>
     </View>

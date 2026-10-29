@@ -38,6 +38,20 @@ public class SecureClipboardModule extends ReactContextBaseJavaModule {
         }
     }
 
+    /**
+     * Empties the clipboard. clearPrimaryClip() only exists from Android 9
+     * (API 28): on Android 7 and 8 it throws NoSuchMethodError, which
+     * catch (Exception) doesn't catch, so the app would crash. There, an empty
+     * clip replaces what was on the clipboard instead.
+     */
+    private static void clearClipboard(ClipboardManager clipboard) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            clipboard.clearPrimaryClip();
+        } else {
+            clipboard.setPrimaryClip(ClipData.newPlainText("", ""));
+        }
+    }
+
     @ReactMethod
     public void setString(String text, int expirationMs, Promise promise) {
         try {
@@ -67,7 +81,7 @@ public class SecureClipboardModule extends ReactContextBaseJavaModule {
                     try {
                         ClipboardManager delayedClipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
                         if (delayedClipboard != null) {
-                            delayedClipboard.clearPrimaryClip();
+                            clearClipboard(delayedClipboard);
                         }
                     } catch (Exception e) {
                         // Silently handle expiration clear errors
@@ -94,8 +108,9 @@ public class SecureClipboardModule extends ReactContextBaseJavaModule {
 
             ClipData clip = clipboard.getPrimaryClip();
             if (clip != null && clip.getItemCount() > 0) {
-                String text = clip.getItemAt(0).getText().toString();
-                promise.resolve(text);
+                // An item without text, such as an image, has none to paste.
+                CharSequence text = clip.getItemAt(0).getText();
+                promise.resolve(text != null ? text.toString() : "");
             } else {
                 promise.resolve("");
             }
@@ -116,7 +131,7 @@ public class SecureClipboardModule extends ReactContextBaseJavaModule {
             }
 
             // Clear the clipboard
-            clipboard.clearPrimaryClip();
+            clearClipboard(clipboard);
             
             // Verify the clipboard was cleared
             ClipData currentClip = clipboard.getPrimaryClip();

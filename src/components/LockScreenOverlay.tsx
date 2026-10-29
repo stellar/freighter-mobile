@@ -1,14 +1,13 @@
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { LockScreenContent } from "components/screens/LockScreen";
-import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
-import React, { useEffect } from "react";
-import { BackHandler, StyleSheet, View } from "react-native";
+import useBackHandler from "hooks/useBackHandler";
+import useTheme from "hooks/useTheme";
+import React from "react";
+import { StyleSheet, View } from "react-native";
 
 const styles = StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: THEME.colors.background.default,
-  },
+  container: StyleSheet.absoluteFillObject,
 });
 
 /**
@@ -22,21 +21,11 @@ const styles = StyleSheet.create({
 export const LockScreenOverlay: React.FC = () => {
   // Narrow selector: avoid re-rendering on unrelated auth-store churn
   const isSoftLocked = useAuthenticationStore((state) => state.isSoftLocked);
+  const theme = useTheme();
 
   // Swallow the Android back button while locked so it can't pop the hidden
   // tree or exit the app
-  useEffect(() => {
-    if (!isSoftLocked) {
-      return undefined;
-    }
-
-    const subscription = BackHandler.addEventListener(
-      "hardwareBackPress",
-      () => true,
-    );
-
-    return () => subscription.remove();
-  }, [isSoftLocked]);
+  useBackHandler(() => true, isSoftLocked);
 
   if (!isSoftLocked) {
     return null;
@@ -44,11 +33,16 @@ export const LockScreenOverlay: React.FC = () => {
 
   return (
     <View
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.colors.base.primary }]}
       testID="lock-screen-overlay"
       accessibilityViewIsModal
     >
-      <LockScreenContent />
+      {/* The app's sheets render under this overlay, so the lock screen's own
+          (the forgot-password warning) needs a provider of its own to show
+          above it. */}
+      <BottomSheetModalProvider>
+        <LockScreenContent />
+      </BottomSheetModalProvider>
     </View>
   );
 };

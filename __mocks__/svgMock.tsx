@@ -5,37 +5,46 @@ import { SvgProps } from "react-native-svg";
 const SvgMock = "SvgMock";
 
 /**
- * Stands in for an imported SVG.
+ * Stands in for an imported .svg.
  *
- * `testID` and `onPress` are forwarded rather than dropped: icons are real
- * interactive elements (a copy button is an `Icon` with an `onPress`), and a
- * mock that swallows them makes those presses untestable. Icons that pass no
- * `testID` keep the shared `SvgMock` id, and a non-interactive icon still
- * renders a plain `View`, so existing queries resolve unchanged.
+ * `color`, `strokeWidth` and `testID` are forwarded rather than dropped: the
+ * real svg paints its strokes with `color` at `strokeWidth`, so a test that
+ * cannot see them cannot check what an Icon resolved to. `strokeWidth` is
+ * forwarded only when given, so a test can tell "unset" from "set to
+ * undefined". `testID` falls back to "SvgMock" so tests that query the mock
+ * generically keep working.
+ *
+ * `onPress` is forwarded too: icons are real interactive elements (a copy
+ * button is an `Icon` with an `onPress`), and a mock that swallows it makes
+ * those presses untestable. A non-interactive icon still renders a plain
+ * `View`, so existing queries resolve unchanged.
  */
 const MockedSvg: React.FC<SvgProps> = ({
   width,
   height,
   style,
+  color,
   testID,
   onPress,
+  ...rest
 }) => {
-  const resolvedStyle = [
-    { width: Number(width), height: Number(height) },
-    style as ViewStyle,
-  ];
+  const forwardedProps = {
+    testID: testID ?? SvgMock,
+    style: [
+      { width: Number(width), height: Number(height) },
+      style as ViewStyle,
+    ],
+    ...({ color } as { color?: SvgProps["color"] }),
+    ...(("strokeWidth" in rest ? { strokeWidth: rest.strokeWidth } : {}) as {
+      strokeWidth?: SvgProps["strokeWidth"];
+    }),
+  };
 
   if (onPress) {
-    return (
-      <Pressable
-        testID={testID ?? SvgMock}
-        onPress={onPress}
-        style={resolvedStyle}
-      />
-    );
+    return <Pressable onPress={onPress} {...forwardedProps} />;
   }
 
-  return <View testID={testID ?? SvgMock} style={resolvedStyle} />;
+  return <View {...forwardedProps} />;
 };
 
 export default MockedSvg;

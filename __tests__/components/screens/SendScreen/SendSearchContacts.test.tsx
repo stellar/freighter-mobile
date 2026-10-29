@@ -8,6 +8,8 @@ import {
   waitFor,
 } from "@testing-library/react-native";
 import { SendSearchContacts } from "components/screens/SendScreen";
+import Icon from "components/sds/Icon";
+import { getThemeColors } from "config/colors";
 import {
   RootStackParamList,
   SEND_PAYMENT_ROUTES,
@@ -19,6 +21,7 @@ import * as sendDuck from "ducks/sendRecipient";
 import * as transactionSettingsDuck from "ducks/transactionSettings";
 import { isFederationAddress } from "helpers/stellar";
 import { renderWithProviders } from "helpers/testUtils";
+import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { ReactNode } from "react";
 import { View } from "react-native";
 
@@ -255,6 +258,27 @@ describe("SendSearchContacts", () => {
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText("Enter address")).toBeTruthy();
+    });
+  });
+
+  // Home's scan button, in the back arrow's color (Home's own stays gray
+  // for now).
+  it("puts Home's scan button in the header, colored like the back arrow", async () => {
+    renderWithProviders(
+      <NavigationContainer>
+        <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+      </NavigationContainer>,
+    );
+
+    await waitFor(() => {
+      expect(useRightHeaderButton).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          icon: Icon.ScanCircle,
+          iconSize: 24,
+          iconColor: getThemeColors("light").text.primary,
+          accessibilityLabel: "homeScanner.title",
+        }),
+      );
     });
   });
 

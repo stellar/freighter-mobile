@@ -6,7 +6,7 @@
   "ruby_sast_enabled": true,
   "swift_sast_enabled": true,
   "javascript_disabled_rules": "js-sensitive-data-in-logs,js-unhandled-promise-rejection",
-  "sast_ignore_overrides": "swift-sql-injection:ios/freighter-mobile/AppDelegate.swift,swift-ios-url-scheme:ios/freighter-mobile/AppDelegate.swift,ruby-hardcoded-secrets:lib/env_file_creator.rb,js-code-injection-eval:src/helpers/validateIconUrl.ts,js-code-injection-eval:src/hooks/useHomeQrCodeScanner.tsx,js-code-injection-eval:src/providers/NetworkProvider.tsx,js-insecure-random:src/ducks/transactionBuilder.ts,js-insecure-random:src/services/analytics/user.ts,js-timing-attack:src/components/screens/ConfirmPasswordScreen.tsx,js-express-async-no-error-handler:src/components/screens/SwapScreen/components/SwapTokenRow.tsx,js-express-async-no-error-handler:src/ducks/auth.ts,js-express-async-no-error-handler:src/hooks/useWordSelection.ts",
+  "sast_ignore_overrides": "swift-sql-injection:ios/freighter-mobile/AppDelegate.swift,swift-ios-url-scheme:ios/freighter-mobile/AppDelegate.swift,ruby-hardcoded-secrets:lib/env_file_creator.rb,js-code-injection-eval:src/helpers/validateIconUrl.ts,js-code-injection-eval:src/hooks/useHomeQrCodeScanner.tsx,js-code-injection-eval:src/providers/NetworkProvider.tsx,js-insecure-random:src/ducks/transactionBuilder.ts,js-insecure-random:src/services/analytics/user.ts,js-timing-attack:src/components/screens/ChoosePasswordScreen.tsx,js-express-async-no-error-handler:src/components/screens/SwapScreen/components/SwapTokenRow.tsx,js-express-async-no-error-handler:src/ducks/auth.ts",
   "secret_scanning_enabled": true,
   "console_tabular_enabled": true,
   "socket_tier_1_enabled": false,

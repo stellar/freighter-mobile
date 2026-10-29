@@ -17,7 +17,13 @@ export type HeldBalanceItem = PricedBalance & {
 };
 
 interface UseBalancesListResult {
+  /**
+   * The held balances, minus the ones the user hid unless `includeHidden` is
+   * set. Filtered by `searchTerm` when one is given.
+   */
   balanceItems: HeldBalanceItem[];
+  /** The held balances the user hid, for the hidden-tokens sheet. */
+  hiddenBalanceItems: HeldBalanceItem[];
   scanResults: Blockaid.TokenBulk.TokenBulkScanResponse["results"];
   isLoading: boolean;
   error: string | null;
@@ -36,12 +42,19 @@ interface UseBalancesListProps {
   publicKey: string;
   network: NETWORKS;
   searchTerm?: string;
+  /**
+   * Keeps hidden tokens in `balanceItems`. Off by default so Home and the
+   * Send and Swap pickers never show a hidden token; on for views that must
+   * see everything the account holds, like Add token's trustline check.
+   */
+  includeHidden?: boolean;
 }
 
 export const useBalancesList = ({
   publicKey,
   network,
   searchTerm,
+  includeHidden = false,
 }: UseBalancesListProps): UseBalancesListResult => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -52,6 +65,7 @@ export const useBalancesList = ({
     error: balancesError,
     isFunded,
     localOnlyTokenIds,
+    hiddenTokenIds,
     fetchAccountBalances,
   } = useBalancesStore();
 
@@ -99,24 +113,34 @@ export const useBalancesList = ({
     return false;
   };
 
-  // Convert balances object to array and apply optional filtering
+  // Convert balances object to array once; the visible and hidden lists are
+  // both views over it.
+  const allBalanceItems = useMemo(
+    () =>
+      Object.entries(pricedBalances).map(([id, balance]) => {
+        const tokenType = getTokenType(id);
+
+        return {
+          id,
+          tokenType,
+          ...balance,
+        } as HeldBalanceItem;
+      }),
+    [pricedBalances],
+  );
+
+  const hiddenBalanceItems = useMemo(
+    () => allBalanceItems.filter((item) => hiddenTokenIds.includes(item.id)),
+    [allBalanceItems, hiddenTokenIds],
+  );
+
+  // Apply the hidden filter and the optional search filter
   const balanceItems = useMemo(
     () =>
-      Object.entries(pricedBalances)
-        .map(([id, balance]) => {
-          const tokenType = getTokenType(id);
-
-          return {
-            id,
-            tokenType,
-            ...balance,
-          } as PricedBalance & {
-            id: string;
-            tokenType: TokenTypeWithCustomToken;
-          };
-        })
+      allBalanceItems
+        .filter((item) => includeHidden || !hiddenTokenIds.includes(item.id))
         .filter((item) => matchesSearchTerm(item, searchTerm ?? "")),
-    [pricedBalances, searchTerm],
+    [allBalanceItems, hiddenTokenIds, includeHidden, searchTerm],
   );
 
   // Only show error if we're not in the initial loading state and there is an error
@@ -125,6 +149,7 @@ export const useBalancesList = ({
   return useMemo(
     () => ({
       balanceItems,
+      hiddenBalanceItems,
       scanResults,
       isLoading: isBalancesLoading,
       error: shouldShowError ? balancesError : null,
@@ -136,6 +161,7 @@ export const useBalancesList = ({
     }),
     [
       balanceItems,
+      hiddenBalanceItems,
       scanResults,
       isBalancesLoading,
       shouldShowError,

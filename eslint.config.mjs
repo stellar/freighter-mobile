@@ -45,6 +45,7 @@ export default [
   {
     ignores: [
       "jest.setup.js",
+      "jest/**/*.js",
       "tsconfig.json",
       "shim.js",
       "src/eslint-plugin-translations/**/*",

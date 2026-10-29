@@ -6,6 +6,7 @@ import React, { useEffect } from "react";
 import {
   Animated,
   PanResponder,
+  View,
   type PanResponderInstance,
 } from "react-native";
 
@@ -25,39 +26,39 @@ const ToastEmitter: React.FC<{
   return null;
 };
 
+beforeEach(() => {
+  // The rendered Toast runs Animated loops + a duration-based auto-dismiss
+  // setTimeout; mock them (as Toast.test.tsx does) so no real timers/anim
+  // frames leak and hang the worker on exit.
+  jest.useFakeTimers();
+  const startMock = (callback?: () => void) => {
+    if (callback) {
+      callback();
+    }
+  };
+  jest.spyOn(Animated, "timing").mockReturnValue({
+    start: startMock,
+  } as unknown as Animated.CompositeAnimation);
+  jest.spyOn(Animated, "spring").mockReturnValue({
+    start: startMock,
+  } as unknown as Animated.CompositeAnimation);
+  jest.spyOn(Animated, "parallel").mockReturnValue({
+    start: startMock,
+  } as unknown as Animated.CompositeAnimation);
+  jest
+    .spyOn(PanResponder, "create")
+    .mockReturnValue({ panHandlers: {} } as unknown as PanResponderInstance);
+
+  useAuthenticationStore.setState({ isSoftLocked: false });
+});
+
+afterEach(() => {
+  jest.runOnlyPendingTimers();
+  jest.useRealTimers();
+  jest.restoreAllMocks();
+});
+
 describe("ToastProvider soft-lock suppression", () => {
-  beforeEach(() => {
-    // The rendered Toast runs Animated loops + a duration-based auto-dismiss
-    // setTimeout; mock them (as Toast.test.tsx does) so no real timers/anim
-    // frames leak and hang the worker on exit.
-    jest.useFakeTimers();
-    const startMock = (callback?: () => void) => {
-      if (callback) {
-        callback();
-      }
-    };
-    jest.spyOn(Animated, "timing").mockReturnValue({
-      start: startMock,
-    } as unknown as Animated.CompositeAnimation);
-    jest.spyOn(Animated, "spring").mockReturnValue({
-      start: startMock,
-    } as unknown as Animated.CompositeAnimation);
-    jest.spyOn(Animated, "parallel").mockReturnValue({
-      start: startMock,
-    } as unknown as Animated.CompositeAnimation);
-    jest
-      .spyOn(PanResponder, "create")
-      .mockReturnValue({ panHandlers: {} } as unknown as PanResponderInstance);
-
-    useAuthenticationStore.setState({ isSoftLocked: false });
-  });
-
-  afterEach(() => {
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
-    jest.restoreAllMocks();
-  });
-
   it("renders toasts normally when not soft-locked", () => {
     const { queryByText } = render(
       <ToastProvider>
@@ -94,5 +95,31 @@ describe("ToastProvider soft-lock suppression", () => {
     );
 
     expect(queryByText(ALLOWED_TITLE)).toBeTruthy();
+  });
+});
+
+describe("ToastProvider touch handling", () => {
+  // The toast layer spans the top of the screen, inset included, over the
+  // navigation header's back and close buttons.
+  it("mounts no toast layer while no toast shows", () => {
+    const { queryByTestId } = render(
+      <ToastProvider>
+        <View />
+      </ToastProvider>,
+    );
+
+    expect(queryByTestId("toast-layer")).toBeNull();
+  });
+
+  it("lets touches through the empty space around a toast", () => {
+    const { getByTestId, getByText } = render(
+      <ToastProvider>
+        <ToastEmitter title={SHOWN_TITLE} />
+      </ToastProvider>,
+    );
+
+    expect(getByText(SHOWN_TITLE)).toBeTruthy();
+    expect(getByTestId("toast-layer").props.pointerEvents).toBe("box-none");
+    expect(getByTestId("toast-stack").props.pointerEvents).toBe("box-none");
   });
 });

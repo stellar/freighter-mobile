@@ -11,32 +11,6 @@ tags:
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
 
-# Dismiss welcome banner if it appears after import
-- runFlow:
-    when:
-      visible:
-        id: welcome-banner-dismiss-button
-    commands:
-      - tapOn:
-          id: welcome-banner-dismiss-button
-      - extendedWaitUntil:
-          visible:
-            id: home-screen
-          timeout: 5000
-
-# Dismiss welcome banner if it appears again
-- runFlow:
-    when:
-      visible:
-        id: welcome-banner-dismiss-button
-    commands:
-      - tapOn:
-          id: welcome-banner-dismiss-button
-      - extendedWaitUntil:
-          visible:
-            id: home-screen
-          timeout: 5000
-
 # Open WC E2E Helper FAB and create session
 - tapOn:
     id: wc-e2e-helper-fab
@@ -78,11 +52,17 @@ tags:
 - tapOn:
     id: wc-e2e-helper-fab
 
-# Wait for modal to open and message input to be visible
-- extendedWaitUntil:
-    visible:
+# Wait for modal to open and bring the message input into view. The helper's
+# list is capped at 500pt, and on Android's 411pt-wide CI screen the session
+# details above it (session ID, WC URI, Copy/Pair, the auth-entry buttons)
+# leave only the top 8pt of the input's box on screen, so a plain visibility
+# wait times out. Scroll down until it shows, as the sign button below does.
+- scrollUntilVisible:
+    element:
       id: wc-e2e-message-input
-    timeout: 5000
+    direction: DOWN
+    centerElement: true
+    timeout: 10000
 
 # Fill in message
 - tapOn:
@@ -91,14 +71,15 @@ tags:
 - inputText:
     "Hello from E2E test! Please sign this message to verify your wallet."
 
-# Dismiss keyboard before tapping the sign button. hideKeyboard is safe here
-# because the keyboard IS visible (just typed text) — on Android KEYCODE_BACK
-# only triggers onRequestClose when the keyboard is already dismissed.
-- hideKeyboard
+# Dismiss keyboard before tapping the sign button, with the keyboard's return
+# key as a user would. Not hideKeyboard: on iOS it swipes from the middle of
+# the screen, and whichever helper button sits there gets pressed (Copy WC URI
+# closes the modal); on Android its back press can close the modal instead.
+- pressKey: Enter
 
 # Make sure the sign button is visible and tap it to send the WC request.
 #
-# After hideKeyboard the modal's ScrollView springs back toward the top,
+# Once the keyboard is down the modal's ScrollView springs back toward the top,
 # clipping this button (the last item) below the fold. scrollUntilVisible
 # alone is a no-op here: iOS lists the clipped button in the accessibility
 # tree at its layout position, so Maestro thinks it is already visible and

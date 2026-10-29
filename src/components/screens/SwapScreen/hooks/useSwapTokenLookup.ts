@@ -18,6 +18,7 @@ import {
   HookStatus,
   TokenTypeWithCustomToken,
 } from "config/types";
+import { useBalancesStore } from "ducks/balances";
 import { useBlockaidTokenScansStore } from "ducks/blockaidTokenScans";
 import { useDebugStore } from "ducks/debug";
 import { useStellarExpertTopTokensStore } from "ducks/stellarExpertTopTokens";
@@ -265,6 +266,31 @@ export const useSwapTokenLookup = ({
     (tokenCode: string, issuer: string): boolean =>
       heldIdsSet.has(canonicalId(tokenCode, issuer)),
     [heldIdsSet],
+  );
+
+  // Tokens the user hid. `balanceItems` already leaves them out, so a hidden
+  // token they hold would otherwise look new here and picking it would add a
+  // trustline the account already has. Hidden tokens are dropped from every
+  // list below; the user unhides one from Add token to swap into it.
+  const hiddenTokenIds = useBalancesStore((state) => state.hiddenTokenIds);
+  const hiddenIdsSet = useMemo(
+    () =>
+      new Set(
+        hiddenTokenIds.map((id) => {
+          const { tokenCode, issuer } = formatTokenIdentifier(id);
+          return canonicalId(tokenCode, issuer ?? "");
+        }),
+      ),
+    [hiddenTokenIds],
+  );
+  const withoutHidden = useCallback(
+    (tokens: FormattedSearchTokenRecord[]) =>
+      hiddenIdsSet.size === 0
+        ? tokens
+        : tokens.filter(
+            (t) => !hiddenIdsSet.has(canonicalId(t.tokenCode, t.issuer)),
+          ),
+    [hiddenIdsSet],
   );
 
   // -- Idle surface ---------------------------------------------------------
@@ -723,23 +749,37 @@ export const useSwapTokenLookup = ({
       ),
     [balanceItems],
   );
+  // Filtered here rather than in the fetch pipeline, so unhiding a token
+  // brings it back straight away without refetching.
+  const visibleTrendingTokens = useMemo(
+    () => withoutHidden(trendingTokens),
+    [withoutHidden, trendingTokens],
+  );
   // popularTokens is the same verified intersection as trendingTokens,
   // additionally EXCLUDING held tokens for the picker.
   const popularTokens = useMemo(
     () =>
-      trendingTokens.filter(
+      visibleTrendingTokens.filter(
         (t) => !hasExistingTrustline(t.tokenCode, t.issuer),
       ),
-    [trendingTokens, hasExistingTrustline],
+    [visibleTrendingTokens, hasExistingTrustline],
+  );
+  const verifiedSearchMatches = useMemo(
+    () => withoutHidden(searchPartition.verified),
+    [withoutHidden, searchPartition.verified],
+  );
+  const unverifiedSearchMatches = useMemo(
+    () => withoutHidden(searchPartition.unverified),
+    [withoutHidden, searchPartition.unverified],
   );
 
   return {
     yourTokens,
     popularTokens,
-    trendingTokens,
+    trendingTokens: visibleTrendingTokens,
     heldSearchMatches: searchTerm ? searchPartition.held : [],
-    verifiedSearchMatches: searchTerm ? searchPartition.verified : [],
-    unverifiedSearchMatches: searchTerm ? searchPartition.unverified : [],
+    verifiedSearchMatches: searchTerm ? verifiedSearchMatches : [],
+    unverifiedSearchMatches: searchTerm ? unverifiedSearchMatches : [],
     hadSorobanMatches: searchTerm ? hadSorobanMatches : false,
     stellarExpertDown,
     status,

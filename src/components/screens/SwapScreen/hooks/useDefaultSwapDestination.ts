@@ -24,6 +24,7 @@ import {
  *   (a network switch keeps the stale snapshot around) and derives
  *   `requiresTrustline` from the raw balances map, which is written in the
  *   same store update as the stamps.
+ * - Skips a default the user hid, leaving the destination empty.
  * - Stamps a non-held default with its own Blockaid scan once it resolves;
  *   without a securityLevel the review flow would treat it as "unable to
  *   scan". Scan failure (Blockaid only covers mainnet) leaves it unstamped
@@ -46,6 +47,7 @@ export const useDefaultSwapDestination = ({
   setDestinationToken: (descriptor: DestinationTokenDescriptor | null) => void;
 }): void => {
   const rawBalances = useBalancesStore((state) => state.balances);
+  const hiddenTokenIds = useBalancesStore((state) => state.hiddenTokenIds);
   const balancesFetchedPublicKey = useBalancesStore(
     (state) => state.fetchedPublicKey,
   );
@@ -71,6 +73,13 @@ export const useDefaultSwapDestination = ({
       return;
     }
     hasSeededDefaultDestination.current = true;
+
+    // A hidden default stays unselected: the pickers leave hidden tokens out,
+    // so preselecting one would be the only place it still shows up. The
+    // hidden list is stamped in the same store update as the balances.
+    if (hiddenTokenIds.includes(defaultTokenId)) {
+      return;
+    }
 
     if (swapFromTokenId === defaultTokenId) {
       setDestinationToken({
@@ -131,6 +140,7 @@ export const useDefaultSwapDestination = ({
     network,
     destinationTokenDescriptor,
     rawBalances,
+    hiddenTokenIds,
     balancesFetchedPublicKey,
     balancesFetchedNetwork,
     publicKey,

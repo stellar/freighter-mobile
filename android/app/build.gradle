@@ -121,7 +121,7 @@ android {
         dev {
             dimension "environment"
             applicationId "org.stellar.freighterdev"
-            resValue "string", "app_name", "Freighter Dev"
+            resValue "string", "app_name", "Varial Dev"
             manifestPlaceholders = [deepLinkScheme: "freighterdev"]
             signingConfig signingConfigs.dev
         }
@@ -129,7 +129,7 @@ android {
         prod {
             dimension "environment"
             applicationId "org.stellar.freighterwallet"
-            resValue "string", "app_name", "Freighter"
+            resValue "string", "app_name", "Varial"
             manifestPlaceholders = [deepLinkScheme: "freighterwallet"]
             signingConfig signingConfigs.prod
         }
@@ -141,7 +141,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1234567890
-        versionName "1.26.29"
+        versionName "1.28.29"
     }
 
     buildTypes {
@@ -158,6 +158,8 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    // The floating tab bar's background blur on Android 12+ (PillBlurPackage).
+    implementation 'com.github.Dimezis:BlurView:version-3.2.0'
     // Fresco implementation following react native documentation and fresco docs
     // For animated GIF support
     implementation 'com.facebook.fresco:animated-gif:3.6.0'

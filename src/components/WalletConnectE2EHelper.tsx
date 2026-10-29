@@ -557,7 +557,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
                     testID="wc-e2e-copy-uri"
                     onPress={copyWcUri}
                     size="sm"
-                    variant="secondary"
+                    variant="tertiary"
                   >
                     {t("walletKit.e2eHelper.copyWcUri")}
                   </Button>
@@ -594,7 +594,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
                       testID="wc-e2e-request-sign-auth-entry-wrong-network"
                       onPress={requestSignAuthEntryWrongNetwork}
                       size="sm"
-                      variant="secondary"
+                      variant="tertiary"
                     >
                       {t(
                         "walletKit.e2eHelper.requestSignAuthEntryWrongNetwork",

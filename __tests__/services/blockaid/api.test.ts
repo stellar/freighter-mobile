@@ -94,6 +94,54 @@ describe("scanBulkTokens id validation", () => {
     );
   });
 
+  // Blockaid fails the whole batch on a code longer than 12 characters, and
+  // the app uses the contract id as the code of a token without a symbol.
+  it("leaves out ids whose code is longer than 12 characters so the rest of the batch is still scanned", async () => {
+    mockGet.mockResolvedValue({ data: { data: { results: {} } } });
+
+    await scanBulkTokens({
+      addressList: [`USDC-${ISSUER}`, `${CONTRACT}-${CONTRACT}`],
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockGet).toHaveBeenCalledWith(
+      `/scan-asset-bulk?asset_ids=USDC-${ISSUER}`,
+      expect.anything(),
+    );
+  });
+
+  it("leaves out ids whose code has a character Blockaid rejects so the rest of the batch is still scanned", async () => {
+    mockGet.mockResolvedValue({ data: { data: { results: {} } } });
+
+    await scanBulkTokens({
+      addressList: [`USDC-${ISSUER}`, `USDC.e-${CONTRACT}`, `🚀-${CONTRACT}`],
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockGet).toHaveBeenCalledWith(
+      `/scan-asset-bulk?asset_ids=USDC-${ISSUER}`,
+      expect.anything(),
+    );
+  });
+
+  // Blockaid scans symbols in any script, so a lookalike such as "USDС"
+  // (Cyrillic С) must still be sent for its impersonation verdict.
+  it("keeps ids whose code is letters in any script, digits or underscores", async () => {
+    mockGet.mockResolvedValue({ data: { data: { results: {} } } });
+
+    await scanBulkTokens({
+      addressList: [`decaf_usdc-${CONTRACT}`, `USDС-${CONTRACT}`],
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockGet).toHaveBeenCalledWith(
+      `/scan-asset-bulk?asset_ids=${encodeURIComponent(
+        `decaf_usdc-${CONTRACT}`,
+      )}&asset_ids=${encodeURIComponent(`USDС-${CONTRACT}`)}`,
+      expect.anything(),
+    );
+  });
+
   it("returns no results without calling the backend when every id is left out", async () => {
     const result = await scanBulkTokens({
       addressList: [`USDC-SEAV-${CONTRACT}`],

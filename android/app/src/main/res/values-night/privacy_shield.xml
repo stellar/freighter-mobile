@@ -1,0 +1,4 @@
+<resources>
+    <!-- Dark counterpart of privacy_shield_background; see values/privacy_shield.xml. -->
+    <color name="privacy_shield_background">#000000</color>
+</resources>

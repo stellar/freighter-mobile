@@ -1,13 +1,19 @@
 import Spinner from "components/Spinner";
 import { DiscoveryHomepage } from "components/screens/DiscoveryScreen/components";
-import { APP_VERSION, BROWSER_CONSTANTS } from "config/constants";
+import {
+  APP_VERSION,
+  BROWSER_CONSTANTS,
+  DEFAULT_PADDING,
+} from "config/constants";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { isDangerousScheme, isHomepageUrl } from "helpers/browser";
+import { pxValue } from "helpers/dimensions";
 import { captureTabScreenshot } from "helpers/screenshots";
 import useColors from "hooks/useColors";
 import React, { useRef, useCallback, useEffect, useState } from "react";
 import { View, Animated } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
 import { WebView, WebViewNavigation } from "react-native-webview";
 
@@ -38,6 +44,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
       getWebViewDisposalCandidates,
     } = useBrowserTabsStore();
     const { themeColors } = useColors();
+    const insets = useSafeAreaInsets();
 
     const [isLoading, setIsLoading] = useState(false);
     const fadeLoadingAnim = useRef(new Animated.Value(0)).current;
@@ -305,6 +312,14 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
             <View
               key={tab.id}
               className={`absolute inset-0 ${isActive ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+              // Each tab clears the status bar itself, outside its screenshot.
+              // The homepage's nav bar adds its own spacing; a web page
+              // keeps its 24pt gap.
+              style={{
+                paddingTop: isHomepage
+                  ? insets.top
+                  : insets.top + pxValue(DEFAULT_PADDING),
+              }}
             >
               {isHomepage ? (
                 <DiscoveryHomepage tabId={tab.id} />

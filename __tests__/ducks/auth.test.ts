@@ -1,4 +1,5 @@
 import { NavigationContainerRef } from "@react-navigation/native";
+import { Keypair } from "@stellar/stellar-sdk";
 import { act, renderHook } from "@testing-library/react-hooks";
 import {
   AUTO_LOCK_TIMER,
@@ -288,12 +289,17 @@ describe("auth duck", () => {
   // Save original store methods before they get mocked
   const originalStoreMethods = {
     logout: useAuthenticationStore.getState().logout,
+    signUp: useAuthenticationStore.getState().signUp,
+    importWallet: useAuthenticationStore.getState().importWallet,
+    fetchActiveAccount: useAuthenticationStore.getState().fetchActiveAccount,
     getAuthStatus: useAuthenticationStore.getState().getAuthStatus,
     selectAccount: useAuthenticationStore.getState().selectAccount,
     setNavigationRef: useAuthenticationStore.getState().setNavigationRef,
     signIn: useAuthenticationStore.getState().signIn,
     initializeNetwork: useAuthenticationStore.getState().initializeNetwork,
     softLock: useAuthenticationStore.getState().softLock,
+    navigateToLockScreen:
+      useAuthenticationStore.getState().navigateToLockScreen,
   };
 
   beforeEach(() => {
@@ -721,6 +727,31 @@ describe("auth duck", () => {
   });
 
   describe("navigateToLockScreen", () => {
+    it("resets to a lock screen that focuses its password field", () => {
+      act(() => {
+        useAuthenticationStore.setState({
+          navigateToLockScreen: originalStoreMethods.navigateToLockScreen,
+          navigationRef: mockNavigationRef,
+          isSoftLocked: false,
+        });
+      });
+      (mockNavigationRef.getCurrentRoute as jest.Mock).mockReturnValueOnce({
+        name: "Home",
+      });
+
+      useAuthenticationStore.getState().navigateToLockScreen();
+
+      expect(mockNavigationRef.resetRoot).toHaveBeenCalledWith({
+        index: 0,
+        routes: [
+          {
+            name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN,
+            params: { autoFocus: true },
+          },
+        ],
+      });
+    });
+
     it("should reset navigation to lock screen", () => {
       const { result } = renderHook(() => useAuthenticationStore());
 
@@ -1492,6 +1523,18 @@ describe("auth duck", () => {
         expect(
           useAuthenticationStore.getState().suppressBiometricAutoPrompt,
         ).toBe(true);
+
+        // The lock screen is navigated to, not launched into, so it focuses
+        // its password field
+        expect(mockNavigationRef.resetRoot).toHaveBeenCalledWith({
+          index: 0,
+          routes: [
+            {
+              name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN,
+              params: { autoFocus: true },
+            },
+          ],
+        });
       });
 
       it("should wipe all data on logout when shouldWipeAllData is true", async () => {
@@ -1585,6 +1628,124 @@ describe("auth duck", () => {
         expect(useAuthenticationStore.getState().authStatus).toBe(
           AUTH_STATUS.NOT_AUTHENTICATED,
         );
+      });
+    });
+
+    describe("lock left by a previous wallet", () => {
+      // Signing out (or auto-lock) persists LOCKED, and Forgot password wipes
+      // the wallet from that locked state. Left behind, the marker would lock
+      // the next wallet as soon as it is set up.
+      let secureMemory: Record<string, string>;
+
+      beforeEach(() => {
+        secureMemory = {
+          [SENSITIVE_STORAGE_KEYS.AUTH_STATUS]: AUTH_STATUS.LOCKED,
+        };
+        (secureDataStorage.getItem as jest.Mock).mockImplementation(
+          (key: string) => Promise.resolve(secureMemory[key] ?? null),
+        );
+        (secureDataStorage.setItem as jest.Mock).mockImplementation(
+          (key: string, value: string) => {
+            secureMemory[key] = value;
+            return Promise.resolve();
+          },
+        );
+        (secureDataStorage.remove as jest.Mock).mockImplementation(
+          (key: string) => {
+            delete secureMemory[key];
+            return Promise.resolve();
+          },
+        );
+
+        // The store holds the key manager its module created on import, so
+        // stub that instance to store the new wallet's key
+        const { __mockKeyManager: moduleKeyManager } = jest.requireMock<{
+          __mockKeyManager: typeof mockKeyManager;
+        }>("helpers/keyManager/keyManager");
+        moduleKeyManager.storeKey.mockResolvedValue({ id: mockAccountId });
+      });
+
+      it("doesn't survive a wipe", async () => {
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.LOCKED,
+            logout: originalStoreMethods.logout,
+          });
+        });
+
+        await act(async () => {
+          useAuthenticationStore.getState().logout(true);
+          await new Promise((resolve) => {
+            setTimeout(resolve, 300);
+          });
+        });
+
+        expect(secureMemory).not.toHaveProperty(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+        );
+      });
+
+      it("doesn't lock a wallet created after it", async () => {
+        act(() => {
+          useAuthenticationStore.setState({
+            signUp: originalStoreMethods.signUp,
+            fetchActiveAccount: originalStoreMethods.fetchActiveAccount,
+            getAuthStatus: originalStoreMethods.getAuthStatus,
+            softLock: originalStoreMethods.softLock,
+          });
+        });
+
+        await act(async () => {
+          await useAuthenticationStore.getState().signUp({
+            mnemonicPhrase: mockMnemonicPhrase,
+            password: mockPassword,
+          });
+        });
+
+        expect(useAuthenticationStore.getState()).toMatchObject({
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+          isSoftLocked: false,
+        });
+      });
+
+      it("doesn't lock a wallet imported after it", async () => {
+        // Import checks the recovery phrase's accounts against the network.
+        // With real keys already in the session it finds them all stored
+        // locally and skips the network.
+        const keypair = Keypair.random();
+        (StellarHDWallet.fromMnemonic as jest.Mock).mockReturnValue({
+          getPublicKey: jest.fn().mockReturnValue(keypair.publicKey()),
+          getSecret: jest.fn().mockReturnValue(keypair.secret()),
+        });
+        (decryptDataWithDerivedKey as jest.Mock).mockReturnValue(
+          JSON.stringify({
+            privateKeys: { [mockAccountId]: keypair.secret() },
+            mnemonicPhrase: mockMnemonicPhrase,
+          }),
+        );
+
+        act(() => {
+          useAuthenticationStore.setState({
+            importWallet: originalStoreMethods.importWallet,
+            fetchActiveAccount: originalStoreMethods.fetchActiveAccount,
+            getAuthStatus: originalStoreMethods.getAuthStatus,
+            softLock: originalStoreMethods.softLock,
+          });
+        });
+
+        let imported = false;
+        await act(async () => {
+          imported = await useAuthenticationStore.getState().importWallet({
+            mnemonicPhrase: mockMnemonicPhrase,
+            password: mockPassword,
+          });
+        });
+
+        expect(imported).toBe(true);
+        expect(useAuthenticationStore.getState()).toMatchObject({
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+          isSoftLocked: false,
+        });
       });
     });
 
@@ -2215,6 +2376,7 @@ describe("auth duck", () => {
         fetchedPublicKey: null,
         fetchedNetwork: null,
         subentryCount: 0,
+        hiddenTokenIds: [],
         error: null,
       });
     });

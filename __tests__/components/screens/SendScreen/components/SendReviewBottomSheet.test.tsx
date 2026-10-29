@@ -4,15 +4,17 @@ import {
   SendReviewBottomSheet,
   SendReviewFooter,
 } from "components/screens/SendScreen/components";
-import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
+import {
+  SendType,
+  getCancelButtonVariant,
+} from "components/screens/SendScreen/components/SendReviewBottomSheet";
+import { ButtonVariants } from "components/sds/Button";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
 import { mockBalances } from "../../../../../__mocks__/balances";
-import { mockGestureHandler } from "../../../../../__mocks__/gesture-handler";
 import { mockUseColors } from "../../../../../__mocks__/use-colors";
 
-mockGestureHandler();
 mockUseColors();
 
 const mockAccount = {
@@ -393,5 +395,81 @@ describe("SendReviewBottomSheet", () => {
 
       expect(queryByText(`Error: ${longErrorMessage}`)).toBeNull();
     });
+  });
+});
+
+describe("getCancelButtonVariant", () => {
+  // Button.getVariant reads its shorthand props in a fixed order -- secondary,
+  // then tertiary, then destructive -- so an element that sets more than one
+  // lets that order, not the intent, decide. Cancel set three at once, which is
+  // why naming the variant outright is the fix rather than reordering them.
+  const flags = {
+    isMalicious: false,
+    isSuspicious: false,
+    isUnableToScan: false,
+    isExpectedToFail: false,
+    shouldUseRowLayout: false,
+  };
+
+  it("keeps Cancel quiet beside Confirm whenever the two share a row", () => {
+    // The regression: a muxed recipient puts the buttons in a row *and* the
+    // scan comes back bad, so both conditions hold at once. Cancel has to stay
+    // the quiet one or it renders as a second filled pill identical to Confirm.
+    expect(
+      getCancelButtonVariant({
+        ...flags,
+        isSuspicious: true,
+        shouldUseRowLayout: true,
+      }),
+    ).toBe(ButtonVariants.TERTIARY);
+
+    expect(
+      getCancelButtonVariant({
+        ...flags,
+        isUnableToScan: true,
+        shouldUseRowLayout: true,
+      }),
+    ).toBe(ButtonVariants.TERTIARY);
+
+    expect(
+      getCancelButtonVariant({
+        ...flags,
+        isExpectedToFail: true,
+        shouldUseRowLayout: true,
+      }),
+    ).toBe(ButtonVariants.TERTIARY);
+
+    expect(
+      getCancelButtonVariant({
+        ...flags,
+        isMalicious: true,
+        shouldUseRowLayout: true,
+      }),
+    ).toBe(ButtonVariants.TERTIARY);
+  });
+
+  it("fills Cancel when it stands alone under a flagged transaction", () => {
+    expect(getCancelButtonVariant({ ...flags, isSuspicious: true })).toBe(
+      ButtonVariants.SECONDARY,
+    );
+    expect(getCancelButtonVariant({ ...flags, isUnableToScan: true })).toBe(
+      ButtonVariants.SECONDARY,
+    );
+    expect(getCancelButtonVariant({ ...flags, isExpectedToFail: true })).toBe(
+      ButtonVariants.SECONDARY,
+    );
+  });
+
+  it("marks Cancel destructive only for a malicious transaction on its own", () => {
+    expect(getCancelButtonVariant({ ...flags, isMalicious: true })).toBe(
+      ButtonVariants.DESTRUCTIVE,
+    );
+  });
+
+  it("matches Button's own default when nothing is flagged", () => {
+    // Unreachable in the sheet -- a transaction with no flag and no row layout
+    // cannot occur -- but the helper still has to answer, and answering what
+    // getVariant would have answered keeps the swap faithful.
+    expect(getCancelButtonVariant(flags)).toBe(ButtonVariants.PRIMARY);
   });
 });

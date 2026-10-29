@@ -1,5 +1,6 @@
 import { BalancesList } from "components/BalancesList";
 import { CollectiblesGrid } from "components/CollectiblesGrid";
+import { InlineAddButton } from "components/InlineAddButton";
 import { Text } from "components/sds/Typography";
 import {
   DEFAULT_PADDING,
@@ -53,13 +54,23 @@ interface Props {
   /** Optional testID prefix forwarded to each balance row (e.g. "token-option" → "token-option-XLM") */
   balanceRowTestIDPrefix?: string;
   /**
-   * Show the collectibles Add CTA inside its empty state instead of the
-   * caller's floating pill. Derived from the tokens tab, which owns the
-   * decision so both tabs use the same kind of button.
+   * Press handler for the collectibles Add action: the Add Collectible
+   * button in the grid's empty card (and error view) and the inline Add
+   * collectible button both call it.
    */
-  showEmptyStateCta?: boolean;
-  /** Press handler for the collectibles empty-state CTA. */
   onAddCollectiblePress?: () => void;
+  /** Press handler for the inline Add token button. */
+  onAddTokenPress?: () => void;
+  /**
+   * End the tokens list with the inline Add token button. It also needs
+   * `onAddTokenPress`, and stays off by default.
+   */
+  showAddTokenButton?: boolean;
+  /**
+   * End the collectibles grid with the inline Add collectible button. It also
+   * needs `onAddCollectiblePress`, and stays off by default.
+   */
+  showAddCollectibleButton?: boolean;
 }
 
 /**
@@ -76,6 +87,8 @@ interface Props {
  * - Dynamic tab styling based on active state
  * - Callback support for tab changes and item interactions
  * - Smart padding management for different content types
+ * - Optional inline Add token / Add collectible button that ends each list
+ *   and scrolls with it
  *
  * @param {Props} props - Component props
  * @returns {JSX.Element} The tab component with content
@@ -92,8 +105,10 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     feeContext = TransactionContext.Send,
     disableInnerScrolling = false,
     balanceRowTestIDPrefix,
-    showEmptyStateCta = true,
     onAddCollectiblePress,
+    onAddTokenPress,
+    showAddTokenButton = false,
+    showAddCollectibleButton = false,
   }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
@@ -114,19 +129,33 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
 
     /**
      * Renders the tokens/balances list content
-     * Displays the BalancesList component with the provided props
+     * Displays the BalancesList component with the provided props, followed
+     * by the inline Add token button when asked for. Figma starts the list 9pt
+     * under the tab row and insets it 24pt from the sides.
      */
     const renderTokensContent = useMemo(
       () => (
-        <BalancesList
-          publicKey={publicKey}
-          network={network}
-          onTokenPress={onTokenPress}
-          disableInnerScrolling={disableInnerScrolling}
-          showSpendableAmount={showSpendableAmount}
-          feeContext={feeContext}
-          balanceRowTestIDPrefix={balanceRowTestIDPrefix}
-        />
+        <View
+          className="flex-1 pt-[9px]"
+          style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+        >
+          <BalancesList
+            publicKey={publicKey}
+            network={network}
+            onTokenPress={onTokenPress}
+            disableInnerScrolling={disableInnerScrolling}
+            showSpendableAmount={showSpendableAmount}
+            feeContext={feeContext}
+            balanceRowTestIDPrefix={balanceRowTestIDPrefix}
+          />
+          {showAddTokenButton && onAddTokenPress ? (
+            <InlineAddButton
+              label={t("balancesList.addTokenButton")}
+              onPress={onAddTokenPress}
+              testID="home-add-token-button"
+            />
+          ) : null}
+        </View>
       ),
       [
         publicKey,
@@ -136,36 +165,49 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
         feeContext,
         disableInnerScrolling,
         balanceRowTestIDPrefix,
+        showAddTokenButton,
+        onAddTokenPress,
+        t,
       ],
     );
 
     /**
-     * Renders the collectibles content with custom padding management
+     * Renders the collectibles content
      *
-     * Note: This component uses a padding workaround to ensure the collectibles grid
-     * extends to the full screen width while maintaining proper spacing for other content.
-     * The negative horizontal margin counteracts the parent container's padding,
-     * allowing the CollectiblesGrid to render edge-to-edge as intended.
+     * Figma starts the collectibles 12pt under the tab row, 3pt further than
+     * the token list. Unlike the token list the grid gets the full width,
+     * because CollectionSection pads its own sides; only the inline Add
+     * collectible button below it, 12pt under the last collection, is inset
+     * 24pt, in line with the Add token button.
      */
     const renderCollectiblesContent = useMemo(
       () => (
-        <View
-          className="flex-1"
-          style={{ marginHorizontal: -pxValue(DEFAULT_PADDING) }}
-        >
+        <View className="flex-1 pt-[12px]">
           <CollectiblesGrid
             onCollectiblePress={onCollectiblePress}
             disableInnerScrolling={disableInnerScrolling}
-            showEmptyStateCta={showEmptyStateCta}
             onAddCollectiblePress={onAddCollectiblePress}
           />
+          {showAddCollectibleButton && onAddCollectiblePress ? (
+            <View
+              className="mt-[12px]"
+              style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+            >
+              <InlineAddButton
+                label={t("collectiblesGrid.addCollectibleButton")}
+                onPress={onAddCollectiblePress}
+                testID="home-add-collectible-button"
+              />
+            </View>
+          ) : null}
         </View>
       ),
       [
         onCollectiblePress,
         disableInnerScrolling,
-        showEmptyStateCta,
         onAddCollectiblePress,
+        showAddCollectibleButton,
+        t,
       ],
     );
 
@@ -182,41 +224,34 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
       return renderCollectiblesContent;
     }, [activeTab, renderTokensContent, renderCollectiblesContent]);
 
+    // Text/LG/600 labels: primary when active, Colors/Gray/9 when not
+    const tabLabelColor = (tab: TabType) =>
+      activeTab === tab ? themeColors.text.primary : themeColors.gray[9];
+
     return (
-      <View
-        className="flex-1"
-        style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
-      >
-        <View className="flex-row items-center gap-1 mb-6">
+      <View className="flex-1">
+        {/* The tabs sit 16pt in from the sides; each tab's contents own the
+            space under the row and their own side padding. The tab classes are
+            arbitrary values because NativeWind's rem is 14 here: `py-2` would
+            come out at 7pt, not 8. */}
+        <View
+          className="flex-row items-center gap-[16px]"
+          style={{ paddingHorizontal: pxValue(16) }}
+        >
           <TouchableOpacity
-            className={`px-3 py-2 border-b-2 ${
-              activeTab === TabType.TOKENS
-                ? "border-lilac-9"
-                : "border-transparent"
-            }`}
+            className="py-[8px]"
             onPress={() => handleTabChange(TabType.TOKENS)}
             accessibilityRole="tab"
             accessibilityState={{ selected: activeTab === TabType.TOKENS }}
             testID="tab-tokens"
           >
-            <Text
-              weight={activeTab === TabType.TOKENS ? "medium" : "semiBold"}
-              color={
-                activeTab === TabType.TOKENS
-                  ? themeColors.lilac[11]
-                  : themeColors.text.secondary
-              }
-            >
+            <Text lg semiBold color={tabLabelColor(TabType.TOKENS)}>
               {t("balancesList.title")}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            className={`px-3 py-2 border-b-2 ${
-              activeTab === TabType.COLLECTIBLES
-                ? "border-lilac-9"
-                : "border-transparent"
-            }`}
+            className="py-[8px]"
             onPress={() => handleTabChange(TabType.COLLECTIBLES)}
             accessibilityRole="tab"
             accessibilityState={{
@@ -224,23 +259,19 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             }}
             testID="tab-collectibles"
           >
-            <Text
-              weight={
-                activeTab === TabType.COLLECTIBLES ? "medium" : "semiBold"
-              }
-              color={
-                activeTab === TabType.COLLECTIBLES
-                  ? themeColors.lilac[11]
-                  : themeColors.text.secondary
-              }
-            >
+            <Text lg semiBold color={tabLabelColor(TabType.COLLECTIBLES)}>
               {t("collectiblesGrid.title")}
             </Text>
           </TouchableOpacity>
-
-          <View className="flex-1" />
         </View>
 
+        {/* flex-1, so the views that fill the space they're given fill the
+            screen below the row: Tokens' loading, error and empty views, and
+            Collectibles' loading spinner. A populated list sizes itself to
+            its rows (BalancesList, CollectiblesGrid), which leaves the inline
+            Add button right under the last one rather than at the bottom of
+            the screen. Collectibles' empty and error views are as tall as
+            their content too. */}
         {renderContent}
       </View>
     );

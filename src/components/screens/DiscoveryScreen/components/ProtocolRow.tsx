@@ -40,7 +40,7 @@ const ProtocolRow: React.FC<ProtocolRowProps> = React.memo(
             )}
           </View>
         </TouchableOpacity>
-        <Button secondary lg onPress={onOpen}>
+        <Button tertiary lg onPress={onOpen}>
           {t("discovery.open")}
         </Button>
       </View>

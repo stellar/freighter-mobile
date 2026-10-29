@@ -1,10 +1,7 @@
-import {
-  CustomHeaderButton,
-  DEFAULT_HEADER_BUTTON_SIZE,
-} from "components/layout/CustomHeaderButton";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
+import { NavigationHeaderBar } from "components/layout/CustomNavigationHeader";
 import ProtocolRow from "components/screens/DiscoveryScreen/components/ProtocolRow";
 import { VerticalListItem } from "components/screens/DiscoveryScreen/components/VerticalListSection";
-import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING } from "config/constants";
 import { pxValue } from "helpers/dimensions";
 import React, { useCallback, useMemo } from "react";
@@ -80,14 +77,13 @@ const ExpandedSectionView: React.FC<ExpandedSectionViewProps> = React.memo(
     );
 
     return (
-      <View className="flex-1 bg-background-primary">
-        <View className="flex-row items-center justify-between px-6 pb-4 pt-4">
-          <CustomHeaderButton position="left" onPress={onBack} />
-          <Text md semiBold>
-            {title}
-          </Text>
-          {headerRight ?? <View className={DEFAULT_HEADER_BUTTON_SIZE} />}
-        </View>
+      <View className="flex-1 bg-base-0">
+        <NavigationHeaderBar
+          title={title}
+          left={<CustomHeaderButton position="left" onPress={onBack} />}
+          right={headerRight}
+          isBelowTopInset
+        />
 
         <FlatList
           data={items}

@@ -5,32 +5,30 @@ appId: org.stellar.freighterdev
 # flows that run on testnet (Send/Swap, FromDetails) and by the standalone
 # ImportAndSwitchToTestnet flow.
 #
-# Freshly imported wallets land on Mainnet where the account is unfunded, so
-# the "Welcome to Freighter!" bottom sheet usually appears and covers the
-# header (including the account switcher). And if the Mainnet account fetch
-# flakes, an "Account not loaded" toast appears at the top and also overlays
-# the header. Both are handled by OpenManageAccountsSheet.yaml, which retries
-# so neither overlay can block the network-switch tap.
+# If the Mainnet account fetch flakes, an "Account not loaded" toast appears
+# at the top and overlays the header (including the account switcher).
+# OpenManageAccountsSheet.yaml handles it, and retries so the overlay can't
+# block the network-switch tap.
 #
 # Timeouts on the post-switch back-nav are generous (30s) because the app
 # refetches balances on the new network first; 15s was observed timing out at
 # 16s on a loaded CI simulator.
 
 # 1. Wait for the home screen to reach a steady post-load state — either the
-#    "Welcome to Freighter!" bottom sheet (fresh testnet-only account shown as
+#    unfunded account's empty state (fresh testnet-only account shown as
 #    unfunded on Mainnet) or the XLM balance row (static funded Mainnet account
 #    already loaded). Both are end-states, not the racy "home-screen rendered"
 #    signal that the calling flows used to wait for.
 - extendedWaitUntil:
     visible:
-      id: home-token-XLM|welcome-banner-dismiss-button
+      id: home-token-XLM|unfunded-account-empty-state
     timeout: 30000
 
 # 2. Navigate to Settings via the manage-accounts sheet (settings moved there
-#    from the old header context menu). The shared flow dismisses the welcome
-#    sheet and the "Account not loaded" toast if either is overlaying the
-#    header, and retries the whole navigation so a late-mounting sheet cannot
-#    swallow a tap. It returns with `settings-screen` visible.
+#    from the old header context menu). The shared flow dismisses the
+#    "Account not loaded" toast if it's overlaying the header, and retries the
+#    whole navigation so a late overlay cannot swallow a tap. It returns with
+#    `settings-screen` visible.
 - runFlow:
     file: OpenManageAccountsSheet.yaml
 

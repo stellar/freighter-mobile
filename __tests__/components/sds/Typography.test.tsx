@@ -6,11 +6,20 @@ import {
   Text,
   TextSize,
 } from "components/sds/Typography";
-import { THEME } from "config/theme";
+import { getTheme } from "config/theme";
 import { fsValue } from "helpers/dimensions";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { Linking } from "react-native";
+import { Linking, StyleSheet } from "react-native";
+import * as RN from "react-native";
+
+// jest's react-native preset reports no device scheme, so components resolve
+// DEFAULT_COLOR_SCHEME. Assertions that read a resolved color use this.
+const LIGHT_THEME = getTheme("light");
+
+// Dark text differs from the light default these tests render under, so an
+// assertion on it proves the color prop took effect rather than the fallback.
+const CUSTOM_COLOR = getTheme("dark").colors.text.secondary;
 
 describe("Typography", () => {
   describe("Display", () => {
@@ -36,18 +45,14 @@ describe("Typography", () => {
 
     it("renders with custom color", () => {
       const { getByText } = renderWithProviders(
-        <Display color={THEME.colors.text.secondary}>Custom Color</Display>,
+        <Display color={CUSTOM_COLOR}>Custom Color</Display>,
       );
       expect(getByText("Custom Color")).toBeTruthy();
     });
 
     it("renders with all custom props", () => {
       const { getByText } = renderWithProviders(
-        <Display
-          size="lg"
-          weight="semiBold"
-          color={THEME.colors.text.secondary}
-        >
+        <Display size="lg" weight="semiBold" color={CUSTOM_COLOR}>
           Custom Text
         </Display>,
       );
@@ -63,13 +68,30 @@ describe("Typography", () => {
         fontSize: fsValue(32), // sm size
         lineHeight: fsValue(40),
         fontWeight: "400", // regular weight
-        color: THEME.colors.text.primary,
+        color: LIGHT_THEME.colors.text.primary,
+      });
+    });
+
+    it("uses the static Funnel Sans file for the display family", () => {
+      const { getByText } = renderWithProviders(
+        <Display sm medium family="funnelSans">
+          Display Text
+        </Display>,
+      );
+      const element = getByText("Display Text");
+
+      // Static weights carry their own weight, so none is requested.
+      expect(element.props.style).toMatchObject({
+        fontFamily: "FunnelSans-Medium",
+        fontWeight: "normal",
+        fontSize: fsValue(32),
+        lineHeight: fsValue(40),
       });
     });
 
     it("applies correct custom styles", () => {
       const { getByText } = renderWithProviders(
-        <Display size="xl" weight="bold" color={THEME.colors.text.secondary}>
+        <Display size="xl" weight="bold" color={CUSTOM_COLOR}>
           Custom Text
         </Display>,
       );
@@ -80,7 +102,7 @@ describe("Typography", () => {
         fontSize: fsValue(56), // xl size
         lineHeight: fsValue(64),
         fontWeight: "700", // bold weight
-        color: THEME.colors.text.secondary,
+        color: CUSTOM_COLOR,
       });
     });
 
@@ -222,11 +244,11 @@ describe("Typography", () => {
     describe("Color handling", () => {
       it("uses explicit color prop", () => {
         const { getByText } = renderWithProviders(
-          <Display color={THEME.colors.text.secondary}>Explicit Color</Display>,
+          <Display color={CUSTOM_COLOR}>Explicit Color</Display>,
         );
         const element = getByText("Explicit Color");
         expect(element.props.style).toMatchObject({
-          color: THEME.colors.text.secondary,
+          color: CUSTOM_COLOR,
         });
       });
 
@@ -236,7 +258,7 @@ describe("Typography", () => {
         );
         const element = getByText("Primary Color");
         expect(element.props.style).toMatchObject({
-          color: THEME.colors.text.primary,
+          color: LIGHT_THEME.colors.text.primary,
         });
       });
 
@@ -246,7 +268,7 @@ describe("Typography", () => {
         );
         const element = getByText("Secondary Color");
         expect(element.props.style).toMatchObject({
-          color: THEME.colors.text.secondary,
+          color: LIGHT_THEME.colors.text.secondary,
         });
       });
 
@@ -269,7 +291,7 @@ describe("Typography", () => {
         );
         const element = getByText("Default Color");
         expect(element.props.style).toMatchObject({
-          color: THEME.colors.text.primary,
+          color: LIGHT_THEME.colors.text.primary,
         });
       });
     });
@@ -340,7 +362,7 @@ describe("Typography", () => {
 
     it("renders with custom color", () => {
       const { getByText } = renderWithProviders(
-        <Text color={THEME.colors.text.secondary}>Custom Color</Text>,
+        <Text color={CUSTOM_COLOR}>Custom Color</Text>,
       );
       expect(getByText("Custom Color")).toBeTruthy();
     });
@@ -357,7 +379,7 @@ describe("Typography", () => {
         <Text
           size="lg"
           weight="semiBold"
-          color={THEME.colors.text.secondary}
+          color={CUSTOM_COLOR}
           isVerticallyCentered
         >
           Custom Text
@@ -375,18 +397,13 @@ describe("Typography", () => {
         fontSize: fsValue(16), // md size
         lineHeight: fsValue(24),
         fontWeight: "400", // regular weight
-        color: THEME.colors.text.primary,
+        color: LIGHT_THEME.colors.text.primary,
       });
     });
 
     it("applies correct custom styles", () => {
       const { getByText } = renderWithProviders(
-        <Text
-          size="xl"
-          weight="bold"
-          color={THEME.colors.text.secondary}
-          isVerticallyCentered
-        >
+        <Text size="xl" weight="bold" color={CUSTOM_COLOR} isVerticallyCentered>
           Custom Text
         </Text>,
       );
@@ -397,7 +414,7 @@ describe("Typography", () => {
         fontSize: fsValue(20), // xl size
         lineHeight: fsValue(28),
         fontWeight: "700", // bold weight
-        color: THEME.colors.text.secondary,
+        color: CUSTOM_COLOR,
         display: "flex",
         alignItems: "center",
         height: fsValue(28),
@@ -556,11 +573,11 @@ describe("Typography", () => {
     describe("Color handling", () => {
       it("uses explicit color prop", () => {
         const { getByText } = renderWithProviders(
-          <Text color={THEME.colors.text.secondary}>Explicit Color</Text>,
+          <Text color={CUSTOM_COLOR}>Explicit Color</Text>,
         );
         const element = getByText("Explicit Color");
         expect(element.props.style).toMatchObject({
-          color: THEME.colors.text.secondary,
+          color: CUSTOM_COLOR,
         });
       });
 
@@ -570,7 +587,7 @@ describe("Typography", () => {
         );
         const element = getByText("Primary Color");
         expect(element.props.style).toMatchObject({
-          color: THEME.colors.text.primary,
+          color: LIGHT_THEME.colors.text.primary,
         });
       });
 
@@ -580,7 +597,7 @@ describe("Typography", () => {
         );
         const element = getByText("Secondary Color");
         expect(element.props.style).toMatchObject({
-          color: THEME.colors.text.secondary,
+          color: LIGHT_THEME.colors.text.secondary,
         });
       });
 
@@ -601,7 +618,7 @@ describe("Typography", () => {
         const { getByText } = renderWithProviders(<Text>Default Color</Text>);
         const element = getByText("Default Color");
         expect(element.props.style).toMatchObject({
-          color: THEME.colors.text.primary,
+          color: LIGHT_THEME.colors.text.primary,
         });
       });
     });
@@ -627,6 +644,83 @@ describe("Typography", () => {
       });
 
       expect(Linking.openURL).toHaveBeenCalledWith("https://example.com");
+    });
+
+    it("draws an underline in the text's own color", () => {
+      const { getByText } = renderWithProviders(
+        <Text secondary style={{ textDecorationLine: "underline" }}>
+          Underlined Text
+        </Text>,
+      );
+      const style = StyleSheet.flatten(
+        getByText("Underlined Text").props.style,
+      );
+
+      // iOS paints the underline in textDecorationColor when the style sets
+      // one, and in the text color otherwise. Android always uses the text
+      // color, so a wrong color here only shows on iOS.
+      expect(style.textDecorationColor ?? style.color).toBe(
+        LIGHT_THEME.colors.text.secondary,
+      );
+    });
+  });
+
+  describe("Color scheme", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const renderIn = (scheme: "light" | "dark", label: string) => {
+      jest.spyOn(RN, "useColorScheme").mockReturnValue(scheme);
+
+      return renderWithProviders(<Display>{label}</Display>);
+    };
+
+    it("colors Display text from the light theme on a light device", () => {
+      const { getByText } = renderIn("light", "Light Display");
+
+      expect(getByText("Light Display").props.style).toMatchObject({
+        color: getTheme("light").colors.text.primary,
+      });
+    });
+
+    it("colors Display text from the dark theme on a dark device", () => {
+      const { getByText } = renderIn("dark", "Dark Display");
+
+      expect(getByText("Dark Display").props.style).toMatchObject({
+        color: getTheme("dark").colors.text.primary,
+      });
+    });
+
+    it("colors Text from the light theme on a light device", () => {
+      jest.spyOn(RN, "useColorScheme").mockReturnValue("light");
+      const { getByText } = renderWithProviders(<Text>Light Text</Text>);
+
+      expect(getByText("Light Text").props.style).toMatchObject({
+        color: getTheme("light").colors.text.primary,
+      });
+    });
+
+    it("colors the secondary shorthand from the active scheme", () => {
+      jest.spyOn(RN, "useColorScheme").mockReturnValue("light");
+      const { getByText } = renderWithProviders(
+        <Text secondary>Secondary</Text>,
+      );
+
+      expect(getByText("Secondary").props.style).toMatchObject({
+        color: getTheme("light").colors.text.secondary,
+      });
+    });
+
+    it("lets an explicit color prop override the active scheme", () => {
+      jest.spyOn(RN, "useColorScheme").mockReturnValue("light");
+      const { getByText } = renderWithProviders(
+        <Text color={getTheme("dark").colors.text.primary}>Explicit</Text>,
+      );
+
+      expect(getByText("Explicit").props.style).toMatchObject({
+        color: getTheme("dark").colors.text.primary,
+      });
     });
   });
 });

@@ -9,7 +9,6 @@ import { SecurityLevel } from "services/blockaid/constants";
 import { createSecurityAssessment } from "services/blockaid/helper";
 
 import { mockBalances } from "../../../../__mocks__/balances";
-import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
 import { mockUseColors } from "../../../../__mocks__/use-colors";
 
 const assessmentFor = (level: SecurityLevel) => createSecurityAssessment(level);
@@ -18,7 +17,6 @@ const suspicious = assessmentFor(SecurityLevel.SUSPICIOUS);
 const safe = assessmentFor(SecurityLevel.SAFE);
 const unableToScan = assessmentFor(SecurityLevel.UNABLE_TO_SCAN);
 
-mockGestureHandler();
 mockUseColors();
 
 const mockAccount = {

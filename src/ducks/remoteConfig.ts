@@ -7,6 +7,9 @@ import { ANALYTICS_CONFIG } from "services/analytics/constants";
 import { getExperimentClient } from "services/analytics/core";
 import { create } from "zustand";
 
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
 const ONE_HOUR_IN_MS = 60 * 60 * 1000;
 
 // Amplitude variant values that are considered "on"
@@ -18,6 +21,9 @@ const BOOLEAN_FLAGS = [
   "discover_enabled",
   "onramp_enabled",
   "use_token_prices_v2",
+  // Token price chart + stats on TokenDetailsScreen: the §11 kill switch.
+  // Defaults ON in every build, like the extension's flag of the same name.
+  "use_token_price_history",
   "use_balances_v2",
 ] as const;
 
@@ -72,6 +78,7 @@ const INITIAL_REMOTE_CONFIG_STATE =
         discover_enabled: true,
         onramp_enabled: true,
         use_token_prices_v2: true,
+        use_token_price_history: true,
         // Defaults to v1 until the wallet-backend indexer is deployed for
         // every network; Amplitude flips this on to roll out v2 balances
         // without a release.
@@ -97,6 +104,11 @@ const INITIAL_REMOTE_CONFIG_STATE =
         discover_enabled: isAndroid,
         onramp_enabled: isAndroid,
         use_token_prices_v2: true,
+        // ON, matching the extension: a kill switch, not launch choreography.
+        // A release must not reach users before /token-price-history and
+        // /token-stats are live, since `isInitialized` is also set on a
+        // failed flag fetch and nothing else would hold the feature back.
+        use_token_price_history: true,
         // Defaults to v1 until the wallet-backend indexer is deployed for
         // every network; Amplitude flips this on to roll out v2 balances
         // without a release.

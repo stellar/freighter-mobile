@@ -11,7 +11,6 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { logger } from "config/logger";
-import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useCollectiblesStore } from "ducks/collectibles";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -226,7 +225,7 @@ const TransactionDetailsBottomSheet: React.FC<
         </View>
       </View>
 
-      <View className="bg-background-secondary rounded-[16px] p-[24px] gap-[12px]">
+      <View className="bg-background-tertiary rounded-[16px] p-[24px] gap-[12px]">
         {type === SendType.Token && transactionAmount && (
           <View className="flex-row items-center">
             {selectedBalance && <TokenIcon token={selectedBalance} size="lg" />}
@@ -269,7 +268,7 @@ const TransactionDetailsBottomSheet: React.FC<
         )}
 
         <View>
-          <View className="w-[40px] h-[40px] rounded-full bg-tertiary justify-center items-center">
+          <View className="w-[40px] h-[40px] rounded-full justify-center items-center">
             <Icon.ChevronDownDouble
               size={20}
               color={themeColors.foreground.primary}
@@ -299,7 +298,7 @@ const TransactionDetailsBottomSheet: React.FC<
                 />
               ),
               titleComponent: (
-                <Text md secondary color={THEME.colors.text.secondary}>
+                <Text md secondary>
                   {t("transactionDetailsBottomSheet.status")}
                 </Text>
               ),
@@ -319,7 +318,7 @@ const TransactionDetailsBottomSheet: React.FC<
                     />
                   ),
                   titleComponent: (
-                    <Text md secondary color={THEME.colors.text.secondary}>
+                    <Text md secondary>
                       {t("transactionAmountScreen.details.memo")}
                     </Text>
                   ),
@@ -335,13 +334,17 @@ const TransactionDetailsBottomSheet: React.FC<
                 <Icon.Route size={16} color={themeColors.foreground.primary} />
               ),
               titleComponent: (
-                <Text md secondary color={THEME.colors.text.secondary}>
+                <Text md secondary>
                   {t("transactionAmountScreen.details.fee")}
                 </Text>
               ),
               trailingContent: (
                 <View className="flex-row items-center gap-[4px]">
-                  <StellarLogo width={16} height={16} />
+                  <StellarLogo
+                    width={16}
+                    height={16}
+                    color={themeColors.text.primary}
+                  />
                   <Text md medium>
                     {formatTokenForDisplay(actualFee, NATIVE_TOKEN_CODE)}
                   </Text>
@@ -356,7 +359,7 @@ const TransactionDetailsBottomSheet: React.FC<
                 />
               ),
               titleComponent: (
-                <Text md secondary color={THEME.colors.text.secondary}>
+                <Text md secondary>
                   {t("transactionAmountScreen.details.xdr")}
                 </Text>
               ),
@@ -384,15 +387,10 @@ const TransactionDetailsBottomSheet: React.FC<
 
       {transactionHash && (
         <Button
-          tertiary
+          secondary
           xl
           onPress={handleViewOnExplorer}
-          icon={
-            <Icon.LinkExternal01
-              size={16}
-              color={themeColors.foreground.primary}
-            />
-          }
+          icon={<Icon.LinkExternal01 size={16} />}
           iconPosition={IconPosition.RIGHT}
         >
           {t("transactionDetailsBottomSheet.viewOnExpert")}

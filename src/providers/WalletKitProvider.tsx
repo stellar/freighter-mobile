@@ -8,7 +8,6 @@ import { SecurityDetailBottomSheet } from "components/blockaid";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
-import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
@@ -45,7 +44,6 @@ import {
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import { getDappMetadataFromEvent } from "hooks/useDappMetadata";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
@@ -99,7 +97,6 @@ interface WalletKitProviderProps {
 export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   children,
 }) => {
-  const { themeColors } = useColors();
   const { network, authStatus } = useAuthenticationStore();
   const { account, signTransaction, signMessage, signAuthEntry } =
     useGetActiveAccount();
@@ -1224,7 +1221,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       {/* Bottom sheet for dApp connection requests */}
       <BottomSheet
         modalRef={dappConnectionBottomSheetModalRef}
-        handleCloseModal={handleClearDappConnection}
         analyticsEvent={AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS}
         bottomSheetModalProps={{
           onDismiss: handleClearDappConnection,
@@ -1257,7 +1253,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           handle (and the Cancel button) to dismiss the sheet. */}
       <BottomSheet
         modalRef={dappRequestBottomSheetModalRef}
-        handleCloseModal={handleClearDappRequest}
         analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION}
         enableContentPanningGesture={!isNonTransactionRequest}
         bottomSheetModalProps={{
@@ -1292,7 +1287,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       {/* Bottom sheet for explaining why a memo is required for a dApp transaction request */}
       <BottomSheet
         modalRef={addMemoExplanationBottomSheetModalRef}
-        handleCloseModal={onCancelAddMemo}
         customContent={
           <AddMemoExplanationBottomSheet onClose={onCancelAddMemo} />
         }
@@ -1301,7 +1295,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       {/* generic Bottom sheet for security warnings - site and transaction */}
       <BottomSheet
         modalRef={siteSecurityWarningBottomSheetModalRef}
-        handleCloseModal={handleCancelSecurityWarning}
         customContent={
           <SecurityDetailBottomSheet
             warnings={getWarnings()}
@@ -1318,7 +1311,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       {/* Bottom sheet for explaining why a domain should be verified for a dApp connection request */}
       <BottomSheet
         modalRef={verifyDomainBottomSheetModalRef}
-        handleCloseModal={handleCloseVerifyDomain}
         customContent={
           <InformationBottomSheet
             title={t("dappConnectionBottomSheetContent.verifyDomainTitle")}
@@ -1330,11 +1322,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
                 ),
               },
             ]}
-            headerElement={
-              <View className="p-2 rounded-[8px] bg-background-tertiary">
-                <Icon.InfoCircle color={themeColors.foreground.primary} />
-              </View>
-            }
             onClose={handleCloseVerifyDomain}
             onConfirm={handleCloseVerifyDomain}
             confirmLabel={t(

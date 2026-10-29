@@ -1,12 +1,14 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
-import DappAuthEntryDetailsBottomSheet from "components/screens/WalletKit/DappAuthEntryDetailsBottomSheet";
+import DappAuthEntryDetailsBottomSheet, {
+  DappAuthEntryDetailsHeader,
+} from "components/screens/WalletKit/DappAuthEntryDetailsBottomSheet";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import { TouchableOpacity } from "react-native";
 
 interface DappAuthEntryDetailsProps {
@@ -19,6 +21,15 @@ const DappAuthEntryDetails: React.FC<DappAuthEntryDetailsProps> = ({
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const modalRef = useRef<BottomSheetModal>(null);
+
+  const renderDetailsHeader = useCallback(
+    () => (
+      <DappAuthEntryDetailsHeader
+        onDismiss={() => modalRef.current?.dismiss()}
+      />
+    ),
+    [],
+  );
 
   return (
     <>
@@ -35,18 +46,11 @@ const DappAuthEntryDetails: React.FC<DappAuthEntryDetailsProps> = ({
 
       <BottomSheet
         modalRef={modalRef}
-        handleCloseModal={() => modalRef.current?.dismiss()}
-        enableDynamicSizing={false}
-        useInsetsBottomPadding={false}
+        scrollable
         enablePanDownToClose={false}
         analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_AUTH_ENTRY_DETAILS}
-        snapPoints={["90%"]}
-        customContent={
-          <DappAuthEntryDetailsBottomSheet
-            entryXdr={entryXdr}
-            onDismiss={() => modalRef.current?.dismiss()}
-          />
-        }
+        scrollViewHeaderComponent={renderDetailsHeader}
+        customContent={<DappAuthEntryDetailsBottomSheet entryXdr={entryXdr} />}
       />
     </>
   );

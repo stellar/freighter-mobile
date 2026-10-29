@@ -38,7 +38,7 @@ export const PercentageButtons: React.FC<PercentageButtonsProps> = ({
       {items.map(({ value, label }) => (
         <View key={value} className="flex-1">
           <Button
-            secondary
+            tertiary
             lg
             onPress={() => onPress(value)}
             testID={`percentage-${value}`}

@@ -1,12 +1,14 @@
 import { useIsFocused } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { act, fireEvent } from "@testing-library/react-native";
+import { act, fireEvent, within } from "@testing-library/react-native";
+import { getNavigationHeaderPaddingTop } from "components/layout/CustomNavigationHeader";
 import ScanReceiveScreen from "components/screens/ScanReceiveScreen";
 import { AnalyticsEvent, AnalyticsFlow } from "config/analyticsConfig";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { AppState, AppStateStatus } from "react-native";
+import { AppState, AppStateStatus, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { track } from "services/analytics/core";
 
 type Props = NativeStackScreenProps<
@@ -208,6 +210,66 @@ describe("ScanReceiveScreen", () => {
         appStateHandlers.forEach((handler) => handler("active"));
       });
       expect(lastScanTabViewProps().cameraActive).toBe(true);
+    });
+  });
+
+  describe("header", () => {
+    const IPHONE_17_PRO_INSETS = { top: 62, bottom: 34, left: 0, right: 0 };
+
+    beforeEach(() => {
+      (useSafeAreaInsets as jest.Mock).mockReturnValue(IPHONE_17_PRO_INSETS);
+    });
+
+    afterEach(() => {
+      (useSafeAreaInsets as jest.Mock).mockReturnValue({
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+      });
+    });
+
+    it("puts the close button where every other screen's is", () => {
+      const { getByTestId } = renderWithProviders(
+        <ScanReceiveScreen {...makeProps()} />,
+      );
+
+      expect(
+        StyleSheet.flatten(getByTestId("scan-receive-header").props.style),
+      ).toMatchObject({
+        paddingTop: getNavigationHeaderPaddingTop(IPHONE_17_PRO_INSETS.top),
+        paddingHorizontal: 16,
+      });
+      expect(
+        within(getByTestId("scan-receive-nav-row")).getByTestId(
+          "scan-receive-close-button",
+        ),
+      ).toBeTruthy();
+    });
+
+    it("puts the Receive and Scan tabs in their own row, under the close button", () => {
+      const { getByTestId } = renderWithProviders(
+        <ScanReceiveScreen {...makeProps()} />,
+      );
+
+      expect(
+        within(getByTestId("scan-receive-nav-row")).queryByText("Scan"),
+      ).toBeNull();
+      expect(
+        within(getByTestId("scan-receive-tabs-row")).getByText("Scan"),
+      ).toBeTruthy();
+    });
+
+    // The Tabs pin themselves to the start of their container (self-start),
+    // so only a row that justifies its content centres them on screen.
+    it("centres the tabs across the screen", () => {
+      const { getByTestId } = renderWithProviders(
+        <ScanReceiveScreen {...makeProps()} />,
+      );
+      const { className } = getByTestId("scan-receive-tabs-row").props;
+
+      expect(className).toContain("flex-row");
+      expect(className).toContain("justify-center");
     });
   });
 });
