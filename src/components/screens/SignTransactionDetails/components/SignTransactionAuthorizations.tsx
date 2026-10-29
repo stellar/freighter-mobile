@@ -80,7 +80,7 @@ const SignTransactionAuthorizations = ({
             <View className="bg-background-secondary rounded-[16px] p-[16px] gap-[12px]">
               <View className="gap-[8px]">
                 <View className="flex-row items-center gap-[4px]">
-                  <Text secondary>
+                  <Text medium secondary>
                     {t("signTransactionDetails.authorizations.contractId")}
                   </Text>
                   <Icon.Copy01
@@ -89,11 +89,11 @@ const SignTransactionAuthorizations = ({
                     onPress={() => copyToClipboard(detail.contractId)}
                   />
                 </View>
-                <Text>{detail.contractId}</Text>
+                <Text medium>{detail.contractId}</Text>
               </View>
               <View className="gap-[8px]">
                 <View className="flex-row items-center gap-[4px]">
-                  <Text secondary>
+                  <Text medium secondary>
                     {t("signTransactionDetails.authorizations.functionName")}
                   </Text>
                   <Icon.Copy01
@@ -102,7 +102,7 @@ const SignTransactionAuthorizations = ({
                     onPress={() => copyToClipboard(detail.fnName)}
                   />
                 </View>
-                <Text>{detail.fnName}</Text>
+                <Text medium>{detail.fnName}</Text>
               </View>
             </View>
             {/* isAuthEntry suppresses contract-spec labels: an auth's args
@@ -124,7 +124,7 @@ const SignTransactionAuthorizations = ({
               <View className="gap-[8px]">
                 <View className="flex-row items-center gap-[4px]">
                   <Icon.CodeSnippet01 size={14} themeColor="gray" />
-                  <Text secondary>
+                  <Text medium secondary>
                     {t(
                       "signTransactionDetails.authorizations.contractCreation",
                     )}
@@ -147,7 +147,7 @@ const SignTransactionAuthorizations = ({
               <View className="gap-[8px]">
                 <View className="flex-row items-center gap-[4px]">
                   <Icon.CodeSnippet01 size={14} themeColor="gray" />
-                  <Text secondary>
+                  <Text medium secondary>
                     {t(
                       "signTransactionDetails.authorizations.contractCreation",
                     )}
@@ -161,7 +161,7 @@ const SignTransactionAuthorizations = ({
               )}
               operationValue={
                 <View className="flex-row items-center gap-[4px]">
-                  <Text>{truncateAddress(detail.address)}</Text>
+                  <Text medium>{truncateAddress(detail.address)}</Text>
                   <Icon.Copy01
                     size={14}
                     themeColor="gray"
@@ -191,7 +191,7 @@ const SignTransactionAuthorizations = ({
               <View className="gap-[8px]">
                 <View className="flex-row items-center gap-[4px]">
                   <Icon.CodeSnippet01 size={14} themeColor="gray" />
-                  <Text secondary>
+                  <Text medium secondary>
                     {t(
                       "signTransactionDetails.authorizations.contractCreation",
                     )}
@@ -206,7 +206,7 @@ const SignTransactionAuthorizations = ({
               )}
               operationValue={
                 <View className="flex-row items-center gap-[4px]">
-                  <Text>{truncateAddress(detail.address)}</Text>
+                  <Text medium>{truncateAddress(detail.address)}</Text>
                   <Icon.Copy01
                     size={14}
                     themeColor="gray"
@@ -221,7 +221,7 @@ const SignTransactionAuthorizations = ({
               )}
               operationValue={
                 <View className="flex-row items-center gap-[4px]">
-                  <Text>{truncateAddress(detail.owner)}</Text>
+                  <Text medium>{truncateAddress(detail.owner)}</Text>
                   <Icon.Copy01
                     size={14}
                     themeColor="gray"
@@ -272,7 +272,7 @@ const SignTransactionAuthorizations = ({
             operationKey={t("signTransactionDetails.authorizations.address")}
             operationValue={
               <View className="flex-row items-center gap-[4px]">
-                <Text>{truncateAddress(boundAddress)}</Text>
+                <Text medium>{truncateAddress(boundAddress)}</Text>
                 <Icon.Copy01
                   size={14}
                   themeColor="gray"
@@ -291,7 +291,7 @@ const SignTransactionAuthorizations = ({
               header={
                 <View className="flex-row items-center gap-[8px]">
                   <Icon.CodeCircle01 size={16} themeColor="gray" />
-                  <Text>{getAuthEntryTitle(detail)}</Text>
+                  <Text medium>{getAuthEntryTitle(detail)}</Text>
                 </View>
               }
               testID={`collapsible-auth-${getAuthEntryKey(detail)}-${detailIndex}`}
@@ -306,9 +306,8 @@ const SignTransactionAuthorizations = ({
 
   return (
     <View>
-      <View className="flex-row items-center gap-[8px] mb-[12px]">
-        <Icon.Key02 size={16} themeColor="gray" />
-        <Text secondary>
+      <View className="mb-[12px]">
+        <Text sm medium secondary>
           {t("signTransactionDetails.authorizations.title")}
         </Text>
       </View>

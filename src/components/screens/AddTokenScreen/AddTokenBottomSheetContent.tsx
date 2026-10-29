@@ -63,7 +63,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
         <View className="flex-row justify-between gap-3">
           <View className="flex-1">
             <Button
-              secondary
+              tertiary
               xl
               isFullWidth
               onPress={onCancel}
@@ -75,7 +75,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
           <View className="flex-1">
             <Button
               biometric
-              tertiary
+              secondary
               xl
               isFullWidth
               onPress={() => onAddToken()}
@@ -94,7 +94,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
         <View className="flex-row justify-between gap-3">
           <View className="flex-1">
             <Button
-              secondary
+              tertiary
               xl
               isFullWidth
               onPress={onCancel}
@@ -106,7 +106,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
           <View className="flex-1">
             <Button
               biometric
-              tertiary
+              secondary
               xl
               isFullWidth
               onPress={() => {
@@ -127,7 +127,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
       <View className="flex-col gap-3">
         <View className="w-full">
           <Button
-            tertiary={isSuspicious}
+            secondary={isSuspicious}
             destructive={isMalicious}
             xl
             isFullWidth

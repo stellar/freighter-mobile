@@ -48,6 +48,16 @@ const chunkIntoPairs = <T,>(items: T[]): T[][] => {
  *
  * Collapse state is local and in-memory (default expanded) and resets when the
  * screen is left.
+ *
+ * Figma puts 8pt between a collection's header and its grid and between the
+ * grid's rows, and 16pt between the tiles of a row; the tiles are rounded
+ * 12pt. They are arbitrary-value classes (`mt-[8px]`, `gap-[8px]`,
+ * `gap-[16px]`, `rounded-[12px]`), because NativeWind's rem is 14 here:
+ * `gap-4` would come out at 14pt, not 16.
+ *
+ * The 16pt between two collections is not here: Figma leaves none after the
+ * last one, so CollectiblesGrid spaces them with a gap, and whatever follows
+ * the grid (Home's Add collectible button) sits 12pt from the last collection.
  */
 export const CollectionSection: React.FC<CollectionSectionProps> = ({
   collection,
@@ -66,7 +76,7 @@ export const CollectionSection: React.FC<CollectionSectionProps> = ({
     return (
       <TouchableOpacity
         key={item.tokenId}
-        className="flex-1 aspect-square rounded-xl overflow-hidden"
+        className="flex-1 aspect-square rounded-[12px] overflow-hidden"
         delayPressIn={DEFAULT_PRESS_DELAY}
         testID={`collectible-tile-${item.tokenId}`}
         accessibilityRole="button"
@@ -107,7 +117,6 @@ export const CollectionSection: React.FC<CollectionSectionProps> = ({
 
   return (
     <View
-      className="mb-6"
       testID={testID}
       style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
     >
@@ -121,9 +130,9 @@ export const CollectionSection: React.FC<CollectionSectionProps> = ({
       />
 
       {isExpanded && (
-        <View className="gap-4 mt-4">
+        <View className="gap-[8px] mt-[8px]">
           {rows.map((row) => (
-            <View key={row[0].tokenId} className="flex-row gap-4">
+            <View key={row[0].tokenId} className="flex-row gap-[16px]">
               {row.map(renderTile)}
               {row.length === 1 && (
                 <View className="flex-1" testID="collection-grid-spacer" />

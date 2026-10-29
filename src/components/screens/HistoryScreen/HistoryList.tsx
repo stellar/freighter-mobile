@@ -3,28 +3,31 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
 import { DefaultListFooter } from "components/DefaultListFooter";
-import RefreshCard from "components/RefreshCard";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { TransactionDetails } from "components/screens/HistoryScreen";
 import HistoryItem from "components/screens/HistoryScreen/HistoryItem";
+import HistorySkeletonRows from "components/screens/HistoryScreen/HistorySkeletonRows";
 import HistoryWrapper from "components/screens/HistoryScreen/HistoryWrapper";
 import MonthHeader from "components/screens/HistoryScreen/MonthHeader";
 import {
   TransactionDetailsBottomSheetCustomContent,
   TransactionDetailsFooter,
 } from "components/screens/HistoryScreen/TransactionDetailsBottomSheetCustomContent";
-import { NetworkDetails } from "config/constants";
+import { DEFAULT_PADDING, NetworkDetails } from "config/constants";
+import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HistorySection, HistoryData } from "hooks/useGetHistoryData";
+import { useScrollUnderHeader } from "hooks/useScrollUnderHeader";
 import React, { useCallback, useRef, useState } from "react";
 import {
   RefreshControl,
   SectionList,
-  View,
   SectionListData,
+  View,
   useWindowDimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { analytics } from "services/analytics";
 
 /**
@@ -49,6 +52,27 @@ interface HistoryListProps {
   noHorizontalPadding?: boolean;
   className?: string;
   refreshActionPosition: "start" | "center" | "end";
+  /** The token-detail screen opts into the Figma skeleton rows; the History screen keeps its spinner. */
+  loadingPlaceholder?: "spinner" | "skeleton";
+  /**
+   * False while the token chart's drag-to-inspect is active: the long-press
+   * already arbitrates the START of the gesture, this stops the list from
+   * taking over mid-drag.
+   */
+  scrollEnabled?: boolean;
+  /**
+   * How far up the list's content ends, so its last row scrolls clear of
+   * what floats over the list's bottom: the History tab passes the floating
+   * tab bar's clearance. The token detail screen has nothing there.
+   */
+  bottomClearance?: number;
+  /**
+   * How far down the list starts its content and its spinners. The History
+   * tab runs the list from the screen's top, under its floating Activity bar,
+   * and passes the bar's height. The token detail screen starts the list
+   * below its own header, so it has nothing here.
+   */
+  topInset?: number;
 }
 
 /**
@@ -68,26 +92,42 @@ const HistoryList: React.FC<HistoryListProps> = ({
   noHorizontalPadding = false,
   className,
   refreshActionPosition = "center",
+  loadingPlaceholder = "spinner",
+  scrollEnabled = true,
+  bottomClearance = 0,
+  topInset = 0,
 }) => {
   const { t } = useAppTranslation();
-  const { height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
+  const safeAreaInsets = useSafeAreaInsets();
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetails | null>(null);
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const sectionListRef = useRef<SectionList>(null);
+  // While the navigation refresh spinner shows above the list, it takes the
+  // top inset and the list doesn't.
+  const underHeader = useScrollUnderHeader(isNavigationRefresh ? 0 : topInset);
 
   // Custom refresh indicator for navigation refreshes
   const CustomRefreshIndicator = useCallback(() => {
     if (!isNavigationRefresh) return null;
 
+    // No background: this sits on BaseLayout, which paints the page. A
+    // background of its own would be a second token that has to keep agreeing
+    // with the page, and the list scrolls below it rather than under it, so
+    // there is nothing for it to cover.
+    // It sits above the list while it shows, so it takes the top inset and
+    // the list's content doesn't.
     return (
-      <View className="bg-white/80 backdrop-blur-sm">
-        <View className="flex-row justify-center items-center py-3">
-          <Spinner size="large" />
-        </View>
+      <View
+        testID="history-navigation-refresh"
+        className="flex-row justify-center items-center py-3"
+        style={{ marginTop: topInset }}
+      >
+        <Spinner size="large" />
       </View>
     );
-  }, [isNavigationRefresh]);
+  }, [isNavigationRefresh, topInset]);
 
   const handleTransactionDetails = useCallback(
     (transactionDetail: TransactionDetails) => {
@@ -156,57 +196,82 @@ const HistoryList: React.FC<HistoryListProps> = ({
     right: !noHorizontalPadding,
   };
 
-  if (isLoading) {
-    return (
-      <BaseLayout insets={insets}>
-        {ListHeaderComponent}
-        <HistoryWrapper>
-          <Spinner size="large" testID="spinner" />
-        </HistoryWrapper>
-      </BaseLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <BaseLayout insets={insets}>
-        {ListHeaderComponent}
-        <HistoryWrapper text={t("history.error")} />
-      </BaseLayout>
-    );
-  }
-
-  const sections =
+  const loadedSections =
     historyData?.history.map((historyMonth: HistorySection) => ({
       title: historyMonth.monthYear,
       data: historyMonth.operations,
     })) || [];
 
-  if (sections.length === 0) {
-    return (
-      <BaseLayout insets={insets}>
-        {ListHeaderComponent}
-        <View className={getEmptyListClasses(refreshActionPosition)}>
-          <HistoryWrapper
-            text={t("history.emptyState.title")}
-            isLoading={isRefreshing}
-            refreshFunction={onRefresh}
+  /**
+   * A failed refresh sets `error` but deliberately keeps `rawHistoryData`, so
+   * without this the list stays non-empty — and `ListEmptyComponent` is only
+   * consulted for an empty one. The failure would then be invisible: the
+   * screen would go on showing the rows it had before the refresh, with
+   * nothing to say they are stale. Emptying the sections is what the three
+   * early returns used to do implicitly, and it is the safer read for a
+   * transaction list, where a silently out-of-date balance is worse than an
+   * explicit error.
+   */
+  const sections = error ? [] : loadedSections;
+
+  /**
+   * Loading, error and empty all render through the list's own
+   * `ListEmptyComponent` rather than short-circuiting to a bare layout.
+   *
+   * Two reasons, both found the hard way. The element type at the header's
+   * position must not change: returning a `ScrollView` while loading and a
+   * `SectionList` once sections arrive makes React drop and rebuild the whole
+   * header subtree — which on the token detail screen is the entire page, so
+   * the chart remounted, `token_chart.viewed` fired twice, and a timeframe
+   * chosen during the load was reset. And the list sizes its empty component
+   * against `minHeight: "100%"`, where a `flex-1` child of a plain
+   * `ScrollView` collapses to zero height once the header is taller than the
+   * viewport.
+   */
+  const listEmptyComponent = (() => {
+    if (isLoading) {
+      if (loadingPlaceholder === "skeleton") {
+        // Both layouts leave the page padding plus the safe-area inset on
+        // each side: the outer BaseLayout's when `noHorizontalPadding`, this
+        // list's own otherwise.
+        return (
+          <HistorySkeletonRows
+            width={
+              windowWidth -
+              2 * pxValue(DEFAULT_PADDING) -
+              safeAreaInsets.left -
+              safeAreaInsets.right
+            }
           />
-        </View>
-      </BaseLayout>
+        );
+      }
+      return (
+        <HistoryWrapper>
+          <Spinner size="large" testID="spinner" />
+        </HistoryWrapper>
+      );
+    }
+
+    if (error) {
+      return <HistoryWrapper text={t("history.error")} />;
+    }
+
+    return (
+      <View className={getEmptyListClasses(refreshActionPosition)}>
+        <HistoryWrapper
+          text={t("history.emptyState.title")}
+          isLoading={isRefreshing}
+          refreshFunction={onRefresh}
+        />
+      </View>
     );
-  }
+  })();
 
   return (
     <BaseLayout insets={insets}>
       <BottomSheet
         modalRef={transactionDetailsBottomSheetModalRef}
-        handleCloseModal={() =>
-          transactionDetailsBottomSheetModalRef.current?.dismiss()
-        }
         scrollable
-        useInsetsBottomPadding={false}
-        maxDynamicContentSize={windowHeight * 0.9}
         customContent={
           <TransactionDetailsBottomSheetCustomContent
             transactionDetails={transactionDetails!}
@@ -225,28 +290,30 @@ const HistoryList: React.FC<HistoryListProps> = ({
           renderSectionHeader={renderSectionHeader}
           stickySectionHeadersEnabled={false}
           alwaysBounceVertical={false}
+          {...(topInset > 0 && underHeader.scrollViewProps)}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing && !isNavigationRefresh}
               onRefresh={onRefresh}
+              progressViewOffset={
+                topInset > 0 ? underHeader.progressViewOffset : undefined
+              }
             />
           }
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            minHeight: "100%",
+            // Under the History tab's bar, the list starts below it (see
+            // useScrollUnderHeader); on iOS that also replaces the fill.
+            ...(topInset > 0 && underHeader.fillStyle),
+            paddingBottom: bottomClearance,
+          }}
           ListHeaderComponent={ListHeaderComponent}
           ListFooterComponent={DefaultListFooter}
           className={className}
-          ListEmptyComponent={
-            <View className="flex-1 items-center justify-center px-2 gap-4">
-              <RefreshCard
-                title={t("history.emptyState.title")}
-                onRefresh={onRefresh}
-                actionTitle={t("history.refresh")}
-                loadingTitle={t("history.refreshing")}
-                isLoading={isRefreshing}
-              />
-            </View>
-          }
+          ListEmptyComponent={listEmptyComponent}
+          scrollEnabled={scrollEnabled}
         />
       </View>
     </BaseLayout>

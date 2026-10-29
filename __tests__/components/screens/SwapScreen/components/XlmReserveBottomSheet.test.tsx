@@ -96,7 +96,7 @@ describe("XlmReserveBottomSheet (Figma 11821-35684)", () => {
     );
     fireEvent.press(getByTestId("xlm-reserve-why-link"));
     expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
-      "https://help.freighter.app/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet",
+      "https://help.varialwallet.com/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet",
     );
   });
 

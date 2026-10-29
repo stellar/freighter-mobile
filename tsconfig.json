@@ -2,7 +2,10 @@
   "extends": "@react-native/typescript-config/tsconfig.json",
   "compilerOptions": {
     "types": ["styled-components-react-native", "@types/jest"],
-    "baseUrl": "src/"
+    "baseUrl": "src/",
+    "paths": {
+      "__tests__/*": ["../__tests__/*"]
+    }
   },
   "include": [
     "src",
@@ -12,6 +15,7 @@
     "**/*.ts",
     "**/*.tsx",
     "__mocks__",
+    "jest/**/*.js",
     "eslint.config.mjs",
     "nativewind-env.d.ts"
   ],

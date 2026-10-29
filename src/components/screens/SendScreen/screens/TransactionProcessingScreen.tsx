@@ -285,7 +285,7 @@ const TransactionProcessingScreen: React.FC<
         {status === TransactionStatus.SENT ? (
           <View className="gap-[12px] pb-[8px]">
             <Button
-              secondary
+              tertiary
               xl
               onPress={handleViewTransaction}
               testID="send-processing-view-transaction-button"
@@ -293,7 +293,7 @@ const TransactionProcessingScreen: React.FC<
               {t("transactionProcessingScreen.viewTransaction")}
             </Button>
             <Button
-              tertiary
+              secondary
               xl
               onPress={handleClose}
               testID="send-processing-done-button"
@@ -307,7 +307,7 @@ const TransactionProcessingScreen: React.FC<
               {t("transactionProcessingScreen.closeMessage")}
             </Text>
             <Button
-              secondary
+              tertiary
               xl
               onPress={handleClose}
               testID="send-processing-close-button"
@@ -320,7 +320,6 @@ const TransactionProcessingScreen: React.FC<
 
       <BottomSheet
         modalRef={bottomSheetModalRef}
-        handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
         customContent={
           <TransactionDetailsBottomSheet
             type={type}

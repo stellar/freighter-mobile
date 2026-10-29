@@ -1,0 +1,24 @@
+diff --git a/node_modules/react-native-scrypt/ios/RNScrypt.m b/node_modules/react-native-scrypt/ios/RNScrypt.m
+index 5cf6fae..1998bc2 100644
+--- a/node_modules/react-native-scrypt/ios/RNScrypt.m
++++ b/node_modules/react-native-scrypt/ios/RNScrypt.m
+@@ -16,9 +16,18 @@
+ 
+ @implementation RNScrypt
+ 
++// scrypt is slow by design, about a second per call on a phone. On the main
++// queue it froze the UI that long, at wallet setup and at every unlock. Its
++// own serial queue keeps the calls in order, off the main thread. Nothing
++// here touches UIKit.
+ - (dispatch_queue_t)methodQueue
+ {
+-    return dispatch_get_main_queue();
++    static dispatch_queue_t queue;
++    static dispatch_once_t onceToken;
++    dispatch_once(&onceToken, ^{
++        queue = dispatch_queue_create("com.crypho.scrypt", DISPATCH_QUEUE_SERIAL);
++    });
++    return queue;
+ }
+ 
+ RCT_EXPORT_MODULE()

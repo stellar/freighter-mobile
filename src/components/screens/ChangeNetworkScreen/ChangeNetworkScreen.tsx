@@ -81,9 +81,6 @@ const ChangeNetworkScreen: React.FC<ChangeNetworkScreenProps> = ({
             }}
           />
         }
-        handleCloseModal={() =>
-          selectNetworkBottomSheetModalRef.current?.dismiss()
-        }
       />
       <View className="flex flex-col gap-9 mt-3">
         <View className="flex flex-col">

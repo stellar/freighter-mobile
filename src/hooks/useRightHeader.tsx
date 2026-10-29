@@ -13,6 +13,10 @@ import React, { useLayoutEffect, useCallback } from "react";
  * @param options.onPress - Function to call when button is pressed
  * @param options.icon - Custom icon component (optional)
  * @param options.iconSize - Size of the icon (optional, defaults to 24)
+ * @param options.iconColor - Color of the icon (optional, defaults to the
+ * primary text color)
+ * @param options.accessibilityLabel - What screen readers call the button
+ * (optional; a custom icon has no text of its own, so pass one)
  * @param options.className - Additional CSS classes for styling (optional)
  *
  * @example
@@ -39,12 +43,16 @@ export const useRightHeaderButton = ({
   onPress,
   icon,
   iconSize,
+  iconColor,
+  accessibilityLabel,
   className,
 }: {
   hidden?: boolean;
   onPress?: () => void;
   icon?: React.ComponentType<{ size?: number; color?: string }>;
   iconSize?: number;
+  iconColor?: string;
+  accessibilityLabel?: string;
   className?: string;
 }) => {
   const navigation = useNavigation();
@@ -58,10 +66,12 @@ export const useRightHeaderButton = ({
         onPress={onPress}
         icon={icon}
         iconSize={iconSize}
+        iconColor={iconColor}
+        accessibilityLabel={accessibilityLabel}
         className={className}
       />
     ),
-    [onPress, icon, iconSize, className],
+    [onPress, icon, iconSize, iconColor, accessibilityLabel, className],
   );
 
   // useLayoutEffect is the official recommended hook to use for setting up

@@ -1,4 +1,5 @@
 import BigNumber from "bignumber.js";
+import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { CollectibleImage } from "components/CollectibleImage";
 import { List, ListItemProps } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
@@ -6,7 +7,12 @@ import SignTransactionDetails from "components/screens/SignTransactionDetails";
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
-import { Button } from "components/sds/Button";
+import {
+  Button,
+  ButtonVariants,
+  type ButtonVariant,
+} from "components/sds/Button";
+import { BUTTON_THEME } from "components/sds/Button/theme";
 import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
@@ -32,7 +38,6 @@ import { useFeeDetailsBottomSheet } from "hooks/useFeeDetailsBottomSheet";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useCallback, useMemo } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export enum SendType {
   Token = "token",
@@ -369,7 +374,13 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   );
 
   return (
-    <View className="flex-1 gap-[12px]" testID="send-review-sheet">
+    <View className="flex-1 gap-[16px]" testID="send-review-sheet">
+      <View className="mb-[8px]">
+        <BottomSheetHeader
+          title={t("transactionReviewScreen.sheetTitle")}
+          layout="centered"
+        />
+      </View>
       <View className="rounded-[16px] p-[16px] gap-[16px] bg-background-tertiary">
         <Text lg>{t("transactionReviewScreen.title")}</Text>
         <View className="gap-[16px]">
@@ -459,12 +470,52 @@ type SendReviewFooterProps = {
   amountError?: string | null;
 };
 
+/**
+ * The Cancel button's variant, decided in one place.
+ *
+ * Button resolves its shorthand props in a fixed order -- secondary, then
+ * tertiary, then destructive -- so an element setting more than one lets that
+ * order decide rather than the condition that matters. Cancel set three at
+ * once, and a muxed recipient with a bad scan satisfied two of them: sharing a
+ * row with Confirm, and being flagged. The flag won, and Cancel rendered as a
+ * second filled pill indistinguishable from the Confirm beside it.
+ *
+ * Sharing a row comes first here, because that is the case where Cancel most
+ * needs to stay quiet. Naming the variant outright also puts the button beyond
+ * reach of that ordering, rather than merely arranging not to trip over it.
+ */
+export const getCancelButtonVariant = ({
+  isMalicious,
+  isSuspicious,
+  isUnableToScan,
+  isExpectedToFail,
+  shouldUseRowLayout,
+}: {
+  // Optional, like the props they come from: absent reads as not flagged.
+  isMalicious?: boolean;
+  isSuspicious?: boolean;
+  isUnableToScan?: boolean;
+  isExpectedToFail?: boolean;
+  shouldUseRowLayout?: boolean;
+}): ButtonVariant => {
+  if (shouldUseRowLayout) return ButtonVariants.TERTIARY;
+
+  if (isSuspicious || isUnableToScan || isExpectedToFail) {
+    return ButtonVariants.SECONDARY;
+  }
+
+  if (isMalicious) return ButtonVariants.DESTRUCTIVE;
+
+  // Unreachable: without a row layout the transaction carries a flag, and every
+  // flag is handled above. Button's own fallback, so the swap stays faithful.
+  return ButtonVariants.PRIMARY;
+};
+
 export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
   (props) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
     const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
-    const insets = useSafeAreaInsets();
 
     // Localized build-error string shown above the buttons.
     const errorMessage = error
@@ -523,7 +574,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
             biometric={!isRequiredMemoMissing && !isConfirmDisabled}
             onPress={() => onConfirm?.()}
             isLoading={isLoading || isValidatingMemo}
-            tertiary
+            secondary
             xl
             disabled={isConfirmDisabled}
             testID="send-review-confirm-button"
@@ -551,10 +602,11 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
         <TouchableOpacity
           onPress={onSettingsPress}
           className="border border-gray-6 items-center justify-center"
+          // Sized to sit flush beside the xl Button next to it
           style={{
-            height: pxValue(50),
-            borderRadius: pxValue(25),
-            width: pxValue(50),
+            height: pxValue(BUTTON_THEME.height.xl),
+            borderRadius: pxValue(BUTTON_THEME.height.xl / 2),
+            width: pxValue(BUTTON_THEME.height.xl),
           }}
         >
           <Icon.Settings04 size={24} themeColor="gray" />
@@ -564,9 +616,13 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       const cancelButton = (
         <View className={`${shouldUseRowLayout ? "flex-1" : "w-full"}`}>
           <Button
-            tertiary={isSuspicious || isUnableToScan || isExpectedToFail}
-            destructive={isMalicious}
-            secondary={shouldUseRowLayout}
+            variant={getCancelButtonVariant({
+              isMalicious,
+              isSuspicious,
+              isUnableToScan,
+              isExpectedToFail,
+              shouldUseRowLayout,
+            })}
             isFullWidth
             onPress={onCancel}
             testID="send-review-cancel-button"
@@ -625,8 +681,10 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
 
     return (
       <View
-        className="bg-background-primary w-full mt-[24px] px-6 py-6"
-        style={{ paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING) }}
+        className="bg-background-primary w-full px-6 pt-[24px]"
+        style={{
+          paddingBottom: pxValue(DEFAULT_PADDING),
+        }}
       >
         {errorMessage && (
           <View className="mb-[16px]">

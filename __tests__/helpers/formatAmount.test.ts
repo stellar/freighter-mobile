@@ -17,6 +17,7 @@ import {
   parseDisplayNumberToBigNumber,
   formatBalanceAmount,
   getPerOperationBaseFeeStroops,
+  getBalanceInWholeUnits,
 } from "helpers/formatAmount";
 
 // Mock react-native-localize for consistent test behavior
@@ -883,5 +884,55 @@ describe("formatAmount helpers", () => {
       // 0.0000301 XLM = 301 stroops; 2 ops => floor(150.5) = 150/op.
       expect(getPerOperationBaseFeeStroops("0.0000301", 2)).toBe("150");
     });
+  });
+});
+
+describe("getBalanceInWholeUnits", () => {
+  const contractToken = {
+    code: "SolvBTC",
+    issuer: { key: "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN" },
+  } as NonNativeToken;
+
+  it("scales a raw SEP-41 total by its decimals", () => {
+    const balance = {
+      token: contractToken,
+      contractId: contractToken.issuer.key,
+      name: "Solv BTC",
+      symbol: "SolvBTC",
+      decimals: 8,
+      total: new BigNumber("227"),
+      available: new BigNumber("227"),
+    } as SorobanBalance;
+    expect(getBalanceInWholeUnits(balance).toString()).toBe("0.00000227");
+  });
+
+  it("leaves a zero-decimals token unscaled", () => {
+    const balance = {
+      token: contractToken,
+      contractId: contractToken.issuer.key,
+      name: "Whole",
+      symbol: "WHL",
+      decimals: 0,
+      total: new BigNumber("5"),
+      available: new BigNumber("5"),
+    } as SorobanBalance;
+    expect(getBalanceInWholeUnits(balance).toString()).toBe("5");
+  });
+
+  it("leaves balances without decimals (classic, SAC, native) unscaled", () => {
+    const classic = {
+      token: {
+        code: "USDC",
+        issuer: {
+          key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        },
+      },
+      total: new BigNumber("6.7590296"),
+      available: new BigNumber("6.7590296"),
+      limit: new BigNumber("0"),
+      buyingLiabilities: "0",
+      sellingLiabilities: "0",
+    } as ClassicBalance;
+    expect(getBalanceInWholeUnits(classic).toString()).toBe("6.7590296");
   });
 });

@@ -1,11 +1,13 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import { THEME } from "config/theme";
+import { Theme } from "config/theme";
 import { fs } from "helpers/dimensions";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
+import useTheme from "hooks/useTheme";
 import React from "react";
 import {
   Text as RNText,
   AccessibilityRole,
+  LayoutChangeEvent,
   Platform,
   StyleProp,
   TextStyle,
@@ -37,9 +39,35 @@ const ANDROID_FONT_WEIGHTS: Record<FontWeightKey, string> = {
 export type FontWeight = keyof typeof FONT_WEIGHTS;
 
 /**
+ * Inter is the app's text face. Funnel Sans is the Varial display face, used
+ * for large headings; it ships as static weights on both platforms.
+ */
+export type FontFamily = "inter" | "funnelSans";
+
+const fontFamilyFor = (family: FontFamily, weight: FontWeight): string => {
+  if (family === "funnelSans") {
+    return `FunnelSans-${ANDROID_FONT_WEIGHTS[weight]}`;
+  }
+
+  return Platform.select({
+    ios: "Inter-Variable",
+    android: `Inter-${ANDROID_FONT_WEIGHTS[weight]}`,
+  }) as string;
+};
+
+const fontWeightFor = (family: FontFamily, weight: FontWeight): string => {
+  // Static files carry their weight; only the variable Inter on iOS needs it.
+  if (family === "inter" && Platform.OS === "ios") {
+    return FONT_WEIGHTS[weight];
+  }
+
+  return "normal";
+};
+
+/**
  * Base props for Typography components (Display and Text)
  *
- * @prop {string} [color] - Explicit color value (e.g. THEME.colors.text.primary)
+ * @prop {string} [color] - Explicit color value (e.g. theme.colors.text.primary)
  * @prop {TextSize} [size] - Explicit size value (xs, sm, md, lg, xl)
  * @prop {FontWeight} [weight] - Explicit weight value (light, regular, medium, semiBold, bold)
  *
@@ -58,8 +86,10 @@ export type FontWeight = keyof typeof FONT_WEIGHTS;
  * - bold - 700
  *
  * Color shorthands (alternative to color prop):
- * - primary - THEME.colors.text.primary (default)
- * - secondary - THEME.colors.text.secondary
+ * - primary - theme.colors.text.primary (default)
+ * - secondary - theme.colors.text.secondary
+ *
+ * Colors resolve from the active color scheme via the `useTheme` hook.
  *
  * Examples:
  * ```tsx
@@ -67,7 +97,7 @@ export type FontWeight = keyof typeof FONT_WEIGHTS;
  * <Text
  *   size="md"
  *   weight="semiBold"
- *   color={THEME.colors.text.primary}
+ *   color={theme.colors.text.primary}
  * >
  *   Hello World
  * </Text>
@@ -87,7 +117,7 @@ interface TypographyBaseProps extends SizeProps, WeightProps, ColorProps {
   testID?: string;
 }
 
-const DISPLAY_SIZES = {
+export const DISPLAY_SIZES = {
   xl: { fontSize: 56, lineHeight: 64 },
   lg: { fontSize: 48, lineHeight: 56 },
   md: { fontSize: 40, lineHeight: 48 },
@@ -95,7 +125,7 @@ const DISPLAY_SIZES = {
   xs: { fontSize: 24, lineHeight: 32 },
 } as const;
 
-const TEXT_SIZES = {
+export const TEXT_SIZES = {
   xl: { fontSize: 20, lineHeight: 28 },
   lg: { fontSize: 18, lineHeight: 26 },
   md: { fontSize: 16, lineHeight: 24 },
@@ -156,29 +186,36 @@ const getWeight = (
 // Get color from props, with priority to explicit prop
 const getColor = (
   props: { color?: string } & ColorProps,
-  defaultColor: string,
+  theme: Theme,
 ): string => {
   if (props.color) return props.color;
-  if (props.secondary) return THEME.colors.text.secondary;
-  if (props.primary) return THEME.colors.text.primary;
-  return defaultColor;
+  if (props.secondary) return theme.colors.text.secondary;
+  return theme.colors.text.primary;
 };
 
 // =============================================================================
 // Base styled components
 // =============================================================================
 
-const BaseText = styled(RNText)<{ $weight: FontWeight; $color: string }>`
-  font-family: ${({ $weight }: { $weight: FontWeight }) =>
-    Platform.select({
-      ios: "Inter-Variable",
-      android: `Inter-${ANDROID_FONT_WEIGHTS[$weight]}`,
-    })};
-  font-weight: ${({ $weight }: { $weight: FontWeight }) =>
-    Platform.select({
-      ios: FONT_WEIGHTS[$weight],
-      android: "normal",
-    })};
+const BaseText = styled(RNText)<{
+  $weight: FontWeight;
+  $color: string;
+  $family?: FontFamily;
+}>`
+  font-family: ${({
+    $family = "inter",
+    $weight,
+  }: {
+    $family?: FontFamily;
+    $weight: FontWeight;
+  }) => fontFamilyFor($family, $weight)};
+  font-weight: ${({
+    $family = "inter",
+    $weight,
+  }: {
+    $family?: FontFamily;
+    $weight: FontWeight;
+  }) => fontWeightFor($family, $weight)};
   color: ${({ $color }: { $color: string }) => $color};
 `;
 
@@ -188,6 +225,8 @@ const BaseText = styled(RNText)<{ $weight: FontWeight; $color: string }>`
 
 export interface DisplayProps extends TypographyBaseProps {
   size?: TextSize;
+  /** Typeface; defaults to Inter. */
+  family?: FontFamily;
   style?: StyleProp<TextStyle>;
   adjustsFontSizeToFit?: boolean;
   numberOfLines?: number;
@@ -239,7 +278,7 @@ const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`
  * <Display
  *   size="lg"
  *   weight="semiBold"
- *   color={PALETTE.dark.green["09"]}
+ *   color={theme.colors.status.success}
  * >
  *   Custom Display
  * </Display>
@@ -248,25 +287,31 @@ const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`
 export const Display: React.FC<DisplayProps> = ({
   size,
   weight,
+  family,
   color,
   children,
   adjustsFontSizeToFit,
   numberOfLines,
   minimumFontScale,
   ...props
-}) => (
-  <StyledDisplay
-    $size={getSize({ size, ...props }, "sm")}
-    $weight={getWeight({ weight, ...props }, "regular")}
-    $color={getColor({ color, ...props }, THEME.colors.text.primary)}
-    adjustsFontSizeToFit={adjustsFontSizeToFit}
-    numberOfLines={numberOfLines}
-    minimumFontScale={minimumFontScale}
-    {...props}
-  >
-    {children}
-  </StyledDisplay>
-);
+}) => {
+  const theme = useTheme();
+
+  return (
+    <StyledDisplay
+      $size={getSize({ size, ...props }, "sm")}
+      $weight={getWeight({ weight, ...props }, "regular")}
+      $family={family}
+      $color={getColor({ color, ...props }, theme)}
+      adjustsFontSizeToFit={adjustsFontSizeToFit}
+      numberOfLines={numberOfLines}
+      minimumFontScale={minimumFontScale}
+      {...props}
+    >
+      {children}
+    </StyledDisplay>
+  );
+};
 
 // =============================================================================
 // Text
@@ -274,6 +319,8 @@ export const Display: React.FC<DisplayProps> = ({
 
 export interface TextProps extends TypographyBaseProps {
   size?: TextSize;
+  /** Forwarded to the native Text, for callers that must measure the text. */
+  onLayout?: (event: LayoutChangeEvent) => void;
   isVerticallyCentered?: boolean;
   url?: string;
   style?: StyleProp<TextStyle>;
@@ -301,7 +348,10 @@ const StyledText = styled(BaseText)<{
     fs(TEXT_SIZES[$size].fontSize)};
   line-height: ${({ $size }: { $size: TextSize }) =>
     fs(TEXT_SIZES[$size].lineHeight)};
-  text-decoration: none;
+  // The longhand: the text-decoration shorthand also sets the decoration
+  // color to black, and iOS then paints any underline black, whatever the
+  // text color
+  text-decoration-line: none;
   text-align: ${({
     $textAlign,
   }: {
@@ -351,7 +401,7 @@ const StyledText = styled(BaseText)<{
  * <Text
  *   size="lg"
  *   weight="bold"
- *   color={PALETTE.dark.amber["09"]}
+ *   color={theme.colors.status.warning}
  * >
  *   Custom Text
  * </Text>
@@ -369,6 +419,7 @@ export const Text: React.FC<TextProps> = ({
   ...props
 }) => {
   const { open: openInAppBrowser } = useInAppBrowser();
+  const theme = useTheme();
 
   const handleOnPressUrl = () => {
     if (url) {
@@ -380,7 +431,7 @@ export const Text: React.FC<TextProps> = ({
     <StyledText
       $size={getSize({ size, ...props }, "md")}
       $weight={getWeight({ weight, ...props }, "regular")}
-      $color={getColor({ color, ...props }, THEME.colors.text.primary)}
+      $color={getColor({ color, ...props }, theme)}
       $isVerticallyCentered={isVerticallyCentered}
       $textAlign={textAlign}
       {...(url && { onPress: () => handleOnPressUrl() })}

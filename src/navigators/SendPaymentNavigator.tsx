@@ -8,7 +8,6 @@ import {
   TransactionAmountScreen,
 } from "components/screens/SendScreen/screens";
 import SendCollectibleReviewScreen from "components/screens/SendScreen/screens/SendCollectibleReview";
-import Icon from "components/sds/Icon";
 import {
   ScreenTransition,
   SEND_PAYMENT_ROUTES,
@@ -84,7 +83,7 @@ export const SendPaymentStackNavigator = () => {
                   headerTitle: t("sendPaymentScreen.title"),
                   headerLeft: () => (
                     <CustomHeaderButton
-                      icon={Icon.X}
+                      variant="close"
                       onPress={() => navigation.goBack()}
                     />
                   ),
@@ -105,7 +104,7 @@ export const SendPaymentStackNavigator = () => {
               headerTitle: t("transactionTokenScreen.title"),
               headerLeft: () => (
                 <CustomHeaderButton
-                  icon={Icon.X}
+                  variant="close"
                   onPress={() =>
                     closeSendFlow(
                       navigation,
@@ -141,7 +140,7 @@ export const SendPaymentStackNavigator = () => {
               headerTitle: t("transactionAmountScreen.title"),
               headerLeft: () => (
                 <CustomHeaderButton
-                  icon={Icon.X}
+                  variant="close"
                   onPress={() =>
                     closeSendFlow(
                       navigation,

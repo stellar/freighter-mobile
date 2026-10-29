@@ -6,7 +6,6 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface AddWalletFooterProps {
   onPress: () => void;
@@ -25,12 +24,13 @@ export const AddWalletFooter: React.FC<AddWalletFooterProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const insets = useSafeAreaInsets();
 
   return (
     <View
-      className="bg-background-primary px-6 pt-[10px]"
-      style={{ paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING) }}
+      className="bg-background-primary px-6 pt-[24px]"
+      style={{
+        paddingBottom: pxValue(DEFAULT_PADDING),
+      }}
     >
       <TouchableOpacity
         className="flex-row items-center gap-[16px] w-full"
@@ -43,10 +43,10 @@ export const AddWalletFooter: React.FC<AddWalletFooterProps> = ({
         identicons in the list above it. PlusDouble rather than Plus: at 16px
         the standard asset's stroke scales down to ~1.3px, where the heavier
         variant renders the 2px the design calls for. */}
-        <View className="w-[40px] h-[40px] rounded-full bg-lilac-2 justify-center items-center">
+        <View className="w-[40px] h-[40px] rounded-full bg-lilac-3 justify-center items-center">
           <Icon.PlusDouble size={16} color={themeColors.lilac[9]} />
         </View>
-        <Text md medium color={themeColors.lilac[11]}>
+        <Text md medium color={themeColors.lilac[9]}>
           {t("home.manageAccount.addWallet")}
         </Text>
       </TouchableOpacity>

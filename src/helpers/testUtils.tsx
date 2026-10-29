@@ -6,6 +6,7 @@ import i18n from "i18n";
 import { ToastProvider } from "providers/ToastProvider";
 import React from "react";
 import { I18nextProvider } from "react-i18next";
+import { ReactTestInstance } from "react-test-renderer";
 
 /**
  * Type definition for the renderWithProviders function
@@ -42,6 +43,80 @@ const AllProviders: React.FC<{ children: React.ReactNode }> = ({
     </BottomSheetModalProvider>
   </I18nextProvider>
 );
+
+/** A single node of the render tree `toJSON()` returns. */
+export interface RenderedNode {
+  type: string;
+  props: Record<string, unknown>;
+  children: (RenderedNode | string)[] | null;
+}
+
+/** Anything `toJSON()` can hand back, or any child of it. */
+export type RenderedTree =
+  | RenderedNode
+  | string
+  | null
+  | (RenderedNode | string)[];
+
+/**
+ * Every rendered node of a host type, in render order. Skia's `<Path>` and
+ * `<Circle>` reject a testID, so their paint props are only reachable by
+ * walking the tree.
+ *
+ * @example
+ * const [stroke] = findAllRenderedByType(toJSON(), "skPath");
+ */
+export const findAllRenderedByType = (
+  tree: RenderedTree,
+  type: string,
+): RenderedNode[] => {
+  if (!tree || typeof tree === "string") {
+    return [];
+  }
+
+  if (Array.isArray(tree)) {
+    return tree.flatMap((node) => findAllRenderedByType(node, type));
+  }
+
+  return [
+    ...(tree.type === type ? [tree] : []),
+    ...findAllRenderedByType(tree.children, type),
+  ];
+};
+
+/**
+ * The nearest native view around a node, past the wrappers React Native, the
+ * styled components and the mocks put in between. Null when there's none.
+ *
+ * @example
+ * const row = hostParentOf(screen.getByTestId("icon-button-buy"));
+ */
+export const hostParentOf = (
+  node: ReactTestInstance | null | undefined,
+): ReactTestInstance | null => {
+  let ancestor = node?.parent ?? null;
+  while (ancestor && typeof ancestor.type !== "string") {
+    ancestor = ancestor.parent;
+  }
+  return ancestor;
+};
+
+/**
+ * The `className` a node was rendered with. NativeWind doesn't apply classes
+ * in tests, and a TouchableOpacity keeps `className` on itself instead of
+ * handing it to its native view, so this walks up from the node to the first
+ * element that carries one.
+ *
+ * @example
+ * expect(classNameOf(screen.getByTestId("token-option-USDC"))).toContain("mb-6");
+ */
+export const classNameOf = (node: ReactTestInstance): string | undefined => {
+  let current: ReactTestInstance | null = node;
+  while (current && typeof current.props.className !== "string") {
+    current = current.parent;
+  }
+  return current?.props.className as string | undefined;
+};
 
 export const renderWithProviders: RenderWithProviderType = (component) => {
   try {

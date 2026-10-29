@@ -1,6 +1,7 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
+import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import { Button } from "components/sds/Button";
@@ -708,7 +709,6 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const bottomSheetsConfig = [
     {
-      IconComponent: Icon.File02,
       key: "memoInfo" as const,
       modalRef: memoInfoBottomSheetModalRef,
       title: t("transactionSettings.memoInfo.title"),
@@ -729,7 +729,6 @@ const TransactionSettingsBottomSheet: React.FC<
       ],
     },
     {
-      IconComponent: Icon.CoinsSwap01,
       key: "slippageInfo" as const,
       modalRef: slippageInfoBottomSheetModalRef,
       title: t("transactionSettings.slippageInfo.title"),
@@ -742,7 +741,6 @@ const TransactionSettingsBottomSheet: React.FC<
       ],
     },
     {
-      IconComponent: Icon.ClockRefresh,
       key: "timeoutInfo" as const,
       modalRef: timeoutInfoBottomSheetModalRef,
       title: t("transactionSettings.timeoutInfo.title"),
@@ -762,6 +760,14 @@ const TransactionSettingsBottomSheet: React.FC<
 
   return (
     <View className="flex-1">
+      <View className="mb-[24px]">
+        <BottomSheetHeader
+          title={t("settings.title")}
+          layout="centered"
+          onClose={onCancel}
+          closeTestID="transaction-settings-close-button"
+        />
+      </View>
       <View className="flex-1 justify-between">
         <View className="flex flex-col gap-2">
           {/* Render settings directly based on settings array */}
@@ -774,13 +780,13 @@ const TransactionSettingsBottomSheet: React.FC<
 
       <View className="mt-[24px] gap-[12px] flex-row">
         <View className="flex-1">
-          <Button onPress={onCancel} secondary xl>
+          <Button onPress={onCancel} tertiary xl>
             {t("common.cancel")}
           </Button>
         </View>
         <View className="flex-1">
           <Button
-            tertiary
+            secondary
             xl
             onPress={handleConfirm}
             disabled={settings.some((setting) => settingErrors[setting])}
@@ -790,27 +796,19 @@ const TransactionSettingsBottomSheet: React.FC<
         </View>
       </View>
 
-      {bottomSheetsConfig.map(
-        ({ IconComponent, modalRef, onClose, title, key, texts }) => (
-          <BottomSheet
-            key={key}
-            modalRef={modalRef}
-            handleCloseModal={onClose}
-            customContent={
-              <InformationBottomSheet
-                title={title}
-                onClose={onClose}
-                headerElement={
-                  <View className="bg-lilac-3 p-2 rounded-[8px]">
-                    <IconComponent color={themeColors.lilac[9]} size={28} />
-                  </View>
-                }
-                texts={texts}
-              />
-            }
-          />
-        ),
-      )}
+      {bottomSheetsConfig.map(({ modalRef, onClose, title, key, texts }) => (
+        <BottomSheet
+          key={key}
+          modalRef={modalRef}
+          customContent={
+            <InformationBottomSheet
+              title={title}
+              onClose={onClose}
+              texts={texts}
+            />
+          }
+        />
+      ))}
       {feeDetailsSheets}
     </View>
   );

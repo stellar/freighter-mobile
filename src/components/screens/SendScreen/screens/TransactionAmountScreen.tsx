@@ -211,7 +211,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, [navigation]);
 
   const renderCloseHeaderButton = useCallback(
-    () => <CustomHeaderButton icon={Icon.X} onPress={handleCloseSendFlow} />,
+    () => <CustomHeaderButton variant="close" onPress={handleCloseSendFlow} />,
     [handleCloseSendFlow],
   );
 
@@ -477,53 +477,23 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       ? spendableBalance.shiftedBy(-decimals)
       : spendableBalance;
 
-    let targetAmount: BigNumber;
-
     if (percentage === 100) {
-      targetAmount = decimalAwareSpendable;
-
       analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
-    } else {
-      targetAmount = decimalAwareSpendable.multipliedBy(percentage / 100);
     }
 
-    // Ensure targetAmount never exceeds spendableBalance
-    const cappedTargetAmount = BigNumber.minimum(
-      targetAmount,
-      spendableBalance,
-    );
+    // Matches the extension: the token amount is committed, and in fiat mode
+    // the fiat field mirrors it rounded to cents (when priced), for display only.
+    const pctAmount = decimalAwareSpendable
+      .multipliedBy(percentage / 100)
+      .decimalPlaces(decimals, BigNumber.ROUND_HALF_UP);
 
-    if (showFiatAmount) {
-      const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
-      if (!tokenPrice.isZero()) {
-        let calculatedFiatAmount = cappedTargetAmount.multipliedBy(tokenPrice);
-        let fiatAmountString = calculatedFiatAmount.toFixed(2);
-
-        let convertedBackToTokens = new BigNumber(fiatAmountString).dividedBy(
-          tokenPrice,
-        );
-        if (convertedBackToTokens.isGreaterThan(spendableBalance)) {
-          // Subtract 1 cent to fix USD value going over max tokens
-          calculatedFiatAmount = calculatedFiatAmount.minus(0.01);
-          fiatAmountString = calculatedFiatAmount.toFixed(2);
-          convertedBackToTokens = new BigNumber(fiatAmountString).dividedBy(
-            tokenPrice,
-          );
-        }
-
-        const finalTokenAmount = BigNumber.minimum(
-          convertedBackToTokens,
-          spendableBalance,
-        );
-        const finalFiatAmount = finalTokenAmount.multipliedBy(tokenPrice);
-        const finalFiatAmountString = finalFiatAmount.toFixed(2);
-
-        updateFiatDisplay(finalFiatAmountString);
-        setTokenAmount(finalTokenAmount.toFixed(DEFAULT_DECIMALS));
-      }
-    } else {
-      setTokenAmount(cappedTargetAmount.toFixed(DEFAULT_DECIMALS));
+    const tokenPrice = selectedBalance.currentPrice || BigNumber(0);
+    if (showFiatAmount && !tokenPrice.isZero()) {
+      updateFiatDisplay(
+        tokenPrice.multipliedBy(pctAmount).toFixed(2, BigNumber.ROUND_HALF_UP),
+      );
     }
+    setTokenAmount(pctAmount.toFixed(decimals));
   };
 
   useEffect(() => {
@@ -1210,7 +1180,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
       <View className="w-full mt-auto mb-[8px]">
         <Button
-          tertiary
+          secondary
           xl
           onPress={handleContinueButtonPress}
           disabled={isContinueButtonDisabled}
@@ -1221,7 +1191,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       </View>
       <BottomSheet
         modalRef={reviewBottomSheetModalRef}
-        handleCloseModal={handleCancelReview}
         analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
         scrollable
         bottomSheetModalProps={{
@@ -1253,21 +1222,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={addMemoExplanationBottomSheetModalRef}
-        handleCloseModal={onCancelAddMemo}
         customContent={
           <InformationBottomSheet
             title={t("addMemoExplanationBottomSheet.title")}
             onClose={onCancelAddMemo}
             onConfirm={onConfirmAddMemo}
-            headerElement={
-              <View className="bg-red-3 p-2 rounded-[8px]">
-                <Icon.InfoOctagon
-                  color={themeColors.status.error}
-                  size={28}
-                  withBackground
-                />
-              </View>
-            }
             texts={[
               {
                 key: "description",
@@ -1287,7 +1246,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={transactionSettingsBottomSheetModalRef}
-        handleCloseModal={handleCancelTransactionSettings}
         customContent={
           <TransactionSettingsBottomSheet
             context={TransactionContext.Send}
@@ -1299,7 +1257,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={muxedAddressInfoBottomSheetModalRef}
-        handleCloseModal={handleCancelMuxedAddressWarning}
         customContent={
           <MuxedAddressWarningBottomSheet
             onCancel={handleCancelMuxedAddressWarning}
@@ -1309,7 +1266,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}
-        handleCloseModal={handleCancelSecurityWarning}
         customContent={
           <SecurityDetailBottomSheet
             warnings={transactionSecurityWarnings}

@@ -15,8 +15,8 @@ jest.mock("hooks/useAppUpdate", () => ({
   }),
 }));
 
-jest.mock("components/FreighterLogo", () => ({
-  FreighterLogo: () => <div data-testid="freighter-logo" />,
+jest.mock("components/VarialLogo", () => ({
+  VarialLogo: () => <div data-testid="varial-logo" />,
 }));
 
 jest.mock("components/sds/Button", () => ({

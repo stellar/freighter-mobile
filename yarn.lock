@@ -9950,6 +9950,7 @@ __metadata:
     eslint-plugin-translations: "file:./src/eslint-plugin-translations"
     events: "npm:3.3.0"
     fast-text-encoding: "npm:1.0.6"
+    glob: "npm:10.4.5"
     globals: "npm:15.15.0"
     https-browserify: "npm:~0.0.0"
     husky: "npm:9.1.7"
@@ -10002,6 +10003,7 @@ __metadata:
     react-test-renderer: "npm:19.1.0"
     readable-stream: "npm:2.3.8"
     rn-nodeify: "npm:10.3.0"
+    sharp: "npm:0.32.6"
     stellar-hd-wallet: "npm:1.0.2"
     stream-browserify: "npm:1.0.0"
     styled-components: "npm:6.1.19"
@@ -10275,7 +10277,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"glob@npm:^10.2.2, glob@npm:^10.3.10, glob@npm:^10.4.2":
+"glob@npm:10.4.5, glob@npm:^10.2.2, glob@npm:^10.3.10, glob@npm:^10.4.2":
   version: 10.4.5
   resolution: "glob@npm:10.4.5"
   dependencies:
@@ -16363,7 +16365,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sharp@npm:^0.32.6":
+"sharp@npm:0.32.6, sharp@npm:^0.32.6":
   version: 0.32.6
   resolution: "sharp@npm:0.32.6"
   dependencies:

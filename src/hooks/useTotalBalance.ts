@@ -29,20 +29,28 @@ interface TotalBalance {
  * Hook to calculate the total balance from pricedBalances
  * Returns formatted and raw balance values
  * Optimized to only react to fiatTotal changes using a string key
+ *
+ * Hidden tokens are left out: hiding is how people deal with spam tokens,
+ * whose made-up prices would otherwise inflate the header.
  */
 export const useTotalBalance = (): TotalBalance => {
   const pricedBalances = useBalancesStore((state) => state.pricedBalances);
+  const hiddenTokenIds = useBalancesStore((state) => state.hiddenTokenIds);
   const isFunded = useBalancesStore((state) => state.isFunded);
   const balancesError = useBalancesStore((state) => state.error);
   const network = useAuthenticationStore((state) => state.network);
 
+  const visibleBalances = Object.entries(pricedBalances)
+    .filter(([id]) => !hiddenTokenIds.includes(id))
+    .map(([, balance]) => balance);
+
   // Create a key that only changes when fiatTotal values change
-  const fiatTotalsKey = Object.values(pricedBalances)
+  const fiatTotalsKey = visibleBalances
     .map((balance) => balance.fiatTotal?.toString() || "0")
     .join(",");
 
   return useMemo(() => {
-    const rawBalance = Object.values(pricedBalances).reduce(
+    const rawBalance = visibleBalances.reduce(
       (total, balance) => total.plus(balance.fiatTotal || 0),
       new BigNumber(0),
     );
@@ -50,7 +58,7 @@ export const useTotalBalance = (): TotalBalance => {
     // A total is only "real" when at least one held asset is priced;
     // otherwise (e.g. testnet, where fiat is gated off, or before prices
     // load) the sum is a placeholder zero.
-    const hasFiatTotal = Object.values(pricedBalances).some(
+    const hasFiatTotal = visibleBalances.some(
       (balance) => balance.fiatTotal != null,
     );
 

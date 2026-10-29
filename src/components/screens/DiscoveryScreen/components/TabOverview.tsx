@@ -1,4 +1,5 @@
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
+import { NavigationHeaderBar } from "components/layout/CustomNavigationHeader";
 import { TabPreview } from "components/screens/DiscoveryScreen/components";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -23,13 +24,14 @@ const TabOverviewHeader: React.FC<TabOverviewHeaderProps> = ({ tabsCount }) => {
   const { t } = useAppTranslation();
 
   return (
-    <View className="items-center px-6 py-4">
-      <Text md medium>
-        {tabsCount > 1
+    <NavigationHeaderBar
+      title={
+        tabsCount > 1
           ? t("discovery.tabs", { count: tabsCount })
-          : t("discovery.oneTab")}
-      </Text>
-    </View>
+          : t("discovery.oneTab")
+      }
+      isBelowTopInset
+    />
   );
 };
 
@@ -79,7 +81,7 @@ const TabOverviewFooter: React.FC<TabOverviewFooterProps> = ({
   }, [t, onCloseActiveTab, onCloseAllTabs, showCloseAllOption]);
 
   return (
-    <View className="flex-row items-center border-t border-border-primary bg-background-primary px-6 py-4">
+    <View className="flex-row items-center border-t border-border-primary bg-base-0 px-6 py-4">
       <View className="flex-1 items-start">
         <ContextMenuButton
           contextMenuProps={{ actions: contextMenuActions }}

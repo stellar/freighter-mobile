@@ -1,9 +1,12 @@
 import { useIsFocused } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
+import {
+  CustomHeaderButton,
+  HEADER_BUTTON_BOX,
+} from "components/layout/CustomHeaderButton";
+import { getNavigationHeaderRowInsets } from "components/layout/CustomNavigationHeader";
 import { ReceiveTabView } from "components/screens/ScanReceiveScreen/ReceiveTabView";
 import { ScanTabView } from "components/screens/ScanReceiveScreen/ScanTabView";
-import Icon from "components/sds/Icon";
 import Tabs from "components/sds/Tabs";
 import { AnalyticsEvent, getScreenViewedProps } from "config/analyticsConfig";
 import { DEFAULT_PADDING } from "config/constants";
@@ -15,7 +18,13 @@ import {
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, AppState, StyleSheet, View } from "react-native";
+import {
+  Animated,
+  AppState,
+  LayoutChangeEvent,
+  StyleSheet,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { track } from "services/analytics/core";
 
@@ -24,9 +33,14 @@ type ScanReceiveScreenProps = NativeStackScreenProps<
   typeof ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN
 >;
 
-const MIN_INSETS_TOP = 34;
-const HEADER_BUTTON_SIZE = 40;
-const HEADER_BOTTOM_PADDING = 16;
+/**
+ * Figma (?node-id=1123-114552) puts the Receive/Scan tabs in a 44pt band
+ * right under the nav row. Until the header has been measured, the Receive
+ * content assumes that band.
+ */
+const TABS_BAND_HEIGHT = 44;
+/** Between the tabs and the Receive content. */
+const CONTENT_TOP_SPACING = 16;
 const FADE_DURATION_MS = 200;
 
 /**
@@ -34,7 +48,8 @@ const FADE_DURATION_MS = 200;
  *
  * Unified screen with a camera Scan tab and an account-QR Receive tab, switched
  * via the Tabs control in a floating header. The opaque Receive layer crossfades
- * over the camera.
+ * over the camera. The header's X sits in the same row, at the same spot, as
+ * every other screen's, and the tabs get a row of their own under it.
  *
  * Camera lifecycle:
  * - The scanner mounts lazily the first time the Scan tab is shown, so opening
@@ -112,10 +127,15 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
     }
   }, [activeTab]);
 
-  const insetsTop = insets.top || pxValue(MIN_INSETS_TOP - DEFAULT_PADDING);
-  const headerPaddingTop = insetsTop + pxValue(DEFAULT_PADDING);
-  const headerHeight =
-    headerPaddingTop + pxValue(HEADER_BUTTON_SIZE + HEADER_BOTTOM_PADDING);
+  const headerInsets = getNavigationHeaderRowInsets(insets.top);
+  const [headerHeight, setHeaderHeight] = useState(
+    () =>
+      headerInsets.paddingTop +
+      HEADER_BUTTON_BOX.height +
+      pxValue(TABS_BAND_HEIGHT),
+  );
+  const handleHeaderLayout = (event: LayoutChangeEvent) =>
+    setHeaderHeight(event.nativeEvent.layout.height);
 
   const tabOptions = useMemo(
     () => [
@@ -128,7 +148,7 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
   const isScan = activeTab === "scan";
 
   return (
-    <View className="flex-1 bg-background-primary">
+    <View className="flex-1 bg-base-0">
       {/* Scan layer (camera) — mounted lazily on first Scan visit. Hidden from
           screen readers while Receive is active (pointerEvents/opacity alone do
           not remove descendants from the accessibility tree). */}
@@ -149,7 +169,7 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
       {/* Receive layer (opaque; fades in over the camera). Hidden from screen
           readers while Scan is active. */}
       <Animated.View
-        className="bg-background-primary"
+        className="bg-base-0"
         style={[StyleSheet.absoluteFill, { opacity: receiveAnim }]}
         pointerEvents={isScan ? "none" : "auto"}
         accessibilityElementsHidden={isScan}
@@ -158,7 +178,7 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
         <View
           style={{
             flex: 1,
-            paddingTop: headerHeight,
+            paddingTop: headerHeight + pxValue(CONTENT_TOP_SPACING),
             paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
           }}
         >
@@ -166,25 +186,33 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
         </View>
       </Animated.View>
 
-      {/* Floating header: X close + centered Tabs */}
+      {/* Floating header: the X in the nav row every screen shares, and the
+          tabs centred in their own row under it. */}
       <View
-        className="absolute left-0 right-0 z-[999] flex-row items-center px-6 pb-4"
-        style={{ paddingTop: headerPaddingTop }}
+        testID="scan-receive-header"
+        className="absolute left-0 right-0 z-[999]"
+        style={headerInsets}
+        onLayout={handleHeaderLayout}
       >
-        <CustomHeaderButton
-          icon={Icon.X}
-          onPress={() => navigation.goBack()}
-          testID="scan-receive-close-button"
-        />
-        <View className="flex-1 flex-row items-center justify-center">
+        <View testID="scan-receive-nav-row" className="flex-row items-center">
+          <CustomHeaderButton
+            variant="close"
+            onPress={() => navigation.goBack()}
+            testID="scan-receive-close-button"
+          />
+        </View>
+        {/* A row, so justify-center centres the Tabs, which pin themselves to
+            the start of their container. */}
+        <View
+          testID="scan-receive-tabs-row"
+          className="flex-row justify-center"
+        >
           <Tabs
             options={tabOptions}
             selectedValue={activeTab}
             onValueChange={(value) => setActiveTab(value as ScanReceiveTab)}
           />
         </View>
-        {/* Spacer mirroring the close button so the Tabs stay centered. */}
-        <View className="w-10 h-10" />
       </View>
     </View>
   );

@@ -1,12 +1,11 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import BottomSheet from "components/BottomSheet";
+import { PinnedBottomSheetHeader } from "components/BottomSheetHeader";
 import ConnectedAppsBottomSheet, {
   ConnectedDapp,
 } from "components/screens/HomeScreen/ConnectedAppsBottomSheet";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
-import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING, VISUAL_DELAY_MS } from "config/constants";
 import {
@@ -21,12 +20,10 @@ import { useWalletKitStore } from "ducks/walletKit";
 import { pxValue } from "helpers/dimensions";
 import { findMatchedProtocol } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { TouchableOpacity, useWindowDimensions, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { View } from "react-native";
 
 interface ConnectedAppsProps {
   navigation?: BottomTabNavigationProp<
@@ -41,7 +38,6 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
   bottomSheetRef,
 }) => {
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
   const { showToast } = useToast();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
@@ -49,8 +45,6 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
   const { activeSessions, disconnectSession, disconnectAllSessions } =
     useWalletKitStore();
   const { discover_enabled: discoverEnabled } = useRemoteConfigStore();
-  const { height: windowHeight } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
 
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const publicKey = account?.publicKey || "";
@@ -135,32 +129,26 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
 
   // Pinned above the scrolling list so the title and close button stay
   // accessible; the list scrolls underneath, so the background must be
-  // opaque.
+  // opaque. Centered title with the X on the right, per the frame.
   const renderSheetHeader = useCallback(
     () => (
-      <View className="bg-background-primary flex-row items-center justify-between px-6 pt-4 pb-2">
-        <Text xl medium>
-          {t("connectedApps.title")}
-        </Text>
-        <TouchableOpacity
-          onPress={handleClose}
-          className="size-10 items-center justify-center rounded-full bg-background-tertiary"
-          testID="connected-apps-close-button"
-          accessibilityRole="button"
-          accessibilityLabel={t("common.close")}
-        >
-          <Icon.X color={themeColors.foreground.primary} />
-        </TouchableOpacity>
-      </View>
+      <PinnedBottomSheetHeader
+        title={t("connectedApps.title")}
+        layout="centered"
+        onClose={handleClose}
+        closeTestID="connected-apps-close-button"
+      />
     ),
-    [t, handleClose, themeColors],
+    [t, handleClose],
   );
 
   const renderFooter = useCallback(
     () => (
       <View
-        className="w-full px-6 pt-6 mt-6 bg-background-primary"
-        style={{ paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING) }}
+        className="w-full px-6 pt-[24px] bg-background-primary"
+        // The sheet floats (see `floating` below), so the card already clears
+        // the safe area; the footer only needs its own padding.
+        style={{ paddingBottom: pxValue(DEFAULT_PADDING) }}
       >
         <Button
           xl
@@ -173,16 +161,13 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
         </Button>
       </View>
     ),
-    [insets.bottom, isDisconnecting, handleDisconnectAll, t],
+    [isDisconnecting, handleDisconnectAll, t],
   );
 
   return (
     <BottomSheet
       modalRef={bottomSheetRef}
-      handleCloseModal={handleClose}
       scrollable
-      useInsetsBottomPadding={false}
-      maxDynamicContentSize={windowHeight * 0.9}
       bottomSheetModalProps={{ onDismiss: handleDismiss }}
       analyticsEvent={AnalyticsEvent.VIEW_MANAGE_CONNECTED_APPS}
       scrollViewHeaderComponent={renderSheetHeader}

@@ -3,7 +3,12 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
+import { BottomSheetHeader } from "components/BottomSheetHeader";
+import HiddenItemsBottomSheet, {
+  HiddenItem,
+} from "components/HiddenItemsBottomSheet";
 import Spinner from "components/Spinner";
+import { TokenIcon } from "components/TokenIcon";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import AddTokenBottomSheetContent from "components/screens/AddTokenScreen/AddTokenBottomSheetContent";
@@ -17,6 +22,7 @@ import TokenItem from "components/screens/AddTokenScreen/TokenItem";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
+import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
@@ -29,7 +35,12 @@ import {
   TokenTypeWithCustomToken,
 } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { getTokenIdentifier } from "helpers/balances";
+import {
+  getSearchTokenRecordId,
+  shouldOfferUnhide,
+} from "helpers/hiddenTokens";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
@@ -39,6 +50,7 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useManageToken } from "hooks/useManageToken";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useTokenLookup } from "hooks/useTokenLookup";
+import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
@@ -69,10 +81,18 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   const addTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const removeTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const securityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const { balanceItems, handleRefresh } = useBalancesList({
+  const hiddenTokensBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  // Hidden tokens stay in `balanceItems` here: the search still needs to know
+  // the account holds them, so a hidden token's row offers Unhide, not Add.
+  const { balanceItems, hiddenBalanceItems, handleRefresh } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
+    includeHidden: true,
   });
+  const hiddenTokenIds = useBalancesStore((state) => state.hiddenTokenIds);
+  const unhideToken = useBalancesStore((state) => state.unhideToken);
+  const { showToast } = useToast();
+  const [unhidingTokenId, setUnhidingTokenId] = useState<string | null>(null);
   const { themeColors } = useColors();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -80,6 +100,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     searchResults,
     verifiedTokens,
     unverifiedTokens,
+    hasScanFailed,
     status,
     handleSearch,
     resetSearch,
@@ -88,11 +109,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     publicKey: account?.publicKey,
     balanceItems,
   });
-
-  const hasUnableToScanTokens = useMemo(
-    () => searchResults.some((token) => token.isUnableToScan),
-    [searchResults],
-  );
 
   const isTokenMalicious = scannedToken.isMalicious;
   const isTokenSuspicious = scannedToken.isSuspicious;
@@ -345,29 +361,107 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     [handleRemoveToken],
   );
 
+  /**
+   * Unhides a token from the hidden-tokens sheet or a search row, then
+   * confirms with a toast. The sheet stays open so several tokens can be
+   * unhidden in a row.
+   */
+  const handleUnhideToken = useCallback(
+    async ({ tokenId, tokenCode }: { tokenId: string; tokenCode: string }) => {
+      const publicKey = account?.publicKey;
+
+      if (!publicKey || unhidingTokenId) {
+        return;
+      }
+
+      setUnhidingTokenId(tokenId);
+
+      try {
+        await unhideToken({ publicKey, network, tokenId });
+        showToast({
+          title: t("hiddenTokens.unhidden", { tokenCode }),
+          variant: "success",
+          toastId: "unhide-token-toast",
+        });
+      } catch {
+        showToast({
+          title: t("hiddenTokens.unhideError", { tokenCode }),
+          variant: "error",
+          toastId: "unhide-token-toast",
+        });
+      } finally {
+        setUnhidingTokenId(null);
+      }
+    },
+    [account?.publicKey, unhidingTokenId, unhideToken, network, showToast, t],
+  );
+
+  const handleUnhideSearchToken = useCallback(
+    (token: FormattedSearchTokenRecord) =>
+      handleUnhideToken({
+        tokenId: getSearchTokenRecordId(token),
+        tokenCode: token.tokenCode,
+      }),
+    [handleUnhideToken],
+  );
+
+  // Flag hidden tokens at render time (not inside the lookup) so a row flips
+  // back to the regular menu the moment the token is unhidden.
+  const flagHiddenTokens = useCallback(
+    (tokens: FormattedSearchTokenRecord[]) =>
+      tokens.map((token) => ({
+        ...token,
+        isHidden: shouldOfferUnhide(token, hiddenTokenIds),
+      })),
+    [hiddenTokenIds],
+  );
+
+  const verifiedTokensWithHidden = useMemo(
+    () => flagHiddenTokens(verifiedTokens),
+    [flagHiddenTokens, verifiedTokens],
+  );
+
+  const unverifiedTokensWithHidden = useMemo(
+    () => flagHiddenTokens(unverifiedTokens),
+    [flagHiddenTokens, unverifiedTokens],
+  );
+
+  const hiddenItems = useMemo<HiddenItem[]>(
+    () =>
+      hiddenBalanceItems.map((item) => ({
+        id: item.id,
+        leading: <TokenIcon token={item} />,
+        title: item.tokenCode ?? item.id,
+        subtitle:
+          item.displayName && item.displayName !== item.tokenCode
+            ? item.displayName
+            : undefined,
+        isUnhiding: unhidingTokenId === item.id,
+        onUnhide: () =>
+          handleUnhideToken({
+            tokenId: item.id,
+            tokenCode: item.tokenCode ?? item.id,
+          }),
+      })),
+    [hiddenBalanceItems, unhidingTokenId, handleUnhideToken],
+  );
+
+  // Only before the user starts searching: once there is a query, a hidden
+  // token that matches shows Unhide on its own row instead.
+  const isSearchEmpty = searchTerm.trim() === "";
+
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
       <View className="flex-1 justify-between">
         <BottomSheet
           modalRef={moreInfoBottomSheetModalRef}
           customContent={
-            <View className="gap-4">
-              <View className="flex-row justify-between items-center">
-                <View className="size-10 rounded-lg items-center justify-center bg-lilac-3 border border-lilac-6">
-                  <Icon.Coins01 themeColor="lilac" />
-                </View>
-                <TouchableOpacity
-                  onPress={() => moreInfoBottomSheetModalRef.current?.dismiss()}
-                  className="size-10 items-center justify-center rounded-full bg-gray-3"
-                >
-                  <Icon.X color={themeColors.gray[9]} />
-                </TouchableOpacity>
-              </View>
+            <View className="gap-[24px]">
+              <BottomSheetHeader
+                title={t("manageTokensScreen.moreInfo.title")}
+                onClose={() => moreInfoBottomSheetModalRef.current?.dismiss()}
+              />
               <View>
-                <Text xl medium>
-                  {t("manageTokensScreen.moreInfo.title")}
-                </Text>
-                <View className="h-4" />
                 <Text md regular secondary>
                   {t("manageTokensScreen.moreInfo.block1")}
                 </Text>
@@ -378,15 +472,9 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
               </View>
             </View>
           }
-          handleCloseModal={() =>
-            moreInfoBottomSheetModalRef.current?.dismiss()
-          }
         />
         <BottomSheet
           modalRef={addTokenBottomSheetModalRef}
-          handleCloseModal={() => {
-            addTokenBottomSheetModalRef.current?.dismiss();
-          }}
           bottomSheetModalProps={{
             onChange: (index: number) => {
               if (index >= 0) {
@@ -420,9 +508,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
         />
         <BottomSheet
           modalRef={removeTokenBottomSheetModalRef}
-          handleCloseModal={() => {
-            removeTokenBottomSheetModalRef.current?.dismiss();
-          }}
           bottomSheetModalProps={{
             onChange: (index: number) => {
               if (index >= 0) {
@@ -441,9 +526,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
         />
         <BottomSheet
           modalRef={securityWarningBottomSheetModalRef}
-          handleCloseModal={() =>
-            securityWarningBottomSheetModalRef.current?.dismiss()
-          }
           bottomSheetModalProps={{
             onChange: (index: number) => {
               if (index >= 0) {
@@ -474,21 +556,47 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
             />
           }
         />
-        <Input
-          placeholder={t("addTokenScreen.searchPlaceholder")}
-          value={searchTerm}
-          onChangeText={(text: string) => {
-            setSearchTerm(text);
-            debouncedHandleSearch(text);
-          }}
-          fieldSize="lg"
-          autoCapitalize="none"
-          autoCorrect={false}
-          leftElement={
-            <Icon.SearchMd size={16} color={themeColors.foreground.primary} />
-          }
+        <HiddenItemsBottomSheet
+          modalRef={hiddenTokensBottomSheetModalRef}
+          title={t("hiddenTokens.title")}
+          emptyText={t("hiddenTokens.empty")}
+          items={hiddenItems}
+          onClose={() => hiddenTokensBottomSheetModalRef.current?.dismiss()}
+          testID="hidden-tokens-sheet"
         />
-        <View className="h-4" />
+        {/* Keep the search and its Show hidden link together at the top; the
+            screen's space-between layout would otherwise float the link. */}
+        <View>
+          <Input
+            placeholder={t("addTokenScreen.searchPlaceholder")}
+            value={searchTerm}
+            onChangeText={(text: string) => {
+              setSearchTerm(text);
+              debouncedHandleSearch(text);
+            }}
+            fieldSize="lg"
+            autoCapitalize="none"
+            autoCorrect={false}
+            leftElement={
+              <Icon.SearchMd size={16} color={themeColors.foreground.primary} />
+            }
+          />
+          <View className="h-4" />
+          {isSearchEmpty && (
+            <View className="self-end mt-4">
+              <TextButton
+                testID="add-token-show-hidden"
+                text={t("hiddenTokens.showHidden")}
+                variant="tertiary"
+                className="py-1"
+                hitSlop={{ top: 6, bottom: 6 }}
+                onPress={() =>
+                  hiddenTokensBottomSheetModalRef.current?.present()
+                }
+              />
+            </View>
+          )}
+        </View>
         {status === HookStatus.LOADING && <Spinner />}
         {status === HookStatus.SUCCESS && (
           <ScrollView
@@ -498,7 +606,9 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
           >
             {searchResults.length > 0 ? (
               <>
-                {hasUnableToScanTokens && (
+                {/* Only when the scan failed as a whole: a token that alone
+                    went unscanned warns when it's picked. */}
+                {hasScanFailed && (
                   <View className="mb-4 mt-4 p-4 bg-gray-3 rounded-[16px] flex-row items-center gap-2">
                     <Icon.Cube01 size={16} color={themeColors.gray[11]} />
                     <Text md color={themeColors.gray[11]}>
@@ -523,12 +633,16 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
                         color={themeColors.foreground.secondary}
                       />
                     </TouchableOpacity>
-                    {verifiedTokens.map((token) => (
+                    {verifiedTokensWithHidden.map((token) => (
                       <TokenItem
                         key={`${token.tokenCode}:${token.issuer}`}
                         token={token}
                         handleAddToken={handleAddTokenMemo}
                         handleRemoveToken={handleRemoveTokenMemo}
+                        handleUnhideToken={handleUnhideSearchToken}
+                        isUnhiding={
+                          unhidingTokenId === getSearchTokenRecordId(token)
+                        }
                       />
                     ))}
                   </>
@@ -550,12 +664,16 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
                         color={themeColors.foreground.secondary}
                       />
                     </TouchableOpacity>
-                    {unverifiedTokens.map((token) => (
+                    {unverifiedTokensWithHidden.map((token) => (
                       <TokenItem
                         key={`${token.tokenCode}:${token.issuer}`}
                         token={token}
                         handleAddToken={handleAddTokenMemo}
                         handleRemoveToken={handleRemoveTokenMemo}
+                        handleUnhideToken={handleUnhideSearchToken}
+                        isUnhiding={
+                          unhidingTokenId === getSearchTokenRecordId(token)
+                        }
                       />
                     ))}
                   </>
@@ -569,12 +687,10 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
         {status === HookStatus.ERROR && <ErrorState />}
         <View className="h-4" />
         <Button
-          secondary
+          tertiary
           testID="paste-from-clipboard-button"
           onPress={handlePasteFromClipboard}
-          icon={
-            <Icon.Clipboard size={16} color={themeColors.foreground.primary} />
-          }
+          icon={<Icon.Clipboard size={16} />}
         >
           {t("addTokenScreen.pasteFromClipboard")}
         </Button>

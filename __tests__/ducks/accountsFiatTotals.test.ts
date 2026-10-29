@@ -3,6 +3,7 @@ import { NETWORKS } from "config/constants";
 import {
   ClassicBalance,
   NativeBalance,
+  SorobanBalance,
   TokenPricesMap,
   TokenTypeWithCustomToken,
 } from "config/types";
@@ -135,6 +136,46 @@ describe("accountsFiatTotals duck", () => {
     });
   });
 
+  it("scales SEP-41 raw totals by decimals", async () => {
+    const solvBtcContract =
+      "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";
+    // Raw i128 total: 227 at 8 decimals is 0.00000227 SolvBTC (~$0.19).
+    const solvBtcBalance: SorobanBalance = {
+      token: { code: "SolvBTC", issuer: { key: solvBtcContract } },
+      contractId: solvBtcContract,
+      name: "Solv BTC",
+      symbol: "SolvBTC",
+      decimals: 8,
+      total: new BigNumber("227"),
+      available: new BigNumber("227"),
+    };
+    mockFetchBalances.mockResolvedValue({
+      balances: {
+        ...mockBalanceMap,
+        [`SolvBTC:${solvBtcContract}`]: solvBtcBalance,
+      },
+      isFunded: true,
+      subentryCount: 1,
+    });
+    mockPricesState({
+      ...mockPrices,
+      [`SolvBTC:${solvBtcContract}`]: {
+        currentPrice: new BigNumber("81597.03"),
+        percentagePriceChange24h: null,
+      },
+    });
+
+    await useAccountsFiatTotalsStore.getState().fetchAccountsFiatTotals({
+      publicKeys: [PK_1],
+      network: NETWORKS.PUBLIC,
+    });
+
+    // $250 classic + ~$0.19 SolvBTC
+    expect(useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.label).toBe(
+      "$250.19",
+    );
+  });
+
   it("counts unpriced tokens as zero", async () => {
     mockPricesState({
       XLM: {
@@ -151,9 +192,9 @@ describe("accountsFiatTotals duck", () => {
     });
 
     // Only XLM priced: 100 * $0.5
-    expect(
-      useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.label,
-    ).toBe("$50.00");
+    expect(useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.label).toBe(
+      "$50.00",
+    );
   });
 
   it("returns zero for unfunded accounts (empty balances)", async () => {
@@ -170,9 +211,9 @@ describe("accountsFiatTotals duck", () => {
       network: NETWORKS.PUBLIC,
     });
 
-    expect(
-      useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.label,
-    ).toBe("$0.00");
+    expect(useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.label).toBe(
+      "$0.00",
+    );
   });
 
   it("isolates per-account fetch failures behind the placeholder", async () => {
@@ -513,9 +554,9 @@ describe("accountsFiatTotals duck", () => {
     });
 
     expect(mockFetchBalances).toHaveBeenCalledTimes(2);
-    expect(
-      useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.label,
-    ).toBe("$250.00");
+    expect(useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.label).toBe(
+      "$250.00",
+    );
   });
 
   describe("syncAccountFiatTotal", () => {

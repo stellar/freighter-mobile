@@ -7,48 +7,37 @@ import {
   BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types";
-import Icon from "components/sds/Icon";
-import { Text } from "components/sds/Typography";
 import { AnalyticsEvent, getScreenViewedProps } from "config/analyticsConfig";
-import { DEFAULT_PADDING } from "config/constants";
+import {
+  BOTTOM_SHEET_EDGE_FADE_HEIGHT,
+  BOTTOM_SHEET_FLOATING_CORNER_RADIUS,
+  BOTTOM_SHEET_FLOATING_MARGIN,
+  BOTTOM_SHEET_MAX_HEIGHT,
+  BOTTOM_SHEET_MAX_HEIGHT_RATIO,
+  DEFAULT_PADDING,
+} from "config/constants";
+import { BACKDROP_OPACITY } from "config/theme";
 import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import { useKeyboardHeight } from "hooks/useKeyboardHeight";
-import React, { useCallback, useRef, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import React, { useCallback, useId, useRef, useState } from "react";
+import {
+  LayoutChangeEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { track } from "services/analytics/core";
 import type { AnalyticsProps } from "services/analytics/types";
 
-const Icons = {
-  Plus: {
-    icon: "Plus",
-    color: "lilac",
-  },
-  PlusCircle: {
-    icon: "PlusCircle",
-    color: "lilac",
-  },
-  Tokens: {
-    icon: "Coins01",
-    color: "mint",
-  },
-  Announcement: {
-    icon: "Announcement01",
-    color: "lime",
-  },
-  Danger: {
-    icon: "AlertTriangle",
-    color: "red",
-  },
-  Wallet: {
-    icon: "Wallet01",
-    color: "gold",
-  },
-} as const;
-
 /**
  * Props for the shared BottomSheet wrapper.
+ *
+ * Every sheet is a floating card: inset from the sides and lifted above the
+ * safe area, rounded on all four corners, with no drag handle.
  *
  * **Content modes** (mutually exclusive):
  * - Default (non-scrollable): renders content inside a `BottomSheetView` with
@@ -62,9 +51,20 @@ const Icons = {
  * injected into the scroll content so nothing is obscured.
  *
  * **Header** (`scrollViewHeaderComponent`): only valid in scrollable mode.
- * Rendered absolutely at the top of the sheet content (below the drag
- * handle) with a matching spacer at the start of the scroll content, so the
- * content scrolls underneath it. Give it an opaque background.
+ * Rendered absolutely at the top of the sheet with a matching spacer at the start of the scroll content, so the
+ * content scrolls underneath it. Use `PinnedBottomSheetHeader`, which pads
+ * itself and has an opaque background.
+ *
+ * **Padding**: content is padded 24pt on every side. Next to a pinned header
+ * or footer it adds none on that side, since those pad themselves.
+ *
+ * **Edge fades**: a scrollable sheet fades its content where it
+ * scrolls under the pinned header or footer, or past the card's edge. Each
+ * fade shows only while there is content hidden on that side.
+ *
+ * **Max height**: a scrollable sheet stops at `BOTTOM_SHEET_MAX_HEIGHT`, or at
+ * `BOTTOM_SHEET_MAX_HEIGHT_RATIO` of the window if that's shorter, and its
+ * content scrolls past that. `maxDynamicContentSize` overrides it.
  *
  * **Snap points** (`snapPoints`): fixes the sheet at explicit heights. Disables
  * dynamic sizing. Cannot be combined with `scrollable`.
@@ -73,12 +73,8 @@ const Icons = {
  * fire a single tracking event the first time the sheet is presented.
  */
 export type BottomSheetProps = {
-  title?: string;
-  description?: string;
   modalRef: React.RefObject<BottomSheetModal | null>;
-  handleCloseModal?: () => void;
-  icon?: keyof typeof Icons;
-  customContent?: React.ReactNode;
+  customContent: React.ReactNode;
   bottomSheetModalProps?: Partial<BottomSheetModalProps>;
   bottomSheetViewProps?: Partial<BottomSheetViewProps>;
   shouldCloseOnPressBackdrop?: boolean;
@@ -87,7 +83,6 @@ export type BottomSheetProps = {
   enableContentPanningGesture?: boolean;
   enableDynamicSizing?: boolean;
   maxDynamicContentSize?: number;
-  useInsetsBottomPadding?: boolean;
   analyticsEvent?: AnalyticsEvent;
   analyticsProps?: AnalyticsProps;
   scrollViewFooterComponent?: () => React.ReactNode;
@@ -101,12 +96,54 @@ export type BottomSheetProps = {
   scrollable?: boolean;
 };
 
+/**
+ * A strip that fades from the sheet's background to transparent, laid over
+ * the scroll content where it meets a pinned header or footer or the card's
+ * edge. `edge` is the side the background color sits on.
+ */
+const EdgeFade: React.FC<{
+  edge: "top" | "bottom";
+  offset: number;
+  color: string;
+  visible: boolean;
+}> = ({ edge, offset, color, visible }) => {
+  // Each sheet draws two fades, and several sheets can be mounted at once.
+  const gradientId = `bottom-sheet-fade-${useId().replace(/:/g, "")}`;
+
+  return (
+    <View
+      testID={`bottom-sheet-edge-fade-${edge}`}
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        height: BOTTOM_SHEET_EDGE_FADE_HEIGHT,
+        [edge]: offset,
+        opacity: visible ? 1 : 0,
+      }}
+    >
+      <Svg width="100%" height="100%">
+        <Defs>
+          <LinearGradient
+            id={gradientId}
+            x1="0"
+            y1={edge === "top" ? "0" : "1"}
+            x2="0"
+            y2={edge === "top" ? "1" : "0"}
+          >
+            <Stop offset="0" stopColor={color} stopOpacity="1" />
+            <Stop offset="1" stopColor={color} stopOpacity="0" />
+          </LinearGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill={`url(#${gradientId})`} />
+      </Svg>
+    </View>
+  );
+};
+
 const BottomSheet: React.FC<BottomSheetProps> = ({
-  title,
-  description,
   modalRef,
-  handleCloseModal,
-  icon,
   customContent,
   bottomSheetModalProps,
   bottomSheetViewProps,
@@ -116,7 +153,6 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   enableContentPanningGesture = true,
   enableDynamicSizing = true,
   maxDynamicContentSize,
-  useInsetsBottomPadding = true,
   analyticsEvent,
   analyticsProps,
   scrollViewFooterComponent = undefined,
@@ -137,11 +173,17 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   }
 
   const { themeColors } = useColors();
-  const IconData = icon ? Icons[icon] : Icons.Announcement;
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const [footerHeight, setFooterHeight] = useState(0);
   const [headerHeight, setHeaderHeight] = useState(0);
   const keyboardHeight = useKeyboardHeight();
+  // Which sides have content scrolled out of view, for the edge fades.
+  const scrollMetrics = useRef({ offset: 0, contentHeight: 0, viewHeight: 0 });
+  const [hiddenContent, setHiddenContent] = useState({
+    above: false,
+    below: false,
+  });
   // Track bottom-sheet open exactly once per presentation
   const hasTrackedRef = useRef(false);
 
@@ -152,26 +194,10 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         disappearsOnIndex={-1}
         pressBehavior={shouldCloseOnPressBackdrop ? "close" : "none"}
         appearsOnIndex={0}
-        opacity={0.9}
+        opacity={BACKDROP_OPACITY}
       />
     ),
     [shouldCloseOnPressBackdrop],
-  );
-
-  const renderHandle = useCallback(
-    () => (
-      <View className="bg-background-primary w-full items-center justify-center pt-2 rounded-t-3xl rounded-tr-3xl">
-        {/* The pill advertises drag-to-dismiss, so hide it when that gesture
-            is disabled. opacity keeps the handle's height, preserving the
-            sheet's top spacing and rounded corners. */}
-        <View
-          className={`h-[6px] w-[40px] rounded-full bg-gray-8 ${
-            enablePanDownToClose ? "opacity-[.32]" : "opacity-0"
-          }`}
-        />
-      </View>
-    ),
-    [enablePanDownToClose],
   );
 
   const handleChange = useCallback(
@@ -203,54 +229,6 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     [analyticsEvent, analyticsProps, bottomSheetModalProps],
   );
 
-  const renderContent = useCallback(
-    () =>
-      customContent || (
-        <View className="gap-4">
-          {IconData && (
-            <View className="flex-row items-center justify-between">
-              <View className="size-10 rounded-lg items-center justify-center">
-                {React.createElement(Icon[IconData.icon], {
-                  themeColor: IconData.color,
-                  withBackground: true,
-                  square: true,
-                  size: 24,
-                })}
-              </View>
-              <TouchableOpacity
-                onPress={handleCloseModal}
-                className="size-10 items-center justify-center rounded-full bg-gray-3"
-              >
-                <Icon.X color={themeColors.gray[9]} />
-              </TouchableOpacity>
-            </View>
-          )}
-          <View>
-            <Text xl medium>
-              {title}
-            </Text>
-            {!IconData && (
-              <TouchableOpacity onPress={handleCloseModal}>
-                <Icon.X color={themeColors.gray[9]} />
-              </TouchableOpacity>
-            )}
-            <View className="h-4" />
-            <Text md regular secondary>
-              {description}
-            </Text>
-          </View>
-        </View>
-      ),
-    [
-      customContent,
-      IconData,
-      handleCloseModal,
-      themeColors.gray,
-      title,
-      description,
-    ],
-  );
-
   const handleFooterLayout = useCallback(
     (event: { nativeEvent: { layout: { height: number } } }) => {
       const { height } = event.nativeEvent.layout;
@@ -272,17 +250,77 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     [],
   );
 
+  // A pinned header or footer pads itself, so the content next to it adds no
+  // padding on that side, or the gap between them doubles. The card already
+  // clears the safe area, so the bottom padding doesn't add insets.bottom.
+  const contentPaddingTop =
+    scrollable && scrollViewHeaderComponent ? 0 : pxValue(DEFAULT_PADDING);
+  const contentPaddingBottom =
+    scrollable && scrollViewFooterComponent ? 0 : pxValue(DEFAULT_PADDING);
+
+  const updateHiddenContent = useCallback(() => {
+    const { offset, contentHeight, viewHeight } = scrollMetrics.current;
+    // A pixel of slack absorbs sub-pixel offsets at either end.
+    const above = offset > 1;
+    const below = viewHeight > 0 && offset + viewHeight < contentHeight - 1;
+    setHiddenContent((prev) =>
+      prev.above === above && prev.below === below ? prev : { above, below },
+    );
+  }, []);
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, contentSize, layoutMeasurement } =
+        event.nativeEvent;
+      scrollMetrics.current = {
+        offset: contentOffset.y,
+        contentHeight: contentSize.height,
+        viewHeight: layoutMeasurement.height,
+      };
+      updateHiddenContent();
+    },
+    [updateHiddenContent],
+  );
+
+  const handleScrollContentSizeChange = useCallback(
+    (_width: number, height: number) => {
+      scrollMetrics.current.contentHeight = height;
+      updateHiddenContent();
+    },
+    [updateHiddenContent],
+  );
+
+  const handleScrollViewLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      scrollMetrics.current.viewHeight = event.nativeEvent.layout.height;
+      updateHiddenContent();
+    },
+    [updateHiddenContent],
+  );
+
+  const footerBottom =
+    scrollViewFooterAvoidsKeyboard && keyboardHeight > 0
+      ? keyboardHeight - insets.bottom
+      : 0;
+
+  const resolvedMaxDynamicContentSize =
+    maxDynamicContentSize ??
+    (scrollable
+      ? Math.min(
+          BOTTOM_SHEET_MAX_HEIGHT,
+          windowHeight * BOTTOM_SHEET_MAX_HEIGHT_RATIO,
+        )
+      : undefined);
+
   const fixedContent = (
     <BottomSheetView
-      className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
+      className="pl-6 pr-6 pt-6 gap-6"
       style={{
-        paddingBottom: useInsetsBottomPadding
-          ? insets.bottom + pxValue(DEFAULT_PADDING)
-          : 0,
+        paddingBottom: contentPaddingBottom,
       }}
       {...bottomSheetViewProps}
     >
-      {renderContent()}
+      {customContent}
       {/*
         Workaround for BottomSheetTextInput layout issues with @gorhom/bottom-sheet.
         When the keyboard appears, BottomSheetView can shrink unexpectedly, causing
@@ -348,14 +386,24 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         enablePanDownToClose={enablePanDownToClose}
         enableContentPanningGesture={enableContentPanningGesture}
         enableDynamicSizing={enableDynamicSizing}
-        maxDynamicContentSize={maxDynamicContentSize}
+        maxDynamicContentSize={resolvedMaxDynamicContentSize}
         enableOverDrag={false}
         snapPoints={snapPoints}
         topInset={scrollable ? insets.top : undefined}
+        detached
+        bottomInset={insets.bottom + BOTTOM_SHEET_FLOATING_MARGIN}
+        // Clip the sheet to the card shape. gorhom doesn't clip detached content,
+        // so it would show past the rounded corners.
+        style={{
+          marginHorizontal: BOTTOM_SHEET_FLOATING_MARGIN,
+          borderRadius: BOTTOM_SHEET_FLOATING_CORNER_RADIUS,
+          overflow: "hidden",
+        }}
         backdropComponent={renderBackdrop}
-        handleComponent={renderHandle}
+        handleComponent={null}
         backgroundStyle={{
           backgroundColor: themeColors.background.primary,
+          borderRadius: BOTTOM_SHEET_FLOATING_CORNER_RADIUS,
         }}
         {...bottomSheetModalProps}
         onChange={handleChange}
@@ -363,13 +411,19 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         {scrollable ? (
           <View>
             <BottomSheetScrollView
-              className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
+              className="pl-6 pr-6 gap-6"
               showsVerticalScrollIndicator={false}
-              style={{
-                paddingBottom: useInsetsBottomPadding
-                  ? insets.bottom + pxValue(DEFAULT_PADDING)
-                  : 0,
+              // gorhom sizes the sheet from the scroll content's height, so
+              // padding on the scroll view itself isn't counted and the card
+              // comes out short. Pad the content instead.
+              contentContainerStyle={{
+                paddingTop: contentPaddingTop,
+                paddingBottom: contentPaddingBottom,
               }}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              onContentSizeChange={handleScrollContentSizeChange}
+              onLayout={handleScrollViewLayout}
               {...bottomSheetViewProps}
             >
               {/* Spacer reserves room for the absolutely-positioned pinned
@@ -377,7 +431,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
               {scrollViewHeaderComponent && headerHeight > 0 && (
                 <View style={{ height: headerHeight }} />
               )}
-              {renderContent()}
+              {customContent}
               {/* Spacer reserves room for the absolutely-positioned footer
                   below. Sized from the out-of-modal pre-measurement
                   above so it's already correct on first render. Guarded by
@@ -402,19 +456,36 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
             )}
             {scrollViewFooterComponent && (
               <View
+                testID="bottom-sheet-scroll-footer"
                 style={{
                   position: "absolute",
-                  bottom:
-                    scrollViewFooterAvoidsKeyboard && keyboardHeight > 0
-                      ? keyboardHeight - insets.bottom
-                      : 0,
+                  bottom: footerBottom,
                   left: 0,
                   right: 0,
+                  // Round and clip the footer so its background doesn't square off
+                  // the card's bottom corners.
+                  borderBottomLeftRadius: BOTTOM_SHEET_FLOATING_CORNER_RADIUS,
+                  borderBottomRightRadius: BOTTOM_SHEET_FLOATING_CORNER_RADIUS,
+                  overflow: "hidden",
                 }}
               >
                 {scrollViewFooterComponent()}
               </View>
             )}
+            <EdgeFade
+              edge="top"
+              offset={scrollViewHeaderComponent ? headerHeight : 0}
+              color={themeColors.background.primary}
+              visible={hiddenContent.above}
+            />
+            <EdgeFade
+              edge="bottom"
+              offset={
+                scrollViewFooterComponent ? footerBottom + footerHeight : 0
+              }
+              color={themeColors.background.primary}
+              visible={hiddenContent.below}
+            />
           </View>
         ) : (
           fixedContent

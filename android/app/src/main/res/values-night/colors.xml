@@ -1,0 +1,23 @@
+<resources>
+    <!--
+      Dark counterparts of the colors in values/colors.xml. That file is
+      rewritten wholesale by `yarn generate-splashscreen`, which strips any
+      comment in it, so the explanations live here instead.
+
+      AppTheme extends Theme.AppCompat.DayNight, so Android picks this file up
+      whenever the device is in dark mode. Both values track the page color:
+      keep them in sync with PALETTE.dark.base["00"].
+    -->
+    <!--
+      app_background shows through the transparent system bars under Android
+      15+ enforced edge-to-edge, so the status and navigation strips paint with
+      it. RN's StatusBar backgroundColor cannot override that.
+    -->
+    <color name="app_background">#000000</color>
+    <!--
+      Dark counterpart of bootsplash_background. react-native-bootsplash only
+      generates the light one: its dark mode options are a paid add-on, so the
+      night variants here and in drawable-night-* are maintained by hand.
+    -->
+    <color name="bootsplash_background">#000000</color>
+</resources>

@@ -29,13 +29,15 @@ export const FriendbotButton = ({
     }
   };
 
+  // The unfunded card's pill (Figma ?node-id=372-11502), the same as
+  // mainnet's Add XLM: as wide as its label.
   return (
     <Button
-      isFullWidth
       isLoading={isLoading}
       onPress={handleFundAccount}
       testID="friendbot-button"
-      tertiary
+      secondary
+      lg
     >
       {t("friendbotButton.title")}
     </Button>

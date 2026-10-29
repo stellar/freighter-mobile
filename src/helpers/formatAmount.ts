@@ -842,6 +842,18 @@ export const hasDecimals = (
   balance.decimals >= 0;
 
 /**
+ * A balance's total in whole token units — the amount the user sees. Prices
+ * are per whole token, so fiat math must use this rather than `total`, which
+ * is the raw integer for balances that carry `decimals`.
+ */
+export const getBalanceInWholeUnits = (
+  balance: Balance | PricedBalance,
+): BigNumber =>
+  hasDecimals(balance)
+    ? balance.total.shiftedBy(-balance.decimals)
+    : balance.total;
+
+/**
  * Formats a balance amount for display, handling custom tokens with decimals
  *
  * This function intelligently formats balance amounts by:

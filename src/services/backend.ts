@@ -16,6 +16,7 @@
 /* eslint-disable arrow-body-style */
 import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
+import BigNumber from "bignumber.js";
 import {
   mapNetworkToNetworkDetails,
   NATIVE_TOKEN_CODE,
@@ -30,12 +31,17 @@ import {
   FormattedSearchTokenRecord,
   GetTokenDetailsParams,
   DiscoverProtocol,
+  PriceHistoryRange,
   TokenDetailsResponse,
   TokenIdentifier,
+  TokenPriceHistory,
+  TokenPriceHistoryResponse,
   TokenPricesMap,
+  TokenStats,
+  TokenStatsResponse,
 } from "config/types";
 import { addBlockaidScanResults } from "helpers/addBlockaidScanResults";
-import { isNativeAssetId, isNativeContract } from "helpers/assetIdentity";
+import { isNativeContract } from "helpers/assetIdentity";
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { injectLocalTokenBalances } from "helpers/injectLocalTokenBalances";
@@ -44,12 +50,16 @@ import {
   V2AccountBalances,
 } from "helpers/mapAccountBalancesV2";
 import { ContractSpecSchema, getNativeContractDetails } from "helpers/soroban";
+import { classifyToken, isNativeKind } from "helpers/tokenClassification";
 import {
   createApiService,
   isRequestCanceled,
   logApiError,
 } from "services/apiFactory";
 import { attachAuthInterceptors } from "services/auth/attachAuth";
+
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
 
 // Create dedicated API services for backend operations
 export const freighterBackendV1 = createApiService({
@@ -494,13 +504,29 @@ const PRICE_NETWORK_PARAMS: Partial<Record<NETWORKS, string>> = {
 const V2_NATIVE_PRICE_ID = "native";
 
 /**
+ * The wire identity for the price endpoints. They key the native asset as
+ * "native", and nativeness is a RESOLVED type, not a shape: XLM's own Stellar
+ * Asset Contract reaches this layer as `XLM:<contract id>` (contract balances
+ * canonicalize `symbol:contractId`), which `isNativeAssetId` does not match.
+ * Left unresolved, the About card reads "Native" while the request asks for a
+ * Soroban contract — a different asset to the backend. `classifyToken` is the
+ * one place that resolves this, so it decides here too.
+ */
+const toWireToken = (tokenId: TokenIdentifier, network: NETWORKS): string =>
+  isNativeKind(classifyToken(tokenId, network).kind)
+    ? V2_NATIVE_PRICE_ID
+    : tokenId;
+
+/**
  * Fetches the current USD prices and 24h percentage changes for the given tokens.
  *
  * When `useV2` is true, hits the network-scoped v2 endpoint, passing the active
  * network as a `network` query param; networks the endpoint doesn't serve (e.g.
  * Futurenet) are skipped and return null prices. When false, falls back to the
- * v1 endpoint. LP shares and custom tokens are always filtered out before the
- * request, and any requested token without a returned price is filled with null.
+ * v1 endpoint. LP shares are always filtered out before the request; custom
+ * (SEP-41 contract) tokens are filtered only on the legacy v1 path, since the
+ * v2 backend prices them. Any requested token without a returned price is
+ * filled with null.
  *
  * @param params Tokens to price, the active network, the v2 flag, and an
  * optional `AbortSignal` to cancel the request
@@ -529,13 +555,30 @@ export const fetchTokenPrices = async ({
   useV2,
   signal,
 }: FetchTokenPricesParams): Promise<TokenPricesMap> => {
-  // NOTE: API does not accept LP IDs or custom tokens
+  // The old single exclusion predicate is SPLIT, not moved (token price
+  // graphs design §4.1, Phase 1 item 5):
+  // - LP shares filter out unconditionally on BOTH paths — they are never
+  //   priceable, and an LP id reaching the batch endpoint fails parsing.
+  // - Custom (SEP-41 contract) tokens filter out only on the legacy v1
+  //   rollback path, whose Node backend errors on them. The Go v2 backend
+  //   prices contract tokens, so v2 requests include them — without this, a
+  //   priced SEP-41 token would show a live chart under a "--" price.
   const filteredTokens = tokens.filter((tokenId) => {
-    const token = getTokenType(tokenId);
-    return (
-      token !== TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES &&
-      token !== TokenTypeWithCustomToken.CUSTOM_TOKEN
-    );
+    // Contract-ness comes from `classifyToken`, not `getTokenType`: the latter
+    // splits on the first colon and has no bare-contract-id case, so a bare
+    // `C…` id or a symbol containing a colon would fall into its LP catch-all
+    // (dropped as unpriceable) or read as classic (sent to v1). No network is
+    // passed, so the native SAC stays a contract token here.
+    const isContractToken = classifyToken(tokenId).kind === "soroban";
+
+    if (
+      !isContractToken &&
+      getTokenType(tokenId) === TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES
+    ) {
+      return false;
+    }
+
+    return useV2 || !isContractToken;
   });
 
   // Skip the request entirely — returning empty prices that the loop below
@@ -555,8 +598,12 @@ export const fetchTokenPrices = async ({
         // The v2 endpoint is network-scoped via a `network` query param and keys
         // the native asset as "native", so translate "XLM" -> "native" on the
         // way out (v1, below, is neither network-scoped nor native-translated).
+        // `toWireToken`, not `isNativeAssetId`: XLM's own SAC arrives as
+        // `XLM:<contract id>` and would otherwise be priced as a Soroban
+        // contract — a different asset to the backend — leaving the balance
+        // on "--" beside a chart this PR now correctly resolves as native.
         const v2Tokens = filteredTokens.map((tokenId) =>
-          isNativeAssetId(tokenId) ? V2_NATIVE_PRICE_ID : tokenId,
+          toWireToken(tokenId, network),
         );
         ({ data } = await freighterBackendV2.post<TokenPricesResponse>(
           "/token-prices",
@@ -591,12 +638,26 @@ export const fetchTokenPrices = async ({
       }
       pricesMap = data?.data ?? {};
 
-      // Translate the native price back to the app's "XLM" convention. The
-      // null-fill loop below keys off the original (un-translated) `tokens`, so
-      // remapping here ensures the XLM entry is present and not null-filled.
+      // Translate the native price back to EVERY identifier that resolved to
+      // it — "XLM", "native", and the SAC forms alike. The null-fill loop
+      // below keys off the original (un-translated) `tokens`, so an id left
+      // unaliased here shows "--" even though we hold its price.
       if (useV2 && pricesMap[V2_NATIVE_PRICE_ID]) {
-        pricesMap[NATIVE_TOKEN_CODE] = pricesMap[V2_NATIVE_PRICE_ID];
-        delete pricesMap[V2_NATIVE_PRICE_ID];
+        const nativePrice = pricesMap[V2_NATIVE_PRICE_ID];
+        const nativeOriginals = filteredTokens.filter(
+          (tokenId) => toWireToken(tokenId, network) === V2_NATIVE_PRICE_ID,
+        );
+
+        nativeOriginals.forEach((tokenId) => {
+          pricesMap[tokenId] = nativePrice;
+        });
+        // The app's own convention, kept for callers that key off it.
+        pricesMap[NATIVE_TOKEN_CODE] = nativePrice;
+        // Only drop the wire key when it is not itself one of the ids asked
+        // for ("native" is a legitimate app-side identifier).
+        if (!nativeOriginals.includes(V2_NATIVE_PRICE_ID)) {
+          delete pricesMap[V2_NATIVE_PRICE_ID];
+        }
       }
     } catch (error) {
       // A deliberate abort is not a failure worth reporting. The confirmation
@@ -674,6 +735,276 @@ export const fetchTokenPrices = async ({
 
   // Make sure to convert the response values to BigNumber for convenience
   return bigize(pricesMap, ["currentPrice", "percentagePriceChange24h"]);
+};
+
+/**
+ * Request parameters for fetching a token's price-history series
+ */
+export interface FetchTokenPriceHistoryParams {
+  /** App-side token identifier ("XLM", "native", CODE:ISSUER, SYMBOL:CONTRACTID, or a bare contract ID) */
+  tokenId: TokenIdentifier;
+  /** Active network — the endpoint is network-scoped (clients call it on PUBLIC only) */
+  network: NETWORKS;
+  /** Timeframe to fetch */
+  range: PriceHistoryRange;
+}
+
+/**
+ * A decimal string the chart can do arithmetic on — not merely non-empty.
+ * `Number("  ")` is 0, so a whitespace-only price would otherwise pass here
+ * and surface downstream as NaN prices and NaN chart coordinates.
+ */
+const isNumericString = (value: unknown): value is string =>
+  typeof value === "string" &&
+  value.trim() !== "" &&
+  new BigNumber(value).isFinite();
+
+/**
+ * A quantity that cannot be negative — a price, a supply, a holder count.
+ * `formatPriceHistoryLabel` takes `abs()` before formatting, so a negative
+ * close would be plotted against a normalized scale and then LABELLED as a
+ * positive dollar amount: a malformed payload rendered as plausible market
+ * data. A range `change` is the exception and stays on `isNumericString`,
+ * since a fall is legitimately negative.
+ */
+const isNonNegativeNumericString = (value: unknown): value is string =>
+  isNumericString(value) && !new BigNumber(value).isNegative();
+
+/**
+ * Unix seconds `Date` can represent. Finite is not enough: `Date` covers
+ * ±8.64e15 ms and `Intl.DateTimeFormat#format` throws a RangeError beyond
+ * that — during render, where it would take down the screen rather than
+ * degrading to the section's ordinary error state.
+ */
+const isFormattableUnixSeconds = (value: unknown): value is number =>
+  typeof value === "number" &&
+  Number.isFinite(new Date(value * 1000).getTime());
+
+/**
+ * The response must be for the request that asked for it. The backend echoes
+ * the token key and range verbatim; a well-formed body for another asset or
+ * range would otherwise be cached under this key and drawn under this tab.
+ */
+const assertEchoes = <T extends object>(
+  label: string,
+  expected: Partial<Record<keyof T, string>>,
+  data: T,
+) => {
+  (Object.entries(expected) as [keyof T, string][]).forEach(([field, want]) => {
+    const got: unknown = data?.[field];
+    if (got !== want) {
+      throw new Error(
+        `${label}: response ${String(field)} ${String(got)} does not match requested ${want}`,
+      );
+    }
+  });
+};
+
+/**
+ * Rejects a series the chart cannot safely draw, at the API boundary, so a
+ * malformed payload becomes an ordinary fetch failure (reported, rendered as
+ * the error state) instead of NaN geometry or a RangeError thrown in render.
+ * Mirrors the extension's `assertDrawableSeries` field for field.
+ */
+const assertDrawableSeries = (data: TokenPriceHistory) => {
+  if (!Array.isArray(data?.points)) {
+    throw new Error("token price history: points is not an array");
+  }
+  // Added to the last timestamp to label the range end, and the bucket width
+  // every point is plotted at: zero or negative would place a bucket's close
+  // at or before its own start.
+  if (
+    !(Number.isFinite(data?.resolutionSeconds) && data.resolutionSeconds > 0)
+  ) {
+    throw new Error(
+      `token price history: non-positive or non-finite resolutionSeconds (${String(
+        data?.resolutionSeconds,
+      )})`,
+    );
+  }
+  // Every label downstream prints these values with a "$". A payload in
+  // another currency would be cached and displayed as dollars, so the wire
+  // contract's USD is enforced here rather than assumed.
+  if (data?.currency !== "USD") {
+    throw new Error(
+      `token price history: unexpected currency (${String(data?.currency)})`,
+    );
+  }
+  // `null` means "verdict unavailable" and shows a warning; a missing or
+  // stringly value would read as `false` and silence it.
+  if (data?.lowVolume !== null && typeof data?.lowVolume !== "boolean") {
+    throw new Error(
+      `token price history: malformed lowVolume (${String(data?.lowVolume)})`,
+    );
+  }
+  const bad = data.points.findIndex(
+    (point) =>
+      !isFormattableUnixSeconds(point?.t) ||
+      !isNonNegativeNumericString(point?.p),
+  );
+  if (bad !== -1) {
+    throw new Error(
+      `token price history: malformed point at index ${bad} (t=${String(
+        data.points[bad]?.t,
+      )}, p=${String(data.points[bad]?.p)})`,
+    );
+  }
+  // `computeChartGeometry` takes the FIRST bucket end as t0 and normalizes
+  // every x against it, clamping only the last point. A series that goes
+  // backwards — [200, 100, 300] — therefore yields a negative x and a line
+  // that doubles back, and would be cached and drawn rather than failing.
+  // Equal timestamps collapse to one x, which the geometry already handles,
+  // so only a strict decrease is rejected.
+  const outOfOrder = data.points.findIndex(
+    (point, index) => index > 0 && point.t < data.points[index - 1].t,
+  );
+  if (outOfOrder !== -1) {
+    throw new Error(
+      `token price history: points out of chronological order at index ${outOfOrder} (${String(
+        data.points[outOfOrder - 1]?.t,
+      )} then ${String(data.points[outOfOrder]?.t)})`,
+    );
+  }
+  const last = data.points[data.points.length - 1];
+  if (last && !isFormattableUnixSeconds(last.t + data.resolutionSeconds)) {
+    throw new Error(
+      `token price history: range end outside Date range (t=${String(
+        last.t,
+      )}, resolutionSeconds=${String(data.resolutionSeconds)})`,
+    );
+  }
+  // `change` is NULLABLE, not optional: the §6.1 contract has it present on
+  // every payload, `null` when the §4.2 coverage guard rejects the window.
+  // `!= null` would wave through a missing field as though the backend had
+  // deliberately declined to compute a change, and the empty header that
+  // produces is indistinguishable from the legitimate null — cached, and
+  // silently wrong. Same rule the `lowVolume` verdict above is held to.
+  if (data.change === undefined) {
+    throw new Error("token price history: missing change");
+  }
+
+  if (data.change !== null) {
+    if (
+      !isNumericString(data.change.absolute) ||
+      !isNumericString(data.change.percent)
+    ) {
+      throw new Error(
+        `token price history: malformed change (absolute=${String(
+          data.change.absolute,
+        )}, percent=${String(data.change.percent)})`,
+      );
+    }
+    // The header prints ONE sign, taken from the percent, in front of both
+    // halves — the dollar term is rendered by magnitude. So a payload whose
+    // two halves disagree would not be rejected, it would be silently
+    // restated: `absolute: "-1", percent: "2"` reads as "+$1.00 (2.00%)", a
+    // loss shown as a gain. Either may be zero while the other is not, which
+    // is ordinary rounding on a small move.
+    const absoluteChange = new BigNumber(data.change.absolute);
+    const percentChange = new BigNumber(data.change.percent);
+    if (
+      !absoluteChange.isZero() &&
+      !percentChange.isZero() &&
+      absoluteChange.isNegative() !== percentChange.isNegative()
+    ) {
+      throw new Error(
+        `token price history: change halves disagree on sign (absolute=${data.change.absolute}, percent=${data.change.percent})`,
+      );
+    }
+  }
+};
+
+/**
+ * Absent fields are the contract; present ones must be numeric, or the card
+ * renders a literal "NaN" row (BigNumber.DEBUG is unset, so nothing throws).
+ */
+const assertTokenStats = (data: TokenStats) => {
+  if (
+    data?.supplyOnStellar !== undefined &&
+    !isNonNegativeNumericString(data.supplyOnStellar)
+  ) {
+    throw new Error(
+      `token stats: malformed supplyOnStellar (${String(data.supplyOnStellar)})`,
+    );
+  }
+  if (
+    data?.holders !== undefined &&
+    !(Number.isSafeInteger(data.holders) && data.holders >= 0)
+  ) {
+    // A holder count is a whole number of accounts. `formatStatValue` rounds
+    // down, so a fractional 1.9 would render as a plausible "1".
+    throw new Error(`token stats: malformed holders (${String(data.holders)})`);
+  }
+};
+
+/**
+ * The endpoint keys the native asset as "native", so anything resolving to it
+ * is translated here; other identifiers pass through and are echoed back.
+ *
+ * No data is a 200 with `points: []` and `change: null`, never an error; only
+ * transport failures reject, and callers own the reporting.
+ *
+ * @returns the price-history payload (string prices; parse with BigNumber)
+ */
+export const fetchTokenPriceHistory = async ({
+  tokenId,
+  network,
+  range,
+}: FetchTokenPriceHistoryParams): Promise<TokenPriceHistory> => {
+  const wireToken = toWireToken(tokenId, network);
+
+  const { data } = await freighterBackendV2.get<TokenPriceHistoryResponse>(
+    "/token-price-history",
+    { params: { token: wireToken, network, range } },
+  );
+
+  if (!data?.data) {
+    throw new Error("Unexpected token-price-history response shape");
+  }
+
+  assertEchoes("token price history", { token: wireToken, range }, data.data);
+  assertDrawableSeries(data.data);
+
+  return data.data;
+};
+
+/**
+ * Request parameters for fetching a token's stats
+ */
+export interface FetchTokenStatsParams {
+  /** App-side token identifier (same forms as {@link FetchTokenPriceHistoryParams.tokenId}) */
+  tokenId: TokenIdentifier;
+  /** Active network — the endpoint is network-scoped (clients call it on PUBLIC only) */
+  network: NETWORKS;
+}
+
+/**
+ * Fetches the Token Stats payload (supply on Stellar / holders) from the v2
+ * backend. Fields the backend cannot source are absent from the payload
+ * entirely — render only the rows present.
+ *
+ * @param params Token to fetch and the active network
+ * @returns Promise resolving to the stats payload
+ */
+export const fetchTokenStats = async ({
+  tokenId,
+  network,
+}: FetchTokenStatsParams): Promise<TokenStats> => {
+  const wireToken = toWireToken(tokenId, network);
+
+  const { data } = await freighterBackendV2.get<TokenStatsResponse>(
+    "/token-stats",
+    { params: { token: wireToken, network } },
+  );
+
+  if (!data?.data) {
+    throw new Error("Unexpected token-stats response shape");
+  }
+
+  assertEchoes("token stats", { token: wireToken }, data.data);
+  assertTokenStats(data.data);
+
+  return data.data;
 };
 
 /**

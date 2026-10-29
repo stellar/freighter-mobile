@@ -3,7 +3,6 @@ import { CollectibleImage } from "components/CollectibleImage";
 import { List } from "components/List";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -232,18 +231,6 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
             />
           </View>
 
-          {/* Hidden Collectible Banner */}
-          {collectible.isHidden && (
-            <View className="mb-6">
-              <Banner
-                variant="warning"
-                text={t("collectibleDetails.hiddenBanner")}
-                showChevron={false}
-                icon={<Icon.EyeOff size={16} themeColor="amber" />}
-              />
-            </View>
-          )}
-
           {/* Basic Information */}
           <View className="mb-6">
             <List items={basicInfoItems} variant="secondary" />
@@ -300,15 +287,10 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
             {collectible?.externalUrl && (
               <View className="flex-1">
                 <Button
-                  tertiary
+                  secondary
                   xl
                   isFullWidth
-                  icon={
-                    <Icon.LinkExternal01
-                      size={18}
-                      color={themeColors.foreground.primary}
-                    />
-                  }
+                  icon={<Icon.LinkExternal01 size={18} />}
                   onPress={() => handleViewInBrowser(collectible?.externalUrl)}
                 >
                   {t("collectibleDetails.view")}
@@ -316,7 +298,7 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
               </View>
             )}
             <View className={collectible?.externalUrl ? "flex-1" : ""}>
-              <Button tertiary xl isFullWidth onPress={handleGoToSend}>
+              <Button secondary xl isFullWidth onPress={handleGoToSend}>
                 {t("tokenDetailsScreen.send")}
               </Button>
             </View>

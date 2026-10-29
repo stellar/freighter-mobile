@@ -1,4 +1,4 @@
-import { DefaultListFooter } from "components/DefaultListFooter";
+import { PinnedBottomSheetHeader } from "components/BottomSheetHeader";
 import AccountItemRow from "components/screens/HomeScreen/AccountItemRow";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
@@ -11,7 +11,6 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface ManageAccountBottomSheetProps {
   onPressMyQRCode: () => void;
@@ -73,7 +72,8 @@ CircleButton.displayName = "CircleButton";
 /**
  * Settings/close row pinned above the manage-accounts sheet's scrollable
  * content (rendered via the BottomSheet wrapper's scrollViewHeaderComponent,
- * hence the opaque background).
+ * hence the opaque background). Per the manage-wallets frame: a plain gear on
+ * the left, the plain X on the right, no title.
  */
 export const ManageAccountSheetHeader: React.FC<
   ManageAccountSheetHeaderProps
@@ -81,27 +81,27 @@ export const ManageAccountSheetHeader: React.FC<
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
-  const iconColor = themeColors.foreground.primary;
-
   return (
-    <View className="bg-background-primary flex-row items-center justify-between w-full px-6 pt-6 pb-[24px]">
-      <CircleButton
-        sizeClassName="w-[40px] h-[40px]"
-        onPress={onPressSettings}
-        accessibilityLabel={t("home.actions.settings")}
-        testID="manage-accounts-settings-button"
-      >
-        <Icon.Settings02 size={HEADER_ICON_SIZE} color={iconColor} />
-      </CircleButton>
-      <CircleButton
-        sizeClassName="w-[40px] h-[40px]"
-        onPress={onPressClose}
-        accessibilityLabel={t("common.close")}
-        testID="manage-accounts-close-button"
-      >
-        <Icon.X size={HEADER_ICON_SIZE} color={iconColor} />
-      </CircleButton>
-    </View>
+    <PinnedBottomSheetHeader
+      spaceBelow={16}
+      layout="stacked"
+      leading={
+        <TouchableOpacity
+          onPress={onPressSettings}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel={t("home.actions.settings")}
+          testID="manage-accounts-settings-button"
+        >
+          <Icon.Settings02
+            size={HEADER_ICON_SIZE}
+            color={themeColors.foreground.primary}
+          />
+        </TouchableOpacity>
+      }
+      onClose={onPressClose}
+      closeTestID="manage-accounts-close-button"
+    />
   );
 };
 
@@ -128,7 +128,6 @@ export const ManageAccountBottomSheet: React.FC<
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const insets = useSafeAreaInsets();
 
   const iconColor = themeColors.foreground.primary;
 
@@ -215,19 +214,6 @@ export const ManageAccountBottomSheet: React.FC<
           ))}
         </View>
       )}
-      {/*
-        Scroll-end clearance must live in the scrollable content: the
-        wrapper's inset padding is a ScrollView *style*, which doesn't add
-        scroll extent on Android. insets.bottom covers devices whose
-        navigation bar overlaps the sheet (e.g. 48dp three-button bars, where
-        the 40dp spacer alone isn't enough).
-      */}
-      <View
-        testID="manage-accounts-list-end-spacing"
-        style={{ paddingBottom: insets.bottom }}
-      >
-        <DefaultListFooter />
-      </View>
     </View>
   );
 };

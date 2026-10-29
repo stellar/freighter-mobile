@@ -36,4 +36,9 @@ export interface BottomNavigationBarProps {
   contextMenuActions: MenuItem[];
   isHomePage: boolean;
   onFocusChange?: (focused: boolean) => void;
+  /**
+   * The bar's distance above the screen's bottom edge while the keyboard is
+   * down. With the keyboard up it rises by the keyboard's height less this.
+   */
+  bottomOffset: number;
 }

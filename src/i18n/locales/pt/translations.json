@@ -1,7 +1,6 @@
 {
   "wallet": "Carteira",
   "network": "Rede",
-  "freighterWallet": "Carteira Freighter",
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
   "tokenAddress": "Endereço do Token",
@@ -10,6 +9,8 @@
   },
   "common": {
     "close": "Fechar",
+    "unhide": "Mostrar",
+    "back": "Voltar",
     "paste": "Colar",
     "done": "Concluído",
     "none": "Nenhum",
@@ -25,7 +26,6 @@
     "loading": "Carregando...",
     "error": "Erro: {{errorMessage}}",
     "unknownError": "Erro desconhecido",
-    "and": " e ",
     "available": "disponível",
     "yes": "Sim",
     "message": "Mensagem",
@@ -64,7 +64,13 @@
       "imported": "Importada"
     }
   },
+  "tabBar": {
+    "history": "Atividade",
+    "home": "Início",
+    "discover": "Descobrir"
+  },
   "renameAccountModal": {
+    "title": "Renomear carteira",
     "saveName": "Salvar nome",
     "nameInputPlaceholder": "Digite um nome para sua carteira"
   },
@@ -79,25 +85,25 @@
     "about": "Sobre",
     "security": "Segurança",
     "deleteAccount": "Excluir conta",
-    "deleteAccountDisclaimer": "As contas na rede Stellar são imutáveis e não podem ser excluídas. No entanto, você pode remover qualquer conta do seu aplicativo Freighter a qualquer momento usando a opção 'Excluir conta'. Verifique se sua frase de recuperação funciona antes de fazer isso.",
+    "deleteAccountDisclaimer": "As contas na rede Stellar são imutáveis e não podem ser excluídas. No entanto, você pode remover qualquer conta do seu aplicativo Varial a qualquer momento usando a opção 'Excluir conta'. Verifique se sua frase de recuperação funciona antes de fazer isso.",
     "deleteAccountConfirmTitle": "Tem certeza?",
     "deleteAccountConfirmMessage": "Certifique-se de que você tem sua frase de recuperação em um local seguro. Você não conseguirá recuperar sua carteira sem ela."
   },
   "preferences": {
     "usageDataSharing": {
       "title": "Compartilhamento de dados de uso",
-      "description": "Ajude-nos a melhorar o Freighter compartilhando dados de uso, do dispositivo e de atividade — incluindo suas chaves públicas, endereço IP e um ID persistente que vincula sua carteira entre a extensão e o aplicativo móvel — com nossos provedores de análise de dados e de relatórios de falhas. Você pode desativar essa opção a qualquer momento. Consulte nossa Política de Privacidade para mais detalhes."
+      "description": "Ajude-nos a melhorar o Varial compartilhando dados de uso, do dispositivo e de atividade — incluindo suas chaves públicas, endereço IP e um ID persistente que vincula sua carteira entre a extensão e o aplicativo móvel — com nossos provedores de análise de dados e de relatórios de falhas. Você pode desativar essa opção a qualquer momento. Consulte nossa Política de Privacidade para mais detalhes."
     },
     "permissionModal": {
       "enable": {
         "title": "Habilitar Analytics",
         "description": "Para habilitar o compartilhamento de dados de uso, você precisará permitir permissões de rastreamento nas configurações do seu dispositivo.",
-        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e habilite \"Permitir Rastreamento\"."
+        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Varial e habilite \"Permitir Rastreamento\"."
       },
       "disable": {
         "title": "Desabilitar Analytics",
         "description": "Para desabilitar o compartilhamento de dados de uso, você precisará alterar as permissões de rastreamento nas configurações do seu dispositivo.",
-        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e desabilite \"Permitir Rastreamento\"."
+        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Varial e desabilite \"Permitir Rastreamento\"."
       },
       "openSettings": "Abrir Configurações",
       "notNow": "Agora não"
@@ -117,11 +123,11 @@
   },
   "aboutScreen": {
     "title": "Sobre",
-    "freighterDescription": "Freighter é uma carteira sem custódia para a blockchain Stellar",
+    "freighterDescription": "Varial é uma carteira sem custódia para a blockchain Stellar",
     "listTitle": "Links",
     "stellarFoundation": "© {{year}} Stellar Development Foundation",
     "links": {
-      "freighter": "freighter.app",
+      "freighter": "varialwallet.com",
       "stellar": "stellar.org",
       "privacyPolicy": "Política de Privacidade",
       "termsOfService": "Termos de Serviço"
@@ -145,89 +151,106 @@
     "friendbotUrl": "URL do Friendbot",
     "friendbotPlaceholder": "Insira a URL do Friendbot"
   },
+  "walletSetupOverlay": {
+    "creating": "Criando sua carteira...",
+    "importing": "Importando sua carteira...",
+    "ready": "Sua carteira está pronta!"
+  },
   "welcomeScreen": {
+    "title": "Bem vindo",
     "createNewWallet": "Criar uma nova carteira",
-    "iAlreadyHaveWallet": "Já tenho uma carteira",
+    "importWallet": "Importar carteira",
     "terms": {
-      "byProceeding": "Ao prosseguir, você concorda com os ",
-      "termsOfService": "termos de uso do Freighter",
-      "privacyPolicy": "política de privacidade"
+      "beforeTermsLink": "Ao continuar, você concorda com os ",
+      "termsLink": "Termos",
+      "betweenLinks": " e a ",
+      "privacyPolicyLink": "Política de Privacidade",
+      "afterPrivacyPolicyLink": "."
     }
+  },
+  "welcomeHeader": {
+    "rebrandNotice": "O Freighter agora é Varial"
   },
   "passwordInput": {
     "passwordNote": "Deve ter pelo menos 8 caracteres"
   },
   "choosePasswordScreen": {
-    "title": "Escolha uma Senha",
-    "passwordInputPlaceholder": "Digite sua senha",
-    "defaultActionButtonText": "Continuar",
-    "footerNoteText": "Não podemos recuperar sua senha.\nCertifique-se de mantê-la em um local seguro.",
-    "passwordTooLong": "Deve ter menos de 2048 caracteres"
-  },
-  "confirmPasswordScreen": {
-    "title": "Confirmar Senha",
-    "passwordInputPlaceholder": "Confirme sua senha",
-    "defaultActionButtonText": "Continuar",
-    "footerNoteText": "Não podemos recuperar sua senha.\nCertifique-se de mantê-la em um local seguro."
-  },
-  "recoveryPhraseAlertScreen": {
-    "title": "Frase de Recuperação",
-    "warningBlockOne": "Sua frase de recuperação dá acesso à sua conta e é a única maneira de acessá-la em um novo aplicativo.",
-    "warningBlockTwo": "Mantenha-a em um local seguro.",
-    "defaultActionButtonText": "Entendi, revelar minha frase"
+    "title": "Defina uma Senha",
+    "description": "Você usará essa senha para entrar na sua conta.",
+    "passwordInputPlaceholder": "Senha",
+    "confirmPasswordInputPlaceholder": "Confirme a senha",
+    "passwordTooLong": "Deve ter menos de 2048 caracteres",
+    "passwordsDontMatch": "As senhas não coincidem",
+    "importAcknowledgement": "Entendo que a frase de recuperação importada não pode ser recuperada e deve ser guardada com segurança.",
+    "importWalletButtonText": "Importar carteira"
   },
   "recoveryPhraseScreen": {
-    "title": "Sua Frase de Recuperação",
-    "warning": "Isso é só para seus olhos. Nunca compartilhe isso.",
-    "copyButtonText": "Copiar para a área de transferência",
-    "footerNoteText": "Certifique-se de manter isso em um\nlocal seguro antes de continuar"
+    "hiddenTitle": "Frase de Recuperação",
+    "revealedTitle": "Você salvou, certo?",
+    "description": "Sua frase de recuperação é a única forma de restaurar sua carteira.",
+    "descriptionEmphasis": "Guarde-a em um lugar seguro.",
+    "revealButtonText": "Entendi. Revelar minha frase",
+    "hiddenPhraseAccessibilityLabel": "Frase de recuperação oculta",
+    "tapToCopy": "Toque para copiar",
+    "copied": "Copiado",
+    "warning": "Certifique-se de que você a salvou.\nSem ela, não é possível recuperar sua carteira."
   },
-  "validateRecoveryPhraseScreen": {
-    "title": "Digite a Palavra #{{number}}",
-    "instructionText": "Consulte a frase de recuperação que você acabou de salvar",
-    "errorText": "Palavra incorreta selecionada, tente novamente",
-    "defaultActionButtonText": "Continuar"
+  "recoveryPhraseField": {
+    "showPhrase": "Mostrar frase de recuperação",
+    "hidePhrase": "Ocultar frase de recuperação"
   },
   "biometricsOnboardingScreen": {
     "faceId": {
-      "title": "Habilitar Face ID",
-      "description": "Adicione outro nível de segurança ao exigir Face ID para desbloquear sua carteira ou aprovar transações.",
-      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
-    },
-    "touchId": {
-      "title": "Habilitar Touch ID",
-      "description": "Adicione outro nível de segurança ao exigir Touch ID para desbloquear sua carteira ou aprovar transações.",
-      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+      "title": "Desbloquear com Face ID",
+      "description": "Desbloqueie sua carteira e aprove transações mais rápido com o Face ID.",
+      "enableButtonText": "Habilitar Face ID"
     },
     "fingerprint": {
-      "title": "Habilitar Impressão Digital",
-      "description": "Adicione outro nível de segurança ao exigir Impressão Digital para desbloquear sua carteira ou aprovar transações.",
-      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+      "title": "Desbloquear com Impressão Digital",
+      "description": "Desbloqueie sua carteira e aprove transações mais rápido com a Impressão Digital.",
+      "enableButtonText": "Habilitar Impressão Digital"
+    },
+    "touchId": {
+      "title": "Desbloquear com Touch ID",
+      "description": "Desbloqueie sua carteira e aprove transações mais rápido com o Touch ID.",
+      "enableButtonText": "Habilitar Touch ID"
     },
     "faceBiometrics": {
-      "title": "Habilitar Reconhecimento Facial",
-      "description": "Adicione outro nível de segurança ao exigir Reconhecimento Facial para desbloquear sua carteira ou aprovar transações.",
-      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+      "title": "Desbloquear com Reconhecimento Facial",
+      "description": "Desbloqueie sua carteira e aprove transações mais rápido com o Reconhecimento Facial.",
+      "enableButtonText": "Habilitar Reconhecimento Facial"
     },
     "opticId": {
-      "title": "Habilitar Optic ID",
-      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
+      "title": "Desbloquear com Optic ID",
+      "description": "Desbloqueie sua carteira e aprove transações mais rápido com o Optic ID.",
+      "enableButtonText": "Habilitar Optic ID"
     },
     "iris": {
-      "title": "Habilitar Iris",
-      "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
-    }
+      "title": "Desbloquear com Íris",
+      "description": "Desbloqueie sua carteira e aprove transações mais rápido com a Íris.",
+      "enableButtonText": "Habilitar Íris"
+    },
+    "skipForNow": "Pular por enquanto"
   },
   "importWalletScreen": {
     "title": "Importar Carteira",
-    "textAreaPlaceholder": "Digite a frase de recuperação",
-    "textAreaNote": "Frases geralmente têm 12 ou 24 palavras",
-    "defaultActionButtonText": "Importar carteira"
+    "description": "Importe sua carteira com a frase de recuperação de 12 ou 24 palavras",
+    "textAreaPlaceholder": "Digite sua frase de recuperação"
+  },
+  "rebrandAnnouncementScreen": {
+    "title": "O Freighter agora é Varial",
+    "description": "Sua carteira Freighter, agora com um novo nome e visual.",
+    "continueButton": "Continuar para o Varial",
+    "closeAccessibilityLabel": "Fechar",
+    "illustrationAccessibilityLabel": "O logotipo do Varial"
   },
   "lockScreen": {
-    "title": "Bem-vindo de volta",
-    "description": "Digite a senha para desbloquear o Freighter",
-    "passwordInputPlaceholder": "Digite sua senha",
+    "title": "Bem vindo de volta",
+    "description": "Digite a senha para desbloquear o Varial",
+    "passwordInputPlaceholder": "Senha",
+    "showPassword": "Mostrar senha",
+    "hidePassword": "Ocultar senha",
+    "unlockWithBiometrics": "Desbloquear com biometria",
     "unlockButtonText": "Desbloquear",
     "forgotPasswordButtonText": "Esqueci minha senha",
     "useFaceIdInstead": "Usar Face ID",
@@ -241,16 +264,15 @@
     "errorUnlockingWalletMessage": "Se o problema persistir, toque em \"Esqueci minha senha\" e reimporte sua carteira.",
     "failedToLoadAccountTitle": "Conta não carregada",
     "failedToLoadAccountMessage": "Sua conta não pôde ser carregada após o login. Tente novamente.",
-    "forgotPasswordWarningTitle": "Tem certeza?",
-    "forgotPasswordWarningMessage1": "Não podemos recuperar sua senha para você. Este processo apagará sua carteira e você precisará passar pelo fluxo de importação da carteira para reimportá-la com sua frase de recuperação.",
-    "forgotPasswordWarningMessage2": "Você perderá permanentemente o acesso à conta atualmente armazenada no Freighter.",
-    "forgotPasswordWarningMessage3": "Só faça isso se você tiver sua frase guardada em segurança em outro lugar.",
-    "forgotPasswordWarningResetButton": "Redefinir Freighter"
+    "forgotPasswordWarningTitle": "Esqueceu sua senha?",
+    "forgotPasswordWarningMessage1": "Sua senha fica salva apenas neste dispositivo e não pode ser recuperada.",
+    "forgotPasswordWarningMessage2": "Você pode redefinir o Varial com sua frase de recuperação, criar uma nova senha e importar a carteira novamente.",
+    "forgotPasswordWarningMessage3": "Tenha sua frase de recuperação em mãos antes de continuar.",
+    "forgotPasswordWarningResetButton": "Redefinir carteira"
   },
   "onboarding": {
     "continue": "Continuar",
-    "pasteFromClipboard": "Colar da área de transferência",
-    "doThisLaterButtonText": "Fazer isso depois"
+    "next": "Avançar"
   },
   "connectedApps": {
     "title": "Aplicativos Conectados",
@@ -269,7 +291,7 @@
     "defaultTabTitle": "Nova Aba",
     "recent": "Recentes",
     "trending": "Em Alta",
-    "legalDisclaimer": "Estes serviços são operados por terceiros independentes, não pela Freighter ou SDF. A inclusão aqui não é um endosso. DeFi envolve riscos, incluindo perda de fundos. Use por sua própria conta e risco.",
+    "legalDisclaimer": "Estes serviços são operados por terceiros independentes, não pelo Varial ou SDF. A inclusão aqui não é um endosso. DeFi envolve riscos, incluindo perda de fundos. Use por sua própria conta e risco.",
     "oneTab": "1 Aba",
     "tabs": "{{count}} Abas",
     "urlBarPlaceholder": "Pesquisar",
@@ -284,7 +306,7 @@
     "tags": "Tags",
     "description": "Descrição",
     "clearRecents": "Limpar Recentes",
-    "welcomeTitle": "Bem-vindo ao Descobrir!",
+    "welcomeTitle": "Bem vindo ao Descobrir!",
     "welcomeGateway": "Seu portal para o ecossistema Stellar. Navegue e conecte-se a aplicativos descentralizados construídos na rede Stellar.",
     "welcomeCta": "Vamos lá",
     "newTab": "Nova aba",
@@ -294,10 +316,12 @@
     "showTabs": "Mostrar {{count}} abas"
   },
   "history": {
+    "title": "Atividade",
     "emptyState": {
       "title": "Nenhuma transação para mostrar"
     },
     "error": "Erro ao carregar o histórico",
+    "loadingA11yLabel": "Carregando o histórico",
     "refresh": "Atualizar",
     "refreshing": "Atualizando...",
     "transactionHistory": {
@@ -339,16 +363,74 @@
     "sorobanToken": "Token Soroban",
     "balance": "Saldo",
     "value": "Valor",
+    "loadingPriceA11yLabel": "Carregando o preço",
+    "loadingBalanceA11yLabel": "Carregando o saldo",
     "listHeader": "Sua atividade de {{tokenName}}",
     "swap": "Trocar",
-    "send": "Enviar"
+    "send": "Enviar",
+    "hideToken": "Ocultar {{tokenCode}}"
   },
-  "recoveryPhraseWarning": {
-    "yourRecoveryPhrase": "Sua frase de recuperação dá acesso total às suas carteiras e fundos.",
-    "ifYouForgetYourPassword": "Se você esquecer sua senha, use a frase de recuperação para acessar sua carteira",
-    "dontShareWithAnyone": "Não compartilhe esta frase com ninguém",
-    "neverAskForYourPhrase": "A Stellar Development Foundation nunca pedirá sua frase",
-    "ifYouLose": "Se você a perder, não poderemos recuperá-la"
+  "hiddenTokens": {
+    "showHidden": "Mostrar ocultos",
+    "title": "Tokens ocultos",
+    "empty": "Nenhum token oculto",
+    "hidden": "{{tokenCode}} ocultado",
+    "unhidden": "{{tokenCode}} exibido",
+    "hideError": "Erro ao ocultar {{tokenCode}}",
+    "unhideError": "Erro ao exibir {{tokenCode}}"
+  },
+  "priceHistory": {
+    "notice": {
+      "lowVolume": {
+        "title": "Baixo volume de negociação",
+        "body": "Este token tem baixo volume de negociação, então os dados de preço podem ser menos confiáveis."
+      },
+      "limitedData": {
+        "title": "Dados de negociação limitados",
+        "body": "O histórico de preços é limitado para este período."
+      },
+      "newlyTraded": {
+        "title": "Token negociado recentemente",
+        "body": "O histórico de preços é limitado porque este token começou a ser negociado recentemente."
+      },
+      "verdictUnavailable": {
+        "title": "Não foi possível verificar a atividade de negociação",
+        "body": "Os dados de preço podem ser menos confiáveis para este token."
+      }
+    },
+    "emptyState": "Sem dados de preço para este período",
+    "errorState": "Não foi possível carregar os dados de preço",
+    "retry": "Tentar novamente",
+    "loadingA11yLabel": "Carregando o gráfico de preço",
+    "chartA11yLabel": "Gráfico de preço, {{range}}: {{start}} a {{end}}, {{delta}}",
+    "noDelta": "sem dados de variação",
+    "inspectedAt": "{{date}} às {{time}}",
+    "loadingDeltaA11yLabel": "Carregando a variação de preço",
+    "timeframeSelectorA11yLabel": "Período",
+    "ranges": {
+      "1H": "1H",
+      "1D": "1D",
+      "1W": "1S",
+      "1M": "1M",
+      "1Y": "1A",
+      "ALL": "MÁX"
+    },
+    "tokenStats": {
+      "title": "Estatísticas do Token",
+      "supplyOnStellar": "Oferta na Stellar",
+      "holders": "Detentores"
+    },
+    "about": {
+      "title": "Sobre",
+      "issuer": "Emissor",
+      "type": "Tipo",
+      "domain": "Domínio",
+      "tokenType": {
+        "native": "Nativo",
+        "classic": "Stellar Clássico",
+        "soroban": "Soroban"
+      }
+    }
   },
   "authStore": {
     "error": {
@@ -421,21 +503,18 @@
     "title": "Tokens",
     "error": "Erro ao carregar saldos",
     "unfundedAccount": {
-      "learnMore": "Saiba mais",
       "fundAccountButton": "Adicionar XLM",
-      "title": "Um pouco vazio por aqui...",
-      "messageStart": "Adicione pelo menos",
-      "messageAmount": "2 XLM",
-      "messageEnd": "para ativar sua carteira. Depois de financiada, você poderá adicionar tokens e fazer transações."
+      "title": "Ative sua carteira",
+      "description": "Adicione pelo menos 2 XLM para começar"
     },
     "addTokenButton": "Adicionar token"
   },
   "collectiblesGrid": {
     "title": "Colecionáveis",
     "error": "Erro ao carregar colecionáveis",
-    "empty": "Nenhum colecionável ainda",
-    "emptyHidden": "Nenhum colecionável oculto",
+    "empty": "Colecione seu primeiro NFT",
     "addCollectibleButton": "Adicionar colecionável",
+    "emptyButton": "Adicionar colecionável",
     "itemHiddenLabel": "{{name}}, oculto",
     "emptyDescription": "Os colecionáveis que você possui aparecerão aqui."
   },
@@ -455,10 +534,14 @@
     "imageSavedToPhotos": "Imagem salva na galeria",
     "imageSaveFailed": "Falha ao salvar imagem na galeria",
     "imageSaveAttempted": "Tentativa de salvar, verifique suas fotos",
-    "hideCollectible": "Ocultar colecionável",
-    "showCollectible": "Mostrar colecionável",
-    "hideSuccess": "Colecionável ocultado com sucesso",
-    "hiddenBanner": "Este colecionável está oculto"
+    "hideCollectible": "Ocultar colecionável"
+  },
+  "hiddenCollectibles": {
+    "title": "Colecionáveis ocultos",
+    "empty": "Nenhum colecionável oculto",
+    "hidden": "Colecionável ocultado",
+    "unhidden": "Colecionável exibido",
+    "unhideError": "Erro ao exibir colecionável"
   },
   "addCollectibleScreen": {
     "title": "Adicionar Colecionável",
@@ -475,9 +558,7 @@
     "alreadyInWallet": "Este colecionável já está na sua carteira",
     "showHidden": "Mostrar ocultos"
   },
-  "hiddenCollectiblesScreen": {
-    "title": "Colecionáveis Ocultos"
-  },
+
   "collectibles": {
     "errors": {
       "collectionNotFound": "Coleção não encontrada para o endereço fornecido.",
@@ -555,13 +636,13 @@
     "tokenAddressCopied": "Endereço do token copiado!"
   },
   "sendPaymentScreen": {
-    "title": "Enviar para",
+    "title": "Escolher destinatário",
     "inputPlaceholder": "Digite o endereço",
     "recents": "Recentes",
     "suggestions": "Sugestões",
     "cannotSendToSelf": "Não é possível enviar para você mesmo",
     "invalidAddress": "Endereço Stellar inválido",
-    "scanQRCodeText": "Escanear um QR Code do Freighter"
+    "scanQRCodeText": "Escanear um QR Code do Varial"
   },
   "sendSearchContacts": {
     "myWallets": "Minhas carteiras",
@@ -593,7 +674,8 @@
       "minimum": "Mínimo",
       "rate": "Taxa",
       "fee": "Taxa",
-      "xdr": "XDR"
+      "xdr": "XDR",
+      "sheetTitle": "Revisar troca"
     },
     "errors": {
       "failedToSetupTransaction": "Falha ao configurar transação de troca",
@@ -736,6 +818,7 @@
       "max": "Máx"
     },
     "chooseRecipient": "Escolher destinatário",
+    "sendTo": "Enviar para",
     "setAmount": "Insira um valor",
     "reviewButton": "Revisar envio",
     "details": {
@@ -771,7 +854,7 @@
   "addMemoExplanationBottomSheet": {
     "title": "Memo é obrigatório",
     "description": "Uma conta de destino requer o uso do campo memo que não está presente na transação que você está prestes a assinar.",
-    "disabledWarning": "O Freighter desabilitou automaticamente a opção de assinar esta transação.",
+    "disabledWarning": "O Varial desabilitou automaticamente a opção de assinar esta transação.",
     "checkMemoRequirements": "Verifique os requisitos de memo da conta de destino e inclua-o na transação."
   },
   "addAnotherWalletScreen": {
@@ -811,7 +894,8 @@
   "medium": "médio",
   "high": "alto",
   "transactionReviewScreen": {
-    "title": "Você está enviando"
+    "title": "Você está enviando",
+    "sheetTitle": "Revisar envio"
   },
   "transactionProcessingScreen": {
     "sending": "Enviando",
@@ -869,13 +953,13 @@
     "errorSubmitting": "Erro ao enviar a transação",
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
     "errorWrongNetwork": "Rede incorreta",
-    "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Freighter e tente novamente",
+    "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Varial e tente novamente",
     "errorUnsupportedChain": "Rede não suportada",
     "errorUnsupportedChainMessage": "Por favor, certifique-se de que o dApp com o qual você está tentando conectar suporta a rede Stellar",
     "errorUnsupportedTransactionChain": "Rede não suportada",
     "errorUnsupportedTransactionChainMessage": "A rede {{chainId}} não é suportada. Por favor, certifique-se de que a transação que você está tentando assinar foi construída em uma rede Stellar suportada",
     "errorUnsupportedMethodTitle": "Método não suportado",
-    "errorUnsupportedMethod": "O método '{{method}}' não é suportado pela carteira Freighter",
+    "errorUnsupportedMethod": "O método '{{method}}' não é suportado pela carteira Varial",
     "pleaseTryAgainLater": "Por favor, tente novamente mais tarde",
     "notAuthenticated": "Desconectado",
     "pleaseLoginToConnect": "Por favor, entre na sua carteira e tente novamente para se conectar a este App",
@@ -884,10 +968,10 @@
     "pleaseUnlockToConnect": "Por favor, desbloqueie sua carteira para se conectar a este App",
     "pleaseUnlockToSignTransaction": "Por favor, desbloqueie sua carteira para assinar esta transação",
     "connectionNotFound": "Conexão não encontrada",
-    "connectionNotFoundMessage": "Por favor, tente criar uma nova conexão ou alternar para outra conta que possui a conexão na sua carteira Freighter",
+    "connectionNotFoundMessage": "Por favor, tente criar uma nova conexão ou alternar para outra conta que possui a conexão na sua carteira Varial",
     "userNotAuthenticated": "Usuário não autenticado",
     "invalidTransactionOrigin": "Domínio de transação não confiável",
-    "invalidTransactionOriginMessage": "Uma solicitação de transação WalletConnect foi recebida de {{transactionRequestOrigin}}, mas este domínio não está conectado na sua carteira Freighter.",
+    "invalidTransactionOriginMessage": "Uma solicitação de transação WalletConnect foi recebida de {{transactionRequestOrigin}}, mas este domínio não está conectado na sua carteira Varial.",
     "unableToLoadAuthEntry": "Não foi possível carregar os detalhes da solicitação",
     "failedToProcessAuthEntry": "Não foi possível assinar — a entrada de autorização está malformada ou inválida",
     "e2eHelper": {
@@ -965,9 +1049,11 @@
     "secretKeyPlaceholder": "Sua chave secreta",
     "passwordPlaceholder": "Senha",
     "passwordNote": "Digite sua senha",
-    "responsibilityNote": "Estou ciente de que o Freighter não pode recuperar a chave secreta importada e armazená-la é minha responsabilidade.",
+    "responsibilityNote": "Estou ciente de que o Varial não pode recuperar a chave secreta importada e armazená-la é minha responsabilidade.",
     "importButton": "Importar Carteira",
-    "invalidSecretKey": "Chave secreta inválida"
+    "invalidSecretKey": "Chave secreta inválida",
+    "showSecretKey": "Mostrar chave secreta",
+    "hideSecretKey": "Ocultar chave secreta"
   },
   "securityScreen": {
     "title": "Segurança",
@@ -1044,7 +1130,7 @@
   "yourRecoveryPhrase": {
     "title": "Sua Frase de Recuperação",
     "securityNote": "Essas palavras são as chaves da sua carteira—guarde-as com segurança para manter seus fundos protegidos.",
-    "copyButton": "Copiar para a área de transferência"
+    "copyButton": "Copiar frase"
   },
   "transaction": {
     "errors": {
@@ -1062,24 +1148,7 @@
       "recipientIsTokenContract": "Não é possível enviar para o contrato do próprio token"
     }
   },
-  "welcomeBanner": {
-    "welcomeMessage": "Bem-vindo ao Freighter!",
-    "fundingText": "Para começar a usar esta conta, ",
-    "fundingText2": "financie-a com pelo menos 2 XLM.",
-    "minimumBalanceText": "As contas Stellar exigem um saldo mínimo de 2 XLM para garantir a segurança da rede e prevenir spam.",
-    "reserveExplanationText": "Esta reserva ajuda a manter o ledger cobrindo taxas de transação e desencorajando a criação de contas desnecessárias, mantendo o sistema eficiente e funcional.",
-    "addXLM": "Adicionar XLM",
-    "doThisLater": "Fazer isso depois"
-  },
   "tokenIconAlt": "ícone do token {{code}}",
-  "recoverySkipModal": {
-    "title": "Tem certeza que deseja pular?",
-    "description1": "Sua frase de recuperação dá acesso à sua conta e é a única forma de acessá-la.",
-    "description2": "Se você perder, não poderemos recuperar. Antes de adicionar grandes quantias, certifique-se de visualizar e salvar sua frase de recuperação em um local seguro acessando ",
-    "description3": "Configurações → Segurança → Mostrar Frase de Recuperação.",
-    "confirm": "Entendi, continuar",
-    "cancel": "Voltar"
-  },
   "debug": {
     "title": "Debug",
     "actions": "Ações",
@@ -1182,7 +1251,7 @@
       "executableTag": "Tag do executável",
       "executableNote": "O código deste contrato é gerenciado pelo proprietário do executável e pode mudar depois que você assinar.",
       "unrecognizedInvocation": "Invocação não reconhecida",
-      "unrecognizedInvocationWarning": "O Freighter não conseguiu ler esta autorização. Não assine a menos que você confie neste site.",
+      "unrecognizedInvocationWarning": "O Varial não conseguiu ler esta autorização. Não assine a menos que você confie neste site.",
       "address": "Endereço do signatário"
     },
     "operations": {
@@ -1281,11 +1350,11 @@
     "defaultMessage": "Por favor atualize seu app para a última versão.",
     "forceUpdate": {
       "title": "Atualização Necessária",
-      "description": "Uma nova versão do Freighter está disponível. Por favor, atualize para garantir que sua carteira funcione corretamente e com segurança. Seus fundos não são afetados.",
+      "description": "Uma nova versão do Varial está disponível. Por favor, atualize para garantir que sua carteira funcione corretamente e com segurança. Seus fundos não são afetados.",
       "updateButton": "Atualizar app",
       "laterButton": "Vou atualizar depois",
       "skipTitle": "Continuar sem atualizar?",
-      "skipMessage": "Usar uma versão desatualizada pode causar erros ou transações falhadas. Ao continuar, você aceita total responsabilidade por quaisquer problemas até atualizar o Freighter."
+      "skipMessage": "Usar uma versão desatualizada pode causar erros ou transações falhadas. Ao continuar, você aceita total responsabilidade por quaisquer problemas até atualizar o Varial."
     }
   },
   "jailbreakDetected": {

@@ -85,7 +85,7 @@ export const ScValDisplay: React.FC<ScValDisplayProps> = ({
 
   if (tokens.length > MAX_INTERACTIVE_TOKENS) {
     return (
-      <Text testID={testID ?? `ScValDisplay-${tokenKeyPrefix}`}>
+      <Text medium testID={testID ?? `ScValDisplay-${tokenKeyPrefix}`}>
         {scValToDisplayValue(scVal)}
       </Text>
     );
@@ -93,6 +93,7 @@ export const ScValDisplay: React.FC<ScValDisplayProps> = ({
 
   return (
     <Text
+      medium
       // The whole literal stays one accessible node, so a screen reader reads
       // it through as one value rather than as a run of buttons.
       accessibilityLabel={scValToDisplayValue(scVal)}

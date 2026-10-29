@@ -5,7 +5,6 @@ import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AddAnotherWalletScreen from "components/screens/AddAnotherWallet";
 import ImportSecretKeyScreen from "components/screens/ImportSecretKeyScreen";
 import VerifyPasswordScreen from "components/screens/VerifyPasswordScreen";
-import Icon from "components/sds/Icon";
 import {
   MANAGE_WALLETS_ROUTES,
   ManageWalletsStackParamList,
@@ -35,7 +34,7 @@ export const ManageWalletsStackNavigator = () => {
         component={AddAnotherWalletScreen}
         options={{
           headerTitle: t("addAnotherWalletScreen.title"),
-          headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
+          headerLeft: () => <CustomHeaderButton variant="close" />,
         }}
       />
       <ManageWalletsStack.Screen
