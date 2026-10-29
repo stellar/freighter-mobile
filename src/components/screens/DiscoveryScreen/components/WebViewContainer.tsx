@@ -348,6 +348,10 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                       <WebView
                         userAgent={BROWSER_CONSTANTS.DISCOVERY_USER_AGENT}
                         allowsLinkPreview={false}
+                        // iOS: let <video playsinline> (e.g. getUserMedia camera
+                        // feeds used by web QR scanners) render inline instead of
+                        // being forced into the native full-screen player
+                        allowsInlineMediaPlayback
                         javaScriptEnabled={javaScriptEnabled}
                         domStorageEnabled={domStorageEnabled}
                         startInLoadingState
