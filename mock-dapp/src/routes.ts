@@ -418,81 +418,138 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
   /**
    * Send stellar_signXDR request
    * POST /session/:id/request/signXDR
+   *
+   * The body is `{ xdr, description?, network? }`. With no `xdr`, it can be
+   * `{ fixture: "sacTransferToMuxedContract", network?, to? }` instead: the
+   * server then generates a native SAC transfer from the session's account to
+   * `to` (a muxed contract, `W…`, by default) and returns the generated `xdr`
+   * in the response. This mirrors signAuthEntry generating a preimage when
+   * `entryXdr` is absent, but only for this fixture; any other body without an
+   * `xdr` string still gets a 400. The fixture loads @stellar/stellar-sdk 17 on
+   * demand, so no other route does.
    */
-  router.post("/session/:id/request/signXDR", (req: Request, res: Response) => {
-    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { xdr: xdrParam, description } = req.body as {
-      xdr?: unknown;
-      description?: string | number;
-      network?: unknown;
-    };
-    const network = parseNetwork((req.body as { network?: unknown }).network);
+  router.post(
+    "/session/:id/request/signXDR",
+    async (req: Request, res: Response) => {
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+      const {
+        xdr: xdrParam,
+        description,
+        fixture,
+        to,
+      } = req.body as {
+        xdr?: unknown;
+        description?: string | number;
+        network?: unknown;
+        fixture?: unknown;
+        to?: unknown;
+      };
+      const network = parseNetwork((req.body as { network?: unknown }).network);
 
-    if (!xdrParam || typeof xdrParam !== "string") {
-      return res.status(400).json({
-        error: "Invalid request",
-        message: "XDR is required and must be a string",
-      });
-    }
+      const useSacTransferFixture =
+        xdrParam === undefined && fixture === "sacTransferToMuxedContract";
 
-    const xdrText = xdrParam;
-    const descriptionText =
-      typeof description === "string" ? description : undefined;
+      if (
+        !useSacTransferFixture &&
+        (!xdrParam || typeof xdrParam !== "string")
+      ) {
+        return res.status(400).json({
+          error: "Invalid request",
+          message: "XDR is required and must be a string",
+        });
+      }
 
-    const metadata = sessionMetadata.get(id);
+      const descriptionText =
+        typeof description === "string" ? description : undefined;
 
-    if (!metadata) {
-      return res.status(404).json({ error: "Session not found" });
-    }
+      const metadata = sessionMetadata.get(id);
 
-    if (!metadata.topic) {
-      return res.status(400).json({
-        error: "Session not connected",
-        message: "Wait for wallet approval first",
-      });
-    }
+      if (!metadata) {
+        return res.status(404).json({ error: "Session not found" });
+      }
 
-    try {
-      const requestPromise = wcClient.requestSignXDR(
-        metadata.topic,
-        { xdr: xdrText, description: descriptionText },
-        network,
-      );
+      if (!metadata.topic) {
+        return res.status(400).json({
+          error: "Session not connected",
+          message: "Wait for wallet approval first",
+        });
+      }
 
-      const requestId = `req-${Date.now()}`;
+      try {
+        // The caller's XDR, or, for the fixture only, the one generated below
+        let xdrText = typeof xdrParam === "string" ? xdrParam : "";
 
-      metadata.responses.push({
-        id: requestId,
-        type: "signXDR",
-        params: { xdr: xdrText, description, network },
-        promise: requestPromise,
-        createdAt: Date.now(),
-      });
+        if (useSacTransferFixture) {
+          // The fixture sends from the session's own account. A CAIP-10 account
+          // id is `namespace:reference:address`, so the address is its third
+          // field.
+          const source = wcClient
+            .getSession(metadata.topic)
+            ?.namespaces.stellar?.accounts[0]?.split(":")[2];
 
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
-      requestPromise
-        .then((result) => {
-          console.log(`[API] Request ${requestId} completed:`, result);
-        })
-        .catch((error: unknown) => {
-          console.error(`[API] Request ${requestId} failed:`, error);
+          if (!source) {
+            return res
+              .status(400)
+              .json({ error: "Session has no Stellar account" });
+          }
+
+          // On demand, so the routes CI relies on never load SDK 17
+          const { generateSacTransferToMuxedContractXdr } = await import(
+            "./fixtures/sacTransferToMuxedContract"
+          );
+
+          xdrText = generateSacTransferToMuxedContractXdr({
+            network,
+            source,
+            to: typeof to === "string" ? to : undefined,
+          });
+        }
+
+        const requestPromise = wcClient.requestSignXDR(
+          metadata.topic,
+          { xdr: xdrText, description: descriptionText },
+          network,
+        );
+
+        const requestId = `req-${Date.now()}`;
+
+        metadata.responses.push({
+          id: requestId,
+          type: "signXDR",
+          params: { xdr: xdrText, description, network },
+          promise: requestPromise,
+          createdAt: Date.now(),
         });
 
-      return res.json({
-        requestId,
-        status: "pending",
-        message: "Request sent. Poll /session/:id/response for result.",
-      });
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error("[API] Failed to send signXDR request:", error);
-      return res.status(500).json({
-        error: "Failed to send request",
-        message: errorMessage,
-      });
-    }
-  });
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        requestPromise
+          .then((result) => {
+            console.log(`[API] Request ${requestId} completed:`, result);
+          })
+          .catch((error: unknown) => {
+            console.error(`[API] Request ${requestId} failed:`, error);
+          });
+
+        return res.json({
+          requestId,
+          status: "pending",
+          message: "Request sent. Poll /session/:id/response for result.",
+          // The fixture's generated XDR, so the caller can see what was sent
+          ...(useSacTransferFixture ? { xdr: xdrText } : {}),
+        });
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.error("[API] Failed to send signXDR request:", error);
+        return res.status(500).json({
+          error: "Failed to send request",
+          message: errorMessage,
+        });
+      }
+    },
+  );
 
   /**
    * Send stellar_signAuthEntry request
