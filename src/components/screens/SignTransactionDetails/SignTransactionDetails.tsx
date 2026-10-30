@@ -15,11 +15,22 @@ import { TouchableOpacity } from "react-native";
 interface SignTransactionDetailsProps {
   analyticsEvent?: AnalyticsEvent;
   data: SignTransactionDetailsInterface;
+  /**
+   * Called once when the details throw while rendering. Passed through to
+   * {@link SignTransactionDetailsBottomSheet}'s error boundary.
+   */
+  onRenderError?: () => void;
 }
 
+/**
+ * A "Transaction details" button that opens the details sheet for `data`.
+ * The sheet's sections render behind an error boundary, which reports a
+ * render error through `onRenderError`.
+ */
 const SignTransactionDetails: React.FC<SignTransactionDetailsProps> = ({
   analyticsEvent,
   data,
+  onRenderError,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -57,7 +68,12 @@ const SignTransactionDetails: React.FC<SignTransactionDetailsProps> = ({
         enablePanDownToClose={false}
         analyticsEvent={analyticsEvent}
         scrollViewHeaderComponent={renderDetailsHeader}
-        customContent={<SignTransactionDetailsBottomSheet data={data} />}
+        customContent={
+          <SignTransactionDetailsBottomSheet
+            data={data}
+            onRenderError={onRenderError}
+          />
+        }
       />
     </>
   );

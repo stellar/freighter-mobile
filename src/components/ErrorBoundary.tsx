@@ -6,7 +6,10 @@ export interface ErrorBoundaryProps {
   name: string;
   /** What to render in place of the children once one of them has thrown. */
   fallback: React.ReactNode;
-  /** Called once per caught error, after it is reported. */
+  /**
+   * Called once per caught error, after it is reported, and even if reporting
+   * it throws.
+   */
   onError?: (error: Error) => void;
   /**
    * Changing it clears a caught error, so the children render again. It is
@@ -87,14 +90,21 @@ export class ErrorBoundary extends React.Component<
    * Reports the caught error, then lets the owner react to it. React calls this
    * once per caught error, in the commit phase, so a rerender that leaves the
    * fallback in place does not report again.
+   *
+   * `onError` runs even if reporting throws, because an owner may depend on it:
+   * a dApp request fails closed from it. The reporting error then goes on up
+   * the tree, since a boundary can't catch its own errors.
    */
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     const { name, onError } = this.props;
 
-    logger.error(name, "Render error caught by error boundary", error, {
-      componentStack: info.componentStack,
-    });
-    onError?.(error);
+    try {
+      logger.error(name, "Render error caught by error boundary", error, {
+        componentStack: info.componentStack,
+      });
+    } finally {
+      onError?.(error);
+    }
   }
 
   /** Renders the fallback once a child has thrown, the children otherwise. */

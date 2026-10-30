@@ -1,5 +1,8 @@
 import { StellarRpcMethods } from "ducks/walletKit";
-import { resolveDappRejectionEvent } from "helpers/walletKitUtil";
+import {
+  isDappRequestUndisplayable,
+  resolveDappRejectionEvent,
+} from "helpers/walletKitUtil";
 
 describe("resolveDappRejectionEvent (dApp-request teardown → signing.*_rejected)", () => {
   const base = {
@@ -62,5 +65,86 @@ describe("resolveDappRejectionEvent (dApp-request teardown → signing.*_rejecte
     expect(
       resolveDappRejectionEvent({ ...base, requestMethod: undefined }),
     ).toBeNull();
+  });
+});
+
+describe("isDappRequestUndisplayable (a request the app can't display can only be rejected)", () => {
+  const base = {
+    signTransactionDetailsStatus: "ready" as const,
+    isAuthEntryDisplayable: true,
+    hasDetailsRenderError: false,
+  };
+
+  it.each([StellarRpcMethods.SIGN_XDR, StellarRpcMethods.SIGN_AND_SUBMIT_XDR])(
+    "%s fails closed unless its details are ready",
+    (requestMethod) => {
+      expect(isDappRequestUndisplayable({ ...base, requestMethod })).toBe(
+        false,
+      );
+      expect(
+        isDappRequestUndisplayable({
+          ...base,
+          requestMethod,
+          signTransactionDetailsStatus: "undisplayable",
+        }),
+      ).toBe(true);
+      expect(
+        isDappRequestUndisplayable({
+          ...base,
+          requestMethod,
+          signTransactionDetailsStatus: "empty",
+        }),
+      ).toBe(true);
+    },
+  );
+
+  it("fails an auth entry closed only when its invocation can't be displayed", () => {
+    const authEntry = {
+      ...base,
+      requestMethod: StellarRpcMethods.SIGN_AUTH_ENTRY,
+      signTransactionDetailsStatus: "empty" as const,
+    };
+
+    expect(isDappRequestUndisplayable(authEntry)).toBe(false);
+    expect(
+      isDappRequestUndisplayable({
+        ...authEntry,
+        isAuthEntryDisplayable: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("never fails a sign_message request closed for display reasons", () => {
+    expect(
+      isDappRequestUndisplayable({
+        ...base,
+        requestMethod: StellarRpcMethods.SIGN_MESSAGE,
+        signTransactionDetailsStatus: "empty",
+        isAuthEntryDisplayable: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("fails a request closed once its details tripped the error boundary", () => {
+    [StellarRpcMethods.SIGN_XDR, StellarRpcMethods.SIGN_AUTH_ENTRY].forEach(
+      (requestMethod) =>
+        expect(
+          isDappRequestUndisplayable({
+            ...base,
+            requestMethod,
+            hasDetailsRenderError: true,
+          }),
+        ).toBe(true),
+    );
+  });
+
+  it("returns false when there is no request", () => {
+    expect(
+      isDappRequestUndisplayable({
+        ...base,
+        requestMethod: undefined,
+        signTransactionDetailsStatus: "empty",
+      }),
+    ).toBe(false);
   });
 });

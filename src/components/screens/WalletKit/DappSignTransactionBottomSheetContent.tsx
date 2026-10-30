@@ -4,6 +4,7 @@ import SignTransactionDetails from "components/screens/SignTransactionDetails";
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import { DappRequestBanners } from "components/screens/WalletKit/DappRequestBanners";
 import { DappRequestButtons } from "components/screens/WalletKit/DappRequestButtons";
+import { DappRequestUnreadableContent } from "components/screens/WalletKit/DappRequestUnreadableContent";
 import { useDappHeader } from "components/screens/WalletKit/useDappHeader";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
@@ -37,6 +38,10 @@ interface DappSignTransactionBottomSheetContentProps {
   isMemoMissing?: boolean;
   isValidatingMemo?: boolean;
   onBannerPress?: () => void;
+  /** The request's details can't be displayed, so it can only be rejected. */
+  isUndisplayable?: boolean;
+  /** Called when the transaction details throw while rendering. */
+  onDetailsRenderError?: () => void;
 }
 
 const formatFeeAmount = (feeXlm?: string | number) => {
@@ -44,6 +49,18 @@ const formatFeeAmount = (feeXlm?: string | number) => {
   return formatTokenForDisplay(String(feeXlm), NATIVE_TOKEN_CODE);
 };
 
+/**
+ * The request sheet's content for a transaction request (`stellar_signXDR` or
+ * `stellar_signAndSubmitXDR`): the dApp, any banners, the balance changes, the
+ * wallet, network, memo and fee, the transaction details and the request
+ * buttons.
+ *
+ * A request whose details can't be displayed (`isUndisplayable`) fails closed
+ * instead: it gets {@link DappRequestUnreadableContent}, with the same header
+ * and only Cancel. A render error in the details is reported through
+ * `onDetailsRenderError`, which is how the provider makes the request fail
+ * closed.
+ */
 export const DappSignTransactionBottomSheetContent: React.FC<
   DappSignTransactionBottomSheetContentProps
 > = ({
@@ -62,6 +79,8 @@ export const DappSignTransactionBottomSheetContent: React.FC<
   isMemoMissing,
   isValidatingMemo,
   onBannerPress,
+  isUndisplayable,
+  onDetailsRenderError,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -170,24 +189,37 @@ export const DappSignTransactionBottomSheetContent: React.FC<
   if (!header) return null;
   const { dAppName, dAppFavicon, dAppDomain } = header;
 
+  const headerRow = (
+    <View className="flex-row items-center gap-[12px] w-full">
+      <App size="lg" appName={dAppName} favicon={dAppFavicon} />
+      <View className="ml-2">
+        <Text md primary testID="sign-transaction-title">
+          {t("dappRequestBottomSheetContent.confirmTransaction")}
+        </Text>
+        {dAppDomain && (
+          <Text sm secondary>
+            {dAppDomain}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+
+  if (isUndisplayable) {
+    return (
+      <DappRequestUnreadableContent
+        header={headerRow}
+        onCancelRequest={onCancelRequest}
+      />
+    );
+  }
+
   return (
     <View
       className="flex-1 justify-center mt-2 gap-[16px]"
       testID="dapp-request-bottom-sheet"
     >
-      <View className="flex-row items-center gap-[12px] w-full">
-        <App size="lg" appName={dAppName} favicon={dAppFavicon} />
-        <View className="ml-2">
-          <Text md primary testID="sign-transaction-title">
-            {t("dappRequestBottomSheetContent.confirmTransaction")}
-          </Text>
-          {dAppDomain && (
-            <Text sm secondary>
-              {dAppDomain}
-            </Text>
-          )}
-        </View>
-      </View>
+      {headerRow}
 
       <DappRequestBanners
         isMemoMissing={isMemoMissing}
@@ -205,6 +237,7 @@ export const DappSignTransactionBottomSheetContent: React.FC<
           <SignTransactionDetails
             data={signTransactionDetails}
             analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS}
+            onRenderError={onDetailsRenderError}
           />
         )}
       </View>

@@ -71,6 +71,25 @@ describe("ErrorBoundary", () => {
     expect(reportedAt).toBeLessThan(handledAt);
   });
 
+  it("still calls onError once when reporting the error throws", () => {
+    jest.mocked(logger.error).mockImplementationOnce(() => {
+      throw new Error("logger failed");
+    });
+
+    // A boundary can't catch its own errors, so the logger's error goes on up
+    // to the root, and render throws it.
+    expect(() => render(boundary(true, "a"))).toThrow("logger failed");
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "render failed" }),
+    );
+    // The report was still attempted first.
+    const [reportedAt] = jest.mocked(logger.error).mock.invocationCallOrder;
+    const [handledAt] = onError.mock.invocationCallOrder;
+    expect(reportedAt).toBeLessThan(handledAt);
+  });
+
   it("keeps the fallback while resetKey is unchanged", () => {
     const { rerender } = render(boundary(true, "a"));
 
