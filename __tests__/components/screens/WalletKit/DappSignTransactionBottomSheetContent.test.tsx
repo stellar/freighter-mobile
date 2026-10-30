@@ -127,6 +127,20 @@ describe("DappSignTransactionBottomSheetContent", () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
+  it("disables Cancel while an approval is in flight", () => {
+    const { getByTestId } = renderSheet({
+      isUndisplayable: true,
+      isSigning: true,
+    });
+
+    const cancel = getByTestId("dapp-request-cancel-button");
+    expect(cancel.props.accessibilityState?.disabled).toBe(true);
+
+    fireEvent.press(cancel);
+
+    expect(onCancelRequest).not.toHaveBeenCalled();
+  });
+
   it("hides the Blockaid banner and Confirm anyway when an undisplayable request is also flagged", () => {
     const { queryByTestId, queryByText } = renderSheet({
       isUndisplayable: true,

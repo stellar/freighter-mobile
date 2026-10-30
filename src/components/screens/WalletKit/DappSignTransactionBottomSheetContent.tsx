@@ -57,7 +57,8 @@ const formatFeeAmount = (feeXlm?: string | number) => {
  *
  * A request whose details can't be displayed (`isUndisplayable`) fails closed
  * instead: it gets {@link DappRequestUnreadableContent}, with the same header
- * and only Cancel. A render error in the details is reported through
+ * and only Cancel, which is disabled while an approval is in flight
+ * (`isSigning`). A render error in the details is reported through
  * `onDetailsRenderError`, which is how the provider makes the request fail
  * closed.
  */
@@ -210,6 +211,7 @@ export const DappSignTransactionBottomSheetContent: React.FC<
       <DappRequestUnreadableContent
         header={headerRow}
         onCancelRequest={onCancelRequest}
+        isSigning={isSigning}
       />
     );
   }

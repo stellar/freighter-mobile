@@ -2,6 +2,7 @@ import { List } from "components/List";
 import DappAuthEntryDetails from "components/screens/WalletKit/DappAuthEntryDetails";
 import { DappRequestBanners } from "components/screens/WalletKit/DappRequestBanners";
 import { DappRequestButtons } from "components/screens/WalletKit/DappRequestButtons";
+import { DappRequestUnreadableContent } from "components/screens/WalletKit/DappRequestUnreadableContent";
 import { useDappHeader } from "components/screens/WalletKit/useDappHeader";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
@@ -29,8 +30,24 @@ interface DappSignAuthEntryBottomSheetContentProps {
   isSuspicious?: boolean;
   isUnableToScan?: boolean;
   securityWarningAction?: () => void;
+  /** The request's details can't be displayed, so it can only be rejected. */
+  isUndisplayable?: boolean;
+  /** Called when the auth entry's details throw while rendering. */
+  onDetailsRenderError?: () => void;
 }
 
+/**
+ * The request sheet's content for an auth-entry request
+ * (`stellar_signAuthEntry`): the dApp, any banners, the raw entry, the wallet
+ * and network, the entry's details and the request buttons.
+ *
+ * A request whose details can't be displayed (`isUndisplayable`) fails closed
+ * instead: it gets {@link DappRequestUnreadableContent}, with the same header
+ * and only Cancel, which is disabled while an approval is in flight
+ * (`isSigning`). A render error in the details is reported through
+ * `onDetailsRenderError`, which is how the provider makes the request fail
+ * closed.
+ */
 export const DappSignAuthEntryBottomSheetContent: React.FC<
   DappSignAuthEntryBottomSheetContentProps
 > = ({
@@ -45,6 +62,8 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
   isSuspicious,
   isUnableToScan,
   securityWarningAction,
+  isUndisplayable,
+  onDetailsRenderError,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -100,24 +119,38 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
   }
   const { dAppName, dAppFavicon, dAppDomain } = header;
 
+  const headerRow = (
+    <View className="flex-row items-center gap-[12px] w-full">
+      <App size="lg" appName={dAppName} favicon={dAppFavicon} />
+      <View className="ml-2">
+        <Text md primary testID="sign-auth-entry-title">
+          {t("dappRequestBottomSheetContent.signAuthEntry")}
+        </Text>
+        {dAppDomain && (
+          <Text sm secondary>
+            {dAppDomain}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+
+  if (isUndisplayable) {
+    return (
+      <DappRequestUnreadableContent
+        header={headerRow}
+        onCancelRequest={onCancelRequest}
+        isSigning={isSigning}
+      />
+    );
+  }
+
   return (
     <View
       className="flex-1 justify-center mt-2 gap-[16px]"
       testID="dapp-request-bottom-sheet"
     >
-      <View className="flex-row items-center gap-[12px] w-full">
-        <App size="lg" appName={dAppName} favicon={dAppFavicon} />
-        <View className="ml-2">
-          <Text md primary testID="sign-auth-entry-title">
-            {t("dappRequestBottomSheetContent.signAuthEntry")}
-          </Text>
-          {dAppDomain && (
-            <Text sm secondary>
-              {dAppDomain}
-            </Text>
-          )}
-        </View>
-      </View>
+      {headerRow}
 
       <DappRequestBanners
         isMalicious={isMalicious}
@@ -161,7 +194,10 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
           </ScrollView>
         </View>
         <List variant="secondary" items={accountList} />
-        <DappAuthEntryDetails entryXdr={entryXdr} />
+        <DappAuthEntryDetails
+          entryXdr={entryXdr}
+          onRenderError={onDetailsRenderError}
+        />
       </View>
 
       {!isMalicious && !isSuspicious && !isUnableToScan && (

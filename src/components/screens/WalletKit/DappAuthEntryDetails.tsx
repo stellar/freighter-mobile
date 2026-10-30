@@ -13,10 +13,22 @@ import { TouchableOpacity } from "react-native";
 
 interface DappAuthEntryDetailsProps {
   entryXdr: string;
+  /**
+   * Called when the entry's details throw while rendering, after the error is
+   * reported. Passed down, through the details sheet, to the error boundaries
+   * around the invocations' bodies.
+   */
+  onRenderError?: () => void;
 }
 
+/**
+ * An "Auth entry details" button that opens the details sheet for `entryXdr`.
+ * The sheet renders each invocation's body behind an error boundary, which
+ * reports a render error through `onRenderError`.
+ */
 const DappAuthEntryDetails: React.FC<DappAuthEntryDetailsProps> = ({
   entryXdr,
+  onRenderError,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -50,7 +62,12 @@ const DappAuthEntryDetails: React.FC<DappAuthEntryDetailsProps> = ({
         enablePanDownToClose={false}
         analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_AUTH_ENTRY_DETAILS}
         scrollViewHeaderComponent={renderDetailsHeader}
-        customContent={<DappAuthEntryDetailsBottomSheet entryXdr={entryXdr} />}
+        customContent={
+          <DappAuthEntryDetailsBottomSheet
+            entryXdr={entryXdr}
+            onRenderError={onRenderError}
+          />
+        }
       />
     </>
   );

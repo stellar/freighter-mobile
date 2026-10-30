@@ -1,11 +1,15 @@
 import { act, render } from "@testing-library/react-native";
-import { sacTransferTransactionXdr } from "__tests__/support/sacTransferFixtures";
+import {
+  sacTransferPreimageXdr,
+  sacTransferTransactionXdr,
+} from "__tests__/support/sacTransferFixtures";
 import type { SecurityDetailBottomSheetProps } from "components/blockaid";
 import type DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import type * as WalletKitDuck from "ducks/walletKit";
+import * as signingDisplay from "helpers/signingDisplay";
 import * as walletKitUtil from "helpers/walletKitUtil";
 import { WalletKitProvider } from "providers/WalletKitProvider";
 import React from "react";
@@ -145,18 +149,30 @@ const ACTIVE_SESSIONS = {
   },
 } as unknown as WalletKitDuck.ActiveSessions;
 
-/** A stellar_signXDR request for `xdr` from the connected dApp. */
-const signXdrRequest = (id: number, xdr: string) =>
+/** A request for `method`, with `params`, from the connected dApp. */
+const dappRequest = (
+  id: number,
+  method: WalletKitDuck.StellarRpcMethods,
+  params: Record<string, string>,
+) =>
   ({
     type: WalletKitEventTypes.SESSION_REQUEST,
     id,
     topic: "topic",
     params: {
       chainId: StellarRpcChains.TESTNET,
-      request: { method: StellarRpcMethods.SIGN_XDR, params: { xdr } },
+      request: { method, params },
     },
     verifyContext: { verified: { origin: DAPP_URL } },
   }) as unknown as WalletKitDuck.WalletKitSessionRequest;
+
+/** A stellar_signXDR request for `xdr` from the connected dApp. */
+const signXdrRequest = (id: number, xdr: string) =>
+  dappRequest(id, StellarRpcMethods.SIGN_XDR, { xdr });
+
+/** A stellar_signAuthEntry request for the preimage `entryXdr` from the connected dApp. */
+const signAuthEntryRequest = (id: number, entryXdr: string) =>
+  dappRequest(id, StellarRpcMethods.SIGN_AUTH_ENTRY, { entryXdr });
 
 const BLOCKED_APPROVAL = [
   "WalletKitProvider",
@@ -304,5 +320,47 @@ describe("WalletKitProvider: a dApp request whose details can't be displayed", (
         sessionRequest: expect.objectContaining({ id: 2 }),
       }),
     );
+  });
+
+  it("refuses Confirm on an auth-entry request whose preimage can't be displayed", async () => {
+    // A well-formed preimage for this network, so prevalidation lets it
+    // through. signingDisplay.test.ts pins what the pre-flight rejects; this
+    // pins what the provider does with its verdict.
+    jest.spyOn(signingDisplay, "isAuthEntryDisplayable").mockReturnValue(false);
+    const entryXdr = sacTransferPreimageXdr();
+    render(provider());
+    await deliver(signAuthEntryRequest(1, entryXdr));
+
+    // Prevalidation passed: nothing rejected the request, which is on screen.
+    expect(walletKitUtil.rejectSessionRequest).not.toHaveBeenCalled();
+    expect(requestSheet().requestEvent?.id).toBe(1);
+    expect(signingDisplay.isAuthEntryDisplayable).toHaveBeenCalledWith(
+      entryXdr,
+    );
+    expect(requestSheet().isUndisplayable).toBe(true);
+
+    act(() => requestSheet().onConfirm());
+
+    expect(walletKitUtil.approveSessionRequest).not.toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith(...BLOCKED_APPROVAL);
+  });
+
+  it("approves a displayable auth-entry request", async () => {
+    render(provider());
+    await deliver(signAuthEntryRequest(1, sacTransferPreimageXdr()));
+
+    expect(walletKitUtil.rejectSessionRequest).not.toHaveBeenCalled();
+    expect(requestSheet().requestEvent?.id).toBe(1);
+    expect(requestSheet().isUndisplayable).toBe(false);
+
+    await actAndSettle(() => requestSheet().onConfirm());
+
+    expect(walletKitUtil.approveSessionRequest).toHaveBeenCalledTimes(1);
+    expect(walletKitUtil.approveSessionRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionRequest: expect.objectContaining({ id: 1 }),
+      }),
+    );
+    expect(logger.error).not.toHaveBeenCalledWith(...BLOCKED_APPROVAL);
   });
 });
