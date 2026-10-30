@@ -1,5 +1,10 @@
 import { Address, nativeToScVal, xdr } from "@stellar/stellar-sdk";
 import { fireEvent } from "@testing-library/react-native";
+import {
+  G_ACCOUNT,
+  MUXED_CONTRACT_ID_1234,
+} from "__tests__/support/muxedContractFixtures";
+import { sacTransferArgs } from "__tests__/support/sacTransferFixtures";
 import SignTransactionAuthorizations from "components/screens/SignTransactionDetails/components/SignTransactionAuthorizations";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -96,5 +101,31 @@ describe("SignTransactionAuthorizations", () => {
     expect(queryByTestId("ContractSpecNote")).toBeNull();
     // The values themselves still render.
     expect(getAllByTestId("ParameterValue")).toHaveLength(3);
+  });
+
+  it("renders a W transfer destination in an auth entry", async () => {
+    const { findAllByTestId, getByText } = renderWithProviders(
+      <SignTransactionAuthorizations
+        authEntries={[
+          {
+            invocation: contractFnInvocation("transfer", sacTransferArgs()),
+          },
+        ]}
+      />,
+    );
+
+    // The entry is collapsed by default, so the args are not mounted yet.
+    fireEvent.press(getByText("transfer"));
+
+    const values = await findAllByTestId(
+      "ParameterValue",
+      {},
+      { timeout: 3000 },
+    );
+    expect(values.map((node) => node.props.accessibilityLabel)).toEqual([
+      G_ACCOUNT,
+      MUXED_CONTRACT_ID_1234,
+      "100",
+    ]);
   });
 });

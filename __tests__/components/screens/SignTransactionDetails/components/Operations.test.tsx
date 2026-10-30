@@ -14,6 +14,11 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 import { render } from "@testing-library/react-native";
+import {
+  G_ACCOUNT,
+  MUXED_CONTRACT_ID_1234,
+} from "__tests__/support/muxedContractFixtures";
+import { sacTransferArgs } from "__tests__/support/sacTransferFixtures";
 import Operations from "components/screens/SignTransactionDetails/components/Operations";
 import { truncateAddress } from "helpers/stellar";
 import React from "react";
@@ -696,5 +701,34 @@ describe("SignTransactionDetails > Operations: contract argument labels", () => 
       expect(node.props.children).toBeUndefined(),
     );
     expect(queryByTestId("ContractSpecNote")).toBeNull();
+  });
+
+  it("renders a SAC transfer to a W address under the `to` label", async () => {
+    getContractSpecsMock.mockResolvedValue({
+      definitions: {
+        transfer: {
+          properties: {
+            args: {
+              properties: { from: {}, to: {}, amount: {} },
+              required: ["from", "to", "amount"],
+            },
+          },
+        },
+      },
+    });
+
+    const { findAllByTestId, getAllByTestId } = render(
+      <Operations operations={invokeContract("transfer", sacTransferArgs())} />,
+    );
+
+    await findAllByTestId("ParameterKey", {}, FIND);
+    expect(
+      getAllByTestId("ParameterKey").map((node) => node.props.children),
+    ).toEqual(["from", "to", "amount"]);
+    expect(
+      getAllByTestId("ParameterValue").map(
+        (node) => node.props.accessibilityLabel,
+      ),
+    ).toEqual([G_ACCOUNT, MUXED_CONTRACT_ID_1234, "100"]);
   });
 });

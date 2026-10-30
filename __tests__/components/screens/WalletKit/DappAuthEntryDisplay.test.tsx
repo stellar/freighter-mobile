@@ -5,6 +5,11 @@ import {
   Networks,
   xdr,
 } from "@stellar/stellar-sdk";
+import {
+  G_ACCOUNT,
+  MUXED_CONTRACT_ID_1234,
+} from "__tests__/support/muxedContractFixtures";
+import { sacTransferPreimageXdr } from "__tests__/support/sacTransferFixtures";
 import { DappAuthEntryDisplay } from "components/screens/WalletKit/DappAuthEntryDisplay";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -183,5 +188,22 @@ describe("DappAuthEntryDisplay", () => {
     expect(queryByTestId("ContractSpecNote")).toBeNull();
     // The values themselves still render.
     expect(getAllByTestId("ParameterValue")).toHaveLength(3);
+  });
+
+  it("renders a W transfer destination in the invocation args", async () => {
+    const { findAllByTestId } = renderWithProviders(
+      <DappAuthEntryDisplay entryXdr={sacTransferPreimageXdr()} expandAll />,
+    );
+
+    const values = await findAllByTestId(
+      "ParameterValue",
+      {},
+      { timeout: 3000 },
+    );
+    expect(values.map((node) => node.props.accessibilityLabel)).toEqual([
+      G_ACCOUNT,
+      MUXED_CONTRACT_ID_1234,
+      "100",
+    ]);
   });
 });
