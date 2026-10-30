@@ -27,11 +27,17 @@ describe("scrubStrKeys", () => {
     );
   });
 
-  it("leaves a same-length run inside a longer token alone", () => {
-    expect(scrubStrKeys(`x${MUXED_CONTRACT_ID_0}x`)).toBe(
-      `x${MUXED_CONTRACT_ID_0}x`,
-    );
-  });
+  it.each([
+    ["a letter before it", `x${MUXED_CONTRACT_ID_0}`],
+    ["a letter after it", `${MUXED_CONTRACT_ID_0}x`],
+    ["a letter on both sides", `x${MUXED_CONTRACT_ID_0}x`],
+    ["one more base32 character after it", `${MUXED_CONTRACT_ID_0}A`],
+  ])(
+    "leaves a same-length run inside a longer token alone: %s",
+    (_name, token) => {
+      expect(scrubStrKeys(token)).toBe(token);
+    },
+  );
 
   it("returns undefined for a missing input", () => {
     expect(scrubStrKeys(null)).toBeUndefined();

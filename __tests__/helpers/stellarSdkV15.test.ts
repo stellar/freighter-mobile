@@ -1,8 +1,9 @@
 /**
- * Stellar SDK v15 Compatibility Tests
+ * Stellar SDK v15 and v17 Compatibility Tests
  *
  * Exercises core SDK operations used by freighter-mobile to verify
- * they work correctly after the v14 → v15 upgrade (Protocol 26).
+ * they work correctly after the v14 → v15 upgrade (Protocol 26), and on
+ * SDK 17 for Protocols 27 and 30.
  * Uses real SDK calls (no mocks) to catch XDR or API regressions.
  */
 import {
@@ -28,7 +29,7 @@ import {
 } from "__tests__/support/muxedContractFixtures";
 import { getAuthEntryBoundAddress } from "helpers/soroban";
 
-describe("Stellar SDK v15 compatibility", () => {
+describe("Stellar SDK v15 and v17 compatibility (Protocols 26, 27 and 30)", () => {
   const networkPassphrase = Networks.TESTNET;
   const keypair = Keypair.random();
   const account = new Account(keypair.publicKey(), "100");

@@ -31,8 +31,15 @@ describe("memo folding into M addresses", () => {
     expect(createMuxedAccount(G_ACCOUNT, memo)).toBe(expected);
   });
 
-  it.each(["18446744073709551616", "0x10", " 16 ", "", "AB12CD"])(
-    "does not fold memo %j (SDK 17.3+ accepts decimal digits only)",
+  it.each(["0x10", " 16 ", ""])(
+    "does not fold memo %j (not a canonical decimal id, SDK 17.3+)",
+    (memo) => {
+      expect(createMuxedAccount(G_ACCOUNT, memo)).toBeNull();
+    },
+  );
+
+  it.each(["18446744073709551616", "AB12CD"])(
+    "does not fold memo %j (not a uint64)",
     (memo) => {
       expect(createMuxedAccount(G_ACCOUNT, memo)).toBeNull();
     },
