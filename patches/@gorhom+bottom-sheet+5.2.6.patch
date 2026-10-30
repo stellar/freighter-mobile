@@ -1,0 +1,66 @@
+diff --git a/node_modules/@gorhom/bottom-sheet/lib/commonjs/components/bottomSheetModal/BottomSheetModal.js b/node_modules/@gorhom/bottom-sheet/lib/commonjs/components/bottomSheetModal/BottomSheetModal.js
+index 64b386b..1c2fcf1 100644
+--- a/node_modules/@gorhom/bottom-sheet/lib/commonjs/components/bottomSheetModal/BottomSheetModal.js
++++ b/node_modules/@gorhom/bottom-sheet/lib/commonjs/components/bottomSheetModal/BottomSheetModal.js
+@@ -273,6 +273,17 @@ function BottomSheetModalComponent(props, ref) {
+      * if modal is already been dismiss, we exit the method.
+      */
+     if (currentIndexRef.current === -1 && minimized.current === false) {
++      // PATCH (freighter-mobile): currentIndexRef only updates once an
++      // animation completes, so a modal whose owner unmounts while it is still
++      // opening lands here too. A dismissal clears mounted first, so mounted is
++      // still set only for a modal that was never dismissed, and returning would
++      // orphan it: its portal stays, the sheet it minimized is never restored,
++      // and its close button calls a ref that is gone. Unmount it instead.
++      // This assumes no StrictMode: its simulated unmount would close every
++      // modal on its first mount here. The app renders none.
++      if (mounted.current) {
++        unmount();
++      }
+       return;
+     }
+     mounted.current = false;
+diff --git a/node_modules/@gorhom/bottom-sheet/lib/module/components/bottomSheetModal/BottomSheetModal.js b/node_modules/@gorhom/bottom-sheet/lib/module/components/bottomSheetModal/BottomSheetModal.js
+index b3ad07b..c2ed17b 100644
+--- a/node_modules/@gorhom/bottom-sheet/lib/module/components/bottomSheetModal/BottomSheetModal.js
++++ b/node_modules/@gorhom/bottom-sheet/lib/module/components/bottomSheetModal/BottomSheetModal.js
+@@ -267,6 +267,17 @@ function BottomSheetModalComponent(props, ref) {
+      * if modal is already been dismiss, we exit the method.
+      */
+     if (currentIndexRef.current === -1 && minimized.current === false) {
++      // PATCH (freighter-mobile): currentIndexRef only updates once an
++      // animation completes, so a modal whose owner unmounts while it is still
++      // opening lands here too. A dismissal clears mounted first, so mounted is
++      // still set only for a modal that was never dismissed, and returning would
++      // orphan it: its portal stays, the sheet it minimized is never restored,
++      // and its close button calls a ref that is gone. Unmount it instead.
++      // This assumes no StrictMode: its simulated unmount would close every
++      // modal on its first mount here. The app renders none.
++      if (mounted.current) {
++        unmount();
++      }
+       return;
+     }
+     mounted.current = false;
+diff --git a/node_modules/@gorhom/bottom-sheet/src/components/bottomSheetModal/BottomSheetModal.tsx b/node_modules/@gorhom/bottom-sheet/src/components/bottomSheetModal/BottomSheetModal.tsx
+index 5d131f1..9648f10 100644
+--- a/node_modules/@gorhom/bottom-sheet/src/components/bottomSheetModal/BottomSheetModal.tsx
++++ b/node_modules/@gorhom/bottom-sheet/src/components/bottomSheetModal/BottomSheetModal.tsx
+@@ -324,6 +324,17 @@ function BottomSheetModalComponent<T = any>(
+        * if modal is already been dismiss, we exit the method.
+        */
+       if (currentIndexRef.current === -1 && minimized.current === false) {
++        // PATCH (freighter-mobile): currentIndexRef only updates once an
++        // animation completes, so a modal whose owner unmounts while it is still
++        // opening lands here too. A dismissal clears mounted first, so mounted is
++        // still set only for a modal that was never dismissed, and returning would
++        // orphan it: its portal stays, the sheet it minimized is never restored,
++        // and its close button calls a ref that is gone. Unmount it instead.
++        // This assumes no StrictMode: its simulated unmount would close every
++        // modal on its first mount here. The app renders none.
++        if (mounted.current) {
++          unmount();
++        }
+         return;
+       }
+ 
