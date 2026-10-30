@@ -301,8 +301,9 @@ describe("WalletKitProvider: a dApp request whose details can't be displayed", (
 
     // The deferred reset clears the request and the flag together. The flag
     // fails a request closed even with no request, so false means it's clear.
+    // Running the pending timers runs the reset, whatever its delay.
     act(() => {
-      jest.advanceTimersByTime(200);
+      jest.runOnlyPendingTimers();
     });
     expect(requestSheet().requestEvent).toBeNull();
     expect(requestSheet().isUndisplayable).toBe(false);

@@ -65,7 +65,8 @@ export const sacTransferPreimageXdr = (
     }),
   ).toXdr("base64");
 
-/** Testnet tx, source G_ACCOUNT at sequence "0", BASE_FEE, setTimeout(0): one Operation.invokeContractFunction
+/** Testnet tx, source G_ACCOUNT built from sequence "0" (the serialized tx carries "1", since build() increments the
+ *  account's sequence), BASE_FEE, setTimeout(0): one Operation.invokeContractFunction
  *  (XLM_SAC_TESTNET, "transfer", sacTransferArgs(to)) whose auth is one source-account entry for sacTransferInvocation(to). */
 export const sacTransferTransactionXdr = (
   to: string = MUXED_CONTRACT_ID_1234,

@@ -72,6 +72,18 @@ const transferXdr = ({
     .build()
     .toXdr();
 
+/** A fee bump that G_ACCOUNT pays for, wrapping sacTransferTransactionXdr(). */
+const feeBumpTransferXdr = () =>
+  TransactionBuilder.buildFeeBumpTransaction(
+    G_ACCOUNT,
+    "200",
+    TransactionBuilder.fromXdr(
+      sacTransferTransactionXdr(),
+      Networks.TESTNET,
+    ) as Transaction,
+    Networks.TESTNET,
+  ).toXdr();
+
 /** Every `scValToDisplayTokens` call throws, as it does for an arm it can't render. */
 const failTokens = () =>
   jest.mocked(scValToDisplayTokens).mockImplementation(() => {
@@ -171,21 +183,23 @@ describe("buildSignTransactionDetailsState", () => {
     expect(trustline.details.hasTrustlineChanges).toBe(true);
   });
 
-  it("is ready for a fee bump wrapping that transfer", () => {
-    const inner = TransactionBuilder.fromXdr(
-      sacTransferTransactionXdr(),
-      Networks.TESTNET,
-    ) as Transaction;
-    const feeBump = TransactionBuilder.buildFeeBumpTransaction(
-      G_ACCOUNT,
-      "200",
-      inner,
-      Networks.TESTNET,
-    ).toXdr();
+  it("is ready for a fee bump wrapping that transfer", () =>
+    expect(
+      buildSignTransactionDetailsState(feeBumpTransferXdr(), Networks.TESTNET)
+        .status,
+    ).toBe("ready"));
+
+  it("is undisplayable, and reports to Sentry, when an argument in a fee bump's inner transaction can't be converted", () => {
+    failTokens();
 
     expect(
-      buildSignTransactionDetailsState(feeBump, Networks.TESTNET).status,
-    ).toBe("ready");
+      buildSignTransactionDetailsState(feeBumpTransferXdr(), Networks.TESTNET),
+    ).toEqual({ status: "undisplayable" });
+    expect(logger.error).toHaveBeenCalledWith(
+      "useSignTransactionDetails",
+      expect.any(String),
+      expect.any(Error),
+    );
   });
 
   it("is undisplayable, and reports to Sentry, when an argument can't be converted", () => {

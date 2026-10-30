@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react-native";
 import { ErrorBoundary } from "components/ErrorBoundary";
 import { logger } from "config/logger";
-import React from "react";
+import React, { useEffect } from "react";
 import { Text } from "react-native";
 
 /** Renders `child`, or throws while rendering when `shouldThrow` is set. */
@@ -9,6 +9,18 @@ const Thrower = ({ shouldThrow }: { shouldThrow: boolean }) => {
   if (shouldThrow) {
     throw new Error("render failed");
   }
+
+  return <Text>child</Text>;
+};
+
+/**
+ * Renders `child` and calls `onMount` when it mounts. Given the same `onMount`
+ * on every render, a second call means it was remounted.
+ */
+const MountTracker = ({ onMount }: { onMount: () => void }) => {
+  useEffect(() => {
+    onMount();
+  }, [onMount]);
 
   return <Text>child</Text>;
 };
@@ -109,6 +121,28 @@ describe("ErrorBoundary", () => {
 
     expect(screen.getByText("child")).toBeTruthy();
     expect(screen.queryByText("fallback")).toBeNull();
+  });
+
+  it("leaves the children mounted, and reports nothing, when resetKey changes with no error", () => {
+    const onMount = jest.fn();
+    const tree = (resetKey: string) => (
+      <ErrorBoundary
+        name="TestBoundary"
+        fallback={<Text>fallback</Text>}
+        onError={onError}
+        resetKey={resetKey}
+      >
+        <MountTracker onMount={onMount} />
+      </ErrorBoundary>
+    );
+    const { rerender } = render(tree("a"));
+
+    rerender(tree("b"));
+
+    expect(screen.getByText("child")).toBeTruthy();
+    expect(onMount).toHaveBeenCalledTimes(1);
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
   });
 
   it("reports the next error when the children throw again after a reset", () => {

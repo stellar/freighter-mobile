@@ -392,9 +392,11 @@ describe("isAuthEntryDisplayable", () => {
   });
 
   it("converts no address for a legacy preimage, which binds none", () => {
-    failAddress(DEPLOYER);
-
     expect(isAuthEntryDisplayable(sacTransferPreimageXdr())).toBe(true);
+    // The mock sees only the conversions signingDisplay makes itself, as the
+    // CAP-71 case shows. The invocation's addresses are converted inside
+    // helpers/soroban, which doesn't call through it.
+    expect(addressToString).not.toHaveBeenCalled();
     expect(logger.error).not.toHaveBeenCalled();
   });
 });

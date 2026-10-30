@@ -80,10 +80,11 @@ const buildAuthEntries = (transaction: Transaction | FeeBumpTransaction) => {
  * Builds what the signing screens show for a transaction XDR, or says why there
  * is nothing to show.
  *
- * Besides decoding the transaction, it dry-runs the conversions the details
- * sheet renders with (`assertOperationsDisplayable` for the operations,
- * `assertInvocationDisplayable` for each auth entry), so a transaction the
- * sheet couldn't draw is `undisplayable` here rather than a crash there.
+ * Besides decoding the transaction, it dry-runs every conversion the details
+ * sheet makes that can throw (`assertOperationsDisplayable` for the
+ * operations, `assertInvocationDisplayable` for each auth entry), so a
+ * transaction the sheet couldn't draw is `undisplayable` here rather than a
+ * crash there.
  *
  * - No XDR is `empty`.
  * - An XDR that doesn't parse is `undisplayable`, with a `logger.warn`: a

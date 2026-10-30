@@ -1,6 +1,6 @@
 /**
- * Dry runs of the conversions the signing screens make when they render XDR a
- * dApp sent.
+ * Dry runs of every conversion that can throw when the signing screens render
+ * XDR a dApp sent.
  *
  * The details sheet and the auth-entry sheet decode a request while they draw
  * it, and a conversion that throws there takes down the screen the user is
@@ -12,11 +12,19 @@
  * JSDoc names. That is the whole contract:
  * - A check that converts something the render doesn't would reject a request
  *   the user could have read.
- * - A render conversion with no check here would let a crash through.
+ * - A render conversion that can throw, with no check here, would let a crash
+ *   through.
  *
- * The conversions the render makes that can't throw (`xdrStringToDisplay` and
- * `xdrStringToRaw` over any bytes, `xdr.encodeBytes`, the asset preimage's
- * code and issuer) aren't repeated.
+ * The render's other conversions can't throw on XDR that decoded, so they
+ * aren't repeated:
+ * - `xdrStringToDisplay` and `xdrStringToRaw`, over any bytes.
+ * - `xdr.encodeBytes`.
+ * - The asset preimage's code and issuer.
+ * - The two `toXdr("base64")` re-encodes the render uses as React keys: each
+ *   argument's in `KeyValueInvokeHostFnArgs` (`KeyVal.tsx`), and each auth
+ *   entry invocation's in `SignTransactionAuthorizations`. Re-encoding a value
+ *   that just decoded can only fail by exhausting the stack, which the error
+ *   boundaries around the details catch.
  */
 import { OperationRecord, xdr } from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
