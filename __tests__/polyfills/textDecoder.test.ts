@@ -373,14 +373,114 @@ describe("TextDecoder fatal polyfill", () => {
         );
       });
 
-      it("does not change how a leading byte order mark is decoded", () => {
-        const bytes = Uint8Array.from([0xef, 0xbb, 0xbf, 0x68]);
-        const expected = new BaseTextDecoder().decode(bytes);
+      describe("byte order mark", () => {
+        // A UTF-8 byte order mark (U+FEFF) followed by "hi".
+        const BOM_THEN_TEXT = Uint8Array.from([0xef, 0xbb, 0xbf, 0x68, 0x69]);
 
-        expect(new TextDecoder().decode(bytes)).toBe(expected);
-        expect(new TextDecoder("utf-8", { fatal: true }).decode(bytes)).toBe(
-          expected,
+        it("strips a leading BOM from a fatal decoder by default, like the native decoder", () => {
+          const options = { fatal: true };
+
+          const decoded = new TextDecoder("utf-8", options).decode(
+            BOM_THEN_TEXT,
+          );
+
+          expect(decoded).toBe("hi");
+          expect(decoded).toBe(
+            new NativeTextDecoder("utf-8", options).decode(BOM_THEN_TEXT),
+          );
+        });
+
+        it("keeps the BOM when a fatal decoder is built with ignoreBOM, like the native decoder", () => {
+          const options = { fatal: true, ignoreBOM: true };
+
+          const decoded = new TextDecoder("utf-8", options).decode(
+            BOM_THEN_TEXT,
+          );
+
+          expect(decoded).toBe("\uFEFFhi");
+          expect(decoded).toBe(
+            new NativeTextDecoder("utf-8", options).decode(BOM_THEN_TEXT),
+          );
+        });
+
+        it("leaves a non-fatal decoder's output as fast-text-encoding alone returns it", () => {
+          const expected = new BaseTextDecoder().decode(BOM_THEN_TEXT);
+
+          // The base never strips a BOM, whatever the options say.
+          expect(expected).toBe("\uFEFFhi");
+          expect(new TextDecoder().decode(BOM_THEN_TEXT)).toBe(expected);
+          expect(
+            new TextDecoder("utf-8", { fatal: false }).decode(BOM_THEN_TEXT),
+          ).toBe(expected);
+          expect(
+            new TextDecoder("utf-8", { ignoreBOM: false }).decode(
+              BOM_THEN_TEXT,
+            ),
+          ).toBe(expected);
+          expect(
+            new TextDecoder("utf-8", { ignoreBOM: true }).decode(BOM_THEN_TEXT),
+          ).toBe(expected);
+        });
+
+        it("strips only one leading BOM, like the native decoder", () => {
+          const options = { fatal: true };
+          const twoBoms = Uint8Array.from([
+            0xef, 0xbb, 0xbf, 0xef, 0xbb, 0xbf, 0x68,
+          ]);
+
+          const decoded = new TextDecoder("utf-8", options).decode(twoBoms);
+
+          expect(decoded).toBe("\uFEFFh");
+          expect(decoded).toBe(
+            new NativeTextDecoder("utf-8", options).decode(twoBoms),
+          );
+        });
+
+        it("strips the BOM on every decode of one decoder, which the SDK reuses", () => {
+          const decoder = new TextDecoder("utf-8", { fatal: true });
+
+          expect(decoder.decode(BOM_THEN_TEXT)).toBe("hi");
+          expect(decoder.decode(BOM_THEN_TEXT)).toBe("hi");
+          expect(decoder.decode(BOM_THEN_TEXT.slice().buffer)).toBe("hi");
+          expect(decoder.decode(Uint8Array.from([0x68]))).toBe("h");
+        });
+
+        it.each([
+          ["only a BOM", [0xef, 0xbb, 0xbf]],
+          ["a BOM that is not leading", [0x68, 0xef, 0xbb, 0xbf, 0x69]],
+          ["a BOM at the very end", [0x68, 0xef, 0xbb, 0xbf]],
+          [
+            "a BOM before a 4-byte character",
+            [0xef, 0xbb, 0xbf, 0xf0, 0x9f, 0x99, 0x82],
+          ],
+          ["U+FFFE, which is not a BOM", [0xef, 0xbf, 0xbe, 0x68]],
+          ["no BOM", [0x68, 0x69]],
+          ["empty input", []],
+        ])(
+          "matches the native decoder for %s, with and without ignoreBOM",
+          (_name, bytes) => {
+            const input = Uint8Array.from(bytes);
+
+            [{ fatal: true }, { fatal: true, ignoreBOM: true }].forEach(
+              (options) => {
+                expect(new TextDecoder("utf-8", options).decode(input)).toBe(
+                  new NativeTextDecoder("utf-8", options).decode(input),
+                );
+              },
+            );
+          },
         );
+
+        it("reports ignoreBOM on a fatal decoder like the native decoder", () => {
+          const defaults = new TextDecoder("utf-8", { fatal: true });
+          const keeping = new TextDecoder("utf-8", {
+            fatal: true,
+            ignoreBOM: true,
+          });
+
+          expect(defaults.ignoreBOM).toBe(false);
+          expect(keeping.ignoreBOM).toBe(true);
+        });
       });
 
       it("surfaces the base's unsupported-stream error from a fatal decoder", () => {
@@ -480,6 +580,15 @@ describe("TextDecoder fatal polyfill", () => {
       expect(scValToNative(text)).toBe("héllo 🙂");
     });
 
+    it("keeps a leading BOM in strings, as XdrString asks for", () => {
+      simulateHermes();
+      loadPolyfill();
+      const { scValToNative, xdr } = loadSdk();
+
+      // XdrString.toStringStrict() builds its decoder with ignoreBOM: true.
+      expect(scValToNative(xdr.ScVal.scvString("\uFEFFhi"))).toBe("\uFEFFhi");
+    });
+
     describe("bounded fetch", () => {
       const FEDERATION_SERVER = "https://example.com/federation";
       const ACCOUNT_ID =
@@ -495,12 +604,15 @@ ACCOUNT_RECORD = ${JSON.stringify("é €")}
           jest.fn((url: string) => Promise.resolve(new Response(bodyFor(url)))),
         );
 
-      /** A stellar.toml that names a federation server, which has a record. */
-      const serveFederation = () =>
+      /**
+       * A stellar.toml that names a federation server, which has a record. Both
+       * responses start with `prefix`.
+       */
+      const serveFederation = (prefix = "") =>
         serve((url) =>
           url.includes("/.well-known/stellar.toml")
-            ? STELLAR_TOML
-            : JSON.stringify({ account_id: ACCOUNT_ID }),
+            ? `${prefix}${STELLAR_TOML}`
+            : `${prefix}${JSON.stringify({ account_id: ACCOUNT_ID })}`,
         );
 
       it("fails to resolve stellar.toml without the polyfill", async () => {
@@ -521,6 +633,22 @@ ACCOUNT_RECORD = ${JSON.stringify("é €")}
         serve(() => STELLAR_TOML);
         const { StellarToml } = loadSdk();
 
+        await expect(
+          StellarToml.Resolver.resolve("example.com"),
+        ).resolves.toEqual({
+          FEDERATION_SERVER,
+          ACCOUNT_RECORD: "é €",
+        });
+      });
+
+      it("resolves a stellar.toml that starts with a BOM with the polyfill", async () => {
+        simulateHermes();
+        loadPolyfill();
+        serve(() => `\uFEFF${STELLAR_TOML}`);
+        const { StellarToml } = loadSdk();
+
+        // The SDK's decoder keeps the default ignoreBOM, so the BOM is dropped
+        // before smol-toml parses the text, as it is on Node.
         await expect(
           StellarToml.Resolver.resolve("example.com"),
         ).resolves.toEqual({
@@ -554,6 +682,17 @@ ACCOUNT_RECORD = ${JSON.stringify("é €")}
         simulateHermes();
         loadPolyfill();
         serveFederation();
+        const { Federation } = loadSdk();
+
+        await expect(
+          Federation.Server.resolve("alice*example.com"),
+        ).resolves.toEqual({ account_id: ACCOUNT_ID });
+      });
+
+      it("resolves a federation address when both responses start with a BOM", async () => {
+        simulateHermes();
+        loadPolyfill();
+        serveFederation("\uFEFF");
         const { Federation } = loadSdk();
 
         await expect(

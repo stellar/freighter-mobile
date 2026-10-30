@@ -22,8 +22,14 @@
  * This polyfill wraps the global decoder. A UTF-8 decoder built with
  * `{ fatal: true }` checks its input with `isValidUtf8()`, a WHATWG-conformant
  * strict validator, and throws a `TypeError` on malformed input, as the native
- * decoder does. Every other decoder is built and used exactly as before: same
- * output, same errors, no change to BOM handling.
+ * decoder does. It also follows the WHATWG byte order mark rule, which
+ * `fast-text-encoding` never applies: unless `ignoreBOM` is set, it drops one
+ * leading U+FEFF from its output. The SDK's bounded fetch builds its decoder
+ * with the default `ignoreBOM`, so a stellar.toml or federation response that
+ * starts with a BOM parses, as on Node. `XdrString.toStringStrict()` and the
+ * WASM name parser pass `ignoreBOM: true` and keep the BOM. Every other decoder
+ * is built and used exactly as before: same output, same errors, and a BOM
+ * stays in the output, as `fast-text-encoding` leaves it.
  *
  * It is guarded: when `new TextDecoder("utf-8", { fatal: true })` already works
  * (Node/V8 in Jest, a future Hermes) it does nothing.
@@ -51,6 +57,9 @@ const INVALID_DATA_MESSAGE =
 
 /** Labels `fast-text-encoding` accepts for UTF-8, in any letter case. */
 const UTF8_LABEL = /^(?:utf-?8|unicode-1-1-utf-8)$/i;
+
+/** The byte order mark, U+FEFF, as a UTF-16 code unit. */
+const BYTE_ORDER_MARK = 0xfeff;
 
 /** The constructor options a decoder reads. */
 interface DecoderOptions {
@@ -190,7 +199,10 @@ const supportsFatal = (TextDecoderConstructor: typeof TextDecoder): boolean => {
 const createFatalTextDecoder = (
   BaseTextDecoder: typeof TextDecoder,
 ): typeof TextDecoder => {
-  /** A TextDecoder that validates its input when built with `fatal: true`. */
+  /**
+   * A TextDecoder that, when built with `fatal: true` for UTF-8, validates its
+   * input and follows the byte order mark rule.
+   */
   class FatalTextDecoder {
     readonly encoding: string;
 
@@ -200,12 +212,16 @@ const createFatalTextDecoder = (
 
     private readonly base: TextDecoderInstance;
 
+    private readonly stripsBOM: boolean;
+
     /**
      * Builds the decoder. A UTF-8 decoder with `fatal` set strips `fatal` from
-     * the options it gives the base and validates on its own. For anything else
-     * the base gets the caller's arguments untouched, so a non-fatal decoder
-     * behaves exactly as before and a non-UTF-8 `fatal` decoder is still
-     * rejected, as before. `encoding` and `ignoreBOM` mirror the base.
+     * the options it gives the base, validates on its own and follows the
+     * WHATWG byte order mark rule: its `ignoreBOM` is the option it honors. For
+     * anything else the base gets the caller's arguments untouched, so a
+     * non-fatal decoder behaves exactly as before (it never strips a BOM, and
+     * `ignoreBOM` mirrors the base) and a non-UTF-8 `fatal` decoder is still
+     * rejected, as before. `encoding` mirrors the base.
      *
      * @param label - The encoding label, `utf-8` when omitted.
      * @param options - The decoder options.
@@ -221,14 +237,19 @@ const createFatalTextDecoder = (
       );
       this.encoding = this.base.encoding;
       this.fatal = strict;
-      this.ignoreBOM = this.base.ignoreBOM;
+      this.ignoreBOM = strict
+        ? Boolean(options?.ignoreBOM)
+        : this.base.ignoreBOM;
+      this.stripsBOM = strict && !this.ignoreBOM;
     }
 
     /**
      * Decodes `input`. A non-fatal decoder hands the call straight to the base.
      * A fatal one decodes with the base too, so the base's own errors (such as
-     * its unsupported `stream` option) surface unchanged, and then throws a
-     * `TypeError` if the bytes are not well-formed UTF-8.
+     * its unsupported `stream` option) surface unchanged, then throws a
+     * `TypeError` if the bytes are not well-formed UTF-8. Unless `ignoreBOM` is
+     * set it also drops one leading U+FEFF from the result, which the base
+     * never does. Each call strips on its own, so one decoder can be reused.
      *
      * @param input - The encoded data. A fatal decoder reads a missing input as
      * empty, like the native decoder; a non-fatal one keeps the base's
@@ -249,7 +270,9 @@ const createFatalTextDecoder = (
         throw new TypeError(INVALID_DATA_MESSAGE);
       }
 
-      return text;
+      return this.stripsBOM && text.charCodeAt(0) === BYTE_ORDER_MARK
+        ? text.slice(1)
+        : text;
     }
   }
 
