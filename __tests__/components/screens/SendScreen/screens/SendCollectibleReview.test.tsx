@@ -1010,15 +1010,20 @@ describe("SendCollectibleReview - muxed contract (W) recipient", () => {
     },
   );
 
-  describe("collectible image size", () => {
+  describe("collectible image", () => {
     const imageTestId = "send-collectible-image";
+    const imageSectionTestId = "send-collectible-image-section";
 
-    it("shrinks the image on small screens for a W, so Review stays on screen", async () => {
+    it("hides the image on small screens for a W, so the banner and Review fit", async () => {
       const { getByTestId } = await renderWithRecipient(MUXED_CONTRACT_ID_0);
 
+      expect(classNameOf(getByTestId(imageSectionTestId))).toContain(
+        "max-xs:hidden",
+      );
+      // Wider screens keep the full-size image.
       const className = classNameOf(getByTestId(imageTestId));
       expect(className).toContain("w-[240px] h-[240px]");
-      expect(className).toContain("max-xs:w-[160px] max-xs:h-[160px]");
+      expect(className).not.toContain("max-xs:");
     });
 
     it.each([
@@ -1028,6 +1033,9 @@ describe("SendCollectibleReview - muxed contract (W) recipient", () => {
     ])("keeps the full-size image for %s", async (_label, recipientAddress) => {
       const { getByTestId } = await renderWithRecipient(recipientAddress);
 
+      expect(classNameOf(getByTestId(imageSectionTestId))).not.toContain(
+        "max-xs:",
+      );
       const className = classNameOf(getByTestId(imageTestId));
       expect(className).toContain("w-[240px] h-[240px]");
       expect(className).not.toContain("max-xs:");
