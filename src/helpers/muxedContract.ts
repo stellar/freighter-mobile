@@ -23,9 +23,10 @@ const MUX_ID_END = 40;
 /**
  * Checks if an address is a muxed contract address (`W…`).
  *
- * Validates the version byte and the checksum, so a mistyped or truncated
- * `W…` is rejected. Contract (`C…`), account (`G…`) and muxed account (`M…`)
- * addresses are not muxed contracts.
+ * Validates the whole strkey, so a mistyped `W…` is rejected: a last
+ * character whose base32 padding bit is set fails, and so does a checksum
+ * that does not match. Contract (`C…`), account (`G…`) and muxed account
+ * (`M…`) addresses are not muxed contracts.
  *
  * @param address The address to check
  * @returns True if the address is a valid `W…`

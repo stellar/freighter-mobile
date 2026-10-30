@@ -17,8 +17,10 @@ import {
 
 /**
  * These run against the real `@stellar/stellar-sdk` on purpose: the fixtures
- * are SDK-computed strkeys, and what is under test (checksum validation, the
- * uint64 range) is SDK behavior that a mock would only restate.
+ * are SDK-computed strkeys, and what is under test (strkey validation, the
+ * uint64 range) is SDK behavior that a mock would only restate. Of the
+ * malformed `W…` vectors, one is rejected for its base32 padding bit and one
+ * for a real checksum mismatch; see the comments beside them.
  */
 describe("isMuxedContract", () => {
   it("accepts W addresses", () => {
@@ -37,7 +39,13 @@ describe("isMuxedContract", () => {
       "",
       ` ${MUXED_CONTRACT_ID_0}`,
       MUXED_CONTRACT_ID_0.toLowerCase(),
+      // Last character C -> D sets the single base32 padding bit, so the
+      // decoder rejects it before any checksum comparison happens.
       `${MUXED_CONTRACT_ID_0.slice(0, -1)}D`,
+      // Second-to-last character W -> X flips a bit inside the stored
+      // checksum, so the address decodes cleanly and then fails the checksum
+      // comparison. This is the vector that pins checksum verification.
+      `${MUXED_CONTRACT_ID_0.slice(0, -2)}X${MUXED_CONTRACT_ID_0.slice(-1)}`,
     ].forEach((a) => expect(isMuxedContract(a)).toBe(false));
   });
 });
