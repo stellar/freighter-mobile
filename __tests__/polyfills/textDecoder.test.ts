@@ -106,6 +106,7 @@ const thrownBy = (call: () => unknown): Error => {
   throw new Error("Expected the call to throw");
 };
 
+/** Formats bytes as space-separated hex pairs, to name a mismatching input. */
 const hex = (bytes: ArrayLike<number>): string =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(" ");
 
@@ -293,6 +294,23 @@ describe("TextDecoder fatal polyfill", () => {
         expect(decoder.decode()).toBe("");
       });
 
+      it("decodes only the bytes a view covers, like the native decoder", () => {
+        // "é€" with an invalid byte (0xff) on each side. The view covers only
+        // the text, so a decoder that reads the whole buffer would throw.
+        const text = new TextEncoder().encode("é€");
+        const buf = Uint8Array.from([0xff, ...text, 0xff]).buffer;
+        const view = new DataView(buf, 1, text.length);
+        const options = { fatal: true };
+        const decoder = new TextDecoder("utf-8", options);
+
+        expect(nativeAccepts(new Uint8Array(buf))).toBe(false);
+        expect(() => decoder.decode(view)).not.toThrow();
+        expect(decoder.decode(view)).toBe("é€");
+        expect(decoder.decode(view)).toBe(
+          new NativeTextDecoder("utf-8", options).decode(view),
+        );
+      });
+
       it.each(INVALID_SEQUENCES)(
         "throws a TypeError for %s",
         (_name, bytes) => {
@@ -370,6 +388,11 @@ describe("TextDecoder fatal polyfill", () => {
         );
         expect(thrownBy(() => new TextDecoder("nope"))).toBeInstanceOf(
           RangeError,
+        );
+        // The one input where a fatal decoder differs on purpose: it reads a
+        // missing input as empty, and a non-fatal one keeps the base's error.
+        expect(thrownBy(() => new TextDecoder().decode())).toEqual(
+          thrownBy(() => new BaseTextDecoder().decode()),
         );
       });
 

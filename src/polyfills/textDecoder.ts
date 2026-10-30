@@ -55,7 +55,13 @@ require("fast-text-encoding");
 const INVALID_DATA_MESSAGE =
   "The encoded data was not valid for encoding utf-8";
 
-/** Labels `fast-text-encoding` accepts for UTF-8, in any letter case. */
+/**
+ * The labels the strict path treats as UTF-8, in any letter case. The
+ * Buffer-backed `fast-text-encoding` that "Load order" above guarantees checks
+ * labels with `Buffer.isEncoding`, so it accepts only `utf-8` and `utf8`: with
+ * `fatal`, `unicode-1-1-utf-8` passes this test and then makes the base throw
+ * its RangeError for an invalid label.
+ */
 const UTF8_LABEL = /^(?:utf-?8|unicode-1-1-utf-8)$/i;
 
 /** The byte order mark, U+FEFF, as a UTF-16 code unit. */
@@ -84,9 +90,11 @@ const isUtf8Label = (label?: string | null): boolean =>
   UTF8_LABEL.test(label || "utf-8");
 
 /**
- * Normalizes `decode()` input to a `Uint8Array` the way `fast-text-encoding`
- * does, so the bytes that are validated are the bytes it decodes. A missing
- * input is empty, as for the native decoder.
+ * Normalizes `decode()` input to a `Uint8Array` over the bytes the native
+ * decoder reads: the whole of an ArrayBuffer, and only the window that
+ * `byteOffset` and `byteLength` describe for any other view. The base decodes a
+ * `Uint8Array` as it is, so the bytes that are validated are the bytes it
+ * decodes. A missing input is empty, as for the native decoder.
  *
  * @param input - An ArrayBuffer, a view over one, or nothing.
  * @returns The bytes to validate and decode.
@@ -100,11 +108,12 @@ const toUint8Array = (input?: DecodeInput): Uint8Array => {
     return input;
   }
 
-  // Any other view, or an ArrayBuffer, which has no `buffer`. Like the base, a
-  // `null` input throws a TypeError here.
+  // Any other view, or an ArrayBuffer, which has no `buffer`. A view is read
+  // through its own window, where the base would decode its whole backing
+  // buffer. Like the base, a `null` input throws a TypeError here.
   const view = input as Partial<ArrayBufferView>;
   return view.buffer instanceof ArrayBuffer
-    ? new Uint8Array(view.buffer)
+    ? new Uint8Array(view.buffer, view.byteOffset, view.byteLength)
     : new Uint8Array(input as ArrayBuffer);
 };
 
