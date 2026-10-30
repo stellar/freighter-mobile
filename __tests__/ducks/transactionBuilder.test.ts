@@ -6,6 +6,7 @@ import {
 } from "__tests__/support/muxedContractFixtures";
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
+import { PricedBalance } from "config/types";
 import { useDebugStore } from "ducks/debug";
 import {
   SubmitTransactionOutcome,
@@ -207,6 +208,46 @@ describe("transactionBuilder Duck", () => {
         memo: "",
         params: expect.objectContaining({
           destination: MUXED_CONTRACT_ID_U64_MAX,
+        }),
+      }),
+    );
+  });
+
+  it("keeps the memo when simulating a custom token sent to a G recipient", async () => {
+    // A custom token is a balance with a contractId, which makes the send
+    // Soroban even to a G. Only an M or a W final destination drops the memo.
+    const customTokenBalance = {
+      id: `CUSTOM:${mockContractAddress}`,
+      contractId: mockContractAddress,
+      decimals: 7,
+    } as unknown as PricedBalance;
+    (
+      transactionService.buildPaymentTransaction as jest.Mock
+    ).mockResolvedValueOnce({
+      xdr: mockBuiltXDR,
+      tx: { sequence: "1" },
+      contractId: mockContractAddress,
+      finalDestination: mockRecipientAddress,
+      amountInBaseUnits: "1000000000",
+    });
+
+    await act(async () => {
+      await store.getState().buildTransaction({
+        tokenAmount: mockTokenValue,
+        selectedBalance: customTokenBalance,
+        recipientAddress: mockRecipientAddress,
+        transactionMemo: "kept-memo",
+        senderAddress: mockPublicKey,
+        network: mockNetwork,
+      });
+    });
+
+    expect(store.getState().isSoroban).toBe(true);
+    expect(transactionService.simulateContractTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memo: "kept-memo",
+        params: expect.objectContaining({
+          destination: mockRecipientAddress,
         }),
       }),
     );

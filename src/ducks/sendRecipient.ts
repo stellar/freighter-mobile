@@ -29,6 +29,13 @@ interface SendStore {
   isSearching: boolean;
   searchError: string | null;
   isValidDestination: boolean;
+  /**
+   * Whether the destination has a funded classic account. `null` while that's
+   * unknown: not looked up yet, or the lookup failed for a reason other than
+   * a 404. `false` means either no account (the lookup returned 404) or a
+   * contract destination (`C...` or `W...`), which holds no classic account
+   * and is never looked up.
+   */
   isDestinationFunded: boolean | null;
 
   loadRecentAddresses: () => Promise<void>;
@@ -349,8 +356,6 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
    * @param fedAddress The federation address the destination came from, if any
    */
   setDestinationAddress: (address: string, fedAddress?: string) => {
-    const { network } = useAuthenticationStore.getState();
-
     if (isContractDestination(address)) {
       set({
         destinationAddress: address,
@@ -360,6 +365,8 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
       });
       return;
     }
+
+    const { network } = useAuthenticationStore.getState();
 
     set({
       destinationAddress: address,

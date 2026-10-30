@@ -205,8 +205,10 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
      * preview, that kept the flag from an earlier debug build.
      *
      * @returns The XDR to sign (prepared for a Soroban send; the device-built
-     * one when the DEV stub applies), or `null` after storing the error when
-     * the build or the simulation fails
+     * one when the DEV stub applies), or `null` when the build or the
+     * simulation fails. The store only takes the result while this is still
+     * the latest request: a stale request returns `null` without storing its
+     * error, and a stale success returns its XDR without storing it.
      */
     buildTransaction: async (params) => {
       const newRequestId = createRequestId();

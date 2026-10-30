@@ -6,6 +6,7 @@ import {
   M_ACCOUNT_ID_1234,
   MUXED_CONTRACT_ID_0,
 } from "__tests__/support/muxedContractFixtures";
+import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
 import SendCollectibleReviewScreen from "components/screens/SendScreen/screens/SendCollectibleReview";
 import { NETWORKS } from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
@@ -947,11 +948,42 @@ describe("SendCollectibleReview - muxed contract (W) recipient", () => {
     ).toBeNull();
   });
 
+  /**
+   * Finds the first element of a component type in a React element tree. It
+   * walks `props.children`, which is where BottomSheet puts its content.
+   *
+   * @param node The tree to search
+   * @param type The component to look for
+   * @returns The element, or undefined when the tree holds none
+   */
+  const findElementOfType = (
+    node: React.ReactNode,
+    type: React.ElementType,
+  ): React.ReactElement | undefined => {
+    if (Array.isArray(node)) {
+      return node
+        .map((child: React.ReactNode) => findElementOfType(child, type))
+        .find(Boolean);
+    }
+    if (!React.isValidElement(node)) {
+      return undefined;
+    }
+    if (node.type === type) {
+      return node;
+    }
+
+    return findElementOfType(
+      (node.props as { children?: React.ReactNode }).children,
+      type,
+    );
+  };
+
   it("opens the W explanation from the banner", async () => {
     setRecipient(MUXED_CONTRACT_ID_0);
-    // A host View has no ref in the test renderer, so the bottom sheet modals
-    // (the only elements rendered `detached`) get a present() to watch.
-    const present = jest.fn();
+    // A host View has no ref in the test renderer, so each bottom sheet modal
+    // (the only elements rendered `detached`) gets its own present() to
+    // watch, kept with the content it holds.
+    const sheets: { present: jest.Mock; content: React.ReactNode }[] = [];
 
     const { getByTestId } = render(
       <SendCollectibleReviewScreen
@@ -961,17 +993,34 @@ describe("SendCollectibleReview - muxed contract (W) recipient", () => {
       {
         // The settings sheet's inputs read the toast context.
         wrapper: ToastProvider,
-        createNodeMock: (element) =>
-          (element.props as { detached?: boolean }).detached
-            ? { present, dismiss: jest.fn() }
-            : null,
+        createNodeMock: (element) => {
+          const props = element.props as {
+            detached?: boolean;
+            children?: React.ReactNode;
+          };
+          if (!props.detached) {
+            return null;
+          }
+          const sheet = { present: jest.fn(), content: props.children };
+          sheets.push(sheet);
+
+          return { present: sheet.present, dismiss: jest.fn() };
+        },
       },
     );
     await act(async () => {});
 
     fireEvent.press(getByTestId(bannerTestId));
 
-    expect(present).toHaveBeenCalledTimes(1);
+    // Exactly one sheet opened, and it's the muxed address warning, in its W
+    // variant.
+    const opened = sheets.filter((sheet) => sheet.present.mock.calls.length);
+    expect(opened).toHaveLength(1);
+    expect(opened[0].present).toHaveBeenCalledTimes(1);
+    expect(
+      findElementOfType(opened[0].content, MuxedAddressWarningBottomSheet)
+        ?.props,
+    ).toMatchObject({ variant: "contract" });
   });
 
   it.each([

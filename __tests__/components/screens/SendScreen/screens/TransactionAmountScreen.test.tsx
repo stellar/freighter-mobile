@@ -2307,6 +2307,13 @@ describe("TransactionAmountScreen - muxed contract (W) recipient", () => {
   let mockBuildTransactionFn: jest.Mock;
   let originalGetState: unknown;
 
+  /**
+   * The amount screen's route for a send of a token to a recipient.
+   *
+   * @param tokenId The id of the balance being sent
+   * @param recipientAddress The recipient, a W by default
+   * @returns The route the screen is rendered with
+   */
   const routeFor = (
     tokenId: string,
     recipientAddress: string = MUXED_CONTRACT_ID_1234,
@@ -2379,6 +2386,13 @@ describe("TransactionAmountScreen - muxed contract (W) recipient", () => {
         }),
     );
 
+  /**
+   * Whether the screen's Continue button is disabled, as its accessibility
+   * state reports it.
+   *
+   * @param getByTestId The rendered screen's query by testID
+   * @returns The button's disabled state
+   */
   const isContinueDisabled = (getByTestId: (id: string) => any) =>
     getByTestId("send-continue-button").props.accessibilityState?.disabled;
 
@@ -2520,6 +2534,31 @@ describe("TransactionAmountScreen - muxed contract (W) recipient", () => {
       }),
     );
   });
+
+  it.each([
+    ["a G account", G_ACCOUNT],
+    ["a C contract", BASE_CONTRACT],
+  ])(
+    "keeps a stored memo for XLM to %s: only an M or a W clears it",
+    async (_label, recipientAddress) => {
+      const settings = setSettingsStore({
+        selectedTokenId: "XLM",
+        recipientAddress,
+        transactionMemo: "keep",
+      });
+
+      render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor("XLM", recipientAddress)}
+        />,
+      );
+      await waitForAutoSimulation();
+
+      expect(settings.saveMemo).not.toHaveBeenCalled();
+      expect(settings.transactionMemo).toBe("keep");
+    },
+  );
 
   it("allows a classic asset to a W: no banner, Continue enabled", async () => {
     setSettingsStore({ selectedTokenId: classicAssetBalance.id });

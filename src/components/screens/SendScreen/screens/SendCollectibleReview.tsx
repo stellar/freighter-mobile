@@ -220,7 +220,7 @@ const SendCollectibleReviewScreen: React.FC<
     recipientAddress && isMuxedAccount(recipientAddress),
   );
 
-  // D5: a collectible is never sent to a muxed contract (W) address, the same
+  // A collectible is never sent to a muxed contract (W) address, the same
   // rule as the extension. It blocks here on the screen: the build is refused,
   // so the review sheet that carries the M banner would never open.
   const isRecipientMuxedContract = Boolean(
@@ -773,6 +773,10 @@ const SendCollectibleReviewScreen: React.FC<
       />
       <BottomSheet
         modalRef={muxedAddressInfoBottomSheetModalRef}
+        // As on the amount screen: gorhom makes the sheet one accessibility
+        // element by default, which hides the explanation the W banner opens
+        // from VoiceOver and from Maestro on iOS.
+        bottomSheetModalProps={{ accessible: false }}
         customContent={
           <MuxedAddressWarningBottomSheet
             variant={isRecipientMuxedContract ? "contract" : "account"}

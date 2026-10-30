@@ -339,7 +339,7 @@ describe("buildPaymentTransaction — muxed contract (W) destination", () => {
     },
   );
 
-  it("refuses a custom token to a W (D5)", async () => {
+  it("refuses a custom token to a W, which only takes an asset's SAC", async () => {
     await expect(
       buildPaymentTransaction({
         ...baseParams,
@@ -396,7 +396,9 @@ describe("getSacContractIdForBalance", () => {
 
     expect(() =>
       getSacContractIdForBalance(sacWrappedBalance, NETWORKS.TESTNET),
-    ).toThrow("A custom token has no Stellar Asset Contract");
+    ).toThrow(
+      "A custom token is sent through its own contract, not a derived Stellar Asset Contract",
+    );
   });
 
   it("throws for a liquidity pool share, which has no SAC", () => {

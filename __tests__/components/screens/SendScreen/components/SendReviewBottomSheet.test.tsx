@@ -345,16 +345,30 @@ describe("SendReviewBottomSheet", () => {
   });
 
   describe("Memo row", () => {
+    const settingsStoreMock = () =>
+      jest.requireMock("ducks/transactionSettings")
+        .useTransactionSettingsStore as jest.Mock;
+    // The factory's default (a G recipient), put back after each test.
+    let defaultSettings: (() => unknown) | undefined;
+
+    beforeAll(() => {
+      defaultSettings = settingsStoreMock().getMockImplementation();
+    });
+
+    afterEach(() => {
+      if (defaultSettings) {
+        settingsStoreMock().mockImplementation(defaultSettings);
+      }
+    });
+
     /**
-     * Points the mocked settings store at a recipient for the next render.
+     * Points the mocked settings store at a recipient for every render of the
+     * test, so a re-render can't fall back to the default G recipient.
      *
      * @param recipientAddress The address the send is going to
      */
     const mockRecipient = (recipientAddress: string) => {
-      (
-        jest.requireMock("ducks/transactionSettings")
-          .useTransactionSettingsStore as jest.Mock
-      ).mockReturnValueOnce({
+      settingsStoreMock().mockReturnValue({
         recipientAddress,
         federationAddress: "",
         recipientName: "",

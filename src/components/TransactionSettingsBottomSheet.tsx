@@ -181,8 +181,8 @@ const TransactionSettingsBottomSheet: React.FC<
    * 1. A collectible transfer: the collection's contract.
    * 2. A custom token: its own contract.
    * 3. A W recipient: the Stellar Asset Contract (SAC) of the selected asset.
-   *    A W is the destination, never the token contract, and `undefined` when
-   *    no balance is selected or the balance has no SAC.
+   *    Never the W itself; `undefined` when no balance is selected or the
+   *    balance has no SAC.
    * 4. A C recipient: the recipient itself.
    *
    * The collectible and custom-token cases come first, so they win over a W.

@@ -512,6 +512,9 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       ...mockTransactionSettingsState,
       recipientAddress: BASE_CONTRACT,
     });
+    // Still needed: the memo check (getMemoDisabledState) reads this mocked
+    // `isContractId`. Saying yes for the C keeps it on its real path, which
+    // disables the memo with no muxed-support lookup.
     mockIsContractId.mockReturnValue(true);
 
     const { getByText, getByTestId } = renderWithProviders(
@@ -1163,6 +1166,9 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
           contractId: sacContractId,
         }),
       );
+      expect(memoStateSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ contractId: MUXED_CONTRACT_ID_0 }),
+      );
       expect(getByText("transactionSettings.inclusionFeeTitle")).toBeTruthy();
       expect(mockCheckContractSupportsMuxed).not.toHaveBeenCalled();
     });
@@ -1338,7 +1344,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       });
       mockUseTransactionSettingsStore.mockReturnValue(mockState);
 
-      renderWithProviders(
+      const { getByText } = renderWithProviders(
         <TransactionSettingsBottomSheet
           onCancel={mockOnCancel}
           onConfirm={mockOnConfirm}
@@ -1350,6 +1356,13 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       await waitFor(() => {
         expect(mockState.saveMemo).toHaveBeenCalledWith("");
       });
+
+      // Save can't carry the old memo forward either.
+      fireEvent.press(getByText("common.save"));
+      await waitFor(() => {
+        expect(mockOnConfirm).toHaveBeenCalled();
+      });
+      expect(mockState.saveMemo).not.toHaveBeenCalledWith("Some existing memo");
     });
 
     it("keeps a C recipient as the contract, with the memo unsupported", async () => {

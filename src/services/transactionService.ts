@@ -274,8 +274,9 @@ export const getContractIdForNativeToken = (network: NETWORKS): string =>
  * @param balance The native or classic balance being sent
  * @param network The network the SAC is derived for
  * @returns The SAC's contract ID (`C...`)
- * @throws Error if the balance has no SAC. A balance with a `contractId` is a
- * custom token, which is its own token contract, and a liquidity pool share is
+ * @throws Error if no SAC is derived for the balance. A balance with a
+ * `contractId` is a custom token, which is sent through its own contract
+ * (even when that contract is itself a SAC), and a liquidity pool share is
  * not an asset that can be sent.
  */
 export const getSacContractIdForBalance = (
@@ -283,7 +284,9 @@ export const getSacContractIdForBalance = (
   network: NETWORKS,
 ): string => {
   if ("contractId" in balance && balance.contractId) {
-    throw new Error("A custom token has no Stellar Asset Contract");
+    throw new Error(
+      "A custom token is sent through its own contract, not a derived Stellar Asset Contract",
+    );
   }
 
   const token = getTokenForPayment(balance);
@@ -394,9 +397,9 @@ interface BuildPaymentTransactionResult {
  *
  * @param params The amount, the balance and the recipient, the memo, fee and
  * timeout, and the network and sender
- * @returns The transaction and its XDR. A SAC transfer also returns the token
- * contract, the final destination and the amount in base units, which the
- * caller simulates it with.
+ * @returns The transaction, its XDR and the final destination, on both paths.
+ * A SAC transfer also returns the token contract and the amount in base
+ * units, which the caller simulates it with.
  * @throws Error `Failed to build payment transaction: ...` when a parameter is
  * missing or invalid, a refusal above applies, or building fails
  */

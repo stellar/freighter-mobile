@@ -360,7 +360,7 @@ describe("buildSendCollectibleTransaction", () => {
     expect(typeof result.xdr).toBe("string");
   });
 
-  it("refuses a W recipient before any network call (D5)", async () => {
+  it("refuses a W recipient before any network call: a collectible never goes to a W", async () => {
     mockLoadAccount.mockClear();
     (backend.checkContractSupportsMuxed as jest.Mock).mockClear();
 

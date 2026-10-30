@@ -132,8 +132,11 @@ export interface DetermineMuxedDestinationParams {
  *
  * Every other recipient follows the existing rules:
  * - Contract supports muxed: a `G...` with a memo becomes an `M...` carrying
- *   the memo as its id, and an `M...` with a memo is re-muxed onto its base
- *   `G...` with the new id. Without a memo the recipient is kept as is.
+ *   the memo as its id. Anything else is kept as is, including an `M...` with
+ *   a memo: `isValidStellarAddress` accepts an `M...`, so it takes the `G...`
+ *   branch, where `createMuxedAccount` returns null for it. The branch that
+ *   would re-mux an `M...` onto its base `G...` is never reached for a real
+ *   `M...`.
  * - Contract does not support muxed: an `M...` falls back to its base `G...`,
  *   and anything else is kept as is.
  *

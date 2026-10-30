@@ -425,9 +425,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     isRecipientMuxed && isCustomToken && contractSupportsMuxed === false,
   );
 
-  // D5: a W is only sent through an asset's Stellar Asset Contract (native XLM
-  // and classic assets), never to a custom token's own contract, the same rule
-  // as the extension. Unlike the M check above it needs no contract lookup, and
+  // A W is only sent through an asset's Stellar Asset Contract (native XLM and
+  // classic assets), never to a custom token's own contract, the same rule as
+  // the extension. Unlike the M check above it needs no contract lookup, and
   // it blocks here on the screen: the build is refused, so the review sheet
   // that carries the M banner would never open.
   const isMuxedContractWithoutSupport =
