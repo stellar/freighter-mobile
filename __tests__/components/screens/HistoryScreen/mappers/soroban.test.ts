@@ -194,6 +194,21 @@ describe("getAttrsFromSorobanHorizonOp", () => {
       );
     },
   );
+
+  it("returns null without logging for a non-Soroban record", () => {
+    // Mercury's classic records have no envelope: without the isSorobanOp
+    // guard each one would reach the decode and be logged.
+    const op = sorobanRecord({
+      type: "payment",
+      type_i: 1,
+      transaction_attr: { operation_count: 1, fee_charged: "100" },
+    });
+
+    expect(
+      getAttrsFromSorobanHorizonOp(op, TESTNET_NETWORK_DETAILS),
+    ).toBeNull();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
 });
 
 const themeColors = {

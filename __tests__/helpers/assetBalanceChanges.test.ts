@@ -431,6 +431,8 @@ describe("processAssetBalanceChanges", () => {
     it("shows a debit to a C without a mux id as the C", async () => {
       const [diff] = await processOne(sentToContract());
       expect(diff.destination).toBe(BASE_CONTRACT);
+      // The common case: no id means nothing to rebuild, and nothing to log.
+      expect(logger.error).not.toHaveBeenCalled();
     });
 
     it.each(["", "abc", "-1", "0x10", "18446744073709551616"])(

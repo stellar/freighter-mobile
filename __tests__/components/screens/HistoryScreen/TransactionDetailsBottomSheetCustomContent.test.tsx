@@ -76,5 +76,7 @@ describe("TransactionDetailsBottomSheetCustomContent for a transfer to a muxed c
 
     expect(getByText("WA7Q...LLEM")).toBeTruthy();
     expect(queryByText("transactionAmountScreen.details.memo")).toBeNull();
+    // No mux-id row either: 1234 only exists inside the W.
+    expect(queryByText(/1234/)).toBeNull();
   });
 });
