@@ -424,8 +424,9 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
    * server then generates a native SAC transfer from the session's account to
    * `to` (a muxed contract, `W…`, by default) and returns the generated `xdr`
    * in the response. This mirrors signAuthEntry generating a preimage when
-   * `entryXdr` is absent, but only for this fixture; any other body without an
-   * `xdr` string still gets a 400. The fixture loads @stellar/stellar-sdk 17 on
+   * `entryXdr` is absent, but only for this fixture. Any other body without a
+   * non-empty string `xdr` still gets a 400, and so does a fixture body whose
+   * `to` isn't a valid address. The fixture loads @stellar/stellar-sdk 17 on
    * demand, so no other route does.
    */
   router.post(
@@ -448,13 +449,13 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
       };
       const network = parseNetwork((req.body as { network?: unknown }).network);
 
+      // A non-empty string `xdr` is the caller's transaction, sent as is
+      const callerXdr =
+        typeof xdrParam === "string" && xdrParam !== "" ? xdrParam : undefined;
       const useSacTransferFixture =
         xdrParam === undefined && fixture === "sacTransferToMuxedContract";
 
-      if (
-        !useSacTransferFixture &&
-        (!xdrParam || typeof xdrParam !== "string")
-      ) {
+      if (callerXdr === undefined && !useSacTransferFixture) {
         return res.status(400).json({
           error: "Invalid request",
           message: "XDR is required and must be a string",
@@ -478,10 +479,11 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
       }
 
       try {
-        // The caller's XDR, or, for the fixture only, the one generated below
-        let xdrText = typeof xdrParam === "string" ? xdrParam : "";
+        // The caller's XDR, or else the fixture's, generated below: the check
+        // above lets a body without one through only for the fixture
+        let xdrText = callerXdr;
 
-        if (useSacTransferFixture) {
+        if (xdrText === undefined) {
           // The fixture sends from the session's own account. A CAIP-10 account
           // id is `namespace:reference:address`, so the address is its third
           // field.
@@ -496,14 +498,24 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
           }
 
           // On demand, so the routes CI relies on never load SDK 17
-          const { generateSacTransferToMuxedContractXdr } = await import(
-            "./fixtures/sacTransferToMuxedContract"
-          );
+          const {
+            generateSacTransferToMuxedContractXdr,
+            isSacTransferRecipient,
+          } = await import("./fixtures/sacTransferToMuxedContract");
+
+          // A bad `to` is the caller's mistake, so it's a 400, not a 500
+          if (to !== undefined && !isSacTransferRecipient(to)) {
+            return res.status(400).json({
+              error: "Invalid request",
+              message:
+                "to must be an address, such as a G..., C... or W... one",
+            });
+          }
 
           xdrText = generateSacTransferToMuxedContractXdr({
             network,
             source,
-            to: typeof to === "string" ? to : undefined,
+            to,
           });
         }
 

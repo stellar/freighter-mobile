@@ -111,10 +111,12 @@ Response:
   (`WA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAAAWWC`). The
   amount is always 1 XLM (10000000 stroops).
 - The source is the session's first Stellar account. A session without one gets
-  `400 { "error": "Session has no Stellar account" }`, and a `to` that isn't a
-  valid address gets a `500`.
-- If the body also has a string `xdr`, that `xdr` is sent and the fixture is
-  ignored. Any other body without an `xdr` string still gets a `400`.
+  `400 { "error": "Session has no Stellar account" }`. A `to` that isn't an
+  address string gets `400 { "error": "Invalid request" }`, since it's bad
+  input.
+- If the body also has an `xdr`, the fixture is ignored: a non-empty string
+  `xdr` is sent as is, and any other `xdr` gets a `400`. So does a body with
+  neither a non-empty string `xdr` nor the fixture.
 - The web UI has a "Sign SAC transfer to W" button next to "Sign XDR" that sends
   this body.
 

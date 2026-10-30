@@ -27,13 +27,41 @@ export const SEP23_MUXED_CONTRACT =
 const DEFAULT_AMOUNT_STROOPS = "10000000";
 
 /**
+ * Whether `to` can be the transfer's recipient: a string that `Address`
+ * accepts and converts to an `ScVal`, as
+ * {@link generateSacTransferToMuxedContractXdr} converts it. That is any
+ * address with a valid checksum, such as a `G…`, `M…`, `C…` or `W…` one.
+ *
+ * @param to - The recipient a caller asked for.
+ * @returns `true` when the transfer can be built for it.
+ */
+export function isSacTransferRecipient(to: unknown): to is string {
+  if (typeof to !== "string") {
+    return false;
+  }
+
+  try {
+    new Address(to).toScVal();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * A native SAC `transfer(source → to, amount)`, with a source-account auth
  * entry for the same invocation.
  *
- * Built as `Account(source, "0")`, fee `"1000000"` and `setTimeout(0)`, with
- * one `invokeContractFunction` operation on the native asset's SAC for the
- * given network. Throws if `source` or `to` isn't a valid address, or if
- * `amount` isn't an integer string.
+ * Built from `Account(source, "0")`, so the transaction carries sequence `"1"`
+ * (`build()` increments the account's), with fee `"1000000"`, `setTimeout(0)`
+ * and one `invokeContractFunction` operation on the native asset's SAC for the
+ * given network.
+ *
+ * Throws if `source` or `to` isn't an address `Address` accepts, if
+ * `BigInt(amount)` throws (a decimal point or an exponent, say), or if the
+ * amount is outside i128's range. `BigInt` is lenient otherwise: it trims
+ * whitespace, reads `0x`, `0o` and `0b` prefixes and a minus sign, and takes
+ * `""` as 0, so those amounts go through.
  *
  * @param params.network - `"testnet"` or `"pubnet"`; picks the passphrase the
  *   native SAC's contract id is derived for.
