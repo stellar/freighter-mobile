@@ -8,7 +8,7 @@ import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { useDebugStore } from "ducks/debug";
 import { stroopToXlm } from "helpers/formatAmount";
-import { isContractId } from "helpers/soroban";
+import { isContractDestination, isMuxedContract } from "helpers/muxedContract";
 import { isMuxedAccount } from "helpers/stellar";
 import { t } from "i18next";
 import { SimulationTransactionType } from "services/analytics/types";
@@ -177,6 +177,28 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
   (set, get) => ({
     ...initialState,
 
+    /**
+     * Builds the transaction for a token send and, for a Soroban send,
+     * simulates it to get the prepared XDR and the fees.
+     *
+     * A send is Soroban when the token is a custom token or the recipient is a
+     * contract destination (`C...` or muxed contract `W...`). The flag is set
+     * before the build, so the fee label is right while it runs.
+     *
+     * Which simulate endpoint a Soroban send uses:
+     * - Amount 0 (fee estimation): `/simulate-tx`, with the XDR built on the
+     *   device (`simulateCollectibleTransfer`). `/simulate-token-transfer`
+     *   rejects amount 0 because it rebuilds the transaction server-side.
+     * - A real amount: `/simulate-token-transfer`, where the backend builds and
+     *   simulates the transfer (`simulateContractTransfer`).
+     *
+     * The memo sent to `/simulate-token-transfer` is empty when the final
+     * destination is an `M...` or a `W...`, because the mux id is already in
+     * the address. For any other destination it is the user's memo.
+     *
+     * @returns The XDR to sign (prepared for a Soroban send), or `null` after
+     * storing the error when the build or the simulation fails
+     */
     buildTransaction: async (params) => {
       const newRequestId = createRequestId();
 
@@ -187,7 +209,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         (params.selectedBalance &&
           "contractId" in params.selectedBalance &&
           params.selectedBalance.contractId) ||
-          (params.recipientAddress && isContractId(params.recipientAddress)),
+          (params.recipientAddress &&
+            isContractDestination(params.recipientAddress)),
       );
 
       // Mark new cycle and reset flags (clear stale Soroban fees so UI doesn't
@@ -222,7 +245,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         let sorobanResourceFeeXlm: string | null = null;
         let sorobanInclusionFeeXlm: string | null = null;
         const isRecipientContract =
-          params.recipientAddress && isContractId(params.recipientAddress);
+          params.recipientAddress &&
+          isContractDestination(params.recipientAddress);
 
         // Check if this is a custom token (SorobanBalance with contractId)
         const isCustomToken =
@@ -258,7 +282,9 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             // extension's flow (backend builds + simulates the tx).
             const finalDestination =
               builtTxResult.finalDestination || params.recipientAddress!;
-            const isDestinationMuxed = isMuxedAccount(finalDestination);
+            const isDestinationMuxed =
+              isMuxedAccount(finalDestination) ||
+              isMuxedContract(finalDestination);
             const memoForSimulation = isDestinationMuxed
               ? ""
               : params.transactionMemo || "";

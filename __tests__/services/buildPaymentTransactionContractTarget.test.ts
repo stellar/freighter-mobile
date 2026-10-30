@@ -9,11 +9,19 @@ import {
   scValToNative,
   xdr,
 } from "@stellar/stellar-sdk";
+import {
+  MUXED_CONTRACT_ID_0,
+  MUXED_CONTRACT_ID_U64_MAX,
+} from "__tests__/support/muxedContractFixtures";
 import { BigNumber } from "bignumber.js";
 import { NETWORKS } from "config/constants";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
+import { buildMuxedContract } from "helpers/muxedContract";
 import { getNativeContractDetails } from "helpers/soroban";
-import { buildPaymentTransaction } from "services/transactionService";
+import {
+  buildPaymentTransaction,
+  getSacContractIdForBalance,
+} from "services/transactionService";
 
 jest.mock("services/stellar", () => ({
   ...jest.requireActual("services/stellar"),
@@ -262,5 +270,145 @@ describe("send to contract address — asset/contract resolution", () => {
     } as never);
     expect(result.contractId).toBe(classicXlmSacTestnet);
     expect(result.contractId).not.toBe(NATIVE_SAC_TESTNET);
+  });
+});
+
+describe("buildPaymentTransaction — muxed contract (W) destination", () => {
+  it.each([
+    ["native XLM", nativeBalance, XLM_SAC],
+    ["a classic asset", classicUsdcBalance, USDC_SAC],
+  ])(
+    "sends %s through its SAC with the exact W as `to` and no memo",
+    async (_label, selectedBalance, sac) => {
+      const result = await buildPaymentTransaction({
+        ...baseParams,
+        selectedBalance,
+        recipientAddress: MUXED_CONTRACT_ID_U64_MAX,
+      } as never);
+
+      expect(result.contractId).toBe(sac);
+      expect(result.finalDestination).toBe(MUXED_CONTRACT_ID_U64_MAX);
+
+      const { invokedContract, fnName, args } = decodeInvocation(result.xdr);
+      expect([invokedContract, fnName, args[1]]).toEqual([
+        sac,
+        "transfer",
+        MUXED_CONTRACT_ID_U64_MAX,
+      ]);
+      expect(result.tx.memo.type).toBe("none");
+    },
+  );
+
+  it("builds a W send with amount 0, as a fee estimate does", async () => {
+    const result = await buildPaymentTransaction({
+      ...baseParams,
+      tokenAmount: "0",
+      selectedBalance: nativeBalance,
+      recipientAddress: MUXED_CONTRACT_ID_0,
+    } as never);
+
+    expect(result.finalDestination).toBe(MUXED_CONTRACT_ID_0);
+    expect(result.amountInBaseUnits).toBe("0");
+  });
+
+  it("treats a blank memo as no memo, as the UI sends it for a W", async () => {
+    const result = await buildPaymentTransaction({
+      ...baseParams,
+      selectedBalance: nativeBalance,
+      recipientAddress: MUXED_CONTRACT_ID_0,
+      transactionMemo: "",
+    } as never);
+
+    expect(result.finalDestination).toBe(MUXED_CONTRACT_ID_0);
+    expect(result.tx.memo.type).toBe("none");
+  });
+
+  it.each([
+    ["native XLM", nativeBalance, XLM_SAC],
+    ["a classic asset", classicUsdcBalance, USDC_SAC],
+  ])(
+    "refuses %s to a W wrapping the asset's own SAC",
+    async (_label, selectedBalance, sac) => {
+      await expect(
+        buildPaymentTransaction({
+          ...baseParams,
+          selectedBalance,
+          recipientAddress: buildMuxedContract(sac, "7"),
+        } as never),
+      ).rejects.toThrow("transaction.errors.recipientIsTokenContract");
+    },
+  );
+
+  it("refuses a custom token to a W (D5)", async () => {
+    await expect(
+      buildPaymentTransaction({
+        ...baseParams,
+        selectedBalance: customTokenBalance,
+        recipientAddress: MUXED_CONTRACT_ID_0,
+      } as never),
+    ).rejects.toThrow("transaction.errors.muxedContractNotSupported");
+  });
+
+  it("fails closed when a memo reaches a W send", async () => {
+    await expect(
+      buildPaymentTransaction({
+        ...baseParams,
+        selectedBalance: nativeBalance,
+        recipientAddress: MUXED_CONTRACT_ID_0,
+        transactionMemo: "hello",
+      } as never),
+    ).rejects.toThrow(
+      "transactionSettings.memoInfo.memoDisabledForTransaction",
+    );
+  });
+});
+
+describe("getSacContractIdForBalance", () => {
+  it("resolves the native SAC, a classic asset's own SAC, and throws without one", () => {
+    expect(getSacContractIdForBalance(nativeBalance, NETWORKS.TESTNET)).toBe(
+      XLM_SAC,
+    );
+    expect(
+      getSacContractIdForBalance(classicUsdcBalance, NETWORKS.TESTNET),
+    ).toBe(USDC_SAC);
+    expect(
+      getSacContractIdForBalance(nonNativeXlmBalance, NETWORKS.TESTNET),
+    ).toBe(classicXlmSacTestnet);
+    expect(() =>
+      getSacContractIdForBalance(customTokenBalance, NETWORKS.TESTNET),
+    ).toThrow();
+  });
+
+  it("derives the classic asset's SAC from the network passphrase", () => {
+    expect(
+      getSacContractIdForBalance(classicUsdcBalance, NETWORKS.PUBLIC),
+    ).toBe(new Asset("USDC", ISSUER).contractId(Networks.PUBLIC));
+    expect(
+      getSacContractIdForBalance(classicUsdcBalance, NETWORKS.PUBLIC),
+    ).not.toBe(USDC_SAC);
+  });
+
+  it("throws for any balance with a contractId, even one shaped like a classic asset", () => {
+    const sacWrappedBalance = {
+      ...classicUsdcBalance,
+      contractId: USDC_SAC,
+    } as unknown as PricedBalance;
+
+    expect(() =>
+      getSacContractIdForBalance(sacWrappedBalance, NETWORKS.TESTNET),
+    ).toThrow("A custom token has no Stellar Asset Contract");
+  });
+
+  it("throws for a liquidity pool share, which has no SAC", () => {
+    const liquidityPoolBalance = {
+      liquidityPoolId: "a".repeat(64),
+      reserves: [],
+      total: new BigNumber("1"),
+      limit: new BigNumber("1000"),
+    } as unknown as PricedBalance;
+
+    expect(() =>
+      getSacContractIdForBalance(liquidityPoolBalance, NETWORKS.TESTNET),
+    ).toThrow("Unsupported token type for payment");
   });
 });
