@@ -1,5 +1,12 @@
-import { Asset as SdkToken, Networks } from "@stellar/stellar-sdk";
-import type { Horizon } from "@stellar/stellar-sdk";
+import {
+  Account,
+  Asset as SdkToken,
+  Contract,
+  nativeToScVal,
+  Networks,
+  TransactionBuilder,
+} from "@stellar/stellar-sdk";
+import type { Horizon, xdr } from "@stellar/stellar-sdk";
 import { G_ACCOUNT } from "__tests__/support/muxedContractFixtures";
 import { resolveSorobanDisplayIdentity } from "components/screens/HistoryScreen/mappers/soroban";
 import { TESTNET_NETWORK_DETAILS } from "config/constants";
@@ -69,12 +76,89 @@ const sorobanRecord = (fields: Record<string, unknown>) =>
     ...fields,
   }) as unknown as Horizon.ServerApi.OperationRecord;
 
+/**
+ * The `envelope_xdr` Horizon serves for a transaction that calls `fnName` on
+ * the native SAC. Built with the real SDK, so decoding it is a real decode.
+ */
+const envelopeXdrCalling = (fnName: string, ...args: xdr.ScVal[]) =>
+  new TransactionBuilder(new Account(USER, "0"), {
+    fee: "100",
+    networkPassphrase: Networks.TESTNET,
+  })
+    .addOperation(new Contract(NATIVE_SAC_TESTNET).call(fnName, ...args))
+    .setTimeout(0)
+    .build()
+    .toXDR();
+
 describe("getAttrsFromSorobanHorizonOp", () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it("returns a Mercury record's pre-decoded attributes without logging", () => {
+    const op = sorobanRecord({
+      transaction_attr: {
+        contractId: NATIVE_SAC_TESTNET,
+        fnName: "transfer",
+        args: { from: USER, to: CIRCLE_ISSUER, amount: 1000n },
+      },
+    });
+
+    expect(getAttrsFromSorobanHorizonOp(op, TESTNET_NETWORK_DETAILS)).toEqual({
+      contractId: NATIVE_SAC_TESTNET,
+      fnName: "transfer",
+      from: USER,
+      to: CIRCLE_ISSUER,
+      amount: 1000n,
+    });
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it("decodes the token transfer in a Horizon envelope without logging", () => {
+    const op = sorobanRecord({
+      transaction_attr: {
+        envelope_xdr: envelopeXdrCalling(
+          "transfer",
+          nativeToScVal(USER, { type: "address" }),
+          nativeToScVal(CIRCLE_ISSUER, { type: "address" }),
+          nativeToScVal(1000n, { type: "i128" }),
+        ),
+      },
+    });
+
+    expect(
+      getAttrsFromSorobanHorizonOp(op, TESTNET_NETWORK_DETAILS),
+    ).toMatchObject({
+      contractId: NATIVE_SAC_TESTNET,
+      fnName: "transfer",
+      from: USER,
+      to: CIRCLE_ISSUER,
+      amount: 1000n,
+    });
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it("returns null without logging for a call that isn't a token transfer or mint", () => {
+    // The common case, and not a failure: only a record it can't read is
+    // logged.
+    const op = sorobanRecord({
+      transaction_attr: {
+        envelope_xdr: envelopeXdrCalling(
+          "balance",
+          nativeToScVal(USER, { type: "address" }),
+        ),
+      },
+    });
+
+    expect(
+      getAttrsFromSorobanHorizonOp(op, TESTNET_NETWORK_DETAILS),
+    ).toBeNull();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
 
   it.each([
     ["XDR that doesn't decode", { envelope_xdr: "not-xdr" }],
     ["no envelope", {}],
+    ["no transaction_attr", undefined],
+    ["null transaction_attr", null],
   ])(
     "returns null instead of throwing for a record with %s",
     (_, transactionAttr) => {
@@ -82,6 +166,7 @@ describe("getAttrsFromSorobanHorizonOp", () => {
       expect(
         getAttrsFromSorobanHorizonOp(op, TESTNET_NETWORK_DETAILS),
       ).toBeNull();
+      expect(logger.error).toHaveBeenCalledTimes(1);
       expect(logger.error).toHaveBeenCalledWith(
         "getAttrsFromSorobanHorizonOp",
         "Failed to decode Soroban operation",
