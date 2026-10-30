@@ -122,6 +122,15 @@ tags:
 # - simulation: the builder throws "Simulation returned no prepared
 #   transaction XDR", and a failed /simulate-token-transfer or /simulate-tx
 #   call shows the API client's "Request failed with status code <n>".
+# After the amount, the check also fails on the amount screen's two amount
+# errors, since either one would disable Continue too and let the Continue
+# check below pass for the wrong reason (an account holding less than 1 of
+# the token, say). Both show as toasts:
+# - transactionAmountScreen.errors.amountTooHigh: "The amount entered is
+#   greater than the available balance"
+# - transactionAmountScreen.errors.insufficientXlmForFees: "XLM insufficient
+#   for transaction fees. You need at least <fee> XLM to pay the transaction
+#   fee."
 - runFlow:
     when:
       visible:
@@ -153,11 +162,14 @@ tags:
       visible:
         text:
           ".*(Failed to build|Simulation returned no prepared transaction
-          XDR|Request failed with status code).*"
+          XDR|Request failed with status code|The amount entered is greater than
+          the available balance|XLM insufficient for transaction fees).*"
     commands:
       - assertTrue:
           condition: ${false}
-          label: "A build or simulation error toast showed up after the amount"
+          label:
+            "A build, simulation or amount error toast showed up after the
+            amount"
 
 # Dismiss the keyboard on Android so Continue and the banner are not obscured
 - runFlow:

@@ -124,10 +124,16 @@ tags:
       id: send-review-sheet
     timeout: 30000
 
-# No memo row for a W. Then cancel: never confirm, since the stubbed
-# transaction can't be submitted.
+# No memo row for a W. On iOS each review row is one accessible element,
+# whose label joins its texts ("Memo, None"), and Maestro's text is a
+# full-match regex, so the check matches the start of the label. The Fee
+# row's check first shows that this kind of pattern does match a row that
+# is there. Then cancel: never confirm, since the stubbed transaction can't
+# be submitted.
+- assertVisible:
+    text: "Fee.*"
 - assertNotVisible:
-    text: "Memo"
+    text: "Memo.*"
 - tapOn:
     id: send-review-cancel-button
 - extendedWaitUntil:
