@@ -133,7 +133,8 @@ describe("DappSignTransactionBottomSheetContent", () => {
       isMalicious: true,
     });
 
-    // The banner's onPress opens the Blockaid sheet, whose proceed path signs.
+    // The banner's onPress opens the Blockaid sheet, which offers to confirm
+    // anyway.
     expect(
       queryByText("dappConnectionBottomSheetContent.maliciousFlag"),
     ).toBeNull();

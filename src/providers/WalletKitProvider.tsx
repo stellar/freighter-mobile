@@ -293,6 +293,13 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   // request itself, in handleClearDappRequest's deferred reset.
   const [hasDetailsRenderError, setHasDetailsRenderError] = useState(false);
 
+  /**
+   * Fails the current request closed. The details sheet's error boundary calls
+   * it, through the request sheet's `onDetailsRenderError`, when the details
+   * throw while rendering.
+   * @function handleDetailsRenderError
+   * @returns {void}
+   */
   const handleDetailsRenderError = useCallback(
     () => setHasDetailsRenderError(true),
     [],
