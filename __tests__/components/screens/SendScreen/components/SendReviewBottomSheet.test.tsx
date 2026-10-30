@@ -1,6 +1,11 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { userEvent } from "@testing-library/react-native";
 import {
+  BASE_CONTRACT,
+  M_ACCOUNT_ID_1234,
+  MUXED_CONTRACT_ID_0,
+} from "__tests__/support/muxedContractFixtures";
+import {
   SendReviewBottomSheet,
   SendReviewFooter,
 } from "components/screens/SendScreen/components";
@@ -336,6 +341,66 @@ describe("SendReviewBottomSheet", () => {
       );
 
       expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+  });
+
+  describe("Memo row", () => {
+    /**
+     * Points the mocked settings store at a recipient for the next render.
+     *
+     * @param recipientAddress The address the send is going to
+     */
+    const mockRecipient = (recipientAddress: string) => {
+      (
+        jest.requireMock("ducks/transactionSettings")
+          .useTransactionSettingsStore as jest.Mock
+      ).mockReturnValueOnce({
+        recipientAddress,
+        federationAddress: "",
+        recipientName: "",
+        memo: "",
+        isMemoRequired: false,
+        transactionFee: "0.00001",
+        transactionMemo: "",
+      });
+    };
+
+    it("shows the memo row for a G recipient", () => {
+      const { getByText } = renderWithProviders(
+        <SendReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(getByText("Memo")).toBeTruthy();
+    });
+
+    it("hides the memo row for a muxed contract (W) recipient", () => {
+      mockRecipient(MUXED_CONTRACT_ID_0);
+
+      const { queryByText } = renderWithProviders(
+        <SendReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(queryByText("Memo")).toBeNull();
+    });
+
+    it("hides the memo row for a muxed account (M) recipient", () => {
+      mockRecipient(M_ACCOUNT_ID_1234);
+
+      const { queryByText } = renderWithProviders(
+        <SendReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(queryByText("Memo")).toBeNull();
+    });
+
+    it("shows the memo row for a plain contract (C) recipient", () => {
+      mockRecipient(BASE_CONTRACT);
+
+      const { getByText } = renderWithProviders(
+        <SendReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(getByText("Memo")).toBeTruthy();
     });
   });
 
