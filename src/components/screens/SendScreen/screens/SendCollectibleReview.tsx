@@ -22,6 +22,7 @@ import {
 } from "components/screens/SendScreen/helpers";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
+import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -46,6 +47,7 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { checkContractMuxedSupport } from "helpers/muxedAddress";
+import { isMuxedContract } from "helpers/muxedContract";
 import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -77,6 +79,9 @@ type SendCollectibleReviewScreenProps = NativeStackScreenProps<
  * SendCollectibleReviewScreen Component
  *
  * A screen for reviewing details of a collectible before sending.
+ *
+ * A collectible can't be sent to a muxed contract (W) address: a banner
+ * explains why, Review is disabled and nothing is built.
  *
  * @param {SendCollectibleReviewScreenProps} props - Component props
  * @returns {JSX.Element} The rendered component
@@ -214,6 +219,13 @@ const SendCollectibleReviewScreen: React.FC<
     recipientAddress && isMuxedAccount(recipientAddress),
   );
 
+  // D5: a collectible is never sent to a muxed contract (W) address, the same
+  // rule as the extension. It blocks here on the screen: the build is refused,
+  // so the review sheet that carries the M banner would never open.
+  const isRecipientMuxedContract = Boolean(
+    recipientAddress && isMuxedContract(recipientAddress),
+  );
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -280,8 +292,22 @@ const SendCollectibleReviewScreen: React.FC<
     transactionSecurityWarningBottomSheetModalRef.current?.present();
   }, []);
 
+  /**
+   * Builds the collectible transfer for the current recipient and settings,
+   * then scans it, and opens the review sheet when `shouldOpenReview` is set.
+   *
+   * Returns first thing, building nothing, for a W recipient. The
+   * auto-simulation, a settings change and Review all come through here, so
+   * none of them can build one.
+   *
+   * @param shouldOpenReview - Open the review sheet once the scan returns
+   */
   const prepareTransaction = useCallback(
     async (shouldOpenReview = false) => {
+      if (isRecipientMuxedContract) {
+        return;
+      }
+
       const hasRequiredParams =
         publicKey && recipientAddress && selectedCollectible;
       if (!hasRequiredParams) {
@@ -341,6 +367,7 @@ const SendCollectibleReviewScreen: React.FC<
       buildSendCollectibleTransaction,
       scanTransaction,
       recipientAddress,
+      isRecipientMuxedContract,
       handleTransactionScanSuccess,
       handleTransactionScanError,
     ],
@@ -515,13 +542,14 @@ const SendCollectibleReviewScreen: React.FC<
     [footerProps],
   );
 
+  // Review is also off for a W recipient, which can't be built
   const isContinueButtonDisabled = useMemo(() => {
     if (!recipientAddress) {
       return false;
     }
 
-    return isBuilding;
-  }, [isBuilding, recipientAddress]);
+    return isBuilding || isRecipientMuxedContract;
+  }, [isBuilding, recipientAddress, isRecipientMuxedContract]);
 
   const selectCollectibleDetails: ListItemProps[] = useMemo(
     () => [
@@ -655,12 +683,23 @@ const SendCollectibleReviewScreen: React.FC<
         <View className="mt-[24px]">
           <List variant="secondary" items={selectCollectibleDetails} />
         </View>
-        <View className="w-full mt-auto mb-4">
+        <View className="w-full mt-auto mb-4 gap-[12px]">
+          {isRecipientMuxedContract && (
+            <Banner
+              variant="error"
+              text={t(
+                "transactionAmountScreen.errors.muxedAddressNotSupported",
+              )}
+              onPress={openMuxedAddressWarningBottomSheet}
+              testID="muxed-contract-not-supported-banner"
+            />
+          )}
           <Button
             secondary
             xl
             onPress={handleContinueButtonPress}
             disabled={isContinueButtonDisabled}
+            testID="send-collectible-continue-button"
           >
             {getContinueButtonText()}
           </Button>
@@ -723,6 +762,7 @@ const SendCollectibleReviewScreen: React.FC<
         modalRef={muxedAddressInfoBottomSheetModalRef}
         customContent={
           <MuxedAddressWarningBottomSheet
+            variant={isRecipientMuxedContract ? "contract" : "account"}
             onCancel={handleCancelMuxedAddressWarning}
             onClose={handleCancelMuxedAddressWarning}
           />

@@ -873,6 +873,9 @@
         "title": "Muxed address not supported",
         "description": "This token does not support muxed address (M-) as a target destination. Proceeding with this transaction could result in the loss of the token during the transfer."
       },
+      "muxedContractWarning": {
+        "description": "This token does not support muxed contract address (W-) as a target destination."
+      },
       "malicious": "This address was flagged as malicious",
       "suspicious": "This address was flagged as suspicious",
       "maliciousToken": "A token was flagged as malicious",

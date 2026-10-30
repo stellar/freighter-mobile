@@ -1,4 +1,11 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { act, fireEvent, render } from "@testing-library/react-native";
+import {
+  BASE_CONTRACT,
+  G_ACCOUNT,
+  M_ACCOUNT_ID_1234,
+  MUXED_CONTRACT_ID_0,
+} from "__tests__/support/muxedContractFixtures";
 import SendCollectibleReviewScreen from "components/screens/SendScreen/screens/SendCollectibleReview";
 import { NETWORKS } from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
@@ -13,6 +20,7 @@ import * as blockaidService from "hooks/blockaid/useBlockaidTransaction";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import * as useValidateTransactionMemo from "hooks/useValidateTransactionMemo";
+import { ToastProvider } from "providers/ToastProvider";
 import React from "react";
 import { SecurityLevel } from "services/blockaid/constants";
 import * as blockaidHelper from "services/blockaid/helper";
@@ -841,4 +849,164 @@ describe("SendCollectibleReview - Unfunded Recipient Handling", () => {
     expect(mockSendReviewBottomSheetProps.bannerVariant).toBe("warning");
     expect(mockSendReviewBottomSheetProps.onBannerPress).toBeDefined();
   });
+});
+
+describe("SendCollectibleReview - muxed contract (W) recipient", () => {
+  const bannerTestId = "muxed-contract-not-supported-banner";
+  const continueButtonTestId = "send-collectible-continue-button";
+  let originalGetState: unknown;
+
+  beforeAll(() => {
+    originalGetState = (useTransactionSettingsStore as any).getState;
+  });
+
+  afterAll(() => {
+    (useTransactionSettingsStore as any).getState = originalGetState;
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setupDefaultMocks();
+    mockAssessTransactionSecurity.mockReturnValue({
+      level: SecurityLevel.SAFE,
+      isMalicious: false,
+      isSuspicious: false,
+      isUnableToScan: false,
+    });
+    mockExtractSecurityWarnings.mockReturnValue([]);
+  });
+
+  /**
+   * Keeps the default settings and swaps in the recipient. Returns the store's
+   * build function, to see whether anything was built.
+   *
+   * prepareTransaction reads the settings fresh through `getState()`, which
+   * the automock leaves returning undefined, so it is pointed at the same
+   * state as the hook. Without that every build would throw before it called
+   * the builder, and "nothing was built" would hold whatever the screen did.
+   */
+  const setRecipient = (recipientAddress: string) => {
+    const settings = {
+      ...mockUseTransactionSettingsStore(),
+      recipientAddress,
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(settings);
+    (useTransactionSettingsStore as any).getState = jest
+      .fn()
+      .mockReturnValue(settings);
+
+    return mockUseTransactionBuilderStore().buildSendCollectibleTransaction;
+  };
+
+  /**
+   * Sets the recipient, then renders the screen and flushes what it starts on
+   * mount, inside act.
+   */
+  const renderWithRecipient = async (recipientAddress: string) => {
+    const buildSendCollectibleTransaction = setRecipient(recipientAddress);
+
+    const view = renderWithProviders(
+      <SendCollectibleReviewScreen
+        navigation={mockNavigation}
+        route={mockRoute}
+      />,
+    );
+    await act(async () => {});
+
+    return { ...view, buildSendCollectibleTransaction };
+  };
+
+  it("blocks a W: banner, Review disabled, nothing built", async () => {
+    const {
+      getByTestId,
+      getByText,
+      queryByText,
+      buildSendCollectibleTransaction,
+    } = await renderWithRecipient(MUXED_CONTRACT_ID_0);
+
+    expect(getByTestId(bannerTestId)).toBeTruthy();
+    expect(
+      getByText("transactionAmountScreen.errors.muxedAddressNotSupported"),
+    ).toBeTruthy();
+    expect(
+      getByTestId(continueButtonTestId).props.accessibilityState?.disabled,
+    ).toBe(true);
+    expect(buildSendCollectibleTransaction).not.toHaveBeenCalled();
+    // The banner opens the W explanation, not the M one. The sheet is always
+    // mounted in this file's bottom-sheet mock, so its description shows which
+    // variant the screen passed it.
+    expect(
+      getByText(
+        "transactionAmountScreen.errors.muxedContractWarning.description",
+      ),
+    ).toBeTruthy();
+    expect(
+      queryByText(
+        "transactionAmountScreen.errors.muxedAddressWarning.description",
+      ),
+    ).toBeNull();
+  });
+
+  it("opens the W explanation from the banner", async () => {
+    setRecipient(MUXED_CONTRACT_ID_0);
+    // A host View has no ref in the test renderer, so the bottom sheet modals
+    // (the only elements rendered `detached`) get a present() to watch.
+    const present = jest.fn();
+
+    const { getByTestId } = render(
+      <SendCollectibleReviewScreen
+        navigation={mockNavigation}
+        route={mockRoute}
+      />,
+      {
+        // The settings sheet's inputs read the toast context.
+        wrapper: ToastProvider,
+        createNodeMock: (element) =>
+          (element.props as { detached?: boolean }).detached
+            ? { present, dismiss: jest.fn() }
+            : null,
+      },
+    );
+    await act(async () => {});
+
+    fireEvent.press(getByTestId(bannerTestId));
+
+    expect(present).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["a G account", G_ACCOUNT],
+    ["a C contract", BASE_CONTRACT],
+    ["an M account", M_ACCOUNT_ID_1234],
+  ])(
+    "does not block %s: no banner, Review enabled, simulation runs",
+    async (_label, recipientAddress) => {
+      const {
+        getByTestId,
+        getByText,
+        queryByTestId,
+        queryByText,
+        buildSendCollectibleTransaction,
+      } = await renderWithRecipient(recipientAddress);
+
+      expect(queryByTestId(bannerTestId)).toBeNull();
+      expect(
+        getByTestId(continueButtonTestId).props.accessibilityState?.disabled,
+      ).toBe(false);
+      expect(buildSendCollectibleTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ destinationAccount: recipientAddress }),
+      );
+      // The sheet keeps its M explanation for everything but a W.
+      expect(
+        getByText(
+          "transactionAmountScreen.errors.muxedAddressWarning.description",
+        ),
+      ).toBeTruthy();
+      expect(
+        queryByText(
+          "transactionAmountScreen.errors.muxedContractWarning.description",
+        ),
+      ).toBeNull();
+    },
+  );
 });

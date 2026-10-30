@@ -839,6 +839,9 @@
         "title": "Endereço muxed não suportado",
         "description": "Este token não suporta endereço muxed (M-) como destino. Prosseguir com esta transação pode resultar na perda do token durante a transferência."
       },
+      "muxedContractWarning": {
+        "description": "Este token não suporta endereço de contrato muxed (W-) como destino."
+      },
       "malicious": "Este endereço foi marcado como malicioso",
       "suspicious": "Este endereço foi marcado como suspeito",
       "maliciousToken": "Um token foi marcado como malicioso",

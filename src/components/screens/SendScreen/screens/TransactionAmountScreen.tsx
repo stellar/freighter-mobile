@@ -24,6 +24,7 @@ import {
 } from "components/screens/SendScreen/helpers";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
+import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
@@ -65,6 +66,7 @@ import {
 } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
 import { checkContractMuxedSupport } from "helpers/muxedAddress";
+import { isMuxedContract } from "helpers/muxedContract";
 import { isSorobanTransaction } from "helpers/soroban";
 import {
   isFederationAddress,
@@ -110,6 +112,19 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN
 >;
 
+/**
+ * TransactionAmountScreen Component
+ *
+ * The send flow's amount screen: takes the amount of the selected token to send
+ * to the recipient, then builds, scans and reviews the transaction.
+ *
+ * A custom token sent to a muxed contract (W) address is blocked here: a banner
+ * explains why, Continue is disabled and nothing is built. Native XLM and
+ * classic assets can still go to a W, through their Stellar Asset Contract.
+ *
+ * @param {TransactionAmountScreenProps} props - Component props
+ * @returns {JSX.Element} The rendered component
+ */
 const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   navigation,
   route,
@@ -356,12 +371,17 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     recipientAddress && isMuxedAccount(recipientAddress),
   );
 
-  // Clear memo for all M addresses (memo is encoded in the address)
+  // Check if recipient is a muxed contract (W) address
+  const isRecipientMuxedContract = Boolean(
+    recipientAddress && isMuxedContract(recipientAddress),
+  );
+
+  // Clear memo for all M and W addresses (the mux id is encoded in the address)
   useEffect(() => {
-    if (isRecipientMuxed && transactionMemo) {
+    if ((isRecipientMuxed || isRecipientMuxedContract) && transactionMemo) {
       saveMemo("");
     }
-  }, [isRecipientMuxed, transactionMemo, saveMemo]);
+  }, [isRecipientMuxed, isRecipientMuxedContract, transactionMemo, saveMemo]);
 
   const contractId = useMemo(() => {
     if (
@@ -402,6 +422,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const isMuxedAddressWithoutMemoSupport = Boolean(
     isRecipientMuxed && isCustomToken && contractSupportsMuxed === false,
   );
+
+  // D5: a W is only sent through an asset's Stellar Asset Contract (native XLM
+  // and classic assets), never to a custom token's own contract, the same rule
+  // as the extension. Unlike the M check above it needs no contract lookup, and
+  // it blocks here on the screen: the build is refused, so the review sheet
+  // that carries the M banner would never open.
+  const isMuxedContractWithoutSupport =
+    isRecipientMuxedContract && isCustomToken;
 
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
 
@@ -620,8 +648,25 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     [overriddenBlockaidResponse, unfundedContext],
   );
 
+  /**
+   * Builds the transaction for the current token, recipient and settings, then
+   * scans it, and opens the review sheet when `shouldOpenReview` is set. With a
+   * `feeEstimationAmount` it only builds, to estimate fees: no scan and no
+   * review.
+   *
+   * Returns first thing, building nothing, for a custom token sent to a W. The
+   * auto-simulation, a settings change and Continue all come through here, so
+   * none of them can build one.
+   *
+   * @param shouldOpenReview - Open the review sheet once the scan returns
+   * @param feeEstimationAmount - Build for this amount instead of the entered one
+   */
   const prepareTransaction = useCallback(
     async (shouldOpenReview = false, feeEstimationAmount?: string) => {
+      if (isMuxedContractWithoutSupport) {
+        return;
+      }
+
       const effectiveAmount = feeEstimationAmount ?? tokenAmount;
       const numberEffectiveAmount = new BigNumber(effectiveAmount);
 
@@ -684,6 +729,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       buildTransaction,
       scanTransaction,
       recipientAddress,
+      isMuxedContractWithoutSupport,
       handleTransactionScanSuccess,
       handleTransactionScanError,
     ],
@@ -1003,6 +1049,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     [footerProps],
   );
 
+  // Continue is also off for a custom token sent to a W, which can't be built
   const isContinueButtonDisabled = useMemo(() => {
     if (!recipientAddress) {
       return false;
@@ -1011,9 +1058,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return (
       !!amountError ||
       BigNumber(tokenAmount).isLessThanOrEqualTo(0) ||
-      isBuilding
+      isBuilding ||
+      isMuxedContractWithoutSupport
     );
-  }, [amountError, tokenAmount, isBuilding, recipientAddress]);
+  }, [
+    amountError,
+    tokenAmount,
+    isBuilding,
+    recipientAddress,
+    isMuxedContractWithoutSupport,
+  ]);
 
   const handleConfirmAnyway = useCallback(() => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
@@ -1044,6 +1098,29 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const openMuxedAddressWarningBottomSheet = useCallback(() => {
     muxedAddressInfoBottomSheetModalRef.current?.present();
+  }, []);
+
+  /**
+   * Opens the explanation for a custom token sent to a W, from this screen's
+   * banner. The amount input still holds the keyboard here, so the sheet waits
+   * for the keyboard to hide before it presents, the way `onConfirmAddMemo`
+   * does.
+   */
+  const openMuxedContractWarningBottomSheet = useCallback(() => {
+    amountInputRef.current?.blur();
+    // Wait for the keyboard's hide animation before presenting the sheet so
+    // it opens at its final height instead of jumping down.
+    waitForKeyboardDismiss()
+      .then(() => {
+        muxedAddressInfoBottomSheetModalRef.current?.present();
+      })
+      .catch((error) => {
+        logger.warn(
+          "TransactionAmountScreen",
+          "Failed to open the muxed contract warning",
+          error,
+        );
+      });
   }, []);
 
   const handleCancelMuxedAddressWarning = useCallback(() => {
@@ -1178,7 +1255,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         </View>
       </View>
 
-      <View className="w-full mt-auto mb-[8px]">
+      <View className="w-full mt-auto mb-[8px] gap-[12px]">
+        {isMuxedContractWithoutSupport && (
+          <Banner
+            variant="error"
+            text={t("transactionAmountScreen.errors.muxedAddressNotSupported")}
+            onPress={openMuxedContractWarningBottomSheet}
+            testID="muxed-contract-not-supported-banner"
+          />
+        )}
         <Button
           secondary
           xl
@@ -1259,6 +1344,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         modalRef={muxedAddressInfoBottomSheetModalRef}
         customContent={
           <MuxedAddressWarningBottomSheet
+            variant={isRecipientMuxedContract ? "contract" : "account"}
             onCancel={handleCancelMuxedAddressWarning}
             onClose={handleCancelMuxedAddressWarning}
           />
