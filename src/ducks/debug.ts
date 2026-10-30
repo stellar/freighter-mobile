@@ -36,16 +36,17 @@ interface DebugState {
    * network and the backend support them. A stubbed transaction can't be
    * submitted. Off by default.
    *
-   * A prod-bundle build gets the no-op store below, so the stub is always off
-   * there. A dev-bundle release build, such as a PR preview, gets the
-   * persisted store: it can't turn the stub on (the debug sheet only renders
-   * under `__DEV__`), but it keeps any value an earlier debug build persisted
-   * on the same install.
+   * The stub only ever applies in a debug build: the builder checks `__DEV__`
+   * before it reads this flag. A prod-bundle build gets the no-op store below,
+   * so the flag is always off there. A dev-bundle release build, such as a PR
+   * preview, gets the persisted store and can keep a value an earlier debug
+   * build persisted on the same install, but the builder ignores it there.
    */
   stubMuxedContractSimulation: boolean;
   /**
    * Turns the muxed contract simulation stub on or off. A no-op in a
-   * prod-bundle build.
+   * prod-bundle build. Whatever its value, the stub only applies in a debug
+   * build.
    *
    * @param stub - Whether to skip the simulation for a `W...` destination
    */

@@ -333,6 +333,57 @@ describe("transactionBuilder Duck", () => {
 
       expect(transactionService.simulateContractTransfer).toHaveBeenCalled();
     });
+
+    it("simulates a W as normal outside a debug build, even with the stub on", async () => {
+      // A dev-bundle release build, such as a PR preview, has `__DEV__` false
+      // but the persisted debug store, so it can inherit the stub from an
+      // earlier debug build on the same install. `__DEV__` is a React Native
+      // global, which jest defines as true.
+      // eslint-disable-next-line no-underscore-dangle
+      const devGlobal = global as unknown as { __DEV__: boolean };
+      // eslint-disable-next-line no-underscore-dangle
+      const previousDev = devGlobal.__DEV__;
+      useDebugStore.setState({ stubMuxedContractSimulation: true });
+      (
+        transactionService.buildPaymentTransaction as jest.Mock
+      ).mockResolvedValueOnce({
+        xdr: mockBuiltXDR,
+        tx: { sequence: "1" },
+        contractId: mockContractAddress,
+        finalDestination: MUXED_CONTRACT_ID_0,
+        amountInBaseUnits: "1000000000",
+      });
+
+      try {
+        // eslint-disable-next-line no-underscore-dangle
+        devGlobal.__DEV__ = false;
+
+        await act(async () => {
+          await store.getState().buildTransaction({
+            tokenAmount: mockTokenValue,
+            recipientAddress: MUXED_CONTRACT_ID_0,
+            senderAddress: mockPublicKey,
+            network: mockNetwork,
+          });
+        });
+      } finally {
+        // eslint-disable-next-line no-underscore-dangle
+        devGlobal.__DEV__ = previousDev;
+      }
+
+      expect(transactionService.simulateContractTransfer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            destination: MUXED_CONTRACT_ID_0,
+          }),
+        }),
+      );
+      expect(store.getState()).toMatchObject({
+        transactionXDR: mockPreparedXDR,
+        sorobanResourceFeeXlm: "0.0000100",
+        error: null,
+      });
+    });
   });
 
   it("should handle errors during buildTransaction", async () => {

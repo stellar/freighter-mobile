@@ -196,11 +196,13 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
      * destination is an `M...` or a `W...`, because the mux id is already in
      * the address. For any other destination it is the user's memo.
      *
-     * DEV stub: with the debug store's `stubMuxedContractSimulation` on and a
-     * `W...` final destination, neither endpoint is called and the
-     * device-built XDR is kept as is, with no resource fee. That transaction
-     * can't be submitted. Any other destination still simulates, and a
-     * prod-bundle build always has the stub off.
+     * DEV stub: in a debug build (`__DEV__`), with the debug store's
+     * `stubMuxedContractSimulation` on and a `W...` final destination, neither
+     * endpoint is called and the device-built XDR is kept as is, with no
+     * resource fee. That transaction can't be submitted. Any other destination
+     * still simulates. The stub only ever applies in a debug build: a release
+     * build simulates a `W...` as normal, even a dev-bundle one, such as a PR
+     * preview, that kept the flag from an earlier debug build.
      *
      * @returns The XDR to sign (prepared for a Soroban send; the device-built
      * one when the DEV stub applies), or `null` after storing the error when
@@ -278,15 +280,17 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           };
 
           if (
+            __DEV__ &&
             useDebugStore.getState().stubMuxedContractSimulation &&
             isMuxedContract(finalDestination)
           ) {
-            // The debug store's stub. A prod-bundle build gets the no-op
-            // store, so this is always off there. A dev-bundle release build,
-            // such as a PR preview, keeps any value an earlier debug build
-            // persisted on the same install. It keeps the device-built XDR,
-            // which has no resources or footprint, so the network rejects it
-            // if it's ever submitted.
+            // The debug store's stub, which only ever applies in a debug
+            // build. `__DEV__` is checked first because a dev-bundle release
+            // build, such as a PR preview, keeps any value an earlier debug
+            // build persisted on the same install, and has no debug sheet to
+            // turn it off. It keeps the device-built XDR, which has no
+            // resources or footprint, so the network rejects it if it's ever
+            // submitted.
             simulateResult = { preparedTransaction: builtTxResult.xdr };
             logger.warn(
               "TransactionBuilderStore",
