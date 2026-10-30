@@ -1,5 +1,10 @@
 import { Asset as SdkToken, Networks } from "@stellar/stellar-sdk";
+import type { Horizon } from "@stellar/stellar-sdk";
+import { G_ACCOUNT } from "__tests__/support/muxedContractFixtures";
 import { resolveSorobanDisplayIdentity } from "components/screens/HistoryScreen/mappers/soroban";
+import { TESTNET_NETWORK_DETAILS } from "config/constants";
+import { logger } from "config/logger";
+import { getAttrsFromSorobanHorizonOp } from "helpers/soroban";
 
 const NATIVE_SAC_TESTNET =
   "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
@@ -48,4 +53,40 @@ describe("resolveSorobanDisplayIdentity", () => {
     expect(genuine.isVerifiedSac).toBe(true);
     expect(genuine.issuerKey).toBe(CIRCLE_ISSUER);
   });
+});
+
+const USER = G_ACCOUNT;
+
+/** An `invoke_host_function` record as freighter-backend's `/account-history` serves it. */
+const sorobanRecord = (fields: Record<string, unknown>) =>
+  ({
+    id: "op-1",
+    type: "invoke_host_function",
+    type_i: 24,
+    created_at: "2026-11-03T12:00:00Z",
+    transaction_successful: true,
+    source_account: USER,
+    ...fields,
+  }) as unknown as Horizon.ServerApi.OperationRecord;
+
+describe("getAttrsFromSorobanHorizonOp", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it.each([
+    ["XDR that doesn't decode", { envelope_xdr: "not-xdr" }],
+    ["no envelope", {}],
+  ])(
+    "returns null instead of throwing for a record with %s",
+    (_, transactionAttr) => {
+      const op = sorobanRecord({ transaction_attr: transactionAttr });
+      expect(
+        getAttrsFromSorobanHorizonOp(op, TESTNET_NETWORK_DETAILS),
+      ).toBeNull();
+      expect(logger.error).toHaveBeenCalledWith(
+        "getAttrsFromSorobanHorizonOp",
+        "Failed to decode Soroban operation",
+        expect.anything(),
+      );
+    },
+  );
 });

@@ -416,5 +416,28 @@ describe("history helpers", () => {
       expect(filtered).toHaveLength(1);
       expect(filtered[0]).toBe(mockSorobanOperation1);
     });
+
+    it("skips a Soroban operation it can't decode instead of throwing", () => {
+      // The rest of this file mocks getAttrsFromSorobanHorizonOp, so feed the
+      // real one through once.
+      const actual =
+        jest.requireActual<typeof import("helpers/soroban")>("helpers/soroban");
+      mockGetAttrsFromSorobanHorizonOp.mockImplementationOnce(
+        actual.getAttrsFromSorobanHorizonOp,
+      );
+      const undecodable = {
+        type: "invoke_host_function",
+        id: "4",
+        transaction_attr: { envelope_xdr: "not-xdr" },
+      } as unknown as Horizon.ServerApi.OperationRecord;
+
+      expect(
+        filterOperationsByToken(
+          [undecodable, mockClassicPaymentOperation],
+          "native",
+          networkDetails,
+        ),
+      ).toEqual([mockClassicPaymentOperation]);
+    });
   });
 });
