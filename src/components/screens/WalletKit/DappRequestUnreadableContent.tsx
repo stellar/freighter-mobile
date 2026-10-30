@@ -1,4 +1,7 @@
-import { UnreadableTransactionNotice } from "components/screens/SignTransactionDetails/components/UnreadableTransactionNotice";
+import {
+  UnreadableTransactionNotice,
+  UnreadableTransactionNoticeVariant,
+} from "components/screens/SignTransactionDetails/components/UnreadableTransactionNotice";
 import { Button } from "components/sds/Button";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -16,13 +19,20 @@ interface DappRequestUnreadableContentProps {
    * request that may still be signed.
    */
   isSigning?: boolean;
+  /**
+   * What the request asks to sign, which picks the notice's wording. An
+   * auth-entry request passes `AuthEntry`; left out, the notice uses the
+   * transaction wording.
+   */
+  variant?: UnreadableTransactionNoticeVariant;
 }
 
 /**
  * The request sheet's content for a dApp request whose details can't be
  * displayed. It fails closed: the header, the unreadable notice and a single
  * Cancel, which rejects the request, except while an approval is already in
- * flight (`isSigning`), when Cancel is disabled.
+ * flight (`isSigning`), when Cancel is disabled. The notice is worded for what
+ * the request asks to sign (`variant`).
  *
  * There is no Confirm, because confirming would be signing blind, and there
  * are no banners: the Blockaid one opens a sheet that offers to confirm
@@ -30,7 +40,7 @@ interface DappRequestUnreadableContentProps {
  */
 export const DappRequestUnreadableContent: React.FC<
   DappRequestUnreadableContentProps
-> = ({ header, onCancelRequest, isSigning }) => {
+> = ({ header, onCancelRequest, isSigning, variant }) => {
   const { t } = useAppTranslation();
 
   return (
@@ -40,7 +50,7 @@ export const DappRequestUnreadableContent: React.FC<
     >
       {header}
 
-      <UnreadableTransactionNotice />
+      <UnreadableTransactionNotice variant={variant} />
 
       <View className="w-full">
         <Button

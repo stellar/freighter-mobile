@@ -328,4 +328,24 @@ describe("DappAuthEntryDetails, which hosts the display", () => {
     expect(await findByTestId("unreadable-transaction-notice")).toBeTruthy();
     expect(onRenderError).toHaveBeenCalledTimes(1);
   });
+
+  it("words the fallback for the authorization entry, not a transaction", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    failTokens();
+
+    const { findByText, getByText, queryByText } = renderWithProviders(
+      <DappAuthEntryDetails entryXdr={sacTransferPreimageXdr()} />,
+    );
+
+    expect(
+      await findByText("signTransactionDetails.unreadableAuthEntry.title"),
+    ).toBeTruthy();
+    expect(
+      getByText("signTransactionDetails.unreadableAuthEntry.description"),
+    ).toBeTruthy();
+    expect(queryByText("signTransactionDetails.unreadable.title")).toBeNull();
+    expect(
+      queryByText("signTransactionDetails.unreadable.description"),
+    ).toBeNull();
+  });
 });

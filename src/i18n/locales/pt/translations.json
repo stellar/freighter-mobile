@@ -1236,6 +1236,10 @@
       "title": "Não foi possível ler esta transação",
       "description": "Não foi possível decodificar a transação."
     },
+    "unreadableAuthEntry": {
+      "title": "Não foi possível ler esta autorização",
+      "description": "Não foi possível decodificar a entrada de autorização."
+    },
     "summary": {
       "operationsCount": "Operações",
       "fee": "Taxas",

@@ -122,6 +122,21 @@ describe("DappSignAuthEntryBottomSheetContent", () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
+  it("words the notice for the authorization entry, not a transaction", () => {
+    const { getByText, queryByText } = renderSheet({ isUndisplayable: true });
+
+    expect(
+      getByText("signTransactionDetails.unreadableAuthEntry.title"),
+    ).toBeTruthy();
+    expect(
+      getByText("signTransactionDetails.unreadableAuthEntry.description"),
+    ).toBeTruthy();
+    expect(queryByText("signTransactionDetails.unreadable.title")).toBeNull();
+    expect(
+      queryByText("signTransactionDetails.unreadable.description"),
+    ).toBeNull();
+  });
+
   it("disables Cancel while an approval is in flight", () => {
     const { getByTestId } = renderSheet({
       isUndisplayable: true,

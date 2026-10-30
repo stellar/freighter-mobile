@@ -4,7 +4,10 @@ import {
   ExternalExecutableNote,
   KeyValueInvokeHostFnArgs,
 } from "components/screens/SignTransactionDetails/components/KeyVal";
-import { UnreadableTransactionNotice } from "components/screens/SignTransactionDetails/components/UnreadableTransactionNotice";
+import {
+  UnreadableTransactionNotice,
+  UnreadableTransactionNoticeVariant,
+} from "components/screens/SignTransactionDetails/components/UnreadableTransactionNotice";
 import { Banner } from "components/sds/Banner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -50,9 +53,10 @@ interface DappAuthEntryDisplayProps {
  *
  * The body of each expanded card, which holds the invocation's argument blocks,
  * renders behind an error boundary. When a block throws while rendering, the
- * boundary reports the error, shows the unreadable notice in place of that
- * card's body and calls `onRenderError`. The card's title and the rest of the
- * screen stay. The body renders again once `entryXdr` changes.
+ * boundary reports the error, shows the unreadable notice, in its auth-entry
+ * wording, in place of that card's body and calls `onRenderError`. The card's
+ * title and the rest of the screen stay. The body renders again once
+ * `entryXdr` changes.
  *
  * Falls back to a scrollable raw-XDR view if parsing fails.
  */
@@ -379,7 +383,11 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
                 <View className="px-[16px] pb-[16px]">
                   <ErrorBoundary
                     name="DappAuthEntryDisplay"
-                    fallback={<UnreadableTransactionNotice />}
+                    fallback={
+                      <UnreadableTransactionNotice
+                        variant={UnreadableTransactionNoticeVariant.AuthEntry}
+                      />
+                    }
                     onError={onRenderError}
                     resetKey={entryXdr}
                   >

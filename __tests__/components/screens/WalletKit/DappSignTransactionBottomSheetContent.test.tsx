@@ -127,6 +127,21 @@ describe("DappSignTransactionBottomSheetContent", () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
+  it("keeps the transaction wording on the notice", () => {
+    const { getByText, queryByText } = renderSheet({ isUndisplayable: true });
+
+    expect(getByText("signTransactionDetails.unreadable.title")).toBeTruthy();
+    expect(
+      getByText("signTransactionDetails.unreadable.description"),
+    ).toBeTruthy();
+    expect(
+      queryByText("signTransactionDetails.unreadableAuthEntry.title"),
+    ).toBeNull();
+    expect(
+      queryByText("signTransactionDetails.unreadableAuthEntry.description"),
+    ).toBeNull();
+  });
+
   it("disables Cancel while an approval is in flight", () => {
     const { getByTestId } = renderSheet({
       isUndisplayable: true,

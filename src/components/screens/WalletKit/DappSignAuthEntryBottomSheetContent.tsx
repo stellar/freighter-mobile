@@ -1,4 +1,5 @@
 import { List } from "components/List";
+import { UnreadableTransactionNoticeVariant } from "components/screens/SignTransactionDetails/components/UnreadableTransactionNotice";
 import DappAuthEntryDetails from "components/screens/WalletKit/DappAuthEntryDetails";
 import { DappRequestBanners } from "components/screens/WalletKit/DappRequestBanners";
 import { DappRequestButtons } from "components/screens/WalletKit/DappRequestButtons";
@@ -42,11 +43,11 @@ interface DappSignAuthEntryBottomSheetContentProps {
  * and network, the entry's details and the request buttons.
  *
  * A request whose details can't be displayed (`isUndisplayable`) fails closed
- * instead: it gets {@link DappRequestUnreadableContent}, with the same header
- * and only Cancel, which is disabled while an approval is in flight
- * (`isSigning`). A render error in the details is reported through
- * `onDetailsRenderError`, which is how the provider makes the request fail
- * closed.
+ * instead: it gets {@link DappRequestUnreadableContent}, with the same header,
+ * the notice in its auth-entry wording and only Cancel, which is disabled while
+ * an approval is in flight (`isSigning`). A render error in the details is
+ * reported through `onDetailsRenderError`, which is how the provider makes the
+ * request fail closed.
  */
 export const DappSignAuthEntryBottomSheetContent: React.FC<
   DappSignAuthEntryBottomSheetContentProps
@@ -141,6 +142,7 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
         header={headerRow}
         onCancelRequest={onCancelRequest}
         isSigning={isSigning}
+        variant={UnreadableTransactionNoticeVariant.AuthEntry}
       />
     );
   }
