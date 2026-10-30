@@ -269,6 +269,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   useRightHeaderButton({
     icon: Icon.Settings04,
+    testID: "send-settings-button",
     onPress: () => {
       amountInputRef.current?.blur();
       // Wait for the keyboard's hide animation before presenting the sheet so
@@ -1331,6 +1332,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={transactionSettingsBottomSheetModalRef}
+        // As on the review sheet: gorhom makes the sheet one accessibility
+        // element by default, which hides its fields and notes (such as the
+        // disabled-memo note) from VoiceOver and from Maestro on iOS.
+        bottomSheetModalProps={{ accessible: false }}
         customContent={
           <TransactionSettingsBottomSheet
             context={TransactionContext.Send}
@@ -1342,6 +1347,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={muxedAddressInfoBottomSheetModalRef}
+        // Exposes the explanation to VoiceOver and Maestro (see above).
+        bottomSheetModalProps={{ accessible: false }}
         customContent={
           <MuxedAddressWarningBottomSheet
             variant={isRecipientMuxedContract ? "contract" : "account"}

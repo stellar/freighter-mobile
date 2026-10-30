@@ -30,6 +30,15 @@ enum TransactionFailureMode {
   SWAP_PATH = "swapPath",
 }
 
+/**
+ * The debug sheet's controls: the app version, Blockaid response and
+ * transaction failure overrides, the W address simulation stub, and a few
+ * actions. Each override lives in the debug store, which is a no-op outside
+ * DEV.
+ *
+ * @param onDismiss - Closes the sheet, for the actions that leave it
+ * @returns {JSX.Element} The sheet's scrollable content
+ */
 const CustomContent: React.FC<{
   onDismiss: () => void;
 }> = ({ onDismiss }) => {
@@ -54,6 +63,8 @@ const CustomContent: React.FC<{
     forceSwapPathFailure,
     setForceSwapPathFailure,
     clearSwapPathDebug,
+    stubMuxedContractSimulation,
+    setStubMuxedContractSimulation,
   } = useDebugStore();
   const [versionInput, setVersionInput] = useState(overriddenAppVersion || "");
   const [currentVersion] = useState(getVersion());
@@ -149,6 +160,14 @@ const CustomContent: React.FC<{
   const handleClearVersionOverride = () => {
     setVersionInput("");
     clearOverriddenAppVersion();
+  };
+
+  /**
+   * Turns the W address simulation stub on or off. While it's on, a send to
+   * a muxed contract (`W...`) skips the backend simulation.
+   */
+  const handleToggleMuxedContractSimulationStub = () => {
+    setStubMuxedContractSimulation(!stubMuxedContractSimulation);
   };
 
   return (
@@ -437,6 +456,27 @@ const CustomContent: React.FC<{
         )}
       </View>
 
+      {/* W Address Simulation Stub Section */}
+      <View className="gap-3 mb-4">
+        <Text lg medium>
+          {t("debug.muxedContractSimulationStub.title")}
+        </Text>
+        <Text xs color={themeColors.text.secondary}>
+          {t("debug.muxedContractSimulationStub.description")}
+        </Text>
+
+        <Button
+          variant={stubMuxedContractSimulation ? "destructive" : "secondary"}
+          sm
+          onPress={handleToggleMuxedContractSimulationStub}
+          testID="debug-stub-muxed-contract-simulation"
+        >
+          {stubMuxedContractSimulation
+            ? t("debug.muxedContractSimulationStub.enabled")
+            : t("debug.muxedContractSimulationStub.disabled")}
+        </Button>
+      </View>
+
       <View className="gap-3">
         <Text lg medium>
           {t("debug.actions")}
@@ -455,17 +495,30 @@ const CustomContent: React.FC<{
   );
 };
 
+/**
+ * Home's DEV-only debug sheet. Renders nothing outside DEV.
+ *
+ * @param modalRef - The sheet's modal ref
+ * @param onDismiss - Closes the sheet
+ * @returns {JSX.Element | null} The sheet, or null outside DEV
+ */
 export const DebugBottomSheet: React.FC<DebugBottomSheetProps> = ({
   modalRef,
   onDismiss,
 }) => {
   const { t } = useAppTranslation();
 
-  // Pinned above the controls, so the title and X stay in view while they
-  // scroll.
+  /**
+   * Renders the sheet's header, pinned above the controls so the title and X
+   * stay in view while they scroll. The X has a testID for e2e flows.
+   */
   const renderHeader = useCallback(
     () => (
-      <PinnedBottomSheetHeader title={t("debug.title")} onClose={onDismiss} />
+      <PinnedBottomSheetHeader
+        title={t("debug.title")}
+        onClose={onDismiss}
+        closeTestID="debug-sheet-close-button"
+      />
     ),
     [t, onDismiss],
   );
@@ -481,6 +534,9 @@ export const DebugBottomSheet: React.FC<DebugBottomSheetProps> = ({
       scrollable
       scrollViewHeaderComponent={renderHeader}
       enablePanDownToClose={false}
+      // gorhom makes the sheet one accessibility element by default, which
+      // hides the scrolled controls from VoiceOver and from Maestro on iOS.
+      bottomSheetModalProps={{ accessible: false }}
       customContent={<CustomContent onDismiss={onDismiss} />}
     />
   );

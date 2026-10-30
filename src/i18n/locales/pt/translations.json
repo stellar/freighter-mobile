@@ -1195,6 +1195,12 @@
       "swapPathForceEnabled": "✓ Forçar Falha de Caminho",
       "swapPathForceDisabled": "Forçar Falha de Caminho",
       "clearAll": "Limpar Todas as Falhas"
+    },
+    "muxedContractSimulationStub": {
+      "title": "Stub da Simulação para Endereço W",
+      "description": "Pula a simulação no backend para envios a um endereço de contrato muxed (W), para que a revisão abra com a transação não simulada. Ela não pode ser enviada (apenas DEV)",
+      "enabled": "✓ Stub da Simulação para Endereço W",
+      "disabled": "Stub da Simulação para Endereço W"
     }
   },
   "blockaid": {

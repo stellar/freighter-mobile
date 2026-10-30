@@ -1195,6 +1195,12 @@
       "swapPathForceEnabled": "✓ Force Swap Path Failure",
       "swapPathForceDisabled": "Force Swap Path Failure",
       "clearAll": "Clear All Failures"
+    },
+    "muxedContractSimulationStub": {
+      "title": "W Address Simulation Stub",
+      "description": "Skip backend simulation for sends to a muxed contract (W) address, so the review sheet opens with the unsimulated transaction. It can't be submitted (DEV only)",
+      "enabled": "✓ Stub W Address Simulation",
+      "disabled": "Stub W Address Simulation"
     }
   },
   "blockaid": {

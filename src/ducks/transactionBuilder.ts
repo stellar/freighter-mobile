@@ -196,8 +196,15 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
      * destination is an `M...` or a `W...`, because the mux id is already in
      * the address. For any other destination it is the user's memo.
      *
-     * @returns The XDR to sign (prepared for a Soroban send), or `null` after
-     * storing the error when the build or the simulation fails
+     * DEV stub: with the debug store's `stubMuxedContractSimulation` on and a
+     * `W...` final destination, neither endpoint is called and the
+     * device-built XDR is kept as is, with no resource fee. That transaction
+     * can't be submitted. Any other destination still simulates, and the
+     * stub is always off outside DEV.
+     *
+     * @returns The XDR to sign (prepared for a Soroban send; the device-built
+     * one when the DEV stub applies), or `null` after storing the error when
+     * the build or the simulation fails
      */
     buildTransaction: async (params) => {
       const newRequestId = createRequestId();
@@ -262,13 +269,27 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         if (shouldSimulate && params.network && params.senderAddress) {
           const networkDetails = mapNetworkToNetworkDetails(params.network);
           const isFeeEstimation = Number(params.tokenAmount) === 0;
+          const finalDestination =
+            builtTxResult.finalDestination || params.recipientAddress!;
 
           let simulateResult: {
             preparedTransaction: string;
             minResourceFee?: string;
           };
 
-          if (isFeeEstimation) {
+          if (
+            useDebugStore.getState().stubMuxedContractSimulation &&
+            isMuxedContract(finalDestination)
+          ) {
+            // DEV only (the debug store's prod path is always off): keep the
+            // device-built XDR. It has no resources or footprint, so the
+            // network rejects it if it's ever submitted.
+            simulateResult = { preparedTransaction: builtTxResult.xdr };
+            logger.warn(
+              "TransactionBuilderStore",
+              "DEV: stubbed simulation for a muxed contract destination",
+            );
+          } else if (isFeeEstimation) {
             // Fee estimation with amount 0: use /simulate-tx with the
             // locally-built XDR. The /simulate-token-transfer endpoint
             // rejects amount 0 because it rebuilds the tx server-side.
@@ -280,8 +301,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           } else {
             // Real amount: use /simulate-token-transfer matching the
             // extension's flow (backend builds + simulates the tx).
-            const finalDestination =
-              builtTxResult.finalDestination || params.recipientAddress!;
             const isDestinationMuxed =
               isMuxedAccount(finalDestination) ||
               isMuxedContract(finalDestination);

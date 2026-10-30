@@ -67,6 +67,13 @@ type AddTokenScreenProps = NativeStackScreenProps<
 
 const DEBOUNCE_SEARCH_BACKOFF_MS = 500;
 
+/**
+ * Add Token screen: searches tokens by name or contract address, adds or
+ * removes the chosen one after a confirmation sheet, and unhides a hidden one.
+ *
+ * @param {AddTokenScreenProps} props - Navigation props
+ * @returns {JSX.Element} The rendered screen
+ */
 const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
@@ -476,6 +483,9 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
         <BottomSheet
           modalRef={addTokenBottomSheetModalRef}
           bottomSheetModalProps={{
+            // gorhom makes the sheet one accessibility element by default,
+            // which hides its buttons from VoiceOver and from Maestro on iOS.
+            accessible: false,
             onChange: (index: number) => {
               if (index >= 0) {
                 hasApprovedAddRef.current = false;
@@ -568,6 +578,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
             screen's space-between layout would otherwise float the link. */}
         <View>
           <Input
+            testID="add-token-search-input"
             placeholder={t("addTokenScreen.searchPlaceholder")}
             value={searchTerm}
             onChangeText={(text: string) => {

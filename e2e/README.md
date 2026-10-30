@@ -99,7 +99,9 @@ e2e/
     │   └── ImportFundedWallet.yaml
     ├── transactions/     # Transaction flows (send and swap on testnet)
     │   ├── SendClassicToken.yaml             # Send 0.000001 XLM on testnet to a provisioned recipient
+    │   ├── SendCustomTokenToMuxedContractBlocked.yaml # A custom (SEP-41) token to a muxed contract (W) address is blocked on the amount screen
     │   ├── SendFederatedAddress.yaml         # Send 0.000001 XLM and 0.000001 USDC on testnet to a federated address (freighter.c7*lobstr.co)
+    │   ├── SendXlmToMuxedContract.yaml       # XLM to a muxed contract (W) address up to the review sheet, memo disabled; uses the DEV W simulation stub and never confirms
     │   └── SwapClassicToken.yaml             # Swap 0.000001 XLM → USDC on testnet
     └── walletconnect/    # WalletConnect integration tests
         └── SignMessageMockDapp.yaml

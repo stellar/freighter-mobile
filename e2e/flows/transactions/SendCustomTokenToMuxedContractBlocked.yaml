@@ -1,0 +1,145 @@
+appId: org.stellar.freighterdev
+tags:
+  - transactions
+  - send
+  - muxed-contract
+  - testnet
+---
+# A custom (SEP-41) token can't be sent to a muxed contract (W...) address on
+# testnet: the amount screen shows the "not supported" banner, Continue stays
+# disabled, the banner explains why, and nothing is built. It submits nothing.
+#
+# The recipient is the SEP-23 test vector's contract with mux id 1234
+# (MUXED_CONTRACT_ID_1234 in __tests__/support/muxedContractFixtures.ts).
+#
+# Env:
+# - E2E_TEST_FUNDED_RECOVERY_PHRASE: a funded testnet account.
+# - E2E_TEST_CUSTOM_TOKEN_CONTRACT: the C... id of a testnet SEP-41 token that
+#   is NOT a Stellar Asset Contract. A SAC wraps a classic asset, and a
+#   classic asset can go to a W, so it isn't blocked.
+# - E2E_TEST_CUSTOM_TOKEN_CODE: that token's symbol, which names its row in the
+#   send token list (token-option-<code>).
+# For example CCCGL2XZP24FD54WRTLGDM7GTLUVCWMNMFH364VLC474IOG35HZ7KHKN and TZT
+# ("Test ZP Token", 3 decimals).
+#
+# Balance: the account would have to hold some of the token if the send token
+# list hid zero-balance tokens. It doesn't: a token added on the Add Token
+# screen is listed even with no balance, so any funded account works.
+
+# Import funded wallet
+- runFlow:
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Switch to Testnet. The shared sub-flow waits for Home to settle, dismisses
+# any auth-error toast, then performs the network switch.
+- runFlow:
+    file: ../shared/SwitchToTestnet.yaml
+
+# Wait for accounts and balances to load
+- extendedWaitUntil:
+    visible:
+      id: home-account-switcher
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: icon-button-send
+    timeout: 15000
+
+# Add the custom token by its contract id. Home's Add token button sits under
+# the last token row, so scroll to it on short screens.
+- scrollUntilVisible:
+    element:
+      id: home-add-token-button
+    direction: DOWN
+- tapOn:
+    id: home-add-token-button
+- tapOn:
+    id: add-token-search-input
+- inputText: ${E2E_TEST_CUSTOM_TOKEN_CONTRACT}
+- extendedWaitUntil:
+    visible:
+      id: add-token-button
+    timeout: 30000
+# Close the keyboard with its return key, as a user would: while it's up, the
+# first tap on a search result only dismisses it.
+- pressKey: Enter
+- tapOn:
+    id: add-token-button
+- tapOn:
+    text: "Approve|Approve anyway"
+
+# Back on Home once the token is added. Scroll back up to the Send button.
+- scrollUntilVisible:
+    element:
+      id: icon-button-send
+    direction: UP
+    timeout: 30000
+
+# Navigate to send flow and select the custom token
+- tapOn:
+    id: icon-button-send
+- extendedWaitUntil:
+    visible:
+      id: token-option-${E2E_TEST_CUSTOM_TOKEN_CODE}
+    timeout: 30000
+- tapOn:
+    id: token-option-${E2E_TEST_CUSTOM_TOKEN_CODE}
+
+# Wait for recipient search screen
+- extendedWaitUntil:
+    visible:
+      id: send-search-contacts-screen
+    timeout: 15000
+
+# Type the W recipient and select its suggestion
+- tapOn:
+    id: send-recipient-input
+- inputText: "WA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAE2LLEM"
+- extendedWaitUntil:
+    visible:
+      id: search-suggestion-0
+    timeout: 30000
+- tapOn:
+    id: search-suggestion-0
+
+# Verify we're on amount screen
+- extendedWaitUntil:
+    visible:
+      id: send-amount-screen
+    timeout: 15000
+
+# The send is blocked: the banner shows and Continue is disabled
+- assertVisible:
+    id: muxed-contract-not-supported-banner
+- assertVisible:
+    id: send-continue-button
+    enabled: false
+
+# Dismiss the keyboard on Android so the banner is not obscured
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+
+# The banner opens the sheet that explains the block. On an iPhone SE
+# simulator a tap on it sometimes left the sheet closed, so tap again then.
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          id: muxed-contract-not-supported-banner
+      - extendedWaitUntil:
+          visible:
+            id: muxed-address-warning-close-button
+          timeout: 10000
+- assertVisible:
+    text:
+      'This token does not support muxed contract address \(W-\) as a target
+      destination\.'
+- tapOn:
+    id: muxed-address-warning-close-button
+
+# Nothing was built, so there's no build error either
+- assertNotVisible:
+    text: ".*Failed to build.*"
