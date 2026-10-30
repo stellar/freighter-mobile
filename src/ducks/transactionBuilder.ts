@@ -199,8 +199,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
      * DEV stub: with the debug store's `stubMuxedContractSimulation` on and a
      * `W...` final destination, neither endpoint is called and the
      * device-built XDR is kept as is, with no resource fee. That transaction
-     * can't be submitted. Any other destination still simulates, and the
-     * stub is always off outside DEV.
+     * can't be submitted. Any other destination still simulates, and a
+     * prod-bundle build always has the stub off.
      *
      * @returns The XDR to sign (prepared for a Soroban send; the device-built
      * one when the DEV stub applies), or `null` after storing the error when
@@ -281,9 +281,12 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             useDebugStore.getState().stubMuxedContractSimulation &&
             isMuxedContract(finalDestination)
           ) {
-            // DEV only (the debug store's prod path is always off): keep the
-            // device-built XDR. It has no resources or footprint, so the
-            // network rejects it if it's ever submitted.
+            // The debug store's stub. A prod-bundle build gets the no-op
+            // store, so this is always off there. A dev-bundle release build,
+            // such as a PR preview, keeps any value an earlier debug build
+            // persisted on the same install. It keeps the device-built XDR,
+            // which has no resources or footprint, so the network rejects it
+            // if it's ever submitted.
             simulateResult = { preparedTransaction: builtTxResult.xdr };
             logger.warn(
               "TransactionBuilderStore",

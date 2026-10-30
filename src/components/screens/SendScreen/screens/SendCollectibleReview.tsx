@@ -81,7 +81,8 @@ type SendCollectibleReviewScreenProps = NativeStackScreenProps<
  * A screen for reviewing details of a collectible before sending.
  *
  * A collectible can't be sent to a muxed contract (W) address: a banner
- * explains why, Review is disabled and nothing is built.
+ * explains why, Review is disabled and nothing is built. On a small screen
+ * the collectible image shrinks then, so the banner and Review both fit.
  *
  * @param {SendCollectibleReviewScreenProps} props - Component props
  * @returns {JSX.Element} The rendered component
@@ -673,7 +674,17 @@ const SendCollectibleReviewScreen: React.FC<
           />
         </View>
         <View className="mt-[24px] w-full flex items-center justify-center">
-          <View className="w-[240px] h-[240px] rounded-[32px] bg-background-tertiary overflow-hidden">
+          {/* The screen doesn't scroll, so on a small screen the W banner
+              would push Review past the fold. The image shrinks there
+              while a W is the recipient. */}
+          <View
+            testID="send-collectible-image"
+            className={`w-[240px] h-[240px] rounded-[32px] bg-background-tertiary overflow-hidden${
+              isRecipientMuxedContract
+                ? " max-xs:w-[160px] max-xs:h-[160px]"
+                : ""
+            }`}
+          >
             <CollectibleImage
               imageUri={selectedCollectible?.image}
               placeholderIconSize={65}

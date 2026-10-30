@@ -119,8 +119,9 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
  * to the recipient, then builds, scans and reviews the transaction.
  *
  * A custom token sent to a muxed contract (W) address is blocked here: a banner
- * explains why, Continue is disabled and nothing is built. Native XLM and
- * classic assets can still go to a W, through their Stellar Asset Contract.
+ * explains why, Continue is disabled, the percentage buttons are hidden and
+ * nothing is built. Native XLM and classic assets can still go to a W, through
+ * their Stellar Asset Contract.
  *
  * @param {TransactionAmountScreenProps} props - Component props
  * @returns {JSX.Element} The rendered component
@@ -1105,13 +1106,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
    * Opens the explanation for a custom token sent to a W, from this screen's
    * banner. The amount input still holds the keyboard here, so the sheet waits
    * for the keyboard to hide before it presents, the way `onConfirmAddMemo`
-   * does.
+   * does, but for 500 ms at most: if the hide event never comes, the sheet
+   * still opens.
    */
   const openMuxedContractWarningBottomSheet = useCallback(() => {
     amountInputRef.current?.blur();
     // Wait for the keyboard's hide animation before presenting the sheet so
     // it opens at its final height instead of jumping down.
-    waitForKeyboardDismiss()
+    waitForKeyboardDismiss(500)
       .then(() => {
         muxedAddressInfoBottomSheetModalRef.current?.present();
       })
@@ -1251,9 +1253,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           />
         </View>
 
-        <View className="flex-1 items-center mt-[24px] gap-[24px]">
-          <PercentageButtons onPress={handlePercentagePress} />
-        </View>
+        {/* Hidden while a W blocks the send: nothing can be sent, and with
+            the keyboard up on a small screen the banner would cover them. */}
+        {!isMuxedContractWithoutSupport && (
+          <View className="flex-1 items-center mt-[24px] gap-[24px]">
+            <PercentageButtons onPress={handlePercentagePress} />
+          </View>
+        )}
       </View>
 
       <View className="w-full mt-auto mb-[8px] gap-[12px]">

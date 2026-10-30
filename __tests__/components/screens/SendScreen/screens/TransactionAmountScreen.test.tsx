@@ -2595,9 +2595,11 @@ describe("TransactionAmountScreen - muxed contract (W) recipient", () => {
 
     fireEvent.press(getByTestId(bannerTestId));
 
-    // The amount input gives up the keyboard, and the sheet waits for it.
+    // The amount input gives up the keyboard, and the sheet waits for it, but
+    // only 500 ms: a hide event that never comes can't keep the sheet shut.
     expect(TextInput.prototype.blur).toHaveBeenCalled();
     expect(waitForKeyboard).toHaveBeenCalledTimes(1);
+    expect(waitForKeyboard).toHaveBeenCalledWith(500);
     expect(present).not.toHaveBeenCalled();
 
     await act(() => {
@@ -2740,4 +2742,50 @@ describe("TransactionAmountScreen - muxed contract (W) recipient", () => {
       expect(queryByText(contractSheetDescription)).toBeNull();
     },
   );
+
+  describe("percentage buttons", () => {
+    const percentageButtonIds = [
+      "percentage-25",
+      "percentage-50",
+      "percentage-75",
+      "percentage-100",
+    ];
+
+    it("hides them while a custom token to a W is blocked", async () => {
+      setSettingsStore({ selectedTokenId: customTokenBalance.id });
+
+      const { getByTestId, queryByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor(customTokenBalance.id)}
+        />,
+      );
+      await waitForAutoSimulation();
+
+      expect(getByTestId(bannerTestId)).toBeTruthy();
+      percentageButtonIds.forEach((id) => {
+        expect(queryByTestId(id)).toBeNull();
+      });
+    });
+
+    it.each([
+      ["XLM to a W", "XLM", MUXED_CONTRACT_ID_1234],
+      ["a custom token to a G account", customTokenBalance.id, G_ACCOUNT],
+      ["a custom token to a C contract", customTokenBalance.id, BASE_CONTRACT],
+    ])("shows them for %s", async (_label, tokenId, recipientAddress) => {
+      setSettingsStore({ selectedTokenId: tokenId, recipientAddress });
+
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor(tokenId, recipientAddress)}
+        />,
+      );
+      await waitForAutoSimulation();
+
+      percentageButtonIds.forEach((id) => {
+        expect(getByTestId(id)).toBeTruthy();
+      });
+    });
+  });
 });

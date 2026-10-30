@@ -15,7 +15,7 @@ import { useHistoryStore } from "ducks/history";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { renderWithProviders } from "helpers/testUtils";
+import { classNameOf, renderWithProviders } from "helpers/testUtils";
 import * as blockaidService from "hooks/blockaid/useBlockaidTransaction";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
@@ -1009,4 +1009,28 @@ describe("SendCollectibleReview - muxed contract (W) recipient", () => {
       ).toBeNull();
     },
   );
+
+  describe("collectible image size", () => {
+    const imageTestId = "send-collectible-image";
+
+    it("shrinks the image on small screens for a W, so Review stays on screen", async () => {
+      const { getByTestId } = await renderWithRecipient(MUXED_CONTRACT_ID_0);
+
+      const className = classNameOf(getByTestId(imageTestId));
+      expect(className).toContain("w-[240px] h-[240px]");
+      expect(className).toContain("max-xs:w-[160px] max-xs:h-[160px]");
+    });
+
+    it.each([
+      ["a G account", G_ACCOUNT],
+      ["a C contract", BASE_CONTRACT],
+      ["an M account", M_ACCOUNT_ID_1234],
+    ])("keeps the full-size image for %s", async (_label, recipientAddress) => {
+      const { getByTestId } = await renderWithRecipient(recipientAddress);
+
+      const className = classNameOf(getByTestId(imageTestId));
+      expect(className).toContain("w-[240px] h-[240px]");
+      expect(className).not.toContain("max-xs:");
+    });
+  });
 });

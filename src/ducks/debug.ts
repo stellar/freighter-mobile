@@ -34,11 +34,18 @@ interface DebugState {
    * muxed contract (`W...`), so the review sheet opens with the device-built,
    * unsimulated transaction. It lets W sends be exercised in DEV before the
    * network and the backend support them. A stubbed transaction can't be
-   * submitted. Off by default, and always off outside DEV.
+   * submitted. Off by default.
+   *
+   * A prod-bundle build gets the no-op store below, so the stub is always off
+   * there. A dev-bundle release build, such as a PR preview, gets the
+   * persisted store: it can't turn the stub on (the debug sheet only renders
+   * under `__DEV__`), but it keeps any value an earlier debug build persisted
+   * on the same install.
    */
   stubMuxedContractSimulation: boolean;
   /**
-   * Turns the muxed contract simulation stub on or off. A no-op outside DEV.
+   * Turns the muxed contract simulation stub on or off. A no-op in a
+   * prod-bundle build.
    *
    * @param stub - Whether to skip the simulation for a `W...` destination
    */
