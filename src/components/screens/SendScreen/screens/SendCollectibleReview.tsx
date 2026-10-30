@@ -1,6 +1,7 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import { CollectibleImage } from "components/CollectibleImage";
 import { IconButton } from "components/IconButton";
@@ -39,16 +40,20 @@ import {
   ScreenTransition,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
 import { useDebugStore } from "ducks/debug";
 import { useHistoryStore } from "ducks/history";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { isNativeBalance } from "helpers/assetIdentity";
+import { calculateSpendableAmount } from "helpers/balances";
 import { checkContractMuxedSupport } from "helpers/muxedAddress";
 import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount, {
   isWalletUnlocked,
@@ -121,6 +126,8 @@ const SendCollectibleReviewScreen: React.FC<
     resetTransaction,
     isBuilding,
     transactionXDR,
+    sorobanInclusionFeeXlm,
+    sorobanResourceFeeXlm,
   } = useTransactionBuilderStore();
 
   // Reset transaction on unmount, but keep selectedCollectibleDetails
@@ -137,6 +144,64 @@ const SendCollectibleReviewScreen: React.FC<
   const { scanTransaction } = useBlockaidTransaction();
 
   const publicKey = account?.publicKey;
+
+  const { balanceItems } = useBalancesList({
+    publicKey: publicKey ?? "",
+    network,
+  });
+  const { isFunded, fetchedPublicKey, fetchedNetwork } = useBalancesStore();
+
+  // A failed balances fetch leaves isFunded at its cleared default (false)
+  // without stamping fetchedPublicKey, so only trust it for this account and
+  // network. Not gated on isLoading, which polling toggles every 30s.
+  const hasLoadedSenderBalances =
+    fetchedPublicKey === publicKey && fetchedNetwork === network;
+  const isSenderUnfunded = hasLoadedSenderBalances && !isFunded;
+
+  // Total Soroban fee the sender can't cover, or null if they can. The fee is
+  // only known after the auto-simulation below has run.
+  const unaffordableFeeXlm = useMemo(() => {
+    if (!hasLoadedSenderBalances || !isFunded || !sorobanResourceFeeXlm) {
+      return null;
+    }
+
+    const totalFeeXlm = new BigNumber(sorobanInclusionFeeXlm ?? 0).plus(
+      sorobanResourceFeeXlm,
+    );
+    const xlmBalance = balanceItems.find((item) => isNativeBalance(item));
+    // Fee of "0" gives the XLM available above the minimum reserve
+    const spendableXlm = xlmBalance
+      ? calculateSpendableAmount({
+          balance: xlmBalance,
+          subentryCount: account?.subentryCount,
+          transactionFee: "0",
+        })
+      : new BigNumber(0);
+
+    return spendableXlm.isLessThan(totalFeeXlm) ? totalFeeXlm.toString() : null;
+  }, [
+    hasLoadedSenderBalances,
+    isFunded,
+    sorobanInclusionFeeXlm,
+    sorobanResourceFeeXlm,
+    balanceItems,
+    account?.subentryCount,
+  ]);
+
+  const senderFeeError = useMemo(() => {
+    if (isSenderUnfunded) {
+      return t("transactionAmountScreen.errors.senderNotFunded");
+    }
+
+    if (unaffordableFeeXlm) {
+      return t("transactionAmountScreen.errors.insufficientXlmForFees", {
+        fee: unaffordableFeeXlm,
+      });
+    }
+
+    return null;
+  }, [isSenderUnfunded, unaffordableFeeXlm, t]);
+
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -284,7 +349,8 @@ const SendCollectibleReviewScreen: React.FC<
     async (shouldOpenReview = false) => {
       const hasRequiredParams =
         publicKey && recipientAddress && selectedCollectible;
-      if (!hasRequiredParams) {
+      // An unfunded sender can't build a transaction (Horizon returns 404)
+      if (!hasRequiredParams || isSenderUnfunded) {
         return;
       }
 
@@ -343,6 +409,7 @@ const SendCollectibleReviewScreen: React.FC<
       recipientAddress,
       handleTransactionScanSuccess,
       handleTransactionScanError,
+      isSenderUnfunded,
     ],
   );
 
@@ -520,8 +587,8 @@ const SendCollectibleReviewScreen: React.FC<
       return false;
     }
 
-    return isBuilding;
-  }, [isBuilding, recipientAddress]);
+    return isBuilding || !!senderFeeError;
+  }, [isBuilding, recipientAddress, senderFeeError]);
 
   const selectCollectibleDetails: ListItemProps[] = useMemo(
     () => [
@@ -645,7 +712,7 @@ const SendCollectibleReviewScreen: React.FC<
           />
         </View>
         <View className="mt-[24px] w-full flex items-center justify-center">
-          <View className="w-[240px] h-[240px] rounded-[32px] bg-background-tertiary overflow-hidden">
+          <View className="w-[240px] h-[240px] max-xs:w-[140px] max-xs:h-[140px] rounded-[32px] bg-background-tertiary overflow-hidden">
             <CollectibleImage
               imageUri={selectedCollectible?.image}
               placeholderIconSize={65}
@@ -656,6 +723,13 @@ const SendCollectibleReviewScreen: React.FC<
           <List variant="secondary" items={selectCollectibleDetails} />
         </View>
         <View className="w-full mt-auto mb-4">
+          {senderFeeError && (
+            <View className="mb-[16px]">
+              <Text md medium color={themeColors.status.error}>
+                {senderFeeError}
+              </Text>
+            </View>
+          )}
           <Button
             secondary
             xl

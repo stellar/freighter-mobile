@@ -866,6 +866,7 @@
     },
     "errors": {
       "insufficientXlmForFees": "XLM insufficient for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
+      "senderNotFunded": "Your account isn't funded yet. Add XLM to it before sending.",
       "amountTooHigh": "The amount entered is greater than the available balance",
       "memoMissing": "This transaction requires a memo",
       "muxedAddressNotSupported": "Muxed address not supported",

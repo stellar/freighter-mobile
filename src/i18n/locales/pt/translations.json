@@ -832,6 +832,7 @@
     },
     "errors": {
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
+      "senderNotFunded": "Sua conta ainda não está ativada. Adicione XLM antes de enviar.",
       "amountTooHigh": "O valor digitado é maior que o saldo disponível",
       "memoMissing": "Esta transação requer um memo",
       "muxedAddressNotSupported": "Endereço muxed não suportado",
