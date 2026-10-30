@@ -1,5 +1,6 @@
 import {
   Account,
+  Address,
   Asset as SdkToken,
   Contract,
   nativeToScVal,
@@ -7,11 +8,30 @@ import {
   TransactionBuilder,
 } from "@stellar/stellar-sdk";
 import type { Horizon, xdr } from "@stellar/stellar-sdk";
-import { G_ACCOUNT } from "__tests__/support/muxedContractFixtures";
+import {
+  BASE_CONTRACT,
+  G_ACCOUNT,
+  MUXED_CONTRACT_ID_1234,
+} from "__tests__/support/muxedContractFixtures";
+import { mapHistoryItemData } from "components/screens/HistoryScreen/mappers";
 import { resolveSorobanDisplayIdentity } from "components/screens/HistoryScreen/mappers/soroban";
-import { TESTNET_NETWORK_DETAILS } from "config/constants";
+import { TransactionType } from "components/screens/HistoryScreen/types";
+import { NETWORKS, TESTNET_NETWORK_DETAILS } from "config/constants";
 import { logger } from "config/logger";
 import { getAttrsFromSorobanHorizonOp } from "helpers/soroban";
+import { ThemeColors } from "hooks/useColors";
+import { getTokenDetails } from "services/backend";
+
+// The network edges of the row mappers.
+jest.mock("services/backend", () => ({
+  getTokenDetails: jest.fn(),
+  fetchCollectibles: jest.fn(),
+}));
+jest.mock("helpers/getIconUrl");
+
+const mockGetTokenDetails = getTokenDetails as jest.MockedFunction<
+  typeof getTokenDetails
+>;
 
 const NATIVE_SAC_TESTNET =
   "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
@@ -174,4 +194,114 @@ describe("getAttrsFromSorobanHorizonOp", () => {
       );
     },
   );
+});
+
+const themeColors = {
+  foreground: { primary: "#000000" },
+} as unknown as ThemeColors;
+
+/**
+ * The `envelope_xdr` of a testnet native-SAC `transfer(USER, to, 5 XLM)`,
+ * built with the real SDK.
+ */
+const sacTransferEnvelope = (to: string) =>
+  envelopeXdrCalling(
+    "transfer",
+    new Address(USER).toScVal(),
+    new Address(to).toScVal(),
+    nativeToScVal(BigInt(50000000), { type: "i128" }),
+  );
+
+// Horizon: the base contract in `to`, the mux id beside it, plus the envelope.
+const W_BALANCE_CHANGE = {
+  asset_type: "native",
+  type: "transfer",
+  from: USER,
+  to: BASE_CONTRACT,
+  amount: "5.0000000",
+  destination_muxed_id: "1234",
+};
+
+const horizonTransfer = () =>
+  sorobanRecord({
+    asset_balance_changes: [W_BALANCE_CHANGE],
+    transaction_attr: {
+      envelope_xdr: sacTransferEnvelope(MUXED_CONTRACT_ID_1234),
+      fee_charged: "100",
+      operation_count: 1,
+    },
+  });
+
+// Mercury: no balance changes and no envelope; freighter-backend#329 puts the W
+// in args.to.
+const mercuryTransfer = () =>
+  sorobanRecord({
+    transaction_attr: {
+      fee_charged: "100",
+      operation_count: 1,
+      contractId: NATIVE_SAC_TESTNET,
+      fnName: "transfer",
+      args: { from: USER, to: MUXED_CONTRACT_ID_1234, amount: "50000000" },
+    },
+  });
+
+const mapRow = (operation: Horizon.ServerApi.OperationRecord) =>
+  mapHistoryItemData({
+    operation,
+    accountBalances: {},
+    publicKey: USER,
+    networkDetails: TESTNET_NETWORK_DETAILS,
+    network: NETWORKS.TESTNET,
+    themeColors,
+  });
+
+describe("history rows for a SAC transfer to a muxed contract (W)", () => {
+  beforeEach(() => {
+    mockGetTokenDetails.mockResolvedValue({
+      symbol: "native",
+      decimals: 7,
+      name: "native",
+    });
+  });
+
+  it.each([
+    ["Horizon", horizonTransfer],
+    ["Mercury", mercuryTransfer],
+  ])(
+    "shows the W as the recipient of a direct transfer in a %s record",
+    async (_, record) => {
+      const row = await mapRow(record());
+
+      expect(row.transactionDetails.transactionType).toBe(
+        TransactionType.CONTRACT_TRANSFER,
+      );
+      expect(row.transactionDetails.contractDetails?.transferDetails?.to).toBe(
+        MUXED_CONTRACT_ID_1234,
+      );
+      expect(row.isAddingFunds).toBe(false);
+      expect(row.amountText).toMatch(/^-/);
+    },
+  );
+
+  it("falls back to a generic row that still shows the W when the envelope can't be decoded", async () => {
+    const row = await mapRow(
+      sorobanRecord({
+        asset_balance_changes: [W_BALANCE_CHANGE],
+        transaction_attr: {
+          envelope_xdr: "not-xdr",
+          fee_charged: "100",
+          operation_count: 1,
+        },
+      }),
+    );
+
+    expect(row.transactionDetails.transactionType).toBe(
+      TransactionType.CONTRACT,
+    );
+    expect(row.transactionDetails.assetDiffs?.[0]?.destination).toBe(
+      MUXED_CONTRACT_ID_1234,
+    );
+    expect(row.isAddingFunds).toBe(false);
+    expect(row.amountText).toMatch(/^-/);
+  });
 });
