@@ -21,6 +21,11 @@ import {
   walkInvocationTree,
   xdr,
 } from "@stellar/stellar-sdk";
+import {
+  BASE_CONTRACT,
+  MUXED_CONTRACT_ID_0,
+  MUXED_CONTRACT_ID_1234,
+} from "__tests__/support/muxedContractFixtures";
 import { getAuthEntryBoundAddress } from "helpers/soroban";
 
 describe("Stellar SDK v15 compatibility", () => {
@@ -187,6 +192,62 @@ describe("Stellar SDK v15 compatibility", () => {
       const scAddr = addr.toScAddress();
       const restored = Address.fromScAddress(scAddr);
       expect(restored.toString()).toBe(keypair.publicKey());
+    });
+  });
+
+  describe("Protocol 30 (CAP-84, CAP-87, CAP-88)", () => {
+    it("validates and round-trips the SEP-23 W vector through StrKey", () => {
+      expect(StrKey.isValidMuxedContract(MUXED_CONTRACT_ID_0)).toBe(true);
+      expect(StrKey.isValidMuxedContract(BASE_CONTRACT)).toBe(false);
+      const raw = StrKey.decodeMuxedContract(MUXED_CONTRACT_ID_0);
+      expect(raw.length).toBe(40);
+      expect(StrKey.encodeContract(Buffer.from(raw.subarray(0, 32)))).toBe(
+        BASE_CONTRACT,
+      );
+      expect(StrKey.encodeMuxedContract(raw)).toBe(MUXED_CONTRACT_ID_0);
+    });
+
+    it("round-trips new Address(W) through ScAddress arm 5, its XDR bytes and ScVal", () => {
+      const sc = new Address(MUXED_CONTRACT_ID_1234).toScAddress();
+      expect(sc.type).toBe("scAddressTypeMuxedContract");
+      expect(xdr.ScAddressType.fromName(sc.type).value).toBe(5);
+      expect(
+        Address.fromScAddress(
+          xdr.ScAddress.fromXDR(sc.toXDR("base64"), "base64"),
+        ).toString(),
+      ).toBe(MUXED_CONTRACT_ID_1234);
+      expect(
+        Address.fromScVal(
+          new Address(MUXED_CONTRACT_ID_1234).toScVal(),
+        ).toString(),
+      ).toBe(MUXED_CONTRACT_ID_1234);
+      expect(
+        Address.muxedContract(
+          StrKey.decodeMuxedContract(MUXED_CONTRACT_ID_1234),
+        ).toString(),
+      ).toBe(MUXED_CONTRACT_ID_1234);
+    });
+
+    it("exposes the CAP-87 ML-DSA cost types as 86–94", () => {
+      const names = [
+        "mlDsa44DecodeVerifyingKey",
+        "mlDsa65DecodeVerifyingKey",
+        "mlDsa87DecodeVerifyingKey",
+        "mlDsa44DecodeSignature",
+        "mlDsa65DecodeSignature",
+        "mlDsa87DecodeSignature",
+        "verifyMlDsa44Sig",
+        "verifyMlDsa65Sig",
+        "verifyMlDsa87Sig",
+      ] as const;
+      names.forEach((name, i) =>
+        expect(xdr.ContractCostType[name].value).toBe(86 + i),
+      );
+    });
+
+    it("exposes the CAP-88 millisecond StellarValue arms", () => {
+      expect(xdr.StellarValueType.stellarValueSignedMs.value).toBe(3);
+      expect(xdr.StellarValueType.stellarValueEmptyTxSetMs.value).toBe(4);
     });
   });
 
