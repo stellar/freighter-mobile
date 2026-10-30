@@ -133,7 +133,14 @@ tags:
           condition: ${false}
           label: "A build or simulation error toast showed up on arrival"
 
-# The send is blocked: the banner shows
+# The send is blocked: the banner shows. On Android the open keyboard covers
+# the bottom of the screen, where the banner and Continue sit (it covers
+# Continue on any send), so close it first.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - assertVisible:
     id: muxed-contract-not-supported-banner
 
@@ -151,16 +158,16 @@ tags:
       - assertTrue:
           condition: ${false}
           label: "A build or simulation error toast showed up after the amount"
-- assertVisible:
-    id: send-continue-button
-    enabled: false
 
-# Dismiss the keyboard on Android so the banner is not obscured
+# Dismiss the keyboard on Android so Continue and the banner are not obscured
 - runFlow:
     when:
       platform: Android
     commands:
       - hideKeyboard
+- assertVisible:
+    id: send-continue-button
+    enabled: false
 
 # The banner opens the sheet that explains the block. The bounded retry is a
 # test-timing mitigation: on an iPhone SE simulator a tap occasionally landed
