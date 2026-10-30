@@ -7,24 +7,25 @@ tags:
 ---
 # A custom (SEP-41) token can't be sent to a muxed contract (W...) address on
 # testnet: the amount screen shows the "not supported" banner, Continue stays
-# disabled, the banner explains why, and nothing is built. It submits nothing.
+# disabled even with a valid amount, nothing is built or simulated, and the
+# banner explains why. It submits nothing.
 #
 # The recipient is the SEP-23 test vector's contract with mux id 1234
 # (MUXED_CONTRACT_ID_1234 in __tests__/support/muxedContractFixtures.ts).
 #
 # Env:
-# - E2E_TEST_FUNDED_RECOVERY_PHRASE: a funded testnet account.
+# - E2E_TEST_FUNDED_RECOVERY_PHRASE: a funded testnet account that holds the
+#   custom token below.
 # - E2E_TEST_CUSTOM_TOKEN_CONTRACT: the C... id of a testnet SEP-41 token that
 #   is NOT a Stellar Asset Contract. A SAC wraps a classic asset, and a
 #   classic asset can go to a W, so it isn't blocked.
 # - E2E_TEST_CUSTOM_TOKEN_CODE: that token's symbol, which names its row in the
 #   send token list (token-option-<code>).
 # For example CCCGL2XZP24FD54WRTLGDM7GTLUVCWMNMFH364VLC474IOG35HZ7KHKN and TZT
-# ("Test ZP Token", 3 decimals).
+# ("Test ZP Token", 3 decimals). run-e2e-tests.sh passes all three from .env.
 #
-# Balance: the account would have to hold some of the token if the send token
-# list hid zero-balance tokens. It doesn't: a token added on the Add Token
-# screen is listed even with no balance, so any funded account works.
+# The account must hold the custom token: the flow types an amount within its
+# balance (1), so only the W block can keep Continue disabled.
 
 # Import funded wallet
 - runFlow:
@@ -108,9 +109,48 @@ tags:
       id: send-amount-screen
     timeout: 15000
 
-# The send is blocked: the banner shows and Continue is disabled
+# Nothing may be built or simulated here. A failure would show only as a
+# 5-second toast titled with the builder's error, so this checks right after
+# arrival, when the screen's fee estimate would run, and again after the
+# amount is typed. It waits a few seconds for such a toast and fails if one
+# shows up. (assertNotVisible can't do this: it waits for a toast to go away.)
+# The toast texts:
+# - build: transactionService wraps every build error as "Failed to build
+#   payment transaction: <reason>"; here the reason would be
+#   transaction.errors.muxedContractNotSupported. The builder throws "Failed
+#   to build transaction" when the build returns nothing.
+# - simulation: the builder throws "Simulation returned no prepared
+#   transaction XDR", and a failed /simulate-token-transfer or /simulate-tx
+#   call shows the API client's "Request failed with status code <n>".
+- runFlow:
+    when:
+      visible:
+        text:
+          ".*(Failed to build|Simulation returned no prepared transaction
+          XDR|Request failed with status code).*"
+    commands:
+      - assertTrue:
+          condition: ${false}
+          label: "A build or simulation error toast showed up on arrival"
+
+# The send is blocked: the banner shows
 - assertVisible:
     id: muxed-contract-not-supported-banner
+
+# An amount within the balance, so only the W block can disable Continue
+- tapOn:
+    id: send-amount-focus-trigger
+- inputText: "1"
+- runFlow:
+    when:
+      visible:
+        text:
+          ".*(Failed to build|Simulation returned no prepared transaction
+          XDR|Request failed with status code).*"
+    commands:
+      - assertTrue:
+          condition: ${false}
+          label: "A build or simulation error toast showed up after the amount"
 - assertVisible:
     id: send-continue-button
     enabled: false
@@ -122,8 +162,10 @@ tags:
     commands:
       - hideKeyboard
 
-# The banner opens the sheet that explains the block. On an iPhone SE
-# simulator a tap on it sometimes left the sheet closed, so tap again then.
+# The banner opens the sheet that explains the block. The bounded retry is a
+# test-timing mitigation: on an iPhone SE simulator a tap occasionally landed
+# without opening the sheet.
+- waitForAnimationToEnd
 - retry:
     maxRetries: 2
     commands:
@@ -139,7 +181,7 @@ tags:
       destination\.'
 - tapOn:
     id: muxed-address-warning-close-button
-
-# Nothing was built, so there's no build error either
-- assertNotVisible:
-    text: ".*Failed to build.*"
+- extendedWaitUntil:
+    notVisible:
+      id: muxed-address-warning-close-button
+    timeout: 10000

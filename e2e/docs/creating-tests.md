@@ -91,8 +91,9 @@ configuration in the UI.
    or run commands in the REPL. Copy snippets and paste them into your `.yaml`
    flows under `e2e/flows/`.
 4. Run tests via `yarn test:e2e` (or `maestro test`). Pass env vars with `-e` if
-   needed; the script injects `E2E_TEST_RECOVERY_PHRASE` and
-   `E2E_TEST_FUNDED_RECOVERY_PHRASE` when set in `.env`.
+   needed; the script injects `E2E_TEST_RECOVERY_PHRASE`,
+   `E2E_TEST_FUNDED_RECOVERY_PHRASE`, `E2E_TEST_CUSTOM_TOKEN_CONTRACT` and
+   `E2E_TEST_CUSTOM_TOKEN_CODE` when set in `.env`.
 
 ## Recording a flow run (video)
 
