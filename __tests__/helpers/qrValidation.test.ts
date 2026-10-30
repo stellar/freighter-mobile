@@ -1,3 +1,4 @@
+import { MUXED_CONTRACT_ID_1234 } from "__tests__/support/muxedContractFixtures";
 import { QRCodeError } from "config/constants";
 import {
   isValidWalletConnectURI,
@@ -277,6 +278,24 @@ describe("QR Validation", () => {
         "GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
       const result = parseQRPayload(validEd25519, differentKey);
       expect(result.type).toBe("stellar_address");
+    });
+
+    it("parses a W through the real validator", () => {
+      const { isValidStellarAddress: realIsValid } = jest.requireActual<{
+        isValidStellarAddress: typeof isValidStellarAddress;
+      }>("helpers/stellar");
+      mockedIsValidStellarAddress
+        .mockImplementationOnce(realIsValid)
+        .mockImplementationOnce(realIsValid);
+
+      expect(parseQRPayload(MUXED_CONTRACT_ID_1234)).toEqual({
+        type: "stellar_address",
+        address: MUXED_CONTRACT_ID_1234,
+      });
+      expect(parseQRPayload(MUXED_CONTRACT_ID_1234.toLowerCase())).toEqual({
+        type: "invalid",
+        error: QRCodeError.INVALID_FORMAT,
+      });
     });
   });
 });

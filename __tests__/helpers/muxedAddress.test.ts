@@ -2,6 +2,10 @@
  * Tests for muxed address helper functions
  */
 // Mock the backend service
+import {
+  MUXED_CONTRACT_ID_0,
+  MUXED_CONTRACT_ID_1234,
+} from "__tests__/support/muxedContractFixtures";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import {
   getMemoDisabledState,
@@ -361,5 +365,49 @@ describe("muxedAddress helpers", () => {
 
       expect(result).toBe(gAddress);
     });
+  });
+
+  describe("muxed contract (W) destinations", () => {
+    beforeEach(() => mockIsMuxedAccount.mockReturnValue(false));
+
+    it.each([
+      ["without a contract", {}],
+      [
+        "with a contract and network",
+        { contractId: "contract123", networkDetails },
+      ],
+    ])(
+      "disables memo for a W %s, before any contract lookup",
+      async (_label, extra) => {
+        expect(
+          await getMemoDisabledState({
+            targetAddress: MUXED_CONTRACT_ID_0,
+            t: mockT,
+            ...extra,
+          }),
+        ).toEqual({
+          isMemoDisabled: true,
+          memoDisabledMessage:
+            "translated:transactionSettings.memoInfo.memoDisabledForTransaction",
+        });
+        expect(mockCheckContractSupportsMuxed).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([true, false])(
+      "returns a W unchanged (contractSupportsMuxed: %s)",
+      (contractSupportsMuxed) => {
+        expect(
+          determineMuxedDestination({
+            recipientAddress: MUXED_CONTRACT_ID_1234,
+            transactionMemo: "1234",
+            contractSupportsMuxed,
+          }),
+        ).toBe(MUXED_CONTRACT_ID_1234);
+        expect(mockIsValidStellarAddress).not.toHaveBeenCalled();
+        expect(mockCreateMuxedAccount).not.toHaveBeenCalled();
+        expect(mockGetBaseAccount).not.toHaveBeenCalled();
+      },
+    );
   });
 });
