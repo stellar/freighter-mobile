@@ -5,7 +5,8 @@ import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSh
 import BottomSheet from "components/BottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
-import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
+import { getDisplayableDetails } from "components/screens/SignTransactionDetails/helpers/detailsState";
+import { useSignTransactionDetailsState } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
 import { AnalyticsEvent } from "config/analyticsConfig";
@@ -263,7 +264,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     !isSignAuthEntryRequest &&
     transactionSecurityAssessment.isUnableToScan;
 
-  const signTransactionDetails = useSignTransactionDetails({ xdr });
+  const signTransactionDetailsState = useSignTransactionDetailsState({ xdr });
+  const signTransactionDetails = getDisplayableDetails(
+    signTransactionDetailsState,
+  );
 
   /**
    * Security warnings extracted from scan result
