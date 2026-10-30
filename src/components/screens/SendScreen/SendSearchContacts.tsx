@@ -27,7 +27,7 @@ import { useQRDataStore } from "ducks/qrData";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { getTokenType } from "helpers/balances";
-import { isContractId } from "helpers/soroban";
+import { isContractDestination } from "helpers/muxedContract";
 import { isFederationAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -138,17 +138,17 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   // The "destination is unfunded" notice is only relevant when both the
   // asset and the destination use the classic account ledger. Contract
   // token / collectible sends bypass the classic ledger on the asset side,
-  // and contract (C...) destinations bypass it on the destination side —
-  // their balances live in the token contract's storage, not in a classic
-  // account or trustline.
+  // and contract (C...) and muxed contract (W...) destinations bypass it on
+  // the destination side — their balances live in the token contract's
+  // storage, not in a classic account or trustline.
   const isCollectibleSend = Boolean(selectedCollectibleDetails.tokenId);
   const isContractTokenSend =
     !!selectedTokenId &&
     getTokenType(selectedTokenId) === TokenTypeWithCustomToken.CUSTOM_TOKEN;
-  const isContractDestination =
-    !!destinationAddress && isContractId(destinationAddress);
+  const isContractRecipient =
+    !!destinationAddress && isContractDestination(destinationAddress);
   const shouldShowUnfundedNotice =
-    !isCollectibleSend && !isContractTokenSend && !isContractDestination;
+    !isCollectibleSend && !isContractTokenSend && !isContractRecipient;
 
   const myWallets: Account[] = useMemo(
     () =>

@@ -1,5 +1,6 @@
 import Blockaid from "@blockaid/client";
 import { renderHook } from "@testing-library/react-native";
+import { MUXED_CONTRACT_ID_0 } from "__tests__/support/muxedContractFixtures";
 import {
   useSendBannerContent,
   getTransactionSecurity,
@@ -390,6 +391,23 @@ describe("SendScreen Helpers", () => {
         }),
       ).toMatchObject({
         assetCode: "USDC",
+        isClassicAsset: true,
+        isContractDestination: true,
+      });
+    });
+
+    it("flags a muxed contract (W...) recipient as a contract destination", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenCode: "XLM",
+            tokenType: TokenTypeWithCustomToken.NATIVE,
+          },
+          isDestinationFunded: false,
+          tokenAmount: "0.5",
+          recipientAddress: MUXED_CONTRACT_ID_0,
+        }),
+      ).toMatchObject({
         isClassicAsset: true,
         isContractDestination: true,
       });
