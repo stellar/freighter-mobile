@@ -1,4 +1,4 @@
-import { Horizon } from "@stellar/stellar-sdk";
+import { Horizon, StrKey } from "@stellar/stellar-sdk";
 import {
   AssetBalanceChange,
   AssetDiffSummary,
@@ -13,15 +13,17 @@ import { isNativeAssetId } from "helpers/assetIdentity";
 import { getIconUrl } from "helpers/getIconUrl";
 import { buildMuxedContract } from "helpers/muxedContract";
 import { isContractId } from "helpers/soroban";
+import { createMuxedAccount } from "helpers/stellar";
 
 /**
  * Gets the address to show as the destination of a debit.
  *
- * For a transfer to a muxed contract (`W…`), Horizon reports the base contract
- * (`C…`) in `to` and the mux id in `destination_muxed_id`, so the `W…` is
- * rebuilt from the two. Only contracts are rebuilt: any other `to`, such as a
- * `G…`, is returned as is. Use it for a debit only. On a credit the mux id
- * belongs to the user's own address, not to the counterparty.
+ * For a transfer to a muxed address, Horizon reports the base address in `to`
+ * and the mux id in `destination_muxed_id`, so the muxed address is rebuilt
+ * from the two: a `W…` for a contract (`C…`) and an `M…` for an account
+ * (`G…`). Any other `to` is returned as is. Use it for a debit only. On a
+ * credit the mux id belongs to the user's own address, not to the
+ * counterparty.
  *
  * Display only. Which changes involve the user, and whether one is a credit or
  * a debit, are still decided on the raw `from` and `to`, which this never
@@ -32,10 +34,22 @@ import { isContractId } from "helpers/soroban";
  * the row. An empty id is absent rather than invalid, so it isn't logged.
  *
  * @param change - A balance change in which the user is the sender.
- * @returns The `W…` for a debit to a muxed contract, otherwise `change.to`.
+ * @returns The `W…` or `M…` for a debit to a muxed address, otherwise
+ * `change.to`.
  */
 function getDebitDestination(change: AssetBalanceChange): string {
-  if (!change.destination_muxed_id || !isContractId(change.to)) {
+  if (!change.destination_muxed_id) {
+    return change.to;
+  }
+
+  if (StrKey.isValidEd25519PublicKey(change.to)) {
+    // createMuxedAccount logs an id it can't encode and returns null.
+    return (
+      createMuxedAccount(change.to, change.destination_muxed_id) ?? change.to
+    );
+  }
+
+  if (!isContractId(change.to)) {
     return change.to;
   }
 
@@ -53,9 +67,9 @@ function getDebitDestination(change: AssetBalanceChange): string {
  *
  * The direction is decided on the raw addresses: it is a credit when `to` is
  * the user's key. `destination` is the counterparty: `from` for a credit and
- * `to` for a debit, except that a debit to a muxed contract shows the rebuilt
- * `W…` (see `getDebitDestination`). `destination` is omitted when it equals
- * the user's key.
+ * `to` for a debit, except that a debit to a muxed address shows the rebuilt
+ * `W…` or `M…` (see `getDebitDestination`). `destination` is omitted when it
+ * equals the user's key.
  */
 async function processAssetChange(
   change: AssetBalanceChange,
@@ -134,9 +148,9 @@ async function processAssetChange(
  * 4. Returns formatted summaries for UI rendering
  *
  * The user is matched on the raw `from` and `to`, as Horizon reports them. Only
- * the `destination` shown for a debit to a muxed contract is rebuilt: the `W…`
- * made from the base `C…` in `to` and the `destination_muxed_id` (see
- * `getDebitDestination`).
+ * the `destination` shown for a debit to a muxed address is rebuilt: the `W…`
+ * or `M…` made from the base `C…` or `G…` in `to` and the
+ * `destination_muxed_id` (see `getDebitDestination`).
  */
 export async function processAssetBalanceChanges(
   operation: Horizon.ServerApi.OperationRecord,

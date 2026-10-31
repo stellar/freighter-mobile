@@ -7,7 +7,7 @@ import {
   Networks,
   TransactionBuilder,
 } from "@stellar/stellar-sdk";
-import type { Horizon, xdr } from "@stellar/stellar-sdk";
+import type { Horizon, Transaction, xdr } from "@stellar/stellar-sdk";
 import {
   BASE_CONTRACT,
   G_ACCOUNT,
@@ -156,6 +156,41 @@ describe("getAttrsFromSorobanHorizonOp", () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
+  it("decodes the token transfer in a fee-bumped Horizon envelope without logging", () => {
+    // A fee bump wraps the transaction that carries the call. SDK 17.4.0's
+    // FeeBumpTransaction reads `operations` through to it.
+    const inner = TransactionBuilder.fromXDR(
+      envelopeXdrCalling(
+        "transfer",
+        new Address(USER).toScVal(),
+        new Address(MUXED_CONTRACT_ID_1234).toScVal(),
+        nativeToScVal(1000n, { type: "i128" }),
+      ),
+      Networks.TESTNET,
+    ) as Transaction;
+    const op = sorobanRecord({
+      transaction_attr: {
+        envelope_xdr: TransactionBuilder.buildFeeBumpTransaction(
+          G_ACCOUNT,
+          "200",
+          inner,
+          Networks.TESTNET,
+        ).toXDR(),
+      },
+    });
+
+    expect(
+      getAttrsFromSorobanHorizonOp(op, TESTNET_NETWORK_DETAILS),
+    ).toMatchObject({
+      contractId: NATIVE_SAC_TESTNET,
+      fnName: "transfer",
+      from: USER,
+      to: MUXED_CONTRACT_ID_1234,
+      amount: 1000n,
+    });
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
   it("returns null without logging for a call that isn't a token transfer or mint", () => {
     // The common case, and not a failure: only a record it can't read is
     // logged.
@@ -270,7 +305,7 @@ const mapRow = (operation: Horizon.ServerApi.OperationRecord) =>
     themeColors,
   });
 
-describe("history rows for a SAC transfer to a muxed contract (W)", () => {
+describe("history rows for a SAC transfer to a muxed address (W or M)", () => {
   beforeEach(() => {
     mockGetTokenDetails.mockResolvedValue({
       symbol: "native",
@@ -318,5 +353,30 @@ describe("history rows for a SAC transfer to a muxed contract (W)", () => {
     );
     expect(row.isAddingFunds).toBe(false);
     expect(row.amountText).toMatch(/^-/);
+  });
+
+  it("shows the M on a generic row for a transfer to a muxed account", async () => {
+    // Horizon reports an M payee the same way: the base G plus the mux id.
+    // CIRCLE_ISSUER with mux id 1234, as encoded by the SDK.
+    const circleIssuerMuxed1234 =
+      "MA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KAAAAAAAAAAE2KHCO";
+    const row = await mapRow(
+      sorobanRecord({
+        asset_balance_changes: [{ ...W_BALANCE_CHANGE, to: CIRCLE_ISSUER }],
+        transaction_attr: {
+          envelope_xdr: "not-xdr",
+          fee_charged: "100",
+          operation_count: 1,
+        },
+      }),
+    );
+
+    expect(row.transactionDetails.transactionType).toBe(
+      TransactionType.CONTRACT,
+    );
+    expect(row.transactionDetails.assetDiffs?.[0]?.destination).toBe(
+      circleIssuerMuxed1234,
+    );
+    expect(row.isAddingFunds).toBe(false);
   });
 });
