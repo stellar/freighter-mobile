@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { act, fireEvent, render } from "@testing-library/react-native";
+import { act, fireEvent, render, within } from "@testing-library/react-native";
 import {
   BASE_CONTRACT,
   G_ACCOUNT,
@@ -852,7 +852,7 @@ describe("SendCollectibleReview - Unfunded Recipient Handling", () => {
   });
 });
 
-describe("SendCollectibleReview - muxed contract (W) recipient", () => {
+describe("SendCollectibleReview - muxed recipients (W and M)", () => {
   const bannerTestId = "muxed-contract-not-supported-banner";
   const continueButtonTestId = "send-collectible-continue-button";
   let originalGetState: unknown;
@@ -1026,7 +1026,6 @@ describe("SendCollectibleReview - muxed contract (W) recipient", () => {
   it.each([
     ["a G account", G_ACCOUNT],
     ["a C contract", BASE_CONTRACT],
-    ["an M account", M_ACCOUNT_ID_1234],
   ])(
     "does not block %s: no banner, Review enabled, simulation runs",
     async (_label, recipientAddress) => {
@@ -1078,7 +1077,6 @@ describe("SendCollectibleReview - muxed contract (W) recipient", () => {
     it.each([
       ["a G account", G_ACCOUNT],
       ["a C contract", BASE_CONTRACT],
-      ["an M account", M_ACCOUNT_ID_1234],
     ])("keeps the full-size image for %s", async (_label, recipientAddress) => {
       const { getByTestId } = await renderWithRecipient(recipientAddress);
 
@@ -1088,6 +1086,153 @@ describe("SendCollectibleReview - muxed contract (W) recipient", () => {
       const className = classNameOf(getByTestId(imageTestId));
       expect(className).toContain("w-[240px] h-[240px]");
       expect(className).not.toContain("max-xs:");
+    });
+  });
+
+  // An M only takes a collectible whose collection supports muxed addresses.
+  // Unlike the W check, that takes a contract lookup, so its answer arrives
+  // after the screen renders.
+  describe("muxed account (M) recipient", () => {
+    const accountBannerTestId = "muxed-address-not-supported-banner";
+    const accountSheetDescription =
+      "transactionAmountScreen.errors.muxedAddressWarning.description";
+    const contractSheetDescription =
+      "transactionAmountScreen.errors.muxedContractWarning.description";
+
+    beforeEach(() => {
+      mockCheckContractMuxedSupport.mockReset();
+      mockCheckContractMuxedSupport.mockResolvedValue(false);
+    });
+
+    afterAll(() => {
+      mockCheckContractMuxedSupport.mockReset();
+      mockCheckContractMuxedSupport.mockResolvedValue(false);
+    });
+
+    it("blocks an M whose collection doesn't support muxed addresses: banner, Review disabled, nothing built", async () => {
+      const {
+        getByTestId,
+        getByText,
+        queryByTestId,
+        queryByText,
+        buildSendCollectibleTransaction,
+      } = await renderWithRecipient(M_ACCOUNT_ID_1234);
+
+      expect(
+        within(getByTestId(accountBannerTestId)).getByText(
+          "transactionAmountScreen.errors.muxedAddressNotSupported",
+        ),
+      ).toBeTruthy();
+      expect(queryByTestId(bannerTestId)).toBeNull();
+      expect(
+        getByTestId(continueButtonTestId).props.accessibilityState?.disabled,
+      ).toBe(true);
+      expect(buildSendCollectibleTransaction).not.toHaveBeenCalled();
+      // The banner opens the M explanation, not the W one.
+      expect(getByText(accountSheetDescription)).toBeTruthy();
+      expect(queryByText(contractSheetDescription)).toBeNull();
+    });
+
+    it("does not block an M whose collection supports muxed addresses", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+
+      const { getByTestId, queryByTestId, buildSendCollectibleTransaction } =
+        await renderWithRecipient(M_ACCOUNT_ID_1234);
+
+      expect(queryByTestId(accountBannerTestId)).toBeNull();
+      expect(
+        getByTestId(continueButtonTestId).props.accessibilityState?.disabled,
+      ).toBe(false);
+      expect(buildSendCollectibleTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ destinationAccount: M_ACCOUNT_ID_1234 }),
+      );
+    });
+
+    it("builds nothing and keeps Review off until the collection check answers", async () => {
+      let answer!: (supportsMuxed: boolean) => void;
+      mockCheckContractMuxedSupport.mockReturnValueOnce(
+        new Promise<boolean>((resolve) => {
+          answer = resolve;
+        }),
+      );
+
+      const { getByTestId, queryByTestId, buildSendCollectibleTransaction } =
+        await renderWithRecipient(M_ACCOUNT_ID_1234);
+
+      // Still unknown: no banner yet, but nothing built and no Review.
+      expect(queryByTestId(accountBannerTestId)).toBeNull();
+      expect(
+        getByTestId(continueButtonTestId).props.accessibilityState?.disabled,
+      ).toBe(true);
+      expect(buildSendCollectibleTransaction).not.toHaveBeenCalled();
+
+      await act(() => {
+        answer(true);
+        return Promise.resolve();
+      });
+
+      expect(
+        getByTestId(continueButtonTestId).props.accessibilityState?.disabled,
+      ).toBe(false);
+      expect(buildSendCollectibleTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ destinationAccount: M_ACCOUNT_ID_1234 }),
+      );
+    });
+
+    it("opens the M explanation from the banner", async () => {
+      setRecipient(M_ACCOUNT_ID_1234);
+      const sheets: { present: jest.Mock; content: React.ReactNode }[] = [];
+
+      const { getByTestId } = render(
+        <SendCollectibleReviewScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+        {
+          wrapper: ToastProvider,
+          createNodeMock: (element) => {
+            const props = element.props as {
+              detached?: boolean;
+              children?: React.ReactNode;
+            };
+            if (!props.detached) {
+              return null;
+            }
+            const sheet = { present: jest.fn(), content: props.children };
+            sheets.push(sheet);
+
+            return { present: sheet.present, dismiss: jest.fn() };
+          },
+        },
+      );
+      await act(async () => {});
+
+      fireEvent.press(getByTestId(accountBannerTestId));
+
+      const opened = sheets.filter((sheet) => sheet.present.mock.calls.length);
+      expect(opened).toHaveLength(1);
+      expect(
+        findElementOfType(opened[0].content, MuxedAddressWarningBottomSheet)
+          ?.props,
+      ).toMatchObject({ variant: "account" });
+    });
+
+    it("hides the image on small screens while the M is blocked", async () => {
+      const { getByTestId } = await renderWithRecipient(M_ACCOUNT_ID_1234);
+
+      expect(
+        classNameOf(getByTestId("send-collectible-image-section")),
+      ).toContain("max-xs:hidden");
+    });
+
+    it("keeps the full-size image for an M whose collection supports muxed addresses", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+
+      const { getByTestId } = await renderWithRecipient(M_ACCOUNT_ID_1234);
+
+      expect(
+        classNameOf(getByTestId("send-collectible-image-section")),
+      ).not.toContain("max-xs:");
     });
   });
 });
