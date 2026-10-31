@@ -26,13 +26,19 @@ jest.mock("components/screens/WalletKit/DappRequestButtons", () => {
   };
 });
 
-/** The props the details last rendered with; undefined if they never rendered. */
-let mockDappAuthEntryDetailsProps: Record<string, unknown> | undefined;
+/** The props the details button last rendered with; undefined if it never rendered. */
+let mockDetailsButtonProps: Record<string, unknown> | undefined;
+/** The props the details sheet last rendered with; undefined if it never rendered. */
+let mockDetailsSheetProps: Record<string, unknown> | undefined;
 
 jest.mock("components/screens/WalletKit/DappAuthEntryDetails", () => ({
   __esModule: true,
-  default: (props: Record<string, unknown>) => {
-    mockDappAuthEntryDetailsProps = props;
+  DappAuthEntryDetailsButton: (props: Record<string, unknown>) => {
+    mockDetailsButtonProps = props;
+    return null;
+  },
+  DappAuthEntryDetailsSheet: (props: Record<string, unknown>) => {
+    mockDetailsSheetProps = props;
     return null;
   },
 }));
@@ -97,7 +103,8 @@ describe("DappSignAuthEntryBottomSheetContent", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockDappAuthEntryDetailsProps = undefined;
+    mockDetailsButtonProps = undefined;
+    mockDetailsSheetProps = undefined;
   });
 
   it("offers only Cancel, which rejects, when the auth entry can't be displayed", () => {
@@ -107,9 +114,11 @@ describe("DappSignAuthEntryBottomSheetContent", () => {
 
     expect(getByTestId("unreadable-transaction-notice")).toBeTruthy();
     expect(queryByTestId("dapp-request-buttons")).toBeNull();
-    // Neither the details nor the raw entry show, and neither does the trust
-    // text that goes with Confirm.
-    expect(mockDappAuthEntryDetailsProps).toBeUndefined();
+    // Neither the details button nor the raw entry show, and neither does the
+    // trust text that goes with Confirm. The details sheet stays mounted, so
+    // one that's open when the request fails closed stays on screen.
+    expect(mockDetailsButtonProps).toBeUndefined();
+    expect(mockDetailsSheetProps?.entryXdr).toBe(ENTRY_XDR);
     expect(queryByTestId("auth-entry-xdr")).toBeNull();
     expect(queryByText("blockaid.security.site.confirmTrust")).toBeNull();
     // The header still says who is asking, and for what.
@@ -179,9 +188,8 @@ describe("DappSignAuthEntryBottomSheetContent", () => {
     expect(queryByTestId("unreadable-transaction-notice")).toBeNull();
     expect(getByTestId("auth-entry-xdr")).toBeTruthy();
     expect(getByText("blockaid.security.site.confirmTrust")).toBeTruthy();
-    expect(mockDappAuthEntryDetailsProps?.entryXdr).toBe(ENTRY_XDR);
-    expect(mockDappAuthEntryDetailsProps?.onRenderError).toBe(
-      onDetailsRenderError,
-    );
+    expect(mockDetailsButtonProps).toBeDefined();
+    expect(mockDetailsSheetProps?.entryXdr).toBe(ENTRY_XDR);
+    expect(mockDetailsSheetProps?.onRenderError).toBe(onDetailsRenderError);
   });
 });

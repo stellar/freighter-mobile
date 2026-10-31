@@ -1,24 +1,25 @@
 /**
  * A request sheet's nested details sheet, when the request fails closed while
- * that sheet is opening.
+ * that sheet is open.
  *
  * A render error in Transaction details or Authorization Entry Details fails
  * the request closed: the request sheet's content switches to the unreadable
- * notice and Cancel, which unmounts the details button that owns the nested
- * sheet. That sheet is still opening when it happens, and
- * patches/@gorhom+bottom-sheet+5.2.6.patch makes gorhom close it then too.
- * Without the patch the sheet stays on screen, and its close button does
- * nothing.
+ * notice and Cancel. The details sheet must not close itself or be left
+ * orphaned when that happens. It stays open, showing its own notice, until the
+ * user closes it, and then the request underneath offers only Cancel.
  *
  * The request sheet suites stub the details components module-wide, so these
- * cases have their own file: they render the real details owners and the real
- * gorhom modal.
+ * cases have their own file: they render the real details sheets and their
+ * error boundaries. `components/BottomSheet` is replaced by a stub that opens
+ * and closes through the same `modalRef` and records when it mounts and
+ * unmounts, which is what these cases are about.
  */
 import { act, fireEvent } from "@testing-library/react-native";
 import { sacTransferPreimageXdr } from "__tests__/support/sacTransferFixtures";
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import { DappSignAuthEntryBottomSheetContent } from "components/screens/WalletKit/DappSignAuthEntryBottomSheetContent";
 import { DappSignTransactionBottomSheetContent } from "components/screens/WalletKit/DappSignTransactionBottomSheetContent";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { TESTNET_NETWORK_DETAILS } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
 import {
@@ -32,6 +33,53 @@ import React from "react";
 
 /** Whether the transaction summary throws while rendering. */
 let mockSummaryThrows = false;
+
+/** How many times each sheet mounted and unmounted, by its analytics event. */
+const mockSheetLifecycle: Record<string, { mounts: number; unmounts: number }> =
+  {};
+
+jest.mock("components/BottomSheet", () => {
+  const MockReact = jest.requireActual("react");
+
+  const MockBottomSheet = ({
+    modalRef,
+    analyticsEvent,
+    customContent,
+    scrollViewHeaderComponent,
+  }: {
+    modalRef: React.Ref<unknown>;
+    analyticsEvent?: string;
+    customContent?: React.ReactNode;
+    scrollViewHeaderComponent?: () => React.ReactNode;
+  }) => {
+    const [isOpen, setIsOpen] = MockReact.useState(false);
+    const key = analyticsEvent ?? "unnamed";
+
+    MockReact.useEffect(() => {
+      mockSheetLifecycle[key] ??= { mounts: 0, unmounts: 0 };
+      mockSheetLifecycle[key].mounts += 1;
+
+      return () => {
+        mockSheetLifecycle[key].unmounts += 1;
+      };
+    }, [key]);
+
+    // Opens and closes through the same ref gorhom's modal exposes.
+    MockReact.useImperativeHandle(modalRef, () => ({
+      present: () => setIsOpen(true),
+      dismiss: () => setIsOpen(false),
+    }));
+
+    return isOpen ? (
+      <>
+        {scrollViewHeaderComponent?.()}
+        {customContent}
+      </>
+    ) : null;
+  };
+
+  return { __esModule: true, default: MockBottomSheet };
+});
 
 jest.mock("components/screens/WalletKit/useDappHeader", () => ({
   useDappHeader: () => ({
@@ -142,53 +190,36 @@ const SIGN_AUTH_ENTRY_REQUEST = {
   },
 } as unknown as WalletKitSessionRequest;
 
-/** Commits whatever the last interaction scheduled, such as the portal's mount. */
-const flush = () => act(() => {});
+const TRANSACTION_DETAILS_SHEET =
+  AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS;
+const AUTH_ENTRY_DETAILS_SHEET =
+  AnalyticsEvent.VIEW_SIGN_DAPP_AUTH_ENTRY_DETAILS;
 
-describe("a request sheet's nested details sheet, when the request fails closed while it opens", () => {
+describe("a request sheet's nested details sheet, when the request fails closed while it's open", () => {
   const onCancelRequest = jest.fn();
   const onConfirm = jest.fn();
   const onDetailsRenderError = jest.fn();
 
   beforeEach(() => {
-    // gorhom's present() mounts the modal in a requestAnimationFrame callback.
-    // Running that callback at once, with fake timers that are never advanced,
-    // mounts the sheet without running its open animation. Advancing them
-    // would start Reanimated's mappers, which reach native modules Jest
-    // doesn't have. So the sheet is still opening when the request flips, as
-    // it is on a device when its content throws while it opens.
-    jest.useFakeTimers();
-    jest
-      .spyOn(global, "requestAnimationFrame")
-      .mockImplementation((callback: (time: number) => void) => {
-        callback(0);
-        return 0;
-      });
     // React logs every error a boundary catches; the boundary's callback is
     // asserted on instead, so the log would only be noise.
     jest.spyOn(console, "error").mockImplementation(() => {});
-    // So would gorhom's warning that the sheet's scroll view has no native
-    // handle, which a test renderer never gives it. Other warnings still show.
-    const { warn } = console;
-    jest.spyOn(console, "warn").mockImplementation((...args) => {
-      if (args[0] !== "Couldn't find the scrollable node handle id!") {
-        warn(...args);
-      }
-    });
     jest.clearAllMocks();
     jest
       .mocked(scValToDisplayTokens)
       .mockReset()
       .mockImplementation(actualSoroban.scValToDisplayTokens);
     mockSummaryThrows = false;
+    Object.keys(mockSheetLifecycle).forEach((key) => {
+      delete mockSheetLifecycle[key];
+    });
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
-    jest.useRealTimers();
   });
 
-  it("closes Transaction details", () => {
+  it("keeps Transaction details open with its notice, and Cancel only underneath once closed", () => {
     // The summary throws on the details sheet's first render.
     mockSummaryThrows = true;
     const sheet = (isUndisplayable: boolean) => (
@@ -204,18 +235,14 @@ describe("a request sheet's nested details sheet, when the request fails closed 
         isUndisplayable={isUndisplayable}
       />
     );
-    const {
-      getByTestId,
-      getByText,
-      queryAllByTestId,
-      queryAllByText,
-      rerender,
-    } = renderWithProviders(sheet(false));
+    const { getByTestId, getByText, queryAllByTestId, queryByText, rerender } =
+      renderWithProviders(sheet(false));
 
-    fireEvent.press(
-      getByText("dappRequestBottomSheetContent.transactionDetails"),
-    );
-    flush();
+    act(() => {
+      fireEvent.press(
+        getByText("dappRequestBottomSheetContent.transactionDetails"),
+      );
+    });
 
     // The details sheet opened, and its boundary tripped.
     expect(onDetailsRenderError).toHaveBeenCalledTimes(1);
@@ -223,15 +250,33 @@ describe("a request sheet's nested details sheet, when the request fails closed 
 
     // What the provider does in response: the request fails closed.
     rerender(sheet(true));
-    flush();
 
-    // Only the request sheet's notice is left: the details sheet is gone.
+    // The details sheet is still the same, still open, with its notice; the
+    // request underneath now shows its own notice and Cancel.
+    expect(mockSheetLifecycle[TRANSACTION_DETAILS_SHEET]).toEqual({
+      mounts: 1,
+      unmounts: 0,
+    });
+    expect(getByText("signTransactionDetails.title")).toBeTruthy();
+    expect(queryAllByTestId("unreadable-transaction-notice")).toHaveLength(2);
+    expect(getByTestId("dapp-request-cancel-button")).toBeTruthy();
+    // The button that opened it is gone with the rest of the request.
+    expect(
+      queryByText("dappRequestBottomSheetContent.transactionDetails"),
+    ).toBeNull();
+
+    // Its close button still works, and leaves the request's notice and
+    // Cancel.
+    act(() => {
+      fireEvent.press(getByTestId("sign-transaction-details-close-button"));
+    });
+
+    expect(queryByText("signTransactionDetails.title")).toBeNull();
     expect(queryAllByTestId("unreadable-transaction-notice")).toHaveLength(1);
-    expect(queryAllByText("signTransactionDetails.title")).toHaveLength(0);
     expect(getByTestId("dapp-request-cancel-button")).toBeTruthy();
   });
 
-  it("closes Authorization Entry Details", () => {
+  it("keeps Authorization Entry Details open with its notice, and Cancel only underneath once closed", () => {
     // The details show every invocation expanded, so the arguments convert,
     // and throw, on the sheet's first render.
     jest.mocked(scValToDisplayTokens).mockImplementation(() => {
@@ -250,18 +295,12 @@ describe("a request sheet's nested details sheet, when the request fails closed 
         isUndisplayable={isUndisplayable}
       />
     );
-    const {
-      getByTestId,
-      getByText,
-      queryAllByTestId,
-      queryAllByText,
-      rerender,
-    } = renderWithProviders(sheet(false));
+    const { getByTestId, queryAllByTestId, queryByTestId, rerender } =
+      renderWithProviders(sheet(false));
 
-    fireEvent.press(
-      getByText("dappRequestBottomSheetContent.authEntryDetails"),
-    );
-    flush();
+    act(() => {
+      fireEvent.press(getByTestId("dapp-auth-entry-details-button"));
+    });
 
     // The details sheet opened, and its boundary tripped.
     expect(onDetailsRenderError).toHaveBeenCalledTimes(1);
@@ -269,14 +308,41 @@ describe("a request sheet's nested details sheet, when the request fails closed 
 
     // What the provider does in response: the request fails closed.
     rerender(sheet(true));
-    flush();
 
-    // Only the request sheet's notice is left: the details sheet, and the
-    // button that opened it, are gone.
-    expect(queryAllByTestId("unreadable-transaction-notice")).toHaveLength(1);
-    expect(
-      queryAllByText("dappRequestBottomSheetContent.authEntryDetails"),
-    ).toHaveLength(0);
+    expect(mockSheetLifecycle[AUTH_ENTRY_DETAILS_SHEET]).toEqual({
+      mounts: 1,
+      unmounts: 0,
+    });
+    expect(queryAllByTestId("unreadable-transaction-notice")).toHaveLength(2);
     expect(getByTestId("dapp-request-cancel-button")).toBeTruthy();
+    // The button that opened it is gone with the rest of the request. (The
+    // sheet's own header uses the same words, so the button is found by id.)
+    expect(queryByTestId("dapp-auth-entry-details-button")).toBeNull();
+
+    act(() => {
+      fireEvent.press(getByTestId("dapp-auth-entry-details-close-button"));
+    });
+
+    expect(queryAllByTestId("unreadable-transaction-notice")).toHaveLength(1);
+    expect(getByTestId("dapp-request-cancel-button")).toBeTruthy();
+  });
+
+  it("mounts no details sheet for a request that can't be displayed from the start", () => {
+    const { getByTestId } = renderWithProviders(
+      <DappSignTransactionBottomSheetContent
+        requestEvent={SIGN_XDR_REQUEST}
+        account={ACCOUNT}
+        networkDetails={TESTNET_NETWORK_DETAILS}
+        onCancelRequest={onCancelRequest}
+        onConfirm={onConfirm}
+        isSigning={false}
+        signTransactionDetails={null}
+        onDetailsRenderError={onDetailsRenderError}
+        isUndisplayable
+      />,
+    );
+
+    expect(getByTestId("dapp-request-cancel-button")).toBeTruthy();
+    expect(mockSheetLifecycle[TRANSACTION_DETAILS_SHEET]).toBeUndefined();
   });
 });

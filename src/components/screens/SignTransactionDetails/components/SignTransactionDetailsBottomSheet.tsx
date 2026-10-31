@@ -34,6 +34,7 @@ export const SignTransactionDetailsHeader: React.FC<{
       title={t("signTransactionDetails.title")}
       layout="centered"
       onClose={onDismiss}
+      closeTestID="sign-transaction-details-close-button"
     />
   );
 };

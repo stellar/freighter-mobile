@@ -29,6 +29,7 @@ export const DappAuthEntryDetailsHeader: React.FC<{
       title={t("dappRequestBottomSheetContent.authEntryDetails")}
       layout="centered"
       onClose={onDismiss}
+      closeTestID="dapp-auth-entry-details-close-button"
     />
   );
 };

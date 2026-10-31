@@ -1,5 +1,5 @@
 import { OperationRecord } from "@stellar/stellar-sdk";
-import SignTransactionDetails from "components/screens/SignTransactionDetails";
+import { SignTransactionDetailsSheet } from "components/screens/SignTransactionDetails";
 import SignTransactionDetailsBottomSheet from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
 import {
   AuthEntryDisplay,
@@ -67,7 +67,7 @@ jest.mock("hooks/useAppTranslation", () => ({
 }));
 
 // Renders the sheet's content as if it were presented. Only
-// SignTransactionDetails, which hosts this sheet, uses it.
+// SignTransactionDetailsSheet, which hosts this sheet's body, uses it.
 jest.mock("components/BottomSheet", () => ({
   __esModule: true,
   default: ({ customContent }: { customContent: React.ReactNode }) =>
@@ -227,7 +227,7 @@ describe("SignTransactionDetailsBottomSheet", () => {
   });
 });
 
-describe("SignTransactionDetails, which hosts the sheet", () => {
+describe("SignTransactionDetailsSheet, which hosts the sheet", () => {
   beforeEach(() => {
     jest.spyOn(console, "error").mockImplementation(() => {});
     jest.clearAllMocks();
@@ -243,7 +243,8 @@ describe("SignTransactionDetails, which hosts the sheet", () => {
     const onRenderError = jest.fn();
 
     const { getByTestId } = renderWithProviders(
-      <SignTransactionDetails
+      <SignTransactionDetailsSheet
+        modalRef={React.createRef()}
         data={details("xdr-1")}
         onRenderError={onRenderError}
       />,

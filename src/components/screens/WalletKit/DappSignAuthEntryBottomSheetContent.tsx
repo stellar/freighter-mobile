@@ -1,6 +1,10 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { List } from "components/List";
 import { UnreadableTransactionNoticeVariant } from "components/screens/SignTransactionDetails/components/UnreadableTransactionNotice";
-import DappAuthEntryDetails from "components/screens/WalletKit/DappAuthEntryDetails";
+import {
+  DappAuthEntryDetailsButton,
+  DappAuthEntryDetailsSheet,
+} from "components/screens/WalletKit/DappAuthEntryDetails";
 import { DappRequestBanners } from "components/screens/WalletKit/DappRequestBanners";
 import { DappRequestButtons } from "components/screens/WalletKit/DappRequestButtons";
 import { DappRequestUnreadableContent } from "components/screens/WalletKit/DappRequestUnreadableContent";
@@ -16,7 +20,7 @@ import { WalletKitSessionRequest } from "ducks/walletKit";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import { Dimensions, ScrollView, View } from "react-native";
 
 interface DappSignAuthEntryBottomSheetContentProps {
@@ -48,6 +52,11 @@ interface DappSignAuthEntryBottomSheetContentProps {
  * an approval is in flight (`isSigning`). A render error in the details is
  * reported through `onDetailsRenderError`, which is how the provider makes the
  * request fail closed.
+ *
+ * The details sheet sits in the same keyed slot in both layouts, so the switch
+ * doesn't unmount it: a details sheet that is open when its render error fails
+ * the request closed stays open, showing its own notice, until the user closes
+ * it on the Cancel-only request.
  */
 export const DappSignAuthEntryBottomSheetContent: React.FC<
   DappSignAuthEntryBottomSheetContentProps
@@ -68,6 +77,7 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  const detailsSheetModalRef = useRef<BottomSheetModal>(null);
   const { copyToClipboard } = useClipboard();
 
   const accountList = useMemo(
@@ -136,88 +146,104 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
     </View>
   );
 
+  const detailsSheet = (
+    <DappAuthEntryDetailsSheet
+      key="details-sheet"
+      modalRef={detailsSheetModalRef}
+      entryXdr={entryXdr}
+      onRenderError={onDetailsRenderError}
+    />
+  );
+
   if (isUndisplayable) {
     return (
-      <DappRequestUnreadableContent
-        header={headerRow}
-        onCancelRequest={onCancelRequest}
-        isSigning={isSigning}
-        variant={UnreadableTransactionNoticeVariant.AuthEntry}
-      />
+      <>
+        <DappRequestUnreadableContent
+          key="request"
+          header={headerRow}
+          onCancelRequest={onCancelRequest}
+          isSigning={isSigning}
+          variant={UnreadableTransactionNoticeVariant.AuthEntry}
+        />
+        {detailsSheet}
+      </>
     );
   }
 
   return (
-    <View
-      className="flex-1 justify-center mt-2 gap-[16px]"
-      testID="dapp-request-bottom-sheet"
-    >
-      {headerRow}
+    <>
+      <View
+        key="request"
+        className="flex-1 justify-center mt-2 gap-[16px]"
+        testID="dapp-request-bottom-sheet"
+      >
+        {headerRow}
 
-      <DappRequestBanners
-        isMalicious={isMalicious}
-        isSuspicious={isSuspicious}
-        isUnableToScan={isUnableToScan}
-        securityWarningAction={securityWarningAction}
-      />
-
-      <View className="gap-[12px]">
-        <View
-          className="rounded-[16px] p-[16px] gap-[12px]"
-          style={{ backgroundColor: themeColors.background.secondary }}
-        >
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-[8px]">
-              <Icon.Key01 size={16} color={themeColors.text.secondary} />
-              <Text sm secondary>
-                {t("signTransactionDetails.authorizations.title")}
-              </Text>
-            </View>
-            <Icon.Copy01
-              size={14}
-              themeColor="gray"
-              onPress={() => copyToClipboard(entryXdr)}
-            />
-          </View>
-          <ScrollView
-            style={{
-              maxHeight: Dimensions.get("window").height * 0.2,
-            }}
-            showsVerticalScrollIndicator={false}
-          >
-            <Text
-              sm
-              primary
-              style={{ fontFamily: "monospace" }}
-              testID="auth-entry-xdr"
-            >
-              {entryXdr}
-            </Text>
-          </ScrollView>
-        </View>
-        <List variant="secondary" items={accountList} />
-        <DappAuthEntryDetails
-          entryXdr={entryXdr}
-          onRenderError={onDetailsRenderError}
-        />
-      </View>
-
-      {!isMalicious && !isSuspicious && !isUnableToScan && (
-        <Text sm secondary textAlign="center">
-          {t("blockaid.security.site.confirmTrust")}
-        </Text>
-      )}
-
-      <View className="w-full">
-        <DappRequestButtons
+        <DappRequestBanners
           isMalicious={isMalicious}
           isSuspicious={isSuspicious}
           isUnableToScan={isUnableToScan}
-          isSigning={isSigning}
-          onCancelRequest={onCancelRequest}
-          onConfirm={onConfirm}
+          securityWarningAction={securityWarningAction}
         />
+
+        <View className="gap-[12px]">
+          <View
+            className="rounded-[16px] p-[16px] gap-[12px]"
+            style={{ backgroundColor: themeColors.background.secondary }}
+          >
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-[8px]">
+                <Icon.Key01 size={16} color={themeColors.text.secondary} />
+                <Text sm secondary>
+                  {t("signTransactionDetails.authorizations.title")}
+                </Text>
+              </View>
+              <Icon.Copy01
+                size={14}
+                themeColor="gray"
+                onPress={() => copyToClipboard(entryXdr)}
+              />
+            </View>
+            <ScrollView
+              style={{
+                maxHeight: Dimensions.get("window").height * 0.2,
+              }}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text
+                sm
+                primary
+                style={{ fontFamily: "monospace" }}
+                testID="auth-entry-xdr"
+              >
+                {entryXdr}
+              </Text>
+            </ScrollView>
+          </View>
+          <List variant="secondary" items={accountList} />
+          <DappAuthEntryDetailsButton
+            onPress={() => detailsSheetModalRef.current?.present()}
+          />
+        </View>
+
+        {!isMalicious && !isSuspicious && !isUnableToScan && (
+          <Text sm secondary textAlign="center">
+            {t("blockaid.security.site.confirmTrust")}
+          </Text>
+        )}
+
+        <View className="w-full">
+          <DappRequestButtons
+            isMalicious={isMalicious}
+            isSuspicious={isSuspicious}
+            isUnableToScan={isUnableToScan}
+            isSigning={isSigning}
+            onCancelRequest={onCancelRequest}
+            onConfirm={onConfirm}
+          />
+        </View>
       </View>
-    </View>
+      {detailsSheet}
+    </>
   );
 };

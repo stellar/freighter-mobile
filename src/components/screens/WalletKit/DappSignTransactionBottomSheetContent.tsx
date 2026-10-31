@@ -1,6 +1,10 @@
 import Blockaid from "@blockaid/client";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { List } from "components/List";
-import SignTransactionDetails from "components/screens/SignTransactionDetails";
+import {
+  SignTransactionDetailsButton,
+  SignTransactionDetailsSheet,
+} from "components/screens/SignTransactionDetails";
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import { DappRequestBanners } from "components/screens/WalletKit/DappRequestBanners";
 import { DappRequestButtons } from "components/screens/WalletKit/DappRequestButtons";
@@ -19,7 +23,7 @@ import { formatTokenForDisplay } from "helpers/formatAmount";
 import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import { View } from "react-native";
 
 interface DappSignTransactionBottomSheetContentProps {
@@ -61,6 +65,11 @@ const formatFeeAmount = (feeXlm?: string | number) => {
  * (`isSigning`). A render error in the details is reported through
  * `onDetailsRenderError`, which is how the provider makes the request fail
  * closed.
+ *
+ * The details sheet sits in the same keyed slot in both layouts, so the switch
+ * doesn't unmount it: a details sheet that is open when its render error fails
+ * the request closed stays open, showing its own notice, until the user closes
+ * it on the Cancel-only request.
  */
 export const DappSignTransactionBottomSheetContent: React.FC<
   DappSignTransactionBottomSheetContentProps
@@ -85,6 +94,7 @@ export const DappSignTransactionBottomSheetContent: React.FC<
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  const detailsSheetModalRef = useRef<BottomSheetModal>(null);
 
   const memoValue = signTransactionDetails?.summary.memo?.value;
 
@@ -206,62 +216,78 @@ export const DappSignTransactionBottomSheetContent: React.FC<
     </View>
   );
 
+  const detailsSheet = signTransactionDetails ? (
+    <SignTransactionDetailsSheet
+      key="details-sheet"
+      modalRef={detailsSheetModalRef}
+      data={signTransactionDetails}
+      analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS}
+      onRenderError={onDetailsRenderError}
+    />
+  ) : null;
+
   if (isUndisplayable) {
     return (
-      <DappRequestUnreadableContent
-        header={headerRow}
-        onCancelRequest={onCancelRequest}
-        isSigning={isSigning}
-      />
+      <>
+        <DappRequestUnreadableContent
+          key="request"
+          header={headerRow}
+          onCancelRequest={onCancelRequest}
+          isSigning={isSigning}
+        />
+        {detailsSheet}
+      </>
     );
   }
 
   return (
-    <View
-      className="flex-1 justify-center mt-2 gap-[16px]"
-      testID="dapp-request-bottom-sheet"
-    >
-      {headerRow}
+    <>
+      <View
+        key="request"
+        className="flex-1 justify-center mt-2 gap-[16px]"
+        testID="dapp-request-bottom-sheet"
+      >
+        {headerRow}
 
-      <DappRequestBanners
-        isMemoMissing={isMemoMissing}
-        onBannerPress={onBannerPress}
-        isMalicious={isMalicious}
-        isSuspicious={isSuspicious}
-        isUnableToScan={isUnableToScan}
-        securityWarningAction={securityWarningAction}
-      />
-
-      <View className="gap-[12px]">
-        <List variant="secondary" items={transactionBalanceListItems} />
-        <List variant="secondary" items={accountList} />
-        {signTransactionDetails && (
-          <SignTransactionDetails
-            data={signTransactionDetails}
-            analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS}
-            onRenderError={onDetailsRenderError}
-          />
-        )}
-      </View>
-
-      {!isMalicious && !isSuspicious && !isUnableToScan && (
-        <Text sm secondary textAlign="center">
-          {t("blockaid.security.site.confirmTrust")}
-        </Text>
-      )}
-
-      <View className="w-full">
-        <DappRequestButtons
+        <DappRequestBanners
+          isMemoMissing={isMemoMissing}
+          onBannerPress={onBannerPress}
           isMalicious={isMalicious}
           isSuspicious={isSuspicious}
           isUnableToScan={isUnableToScan}
-          isSigning={isSigning}
-          isValidatingMemo={isValidatingMemo}
-          isMemoMissing={isMemoMissing}
-          onCancelRequest={onCancelRequest}
-          onConfirm={onConfirm}
+          securityWarningAction={securityWarningAction}
         />
+
+        <View className="gap-[12px]">
+          <List variant="secondary" items={transactionBalanceListItems} />
+          <List variant="secondary" items={accountList} />
+          {signTransactionDetails && (
+            <SignTransactionDetailsButton
+              onPress={() => detailsSheetModalRef.current?.present()}
+            />
+          )}
+        </View>
+
+        {!isMalicious && !isSuspicious && !isUnableToScan && (
+          <Text sm secondary textAlign="center">
+            {t("blockaid.security.site.confirmTrust")}
+          </Text>
+        )}
+
+        <View className="w-full">
+          <DappRequestButtons
+            isMalicious={isMalicious}
+            isSuspicious={isSuspicious}
+            isUnableToScan={isUnableToScan}
+            isSigning={isSigning}
+            isValidatingMemo={isValidatingMemo}
+            isMemoMissing={isMemoMissing}
+            onCancelRequest={onCancelRequest}
+            onConfirm={onConfirm}
+          />
+        </View>
       </View>
-    </View>
+      {detailsSheet}
+    </>
   );
 };

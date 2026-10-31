@@ -10,7 +10,7 @@ import {
   MUXED_CONTRACT_ID_1234,
 } from "__tests__/support/muxedContractFixtures";
 import { sacTransferPreimageXdr } from "__tests__/support/sacTransferFixtures";
-import DappAuthEntryDetails from "components/screens/WalletKit/DappAuthEntryDetails";
+import { DappAuthEntryDetailsSheet } from "components/screens/WalletKit/DappAuthEntryDetails";
 import { DappAuthEntryDisplay } from "components/screens/WalletKit/DappAuthEntryDisplay";
 import { logger } from "config/logger";
 import { scValToDisplayTokens } from "helpers/soroban";
@@ -37,7 +37,7 @@ jest.mock("services/backend", () => ({
 }));
 
 // Renders the sheet's content as if it were presented. Only
-// DappAuthEntryDetails, which hosts the display, uses it.
+// DappAuthEntryDetailsSheet, which hosts the display, uses it.
 jest.mock("components/BottomSheet", () => ({
   __esModule: true,
   default: ({ customContent }: { customContent: React.ReactNode }) =>
@@ -312,14 +312,15 @@ describe("DappAuthEntryDisplay", () => {
   });
 });
 
-describe("DappAuthEntryDetails, which hosts the display", () => {
+describe("DappAuthEntryDetailsSheet, which hosts the display", () => {
   it("passes onRenderError through the details sheet to the display's boundary", async () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
     failTokens();
     const onRenderError = jest.fn();
 
     const { findByTestId } = renderWithProviders(
-      <DappAuthEntryDetails
+      <DappAuthEntryDetailsSheet
+        modalRef={React.createRef()}
         entryXdr={sacTransferPreimageXdr()}
         onRenderError={onRenderError}
       />,
@@ -334,7 +335,10 @@ describe("DappAuthEntryDetails, which hosts the display", () => {
     failTokens();
 
     const { findByText, getByText, queryByText } = renderWithProviders(
-      <DappAuthEntryDetails entryXdr={sacTransferPreimageXdr()} />,
+      <DappAuthEntryDetailsSheet
+        modalRef={React.createRef()}
+        entryXdr={sacTransferPreimageXdr()}
+      />,
     );
 
     expect(

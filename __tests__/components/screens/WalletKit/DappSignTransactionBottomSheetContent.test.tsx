@@ -30,13 +30,19 @@ jest.mock("components/screens/WalletKit/DappRequestButtons", () => {
   };
 });
 
-/** The props the details last rendered with; undefined if they never rendered. */
-let mockSignTransactionDetailsProps: Record<string, unknown> | undefined;
+/** The props the details button last rendered with; undefined if it never rendered. */
+let mockDetailsButtonProps: Record<string, unknown> | undefined;
+/** The props the details sheet last rendered with; undefined if it never rendered. */
+let mockDetailsSheetProps: Record<string, unknown> | undefined;
 
 jest.mock("components/screens/SignTransactionDetails", () => ({
   __esModule: true,
-  default: (props: Record<string, unknown>) => {
-    mockSignTransactionDetailsProps = props;
+  SignTransactionDetailsButton: (props: Record<string, unknown>) => {
+    mockDetailsButtonProps = props;
+    return null;
+  },
+  SignTransactionDetailsSheet: (props: Record<string, unknown>) => {
+    mockDetailsSheetProps = props;
     return null;
   },
 }));
@@ -105,7 +111,8 @@ describe("DappSignTransactionBottomSheetContent", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSignTransactionDetailsProps = undefined;
+    mockDetailsButtonProps = undefined;
+    mockDetailsSheetProps = undefined;
   });
 
   it("offers only Cancel, which rejects, when the request can't be displayed", () => {
@@ -115,8 +122,10 @@ describe("DappSignTransactionBottomSheetContent", () => {
 
     expect(getByTestId("unreadable-transaction-notice")).toBeTruthy();
     expect(queryByTestId("dapp-request-buttons")).toBeNull();
-    // The details aren't rendered.
-    expect(mockSignTransactionDetailsProps).toBeUndefined();
+    // There's no way to open the details, but their sheet stays mounted, so
+    // one that's open when the request fails closed stays on screen.
+    expect(mockDetailsButtonProps).toBeUndefined();
+    expect(mockDetailsSheetProps?.data).toBe(SIGN_TRANSACTION_DETAILS);
     // The header still says who is asking.
     expect(getByTestId("sign-transaction-title")).toBeTruthy();
     expect(getByText("localhost")).toBeTruthy();
@@ -186,11 +195,8 @@ describe("DappSignTransactionBottomSheetContent", () => {
 
     expect(getByTestId("dapp-request-buttons")).toBeTruthy();
     expect(queryByTestId("unreadable-transaction-notice")).toBeNull();
-    expect(mockSignTransactionDetailsProps?.data).toBe(
-      SIGN_TRANSACTION_DETAILS,
-    );
-    expect(mockSignTransactionDetailsProps?.onRenderError).toBe(
-      onDetailsRenderError,
-    );
+    expect(mockDetailsButtonProps).toBeDefined();
+    expect(mockDetailsSheetProps?.data).toBe(SIGN_TRANSACTION_DETAILS);
+    expect(mockDetailsSheetProps?.onRenderError).toBe(onDetailsRenderError);
   });
 });
