@@ -398,9 +398,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, [selectedBalance?.id, selectedBalance]);
 
   useEffect(() => {
+    // Only the latest check may answer: a slower one for a token or recipient
+    // the user has since changed must not show or hide the M banner.
+    let isLatestCheck = true;
+
     const checkContract = async () => {
+      // Unknown until this check answers, so an earlier token's answer can't
+      // apply to this one meanwhile.
+      setContractSupportsMuxed(null);
+
       if (!isCustomToken || !recipientAddress || !network || !contractId) {
-        setContractSupportsMuxed(null);
         return;
       }
 
@@ -410,14 +417,22 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           contractId,
           networkDetails,
         });
-        setContractSupportsMuxed(supportsMuxed);
+        if (isLatestCheck) {
+          setContractSupportsMuxed(supportsMuxed);
+        }
       } catch (error) {
         // On error, assume no support for safety
-        setContractSupportsMuxed(false);
+        if (isLatestCheck) {
+          setContractSupportsMuxed(false);
+        }
       }
     };
 
     checkContract();
+
+    return () => {
+      isLatestCheck = false;
+    };
   }, [isCustomToken, recipientAddress, network, contractId]);
 
   // Determine if M address + contract doesn't support muxed
@@ -427,11 +442,24 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   // A W is only sent through an asset's Stellar Asset Contract (native XLM and
   // classic assets), never to a custom token's own contract, the same rule as
-  // the extension. Unlike the M check above it needs no contract lookup, and
-  // it blocks here on the screen: the build is refused, so the review sheet
-  // that carries the M banner would never open.
+  // the extension. Unlike the M check above it needs no contract lookup.
   const isMuxedContractWithoutSupport =
     isRecipientMuxedContract && isCustomToken;
+
+  // The selected token can't go to this muxed recipient, an M or a W. As in
+  // the extension, this screen blocks the send: a banner, Continue disabled,
+  // and nothing built or simulated.
+  const isRecipientUnsupported =
+    isMuxedAddressWithoutMemoSupport || isMuxedContractWithoutSupport;
+
+  // Until an M's contract check answers, it's unknown whether the token can go
+  // to it, so nothing is built yet either. The check can't hang: the backend
+  // client times out, and a failed check counts as no support.
+  const isMuxedSupportPending =
+    isRecipientMuxed && isCustomToken && contractSupportsMuxed === null;
+
+  const canBuildForRecipient =
+    !isRecipientUnsupported && !isMuxedSupportPending;
 
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
 
@@ -656,16 +684,17 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
    * `feeEstimationAmount` it only builds, to estimate fees: no scan and no
    * review.
    *
-   * Returns first thing, building nothing, for a custom token sent to a W. The
-   * auto-simulation, a settings change and Continue all come through here, so
-   * none of them can build one.
+   * Returns first thing, building nothing, unless `canBuildForRecipient`: not
+   * when the recipient can't take the token, nor while an M's contract check
+   * runs. The auto-simulation, a settings change and Continue all come
+   * through here, so none of them can build one.
    *
    * @param shouldOpenReview - Open the review sheet once the scan returns
    * @param feeEstimationAmount - Build for this amount instead of the entered one
    */
   const prepareTransaction = useCallback(
     async (shouldOpenReview = false, feeEstimationAmount?: string) => {
-      if (isMuxedContractWithoutSupport) {
+      if (!canBuildForRecipient) {
         return;
       }
 
@@ -731,7 +760,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       buildTransaction,
       scanTransaction,
       recipientAddress,
-      isMuxedContractWithoutSupport,
+      canBuildForRecipient,
       handleTransactionScanSuccess,
       handleTransactionScanError,
     ],
@@ -744,13 +773,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   // Auto-simulate Soroban fee breakdown as soon as token + recipient are set.
   // Uses /simulate-tx with amount 0 for early fee estimation so the user can
-  // see the resource fee breakdown before entering an amount.
+  // see the resource fee breakdown before entering an amount. Only once a
+  // transaction can be built for the recipient: until then the pair stays
+  // unmarked, so it still estimates when an M's contract check answers yes.
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const currentKey = `${selectedBalance?.id}|${recipientAddress}`;
 
     if (
       !isBuilding &&
+      canBuildForRecipient &&
       lastAutoSimulatedKey.current !== currentKey &&
       isSorobanTransaction(selectedBalance, recipientAddress) &&
       recipientAddress &&
@@ -765,7 +797,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return () => {
       if (timer !== undefined) clearTimeout(timer);
     };
-  }, [selectedBalance, recipientAddress, isBuilding, prepareTransaction]);
+  }, [
+    selectedBalance,
+    recipientAddress,
+    isBuilding,
+    canBuildForRecipient,
+    prepareTransaction,
+  ]);
 
   const handleSettingsChange = () => {
     if (isBuilding) return;
@@ -1051,7 +1089,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     [footerProps],
   );
 
-  // Continue is also off for a custom token sent to a W, which can't be built
+  // Continue is also off while nothing can be built for the recipient (see
+  // canBuildForRecipient)
   const isContinueButtonDisabled = useMemo(() => {
     if (!recipientAddress) {
       return false;
@@ -1061,14 +1100,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       !!amountError ||
       BigNumber(tokenAmount).isLessThanOrEqualTo(0) ||
       isBuilding ||
-      isMuxedContractWithoutSupport
+      !canBuildForRecipient
     );
   }, [
     amountError,
     tokenAmount,
     isBuilding,
     recipientAddress,
-    isMuxedContractWithoutSupport,
+    canBuildForRecipient,
   ]);
 
   const handleConfirmAnyway = useCallback(() => {
@@ -1103,13 +1142,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, []);
 
   /**
-   * Opens the explanation for a custom token sent to a W, from this screen's
-   * banner. The amount input still holds the keyboard here, so the sheet waits
-   * for the keyboard to hide before it presents, the way `onConfirmAddMemo`
-   * does, but for 500 ms at most: if the hide event never comes, the sheet
-   * still opens.
+   * Opens the explanation for a recipient that can't take the token, an M or a
+   * W, from this screen's banner. The amount input still holds the keyboard
+   * here, so the sheet waits for the keyboard to hide before it presents, the
+   * way `onConfirmAddMemo` does, but for 500 ms at most: if the hide event
+   * never comes, the sheet still opens.
    */
-  const openMuxedContractWarningBottomSheet = useCallback(() => {
+  const openUnsupportedRecipientWarningBottomSheet = useCallback(() => {
     amountInputRef.current?.blur();
     // Wait for the keyboard's hide animation before presenting the sheet so
     // it opens at its final height instead of jumping down.
@@ -1120,7 +1159,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       .catch((error) => {
         logger.warn(
           "TransactionAmountScreen",
-          "Failed to open the muxed contract warning",
+          "Failed to open the muxed address warning",
           error,
         );
       });
@@ -1253,9 +1292,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           />
         </View>
 
-        {/* Hidden while a W blocks the send: nothing can be sent, and with
-            the keyboard up on a small screen the banner would cover them. */}
-        {!isMuxedContractWithoutSupport && (
+        {/* Hidden while the recipient blocks the send: nothing can be sent,
+            and with the keyboard up on a small screen the banner would cover
+            them. */}
+        {!isRecipientUnsupported && (
           <View className="flex-1 items-center mt-[24px] gap-[24px]">
             <PercentageButtons onPress={handlePercentagePress} />
           </View>
@@ -1263,12 +1303,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       </View>
 
       <View className="w-full mt-auto mb-[8px] gap-[12px]">
-        {isMuxedContractWithoutSupport && (
+        {isRecipientUnsupported && (
           <Banner
             variant="error"
             text={t("transactionAmountScreen.errors.muxedAddressNotSupported")}
-            onPress={openMuxedContractWarningBottomSheet}
-            testID="muxed-contract-not-supported-banner"
+            onPress={openUnsupportedRecipientWarningBottomSheet}
+            testID={
+              isMuxedContractWithoutSupport
+                ? "muxed-contract-not-supported-banner"
+                : "muxed-address-not-supported-banner"
+            }
           />
         )}
         <Button
