@@ -8,7 +8,7 @@ import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { useDebugStore } from "ducks/debug";
 import { stroopToXlm } from "helpers/formatAmount";
-import { isContractId } from "helpers/soroban";
+import { isContractDestination, isMuxedContract } from "helpers/muxedContract";
 import { isMuxedAccount } from "helpers/stellar";
 import { t } from "i18next";
 import { SimulationTransactionType } from "services/analytics/types";
@@ -177,6 +177,39 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
   (set, get) => ({
     ...initialState,
 
+    /**
+     * Builds the transaction for a token send and, for a Soroban send,
+     * simulates it to get the prepared XDR and the fees.
+     *
+     * A send is Soroban when the token is a custom token or the recipient is a
+     * contract destination (`C...` or muxed contract `W...`). The flag is set
+     * before the build, so the fee label is right while it runs.
+     *
+     * Which simulate endpoint a Soroban send uses:
+     * - Amount 0 (fee estimation): `/simulate-tx`, with the XDR built on the
+     *   device (`simulateCollectibleTransfer`). `/simulate-token-transfer`
+     *   rejects amount 0 because it rebuilds the transaction server-side.
+     * - A real amount: `/simulate-token-transfer`, where the backend builds and
+     *   simulates the transfer (`simulateContractTransfer`).
+     *
+     * The memo sent to `/simulate-token-transfer` is empty when the final
+     * destination is an `M...` or a `W...`, because the mux id is already in
+     * the address. For any other destination it is the user's memo.
+     *
+     * DEV stub: in a debug build (`__DEV__`), with the debug store's
+     * `stubMuxedContractSimulation` on and a `W...` final destination, neither
+     * endpoint is called and the device-built XDR is kept as is, with no
+     * resource fee. That transaction can't be submitted. Any other destination
+     * still simulates. The stub only ever applies in a debug build: a release
+     * build simulates a `W...` as normal, even a dev-bundle one, such as a PR
+     * preview, that kept the flag from an earlier debug build.
+     *
+     * @returns The XDR to sign (prepared for a Soroban send; the device-built
+     * one when the DEV stub applies), or `null` when the build or the
+     * simulation fails. The store only takes the result while this is still
+     * the latest request: a stale request returns `null` without storing its
+     * error, and a stale success returns its XDR without storing it.
+     */
     buildTransaction: async (params) => {
       const newRequestId = createRequestId();
 
@@ -187,7 +220,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         (params.selectedBalance &&
           "contractId" in params.selectedBalance &&
           params.selectedBalance.contractId) ||
-          (params.recipientAddress && isContractId(params.recipientAddress)),
+          (params.recipientAddress &&
+            isContractDestination(params.recipientAddress)),
       );
 
       // Mark new cycle and reset flags (clear stale Soroban fees so UI doesn't
@@ -222,7 +256,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         let sorobanResourceFeeXlm: string | null = null;
         let sorobanInclusionFeeXlm: string | null = null;
         const isRecipientContract =
-          params.recipientAddress && isContractId(params.recipientAddress);
+          params.recipientAddress &&
+          isContractDestination(params.recipientAddress);
 
         // Check if this is a custom token (SorobanBalance with contractId)
         const isCustomToken =
@@ -238,13 +273,32 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         if (shouldSimulate && params.network && params.senderAddress) {
           const networkDetails = mapNetworkToNetworkDetails(params.network);
           const isFeeEstimation = Number(params.tokenAmount) === 0;
+          const finalDestination =
+            builtTxResult.finalDestination || params.recipientAddress!;
 
           let simulateResult: {
             preparedTransaction: string;
             minResourceFee?: string;
           };
 
-          if (isFeeEstimation) {
+          if (
+            __DEV__ &&
+            useDebugStore.getState().stubMuxedContractSimulation &&
+            isMuxedContract(finalDestination)
+          ) {
+            // The debug store's stub, which only ever applies in a debug
+            // build. `__DEV__` is checked first because a dev-bundle release
+            // build, such as a PR preview, keeps any value an earlier debug
+            // build persisted on the same install, and has no debug sheet to
+            // turn it off. It keeps the device-built XDR, which has no
+            // resources or footprint, so the network rejects it if it's ever
+            // submitted.
+            simulateResult = { preparedTransaction: builtTxResult.xdr };
+            logger.warn(
+              "TransactionBuilderStore",
+              "DEV: stubbed simulation for a muxed contract destination",
+            );
+          } else if (isFeeEstimation) {
             // Fee estimation with amount 0: use /simulate-tx with the
             // locally-built XDR. The /simulate-token-transfer endpoint
             // rejects amount 0 because it rebuilds the tx server-side.
@@ -256,9 +310,9 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           } else {
             // Real amount: use /simulate-token-transfer matching the
             // extension's flow (backend builds + simulates the tx).
-            const finalDestination =
-              builtTxResult.finalDestination || params.recipientAddress!;
-            const isDestinationMuxed = isMuxedAccount(finalDestination);
+            const isDestinationMuxed =
+              isMuxedAccount(finalDestination) ||
+              isMuxedContract(finalDestination);
             const memoForSimulation = isDestinationMuxed
               ? ""
               : params.transactionMemo || "";

@@ -35,7 +35,11 @@ import {
   determineMuxedDestination,
   checkContractMuxedSupport,
 } from "helpers/muxedAddress";
-import { isContractId } from "helpers/soroban";
+import {
+  getMuxedContractBaseId,
+  isContractDestination,
+  isMuxedContract,
+} from "helpers/muxedContract";
 import {
   isValidStellarAddress,
   isSameAccount,
@@ -259,6 +263,39 @@ export const getTokenForPayment = (balance: PricedBalance): SdkToken => {
 export const getContractIdForNativeToken = (network: NETWORKS): string =>
   getNativeContractId(mapNetworkToNetworkDetails(network).networkPassphrase);
 
+/**
+ * Gets the Stellar Asset Contract (SAC) that moves a balance: the native SAC
+ * for XLM, otherwise the classic asset's own SAC, which derives from its code,
+ * its issuer and the network passphrase.
+ *
+ * The token contract is a property of the asset being sent, never of the
+ * recipient.
+ *
+ * @param balance The native or classic balance being sent
+ * @param network The network the SAC is derived for
+ * @returns The SAC's contract ID (`C...`)
+ * @throws Error if no SAC is derived for the balance. A balance with a
+ * `contractId` is a custom token, which is sent through its own contract
+ * (even when that contract is itself a SAC), and a liquidity pool share is
+ * not an asset that can be sent.
+ */
+export const getSacContractIdForBalance = (
+  balance: PricedBalance,
+  network: NETWORKS,
+): string => {
+  if ("contractId" in balance && balance.contractId) {
+    throw new Error(
+      "A custom token is sent through its own contract, not a derived Stellar Asset Contract",
+    );
+  }
+
+  const token = getTokenForPayment(balance);
+
+  return token.isNative()
+    ? getContractIdForNativeToken(network)
+    : token.contractId(mapNetworkToNetworkDetails(network).networkPassphrase);
+};
+
 interface IBuildSorobanTransferOperation {
   sourceAccount: string;
   destinationAddress: string;
@@ -328,6 +365,44 @@ interface BuildPaymentTransactionResult {
   amountInBaseUnits?: string;
 }
 
+/**
+ * Builds the transaction that sends a token, down one of two paths.
+ *
+ * - Classic: native XLM or a classic asset sent to a `G...` or `M...` becomes
+ *   an `Operation.payment`, or an `Operation.createAccount` when XLM funds an
+ *   account that does not exist yet (the destination is loaded to find out).
+ * - SAC transfer (Soroban): a custom token, or any contract destination
+ *   (`C...` or muxed contract `W...`), becomes a `transfer(from, to, amount)`
+ *   call on the token's contract: a custom token's own contract, otherwise the
+ *   asset's Stellar Asset Contract (see `getSacContractIdForBalance`). Only the
+ *   sender's account is loaded. It carries no transaction memo: when the token
+ *   contract supports muxed addresses, a memo for a `G...` becomes the id of
+ *   an `M...` destination instead.
+ *
+ * A `W...` always takes the SAC transfer, and is sent to exactly as given. It
+ * is never re-encoded, stripped to its `C...` or rebuilt as an `M...`, and it
+ * never reaches `Operation.payment`. Its mux id is already in the address, so
+ * it takes no memo. Three refusals, each thrown with the message for the i18n
+ * key shown:
+ * - a custom token (a balance with a `contractId`):
+ *   `transaction.errors.muxedContractNotSupported`, before any network call.
+ * - a non-empty memo:
+ *   `transactionSettings.memoInfo.memoDisabledForTransaction`, before any
+ *   network call. The memo is disabled for a `W...` upstream (see
+ *   `getMemoDisabledState`), so this is the fail-closed backstop that stops a
+ *   memo from being dropped silently.
+ * - a `W...` whose base `C...` is the token contract:
+ *   `transaction.errors.recipientIsTokenContract`, the refusal a `C...` that is
+ *   the token contract already gets.
+ *
+ * @param params The amount, the balance and the recipient, the memo, fee and
+ * timeout, and the network and sender
+ * @returns The transaction, its XDR and the final destination, on both paths.
+ * A SAC transfer also returns the token contract and the amount in base
+ * units, which the caller simulates it with.
+ * @throws Error `Failed to build payment transaction: ...` when a parameter is
+ * missing or invalid, a refusal above applies, or building fails
+ */
 export const buildPaymentTransaction = async (
   params: BuildPaymentTransactionParams,
 ): Promise<BuildPaymentTransactionResult> => {
@@ -361,7 +436,7 @@ export const buildPaymentTransaction = async (
       (selectedBalance &&
         "contractId" in selectedBalance &&
         Boolean(selectedBalance.contractId)) ||
-      isContractId(recipientAddress);
+      isContractDestination(recipientAddress);
 
     const validationError = validateTransactionParams({
       senderAddress,
@@ -376,6 +451,30 @@ export const buildPaymentTransaction = async (
     if (validationError) {
       throw new Error(validationError);
     }
+
+    const isCustomToken =
+      selectedBalance &&
+      "contractId" in selectedBalance &&
+      selectedBalance.contractId;
+    const isRecipientMuxedContract = isMuxedContract(recipientAddress);
+
+    // A muxed contract (W...) is only ever sent through an asset's SAC, so a
+    // custom token's own contract is refused. Both guards below run before any
+    // network call, and in this order.
+    if (isRecipientMuxedContract && isCustomToken) {
+      throw new Error(t("transaction.errors.muxedContractNotSupported"));
+    }
+
+    // Fail closed on a memo: the W already carries its mux id and
+    // determineMuxedDestination ignores the memo for it, so a memo that got
+    // this far would be dropped without a word. The memo is disabled for a W
+    // upstream (see getMemoDisabledState); this only fires if one slips through.
+    if (isRecipientMuxedContract && memo) {
+      throw new Error(
+        t("transactionSettings.memoInfo.memoDisabledForTransaction"),
+      );
+    }
+
     const networkDetails = mapNetworkToNetworkDetails(network);
     const server = stellarSdkServer(networkDetails.networkUrl);
     const sourceAccount = await server.loadAccount(senderAddress);
@@ -387,12 +486,7 @@ export const buildPaymentTransaction = async (
       networkPassphrase: networkDetails.networkPassphrase,
     });
 
-    const isCustomToken =
-      selectedBalance &&
-      "contractId" in selectedBalance &&
-      selectedBalance.contractId;
-
-    const isToContractAddress = isContractId(recipientAddress);
+    const isToContractAddress = isContractDestination(recipientAddress);
     const shouldUseSorobanTransfer = isToContractAddress || isCustomToken;
     const isRecipientMuxed = isMuxedAccount(recipientAddress);
     // Don't add memo for M addresses (memo is encoded in the address)
@@ -443,10 +537,7 @@ export const buildPaymentTransaction = async (
         // (code, issuer, network passphrase). Using the recipient here would
         // invoke an arbitrary contract chosen by the destination address and
         // move whichever asset that contract governs, not the selected one.
-        const token = getTokenForPayment(selectedBalance);
-        contractId = token.isNative()
-          ? getContractIdForNativeToken(network)
-          : token.contractId(networkDetails.networkPassphrase);
+        contractId = getSacContractIdForBalance(selectedBalance, network);
       }
 
       // Defence in depth against the above being wired wrongly again: a token
@@ -454,7 +545,12 @@ export const buildPaymentTransaction = async (
       // own address, where nothing can ever spend it again — the SAC only
       // moves a balance on `from.require_auth()` and never authorizes on
       // behalf of itself. Refuse rather than build an irreversible burn.
-      if (contractId === recipientAddress) {
+      // A W is credited to its base C, so that is the contract to compare.
+      const recipientContract = isRecipientMuxedContract
+        ? getMuxedContractBaseId(recipientAddress)
+        : recipientAddress;
+
+      if (contractId === recipientContract) {
         throw new Error(t("transaction.errors.recipientIsTokenContract"));
       }
 
@@ -685,7 +781,19 @@ interface BuildSendCollectibleTransactionResult {
 }
 
 /**
- * Builds a collectible transfer transaction
+ * Builds a collectible transfer transaction: a `transfer(from, to, token_id)`
+ * call on the collection contract. See `determineMuxedDestination` for how a
+ * memo folds into the destination.
+ *
+ * A muxed contract (`W...`) recipient is refused with
+ * `transaction.errors.muxedContractNotSupported`, before any network call: no
+ * account is loaded and no contract spec is looked up.
+ *
+ * @param params The collection, token id and recipient, the memo, fee and
+ * timeout, and the network and sender
+ * @returns The transaction, its XDR and the final destination
+ * @throws Error `Failed to build send collectible transaction: ...` when a
+ * parameter is missing or invalid, the recipient is a `W...`, or building fails
  */
 export const buildSendCollectibleTransaction = async (
   params: BuildSendCollectibleParams,
@@ -713,6 +821,12 @@ export const buildSendCollectibleTransaction = async (
 
     if (validationError) {
       throw new Error(validationError);
+    }
+
+    // A muxed contract (W...) is not a collectible destination. Refuse it
+    // before the first network call.
+    if (isMuxedContract(recipientAddress)) {
+      throw new Error(t("transaction.errors.muxedContractNotSupported"));
     }
 
     const networkDetails = mapNetworkToNetworkDetails(network);

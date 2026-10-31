@@ -7,6 +7,7 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
+import { isMuxedContract } from "helpers/muxedContract";
 import { isContractId } from "helpers/soroban";
 import {
   normalizeAuthPreimage,
@@ -171,7 +172,12 @@ export const getMuxedId = (muxedAddress: string): string | null => {
 };
 
 /**
- * Checks if a public key is valid (ED25519, MED25519, contract ID, or federation address)
+ * Checks if a public key is a valid send destination: an ED25519 account (G...),
+ * a muxed account (M...), a contract ID (C...), a muxed contract (W...) or a
+ * federation address.
+ *
+ * A W... is validated as a whole strkey by `isMuxedContract`, so a mistyped one
+ * is rejected. It is only validated here, never re-encoded or unwrapped.
  *
  * @param publicKey The public key to check
  * @returns True if the public key is valid
@@ -201,6 +207,13 @@ export const isValidStellarAddress = (publicKey: string): boolean => {
     if (publicKey.startsWith("C")) {
       const isValid = isContractId(publicKey);
       return isValid;
+    }
+
+    // Check if it's a valid muxed contract (W... addresses). Unlike the C
+    // branch above, this must not return early on a "W" prefix: that would
+    // reject every federation name that starts with a W.
+    if (isMuxedContract(publicKey)) {
+      return true;
     }
 
     // Check if it's a valid federation address (user*domain.com)

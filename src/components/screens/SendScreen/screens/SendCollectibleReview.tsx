@@ -22,6 +22,7 @@ import {
 } from "components/screens/SendScreen/helpers";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
+import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -46,6 +47,7 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { checkContractMuxedSupport } from "helpers/muxedAddress";
+import { isMuxedContract } from "helpers/muxedContract";
 import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -77,6 +79,10 @@ type SendCollectibleReviewScreenProps = NativeStackScreenProps<
  * SendCollectibleReviewScreen Component
  *
  * A screen for reviewing details of a collectible before sending.
+ *
+ * A collectible can't be sent to a muxed contract (W) address: a banner
+ * explains why, Review is disabled and nothing is built. On a small screen
+ * the collectible image is hidden then, so the banner and Review both fit.
  *
  * @param {SendCollectibleReviewScreenProps} props - Component props
  * @returns {JSX.Element} The rendered component
@@ -214,10 +220,21 @@ const SendCollectibleReviewScreen: React.FC<
     recipientAddress && isMuxedAccount(recipientAddress),
   );
 
+  // A collectible is never sent to a muxed contract (W) address, the same
+  // rule as the extension. It blocks here on the screen: the build is refused,
+  // so the review sheet that carries the M banner would never open.
+  const isRecipientMuxedContract = Boolean(
+    recipientAddress && isMuxedContract(recipientAddress),
+  );
+
   useEffect(() => {
     let isCancelled = false;
 
     const checkContract = async () => {
+      // Unknown until this check answers, so an earlier recipient's answer
+      // can't apply to this one meanwhile.
+      setContractSupportsMuxed(null);
+
       // Contract muxed support only matters for M-address recipients.
       if (
         !isRecipientMuxed ||
@@ -225,7 +242,6 @@ const SendCollectibleReviewScreen: React.FC<
         !recipientAddress ||
         !network
       ) {
-        setContractSupportsMuxed(null);
         return;
       }
 
@@ -259,6 +275,23 @@ const SendCollectibleReviewScreen: React.FC<
     isRecipientMuxed && contractSupportsMuxed === false,
   );
 
+  // The collectible can't go to this muxed recipient: a W, or an M whose
+  // collection doesn't support muxed addresses. As on the amount screen, and
+  // in the extension, this screen blocks the send: a banner, Review disabled,
+  // and nothing built or simulated.
+  const isRecipientUnsupported =
+    isRecipientMuxedContract || isMuxedAddressWithoutMemoSupport;
+
+  // Until an M's collection check answers, it's unknown whether the
+  // collectible can go to it, so nothing is built yet either. The check can't
+  // hang: the backend client times out, and a failed check counts as no
+  // support.
+  const isMuxedSupportPending =
+    isRecipientMuxed && contractSupportsMuxed === null;
+
+  const canBuildForRecipient =
+    !isRecipientUnsupported && !isMuxedSupportPending;
+
   const handleTransactionScanSuccess = useCallback(
     (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
       Keyboard.dismiss();
@@ -280,8 +313,23 @@ const SendCollectibleReviewScreen: React.FC<
     transactionSecurityWarningBottomSheetModalRef.current?.present();
   }, []);
 
+  /**
+   * Builds the collectible transfer for the current recipient and settings,
+   * then scans it, and opens the review sheet when `shouldOpenReview` is set.
+   *
+   * Returns first thing, building nothing, unless `canBuildForRecipient`: not
+   * for a recipient that can't take the collectible, nor while an M's
+   * collection check runs. The auto-simulation, a settings change and Review
+   * all come through here, so none of them can build one.
+   *
+   * @param shouldOpenReview - Open the review sheet once the scan returns
+   */
   const prepareTransaction = useCallback(
     async (shouldOpenReview = false) => {
+      if (!canBuildForRecipient) {
+        return;
+      }
+
       const hasRequiredParams =
         publicKey && recipientAddress && selectedCollectible;
       if (!hasRequiredParams) {
@@ -341,6 +389,7 @@ const SendCollectibleReviewScreen: React.FC<
       buildSendCollectibleTransaction,
       scanTransaction,
       recipientAddress,
+      canBuildForRecipient,
       handleTransactionScanSuccess,
       handleTransactionScanError,
     ],
@@ -358,12 +407,16 @@ const SendCollectibleReviewScreen: React.FC<
 
   // Auto-simulate to populate the Soroban fee breakdown as soon as the
   // collectible and recipient are available. Collectibles are always Soroban
-  // transactions, so fees include an inclusion + resource component.
+  // transactions, so fees include an inclusion + resource component. Only
+  // once a transaction can be built for the recipient: until then the pair
+  // stays unmarked, so it still simulates when an M's collection check
+  // answers yes.
   useEffect(() => {
     const currentKey = `${recipientAddress}|${selectedCollectible?.tokenId}`;
 
     if (
       !isBuilding &&
+      canBuildForRecipient &&
       recipientAddress &&
       selectedCollectible &&
       lastAutoSimulatedKey.current !== currentKey
@@ -371,7 +424,13 @@ const SendCollectibleReviewScreen: React.FC<
       lastAutoSimulatedKey.current = currentKey;
       prepareTransaction(false);
     }
-  }, [recipientAddress, selectedCollectible, isBuilding, prepareTransaction]);
+  }, [
+    recipientAddress,
+    selectedCollectible,
+    isBuilding,
+    canBuildForRecipient,
+    prepareTransaction,
+  ]);
 
   const handleTransactionConfirmation = useCallback(() => {
     setIsProcessing(true);
@@ -515,13 +574,15 @@ const SendCollectibleReviewScreen: React.FC<
     [footerProps],
   );
 
+  // Review is also off while nothing can be built for the recipient (see
+  // canBuildForRecipient)
   const isContinueButtonDisabled = useMemo(() => {
     if (!recipientAddress) {
       return false;
     }
 
-    return isBuilding;
-  }, [isBuilding, recipientAddress]);
+    return isBuilding || !canBuildForRecipient;
+  }, [isBuilding, recipientAddress, canBuildForRecipient]);
 
   const selectCollectibleDetails: ListItemProps[] = useMemo(
     () => [
@@ -644,8 +705,20 @@ const SendCollectibleReviewScreen: React.FC<
             }
           />
         </View>
-        <View className="mt-[24px] w-full flex items-center justify-center">
-          <View className="w-[240px] h-[240px] rounded-[32px] bg-background-tertiary overflow-hidden">
+        {/* The screen doesn't scroll, so on a small screen the banner would
+            push Review past the fold. The image is hidden there while the
+            recipient blocks the send; the details below still name the
+            collectible. */}
+        <View
+          testID="send-collectible-image-section"
+          className={`mt-[24px] w-full flex items-center justify-center${
+            isRecipientUnsupported ? " max-xs:hidden" : ""
+          }`}
+        >
+          <View
+            testID="send-collectible-image"
+            className="w-[240px] h-[240px] rounded-[32px] bg-background-tertiary overflow-hidden"
+          >
             <CollectibleImage
               imageUri={selectedCollectible?.image}
               placeholderIconSize={65}
@@ -655,12 +728,27 @@ const SendCollectibleReviewScreen: React.FC<
         <View className="mt-[24px]">
           <List variant="secondary" items={selectCollectibleDetails} />
         </View>
-        <View className="w-full mt-auto mb-4">
+        <View className="w-full mt-auto mb-4 gap-[12px]">
+          {isRecipientUnsupported && (
+            <Banner
+              variant="error"
+              text={t(
+                "transactionAmountScreen.errors.muxedAddressNotSupported",
+              )}
+              onPress={openMuxedAddressWarningBottomSheet}
+              testID={
+                isRecipientMuxedContract
+                  ? "muxed-contract-not-supported-banner"
+                  : "muxed-address-not-supported-banner"
+              }
+            />
+          )}
           <Button
             secondary
             xl
             onPress={handleContinueButtonPress}
             disabled={isContinueButtonDisabled}
+            testID="send-collectible-continue-button"
           >
             {getContinueButtonText()}
           </Button>
@@ -721,8 +809,13 @@ const SendCollectibleReviewScreen: React.FC<
       />
       <BottomSheet
         modalRef={muxedAddressInfoBottomSheetModalRef}
+        // As on the amount screen: gorhom makes the sheet one accessibility
+        // element by default, which hides the explanation the banner opens
+        // from VoiceOver and from Maestro on iOS.
+        bottomSheetModalProps={{ accessible: false }}
         customContent={
           <MuxedAddressWarningBottomSheet
+            variant={isRecipientMuxedContract ? "contract" : "account"}
             onCancel={handleCancelMuxedAddressWarning}
             onClose={handleCancelMuxedAddressWarning}
           />

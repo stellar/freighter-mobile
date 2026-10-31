@@ -8,6 +8,10 @@ import {
   Operation,
   xdr,
 } from "@stellar/stellar-sdk";
+import {
+  MUXED_CONTRACT_ID_0,
+  MUXED_CONTRACT_ID_1234,
+} from "__tests__/support/muxedContractFixtures";
 import { BigNumber } from "bignumber.js";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { TokenTypeWithCustomToken, type PricedBalance } from "config/types";
@@ -235,6 +239,73 @@ describe("buildPaymentTransaction unfunded destination", () => {
   });
 });
 
+describe("buildPaymentTransaction muxed contract (W) destination", () => {
+  const sender = Keypair.random().publicKey();
+  const customTokenContract =
+    "CBOVW5CXOPHYWGLJPWBQMGX2F3REBY2ZTZX3N47RTYWWHZV2BXCIIGTL";
+
+  const customTokenBalance = {
+    token: { code: "WETH", issuer: { key: customTokenContract } },
+    contractId: customTokenContract,
+    total: new BigNumber("1000"),
+    available: new BigNumber("1000"),
+    name: "Wrapped Ether",
+    symbol: "WETH",
+    decimals: 18,
+    tokenCode: "WETH",
+  } as unknown as PricedBalance;
+
+  const baseParams = {
+    tokenAmount: "1",
+    transactionFee: "0.001",
+    transactionTimeout: 300,
+    network: NETWORKS.TESTNET,
+    senderAddress: sender,
+  };
+
+  it("loads only the sender for a W destination", async () => {
+    mockLoadAccount.mockClear();
+
+    await buildPaymentTransaction({
+      ...baseParams,
+      selectedBalance: nativeXlmBalance,
+      recipientAddress: MUXED_CONTRACT_ID_1234,
+    } as never);
+
+    expect(mockLoadAccount.mock.calls).toEqual([[sender]]);
+  });
+
+  it.each([
+    [
+      "a custom token",
+      customTokenBalance,
+      undefined,
+      "transaction.errors.muxedContractNotSupported",
+    ],
+    [
+      "a memo",
+      nativeXlmBalance,
+      "hello",
+      "transactionSettings.memoInfo.memoDisabledForTransaction",
+    ],
+  ])(
+    "refuses a W destination with %s before any network call",
+    async (_label, selectedBalance, transactionMemo, errorKey) => {
+      mockLoadAccount.mockClear();
+
+      await expect(
+        buildPaymentTransaction({
+          ...baseParams,
+          selectedBalance,
+          recipientAddress: MUXED_CONTRACT_ID_0,
+          transactionMemo,
+        } as never),
+      ).rejects.toThrow(errorKey);
+      expect(mockLoadAccount).not.toHaveBeenCalled();
+    },
+  );
+});
+
 describe("buildSwapTransaction asset resolution", () => {
   // Mirrors the params/mocks used by the existing buildSwapTransaction —
   // includeTrustline tests below; asserts on the built pathPaymentStrictSend op.
@@ -287,6 +358,20 @@ describe("buildSendCollectibleTransaction", () => {
     expect(result).toHaveProperty("tx");
     expect(result).toHaveProperty("xdr");
     expect(typeof result.xdr).toBe("string");
+  });
+
+  it("refuses a W recipient before any network call: a collectible never goes to a W", async () => {
+    mockLoadAccount.mockClear();
+    (backend.checkContractSupportsMuxed as jest.Mock).mockClear();
+
+    await expect(
+      buildSendCollectibleTransaction({
+        ...baseParams,
+        recipientAddress: MUXED_CONTRACT_ID_0,
+      }),
+    ).rejects.toThrow("transaction.errors.muxedContractNotSupported");
+    expect(mockLoadAccount).not.toHaveBeenCalled();
+    expect(backend.checkContractSupportsMuxed).not.toHaveBeenCalled();
   });
 
   it("should create transaction with correct sender address from parsed XDR", async () => {

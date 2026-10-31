@@ -7,12 +7,14 @@ secrets/variables are used in CI.
 
 Create a `.env` from `.env.example` and set at least:
 
-| Variable                          | Required                    | Description                                                                                                                                                                                            |
-| --------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `IS_E2E_TEST`                     | Yes                         | Set to `true` for E2E. Enables test-specific behavior in the app.                                                                                                                                      |
-| `E2E_TEST_RECOVERY_PHRASE`        | For Import/Send/Swap        | Recovery phrase used by Import Wallet and flows that `runFlow` it.                                                                                                                                     |
-| `E2E_TEST_FUNDED_RECOVERY_PHRASE` | For Send/Swap/WalletConnect | Recovery phrase for funded wallet used by ImportFundedWallet and flows that `runFlow` it.                                                                                                              |
-| `E2E_TEST_RECIPIENT_ADDRESS`      | Auto-provisioned            | No longer set by the developer. The runner provisions a fresh testnet account per run via `e2e/scripts/provision-test-account.mjs` and exports this for the `SendClassicToken` flow (runs on testnet). |
+| Variable                          | Required                    | Description                                                                                                                                                                                                          |
+| --------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `IS_E2E_TEST`                     | Yes                         | Set to `true` for E2E. Enables test-specific behavior in the app.                                                                                                                                                    |
+| `E2E_TEST_RECOVERY_PHRASE`        | For Import/Send/Swap        | Recovery phrase used by Import Wallet and flows that `runFlow` it.                                                                                                                                                   |
+| `E2E_TEST_FUNDED_RECOVERY_PHRASE` | For Send/Swap/WalletConnect | Recovery phrase for funded wallet used by ImportFundedWallet and flows that `runFlow` it.                                                                                                                            |
+| `E2E_TEST_RECIPIENT_ADDRESS`      | Auto-provisioned            | No longer set by the developer. The runner provisions a fresh testnet account per run via `e2e/scripts/provision-test-account.mjs` and exports this for the `SendClassicToken` flow (runs on testnet).               |
+| `E2E_TEST_CUSTOM_TOKEN_CONTRACT`  | For the W-block flow        | Contract (`C...`) of a testnet SEP-41 token, not a Stellar Asset Contract, that the funded account holds. `SendCustomTokenToMuxedContractBlocked` adds it and tries to send it to a muxed contract (`W...`) address. |
+| `E2E_TEST_CUSTOM_TOKEN_CODE`      | For the W-block flow        | That token's code, as the send token list shows it (its row is `token-option-<code>`).                                                                                                                               |
 
 Example:
 
@@ -21,14 +23,18 @@ IS_E2E_TEST=true
 # DO NOT add quotes around the recovery phrase as it will break the ImportWallet flow
 E2E_TEST_RECOVERY_PHRASE=word1 word2 ... word12
 E2E_TEST_FUNDED_RECOVERY_PHRASE=word1 word2 ... word12
+# A testnet SEP-41 token the funded account holds, and its code
+E2E_TEST_CUSTOM_TOKEN_CONTRACT=CCCGL2XZP24FD54WRTLGDM7GTLUVCWMNMFH364VLC474IOG35HZ7KHKN
+E2E_TEST_CUSTOM_TOKEN_CODE=TZT
 ```
 
 `E2E_TEST_RECIPIENT_ADDRESS` is no longer set here: the runner auto-provisions a
 fresh testnet account per run via `e2e/scripts/provision-test-account.mjs`.
 
-`run-e2e-tests.sh` loads `E2E_TEST_RECOVERY_PHRASE` and
-`E2E_TEST_FUNDED_RECOVERY_PHRASE` from `.env` when they're not already set. **Do
-not commit `.env`** or use a phrase that holds real funds.
+`run-e2e-tests.sh` loads `E2E_TEST_RECOVERY_PHRASE`,
+`E2E_TEST_FUNDED_RECOVERY_PHRASE`, `E2E_TEST_CUSTOM_TOKEN_CONTRACT` and
+`E2E_TEST_CUSTOM_TOKEN_CODE` from `.env` when they're not already set. **Do not
+commit `.env`** or use a phrase that holds real funds.
 
 ## Test data
 
@@ -40,6 +46,10 @@ not commit `.env`** or use a phrase that holds real funds.
 - **Recipient address**: `E2E_TEST_RECIPIENT_ADDRESS`, auto-provisioned per run
   on testnet by `e2e/scripts/provision-test-account.mjs` and consumed by the
   `SendClassicToken` flow.
+- **Custom token**: `E2E_TEST_CUSTOM_TOKEN_CONTRACT` and
+  `E2E_TEST_CUSTOM_TOKEN_CODE` (`.env` locally), a testnet SEP-41 token the
+  funded account holds, consumed by the `SendCustomTokenToMuxedContractBlocked`
+  flow.
 
 ## Secrets and variables in CI
 

@@ -2,6 +2,7 @@ import { Federation as StellarFederation, StrKey } from "@stellar/stellar-sdk";
 import { STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
+import { isContractDestination } from "helpers/muxedContract";
 import {
   isFederationAddress,
   isSameAccount,
@@ -28,6 +29,13 @@ interface SendStore {
   isSearching: boolean;
   searchError: string | null;
   isValidDestination: boolean;
+  /**
+   * Whether the destination has a funded classic account. `null` while that's
+   * unknown: not looked up yet, or the lookup failed for a reason other than
+   * a 404. `false` means either no account (the lookup returned 404) or a
+   * contract destination (`C...` or `W...`), which holds no classic account
+   * and is never looked up.
+   */
   isDestinationFunded: boolean | null;
 
   loadRecentAddresses: () => Promise<void>;
@@ -167,6 +175,19 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
     }
   },
 
+  /**
+   * Validates a typed or pasted recipient (an address or a federation
+   * address), resolves a federation address to its account, and stores the
+   * result together with whether the destination is funded.
+   *
+   * A contract destination (`C…` or `W…`) holds no classic account, so it
+   * gets no account lookup and is recorded as unfunded
+   * (`isDestinationFunded: false`), the value a `C…` already got because
+   * looking up a contract address finds no account. Any other destination
+   * is looked up to learn whether its account exists.
+   *
+   * @param searchTerm The address or federation address to search for
+   */
   searchAddress: async (searchTerm: string) => {
     set(SEARCH_RESET_STATE);
 
@@ -255,8 +276,14 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
       }
 
       try {
-        const account = await getAccount(resolvedAddress, network);
-        isFunded = !!account;
+        if (isContractDestination(resolvedAddress)) {
+          // No classic account to look up: a contract's balances live in its
+          // own storage. Same value the lookup of a `C…` yielded (no account).
+          isFunded = false;
+        } else {
+          const account = await getAccount(resolvedAddress, network);
+          isFunded = !!account;
+        }
       } catch (error: unknown) {
         let isNotFoundError = false;
 
@@ -315,7 +342,30 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
     }
   },
 
+  /**
+   * Sets the destination the user picked in the contact list (a search
+   * suggestion, a recent, or one of their own wallets) and refreshes its
+   * funding status in the background.
+   *
+   * A contract destination (`C…` or `W…`) holds no classic account, so it is
+   * never looked up: it is recorded as unfunded (`isDestinationFunded: false`)
+   * straight away, as `searchAddress` does. Any other destination starts with
+   * an unknown funding status (`null`) until its account lookup settles.
+   *
+   * @param address The destination address
+   * @param fedAddress The federation address the destination came from, if any
+   */
   setDestinationAddress: (address: string, fedAddress?: string) => {
+    if (isContractDestination(address)) {
+      set({
+        destinationAddress: address,
+        federationAddress: fedAddress || "",
+        isValidDestination: true,
+        isDestinationFunded: false,
+      });
+      return;
+    }
+
     const { network } = useAuthenticationStore.getState();
 
     set({

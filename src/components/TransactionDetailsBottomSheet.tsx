@@ -21,6 +21,7 @@ import {
   formatFiatAmount,
   stroopToXlm,
 } from "helpers/formatAmount";
+import { isMuxedContract } from "helpers/muxedContract";
 import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -49,7 +50,9 @@ type TransactionDetailsBottomSheetProps = {
  * A bottom sheet displaying transaction details, including amount, recipient,
  * status, fee, and other transaction metadata.
  *
- * Uses data from Zustand stores to show real transaction information.
+ * Uses data from Zustand stores to show real transaction information. The memo
+ * line is hidden for muxed recipients (M and W addresses), which carry their
+ * mux id in the address, even when a memo is still stored.
  */
 const TransactionDetailsBottomSheet: React.FC<
   TransactionDetailsBottomSheetProps
@@ -103,14 +106,15 @@ const TransactionDetailsBottomSheet: React.FC<
     network,
   );
 
-  // Check if recipient is M address
+  // Check if recipient is an M or W address
   const isRecipientMuxed = Boolean(
-    recipientAddress && isMuxedAccount(recipientAddress),
+    recipientAddress &&
+      (isMuxedAccount(recipientAddress) || isMuxedContract(recipientAddress)),
   );
 
-  // Hide memo for M addresses (memo is encoded in the address)
+  // Hide memo for M and W addresses (the mux id is encoded in the address)
   let memo = "";
-  // Only extract memo from transaction or use stored memo if recipient is not an M address
+  // Only extract memo from transaction or use stored memo if recipient is not an M or W address
   if (!isRecipientMuxed) {
     if ("memo" in transaction && transaction.memo.value) {
       memo = String(transaction.memo.value);
@@ -308,7 +312,7 @@ const TransactionDetailsBottomSheet: React.FC<
                 </Text>
               ),
             },
-            // Hide memo line for M addresses (memo is encoded in the address)
+            // Hide memo line for M and W addresses (the mux id is encoded in the address)
             !isRecipientMuxed
               ? {
                   icon: (

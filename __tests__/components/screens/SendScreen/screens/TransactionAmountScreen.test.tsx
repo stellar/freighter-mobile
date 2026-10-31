@@ -1,5 +1,11 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { act, fireEvent, render } from "@testing-library/react-native";
+import { act, fireEvent, render, within } from "@testing-library/react-native";
+import {
+  BASE_CONTRACT,
+  G_ACCOUNT,
+  M_ACCOUNT_ID_1234,
+  MUXED_CONTRACT_ID_1234,
+} from "__tests__/support/muxedContractFixtures";
 import { BigNumber } from "bignumber.js";
 import TransactionAmountScreen from "components/screens/SendScreen/screens/TransactionAmountScreen";
 import { NETWORKS } from "config/constants";
@@ -12,6 +18,7 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { cachedFetch } from "helpers/cachedFetch";
+import * as keyboardHelpers from "helpers/keyboard";
 import { renderWithProviders } from "helpers/testUtils";
 import * as blockaidService from "hooks/blockaid/useBlockaidTransaction";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -21,6 +28,7 @@ import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import * as useValidateTransactionMemo from "hooks/useValidateTransactionMemo";
 import { useToast } from "providers/ToastProvider";
 import React from "react";
+import { TextInput } from "react-native";
 import { analytics } from "services/analytics";
 import * as transactionService from "services/transactionService";
 
@@ -2245,6 +2253,871 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
         .mock.calls[0] as [{ volume?: unknown; error: string }];
       expect(failurePayload.volume).toBeUndefined();
       expect(failurePayload.error).toBe("Signing blew up");
+    });
+  });
+});
+
+describe("TransactionAmountScreen - muxed recipients (W and M)", () => {
+  const mockPublicKey =
+    "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM";
+  const customTokenContractId =
+    "CAZXRTOKNUQ2JQQF3NCRU7GYMDJNZ2NMQN6IGN4FCT5DWPODMPVEXSND";
+  const bannerTestId = "muxed-contract-not-supported-banner";
+  // The explanation sheet is always mounted in this file's bottom-sheet mock,
+  // so its description shows which variant the screen passed it.
+  const contractSheetDescription =
+    "transactionAmountScreen.errors.muxedContractWarning.description";
+  const accountSheetDescription =
+    "transactionAmountScreen.errors.muxedAddressWarning.description";
+
+  const mockXlmBalance = {
+    id: "XLM",
+    tokenId: "XLM",
+    total: new BigNumber("10.0000000"),
+    available: new BigNumber("10.0000000"),
+    token: { code: "XLM", issuer: "", type: "native" },
+    tokenType: "native",
+    price: 0.1,
+    fiatValue: 1.0,
+  };
+
+  const classicAssetBalance = {
+    id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    tokenId: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    total: new BigNumber("1000"),
+    available: new BigNumber("1000"),
+    token: {
+      code: "USDC",
+      issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    },
+    tokenCode: "USDC",
+  };
+
+  // A custom token is a balance with a contractId.
+  const customTokenBalance = {
+    id: `WTT:${customTokenContractId}`,
+    contractId: customTokenContractId,
+    decimals: 7,
+    token: { code: "WTT", issuer: { key: customTokenContractId } },
+    total: new BigNumber("10"),
+    available: new BigNumber("10"),
+    tokenCode: "WTT",
+  };
+
+  // A second custom token, for switching tokens with an M recipient.
+  const otherCustomTokenBalance = {
+    ...customTokenBalance,
+    id: `OTT:${BASE_CONTRACT}`,
+    contractId: BASE_CONTRACT,
+    token: { code: "OTT", issuer: { key: BASE_CONTRACT } },
+    tokenCode: "OTT",
+  };
+
+  let mockBuildTransactionFn: jest.Mock;
+  let originalGetState: unknown;
+
+  /**
+   * The amount screen's route for a send of a token to a recipient.
+   *
+   * @param tokenId The id of the balance being sent
+   * @param recipientAddress The recipient, a W by default
+   * @returns The route the screen is rendered with
+   */
+  const routeFor = (
+    tokenId: string,
+    recipientAddress: string = MUXED_CONTRACT_ID_1234,
+  ) =>
+    ({
+      params: { tokenId, recipientAddress },
+      key: "transaction-amount",
+      name: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
+    }) as unknown as TransactionAmountScreenProps["route"];
+
+  /**
+   * Serves one settings state through both the hook and `getState()`, which
+   * prepareTransaction reads fresh. `saveMemo` writes through, as the real
+   * store's does, so a memo the screen clears is gone from the next
+   * `getState()`.
+   */
+  const setSettingsStore = (
+    overrides: {
+      selectedTokenId?: string;
+      recipientAddress?: string;
+      transactionMemo?: string;
+    } = {},
+  ) => {
+    const state = {
+      transactionMemo: "",
+      transactionMemoType: "",
+      transactionFee: "0.00001",
+      transactionTimeout: 30,
+      feePriority: "low",
+      feeManuallyChanged: false,
+      recipientAddress: MUXED_CONTRACT_ID_1234,
+      federationAddress: "",
+      recipientName: "",
+      selectedTokenId: "XLM",
+      saveMemo: jest.fn(),
+      saveMemoType: jest.fn(),
+      saveTransactionFee: jest.fn(),
+      saveFeePriority: jest.fn(),
+      markFeeManuallyChanged: jest.fn(),
+      saveTransactionTimeout: jest.fn(),
+      saveRecipientAddress: jest.fn(),
+      saveFederationAddress: jest.fn(),
+      saveRecipientName: jest.fn(),
+      saveSelectedTokenId: jest.fn(),
+      saveSelectedCollectibleDetails: jest.fn(),
+      resetSettings: jest.fn(),
+      ...overrides,
+    };
+    state.saveMemo.mockImplementation((memo: string) => {
+      state.transactionMemo = memo;
+    });
+
+    mockUseTransactionSettingsStore.mockReturnValue(state);
+    (useTransactionSettingsStore as any).getState = jest
+      .fn()
+      .mockReturnValue(state);
+
+    return state;
+  };
+
+  /**
+   * Waits past the screen's 300 ms auto-simulation. It waits inside act, so
+   * the async updates the screen makes meanwhile don't warn.
+   */
+  const waitForAutoSimulation = () =>
+    act(
+      () =>
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, 400);
+        }),
+    );
+
+  /**
+   * Whether the screen's Continue button is disabled, as its accessibility
+   * state reports it.
+   *
+   * @param getByTestId The rendered screen's query by testID
+   * @returns The button's disabled state
+   */
+  const isContinueDisabled = (getByTestId: (id: string) => any) =>
+    getByTestId("send-continue-button").props.accessibilityState?.disabled;
+
+  beforeAll(() => {
+    // The describes above assign getState and never restore it.
+    originalGetState = (useTransactionSettingsStore as any).getState;
+  });
+
+  afterAll(() => {
+    (useTransactionSettingsStore as any).getState = originalGetState;
+  });
+
+  afterEach(() => {
+    // Puts back the keyboard helper a test spied on.
+    jest.restoreAllMocks();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockBuildTransactionFn = jest.fn().mockResolvedValue("mockXDR");
+    mockUseTransactionBuilderStore.mockReturnValue({
+      buildTransaction: mockBuildTransactionFn,
+      signTransaction: jest.fn(),
+      submitTransaction: jest.fn(),
+      resetTransaction: jest.fn(),
+      isBuilding: false,
+      isSigning: false,
+      isSubmitting: false,
+      transactionXDR: null,
+      transactionHash: null,
+      error: null,
+      network: NETWORKS.TESTNET,
+      transaction: null,
+    } as any);
+    mockUseAuthenticationStore.mockReturnValue({
+      publicKey: mockPublicKey,
+      network: NETWORKS.TESTNET,
+    } as any);
+    mockUsePreferencesStore.mockReturnValue({
+      isMemoValidationEnabled: true,
+    });
+    mockCachedFetch.mockResolvedValue({ _embedded: { records: [] } });
+    mockScanTransaction.mockReturnValue({
+      scanTransaction: jest.fn().mockResolvedValue({
+        warnings: [],
+        malicious: false,
+        suspicious: false,
+      }),
+    });
+    mockUseGetActiveAccount.mockReturnValue({
+      account: {
+        publicKey: mockPublicKey,
+        privateKey: "mockPrivateKey",
+        accountName: "Test Account",
+        id: "test-id",
+        subentryCount: 0,
+      } as ActiveAccount,
+      isLoading: false,
+      error: null,
+      refreshAccount: jest.fn(),
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      signAuthEntry: jest.fn(),
+    });
+    mockUseBalancesList.mockReturnValue({
+      balanceItems: [
+        mockXlmBalance as any,
+        classicAssetBalance as any,
+        customTokenBalance as any,
+        otherCustomTokenBalance as any,
+      ],
+      scanResults: {} as any,
+      isLoading: false,
+      error: null,
+      noBalances: false,
+      isRefreshing: false,
+      isFunded: true,
+      localOnlyTokenIds: [],
+      hiddenBalanceItems: [],
+      handleRefresh: jest.fn(),
+    });
+    // Plenty of either token, so no amount error can disable Continue: the W
+    // block is then the only thing that can. A custom token's spendable is in
+    // base units (7 decimals), so this is still 1000 WTT.
+    mockCalculateSpendableAmount.mockReturnValue(new BigNumber("10000000000"));
+    mockHasXLMForFees.mockReturnValue(true);
+    mockUseTokenFiatConverter.mockReturnValue({
+      tokenAmount: "100",
+      tokenAmountDisplay: "100",
+      tokenAmountDisplayRaw: null,
+      fiatAmount: "100.00",
+      fiatAmountDisplay: "100.00",
+      fiatAmountDisplayRaw: null,
+      showFiatAmount: false,
+      setTokenAmount: jest.fn(),
+      setFiatAmount: jest.fn(),
+      setShowFiatAmount: jest.fn(),
+      handleDisplayAmountChange: jest.fn(),
+      updateFiatDisplay: jest.fn(),
+      setDisplayAmountFromText: jest.fn(),
+      pasteRejectNonce: 0,
+    });
+    mockUseRightHeaderMenu.mockReturnValue(undefined);
+    mockUseToast.mockReturnValue({
+      showToast: jest.fn(),
+      dismissToast: jest.fn(),
+    });
+    mockUseHistoryStore.mockReturnValue({
+      fetchAccountHistory: jest.fn(),
+    });
+    mockUseSendRecipientStore.mockReturnValue({
+      resetSendRecipient: jest.fn(),
+    });
+  });
+
+  it("allows XLM to a W: no banner, clears a stale memo, estimates fees for the W", async () => {
+    const settings = setSettingsStore({
+      selectedTokenId: "XLM",
+      transactionMemo: "stale",
+    });
+
+    const { queryByTestId, getByTestId } = render(
+      <TransactionAmountScreen
+        navigation={mockNavigation}
+        route={routeFor("XLM")}
+      />,
+    );
+    await waitForAutoSimulation();
+
+    expect(queryByTestId(bannerTestId)).toBeNull();
+    expect(isContinueDisabled(getByTestId)).toBe(false);
+    expect(settings.saveMemo).toHaveBeenCalledWith("");
+    // The estimate is for the W, and it was built after the memo was cleared.
+    expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tokenAmount: "0",
+        recipientAddress: MUXED_CONTRACT_ID_1234,
+        transactionMemo: "",
+      }),
+    );
+  });
+
+  it.each([
+    ["a G account", G_ACCOUNT],
+    ["a C contract", BASE_CONTRACT],
+  ])(
+    "keeps a stored memo for XLM to %s: only an M or a W clears it",
+    async (_label, recipientAddress) => {
+      const settings = setSettingsStore({
+        selectedTokenId: "XLM",
+        recipientAddress,
+        transactionMemo: "keep",
+      });
+
+      render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor("XLM", recipientAddress)}
+        />,
+      );
+      await waitForAutoSimulation();
+
+      expect(settings.saveMemo).not.toHaveBeenCalled();
+      expect(settings.transactionMemo).toBe("keep");
+    },
+  );
+
+  it("allows a classic asset to a W: no banner, Continue enabled", async () => {
+    setSettingsStore({ selectedTokenId: classicAssetBalance.id });
+
+    const { queryByTestId, getByTestId } = render(
+      <TransactionAmountScreen
+        navigation={mockNavigation}
+        route={routeFor(classicAssetBalance.id)}
+      />,
+    );
+    await waitForAutoSimulation();
+
+    expect(queryByTestId(bannerTestId)).toBeNull();
+    expect(isContinueDisabled(getByTestId)).toBe(false);
+    expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tokenAmount: "0",
+        recipientAddress: MUXED_CONTRACT_ID_1234,
+      }),
+    );
+  });
+
+  it("blocks a custom token sent to a W: banner, Continue disabled, nothing built", async () => {
+    setSettingsStore({ selectedTokenId: customTokenBalance.id });
+
+    const { getByTestId, getByText, queryByText } = render(
+      <TransactionAmountScreen
+        navigation={mockNavigation}
+        route={routeFor(customTokenBalance.id)}
+      />,
+    );
+    await waitForAutoSimulation();
+
+    expect(
+      within(getByTestId(bannerTestId)).getByText(
+        "transactionAmountScreen.errors.muxedAddressNotSupported",
+      ),
+    ).toBeTruthy();
+    expect(isContinueDisabled(getByTestId)).toBe(true);
+    expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+    // The banner opens the W explanation, not the M one.
+    expect(getByText(contractSheetDescription)).toBeTruthy();
+    expect(queryByText(accountSheetDescription)).toBeNull();
+  });
+
+  it("opens the W explanation from the banner once the keyboard is down", async () => {
+    setSettingsStore({ selectedTokenId: customTokenBalance.id });
+    let keyboardDown!: () => void;
+    const waitForKeyboard = jest
+      .spyOn(keyboardHelpers, "waitForKeyboardDismiss")
+      .mockReturnValue(
+        new Promise<void>((resolve) => {
+          keyboardDown = resolve;
+        }),
+      );
+    // A host View has no ref in the test renderer, so the bottom sheet modals
+    // (the only elements rendered `detached`) get a present() to watch.
+    const present = jest.fn();
+
+    const { getByTestId } = render(
+      <TransactionAmountScreen
+        navigation={mockNavigation}
+        route={routeFor(customTokenBalance.id)}
+      />,
+      {
+        createNodeMock: (element) =>
+          (element.props as { detached?: boolean }).detached
+            ? { present, dismiss: jest.fn() }
+            : null,
+      },
+    );
+    await waitForAutoSimulation();
+
+    fireEvent.press(getByTestId(bannerTestId));
+
+    // The amount input gives up the keyboard, and the sheet waits for it, but
+    // only 500 ms: a hide event that never comes can't keep the sheet shut.
+    expect(TextInput.prototype.blur).toHaveBeenCalled();
+    expect(waitForKeyboard).toHaveBeenCalledTimes(1);
+    expect(waitForKeyboard).toHaveBeenCalledWith(500);
+    expect(present).not.toHaveBeenCalled();
+
+    await act(() => {
+      keyboardDown();
+      return Promise.resolve();
+    });
+
+    expect(present).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks when the token switches from XLM to a custom token after the W is picked", async () => {
+    setSettingsStore({ selectedTokenId: "XLM" });
+
+    const { getByTestId, queryByTestId, rerender } = render(
+      <TransactionAmountScreen
+        navigation={mockNavigation}
+        route={routeFor("XLM")}
+      />,
+    );
+    await waitForAutoSimulation();
+
+    expect(queryByTestId(bannerTestId)).toBeNull();
+    expect(mockBuildTransactionFn).toHaveBeenCalledTimes(1);
+
+    setSettingsStore({ selectedTokenId: customTokenBalance.id });
+    rerender(
+      <TransactionAmountScreen
+        navigation={mockNavigation}
+        route={routeFor(customTokenBalance.id)}
+      />,
+    );
+    await waitForAutoSimulation();
+
+    expect(getByTestId(bannerTestId)).toBeTruthy();
+    expect(isContinueDisabled(getByTestId)).toBe(true);
+    expect(mockBuildTransactionFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("builds again when the token switches back from a custom token to XLM", async () => {
+    setSettingsStore({ selectedTokenId: customTokenBalance.id });
+
+    const { getByTestId, queryByTestId, rerender } = render(
+      <TransactionAmountScreen
+        navigation={mockNavigation}
+        route={routeFor(customTokenBalance.id)}
+      />,
+    );
+    await waitForAutoSimulation();
+
+    expect(getByTestId(bannerTestId)).toBeTruthy();
+    expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+
+    setSettingsStore({ selectedTokenId: "XLM" });
+    rerender(
+      <TransactionAmountScreen
+        navigation={mockNavigation}
+        route={routeFor("XLM")}
+      />,
+    );
+    await waitForAutoSimulation();
+
+    expect(queryByTestId(bannerTestId)).toBeNull();
+    expect(isContinueDisabled(getByTestId)).toBe(false);
+    expect(mockBuildTransactionFn).toHaveBeenCalledTimes(1);
+  });
+
+  describe("saving settings", () => {
+    it("rebuilds for XLM to a W", async () => {
+      setSettingsStore({ selectedTokenId: "XLM" });
+
+      const { getByText } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor("XLM")}
+        />,
+      );
+      await waitForAutoSimulation();
+      mockBuildTransactionFn.mockClear();
+
+      await act(() => {
+        fireEvent.press(getByText("common.save"));
+        return Promise.resolve();
+      });
+
+      expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tokenAmount: "100",
+          recipientAddress: MUXED_CONTRACT_ID_1234,
+        }),
+      );
+    });
+
+    it("builds nothing for a custom token to a W", async () => {
+      setSettingsStore({ selectedTokenId: customTokenBalance.id });
+
+      const { getByText } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor(customTokenBalance.id)}
+        />,
+      );
+      await waitForAutoSimulation();
+
+      await act(() => {
+        fireEvent.press(getByText("common.save"));
+        return Promise.resolve();
+      });
+
+      expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+    });
+  });
+
+  it.each([
+    ["a G account", G_ACCOUNT],
+    ["a C contract", BASE_CONTRACT],
+  ])(
+    "does not block a custom token sent to %s",
+    async (_label, recipientAddress) => {
+      setSettingsStore({
+        selectedTokenId: customTokenBalance.id,
+        recipientAddress,
+      });
+
+      const { queryByTestId, getByTestId, getByText, queryByText } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor(customTokenBalance.id, recipientAddress)}
+        />,
+      );
+      await waitForAutoSimulation();
+
+      expect(queryByTestId(bannerTestId)).toBeNull();
+      expect(isContinueDisabled(getByTestId)).toBe(false);
+      expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+        expect.objectContaining({ tokenAmount: "0", recipientAddress }),
+      );
+      // The sheet keeps its M explanation for everything but a W.
+      expect(getByText(accountSheetDescription)).toBeTruthy();
+      expect(queryByText(contractSheetDescription)).toBeNull();
+    },
+  );
+
+  describe("percentage buttons", () => {
+    const percentageButtonIds = [
+      "percentage-25",
+      "percentage-50",
+      "percentage-75",
+      "percentage-100",
+    ];
+
+    it("hides them while a custom token to a W is blocked", async () => {
+      setSettingsStore({ selectedTokenId: customTokenBalance.id });
+
+      const { getByTestId, queryByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor(customTokenBalance.id)}
+        />,
+      );
+      await waitForAutoSimulation();
+
+      expect(getByTestId(bannerTestId)).toBeTruthy();
+      percentageButtonIds.forEach((id) => {
+        expect(queryByTestId(id)).toBeNull();
+      });
+    });
+
+    it("hides them while a custom token to an M is blocked", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(false);
+      setSettingsStore({
+        selectedTokenId: customTokenBalance.id,
+        recipientAddress: M_ACCOUNT_ID_1234,
+      });
+
+      const { getByTestId, queryByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor(customTokenBalance.id, M_ACCOUNT_ID_1234)}
+        />,
+      );
+      await waitForAutoSimulation();
+
+      expect(getByTestId("muxed-address-not-supported-banner")).toBeTruthy();
+      percentageButtonIds.forEach((id) => {
+        expect(queryByTestId(id)).toBeNull();
+      });
+    });
+
+    it.each([
+      ["XLM to a W", "XLM", MUXED_CONTRACT_ID_1234],
+      ["a custom token to a G account", customTokenBalance.id, G_ACCOUNT],
+      ["a custom token to a C contract", customTokenBalance.id, BASE_CONTRACT],
+    ])("shows them for %s", async (_label, tokenId, recipientAddress) => {
+      setSettingsStore({ selectedTokenId: tokenId, recipientAddress });
+
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor(tokenId, recipientAddress)}
+        />,
+      );
+      await waitForAutoSimulation();
+
+      percentageButtonIds.forEach((id) => {
+        expect(getByTestId(id)).toBeTruthy();
+      });
+    });
+  });
+
+  // An M only reaches a custom token whose contract supports muxed
+  // addresses. Unlike the W check, that takes a contract lookup, so its answer
+  // arrives after the screen renders.
+  describe("muxed account (M) recipient", () => {
+    const accountBannerTestId = "muxed-address-not-supported-banner";
+
+    /**
+     * Renders the screen sending a token to the M.
+     *
+     * @param tokenId The id of the balance being sent
+     * @returns The render result
+     */
+    const renderSendToM = (tokenId: string) => {
+      setSettingsStore({
+        selectedTokenId: tokenId,
+        recipientAddress: M_ACCOUNT_ID_1234,
+      });
+
+      return render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor(tokenId, M_ACCOUNT_ID_1234)}
+        />,
+      );
+    };
+
+    /**
+     * Re-renders the screen with another token selected for the M.
+     *
+     * @param rerender The render result's rerender
+     * @param tokenId The id of the newly selected balance
+     */
+    const switchTokenTo = (
+      rerender: (element: React.ReactElement) => void,
+      tokenId: string,
+    ) => {
+      setSettingsStore({
+        selectedTokenId: tokenId,
+        recipientAddress: M_ACCOUNT_ID_1234,
+      });
+      rerender(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor(tokenId, M_ACCOUNT_ID_1234)}
+        />,
+      );
+    };
+
+    /**
+     * A contract-support check that answers only when the test says so.
+     *
+     * @returns The pending answer and the function that resolves it
+     */
+    const deferredSupportCheck = () => {
+      let answer!: (supportsMuxed: boolean) => void;
+      const promise = new Promise<boolean>((resolve) => {
+        answer = resolve;
+      });
+
+      return { promise, answer };
+    };
+
+    beforeEach(() => {
+      mockCheckContractMuxedSupport.mockReset();
+      mockCheckContractMuxedSupport.mockResolvedValue(false);
+    });
+
+    afterAll(() => {
+      mockCheckContractMuxedSupport.mockReset();
+      mockCheckContractMuxedSupport.mockResolvedValue(false);
+    });
+
+    it("blocks a custom token without muxed support: banner, Continue disabled, nothing built", async () => {
+      const { getByTestId, queryByTestId, getByText, queryByText } =
+        renderSendToM(customTokenBalance.id);
+      await waitForAutoSimulation();
+
+      expect(
+        within(getByTestId(accountBannerTestId)).getByText(
+          "transactionAmountScreen.errors.muxedAddressNotSupported",
+        ),
+      ).toBeTruthy();
+      expect(queryByTestId(bannerTestId)).toBeNull();
+      expect(isContinueDisabled(getByTestId)).toBe(true);
+      expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+      // The banner opens the M explanation, not the W one.
+      expect(getByText(accountSheetDescription)).toBeTruthy();
+      expect(queryByText(contractSheetDescription)).toBeNull();
+    });
+
+    it("does not block a custom token that supports muxed addresses", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+
+      const { getByTestId, queryByTestId } = renderSendToM(
+        customTokenBalance.id,
+      );
+      await waitForAutoSimulation();
+      // The fee estimate starts once the check has answered.
+      await waitForAutoSimulation();
+
+      expect(queryByTestId(accountBannerTestId)).toBeNull();
+      expect(isContinueDisabled(getByTestId)).toBe(false);
+      expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tokenAmount: "0",
+          recipientAddress: M_ACCOUNT_ID_1234,
+        }),
+      );
+    });
+
+    it("builds nothing and keeps Continue off until the contract check answers", async () => {
+      const supportCheck = deferredSupportCheck();
+      mockCheckContractMuxedSupport.mockReturnValueOnce(supportCheck.promise);
+
+      const { getByTestId, queryByTestId } = renderSendToM(
+        customTokenBalance.id,
+      );
+      await waitForAutoSimulation();
+
+      // Still unknown: no banner yet, but nothing built and no Continue.
+      expect(queryByTestId(accountBannerTestId)).toBeNull();
+      expect(isContinueDisabled(getByTestId)).toBe(true);
+      expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+
+      await act(() => {
+        supportCheck.answer(true);
+        return Promise.resolve();
+      });
+      await waitForAutoSimulation();
+
+      expect(isContinueDisabled(getByTestId)).toBe(false);
+      expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tokenAmount: "0",
+          recipientAddress: M_ACCOUNT_ID_1234,
+        }),
+      );
+    });
+
+    it("does not block XLM sent to an M", async () => {
+      const { getByTestId, queryByTestId } = renderSendToM("XLM");
+      await waitForAutoSimulation();
+
+      expect(queryByTestId(accountBannerTestId)).toBeNull();
+      expect(isContinueDisabled(getByTestId)).toBe(false);
+      expect(mockCheckContractMuxedSupport).not.toHaveBeenCalled();
+    });
+
+    it("opens the M explanation from the banner once the keyboard is down", async () => {
+      let keyboardDown!: () => void;
+      const waitForKeyboard = jest
+        .spyOn(keyboardHelpers, "waitForKeyboardDismiss")
+        .mockReturnValue(
+          new Promise<void>((resolve) => {
+            keyboardDown = resolve;
+          }),
+        );
+      const present = jest.fn();
+      setSettingsStore({
+        selectedTokenId: customTokenBalance.id,
+        recipientAddress: M_ACCOUNT_ID_1234,
+      });
+
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor(customTokenBalance.id, M_ACCOUNT_ID_1234)}
+        />,
+        {
+          createNodeMock: (element) =>
+            (element.props as { detached?: boolean }).detached
+              ? { present, dismiss: jest.fn() }
+              : null,
+        },
+      );
+      await waitForAutoSimulation();
+
+      fireEvent.press(getByTestId(accountBannerTestId));
+
+      expect(waitForKeyboard).toHaveBeenCalledWith(500);
+      expect(present).not.toHaveBeenCalled();
+
+      await act(() => {
+        keyboardDown();
+        return Promise.resolve();
+      });
+
+      expect(present).toHaveBeenCalledTimes(1);
+    });
+
+    it("builds nothing when settings are saved while blocked", async () => {
+      const { getByText } = renderSendToM(customTokenBalance.id);
+      await waitForAutoSimulation();
+
+      await act(() => {
+        fireEvent.press(getByText("common.save"));
+        return Promise.resolve();
+      });
+
+      expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+    });
+
+    it("doesn't show an earlier token's answer while the next token's check runs", async () => {
+      const { getByTestId, queryByTestId, rerender } = renderSendToM(
+        customTokenBalance.id,
+      );
+      await waitForAutoSimulation();
+      expect(getByTestId(accountBannerTestId)).toBeTruthy();
+
+      const otherTokenCheck = deferredSupportCheck();
+      mockCheckContractMuxedSupport.mockReturnValueOnce(
+        otherTokenCheck.promise,
+      );
+      switchTokenTo(rerender, otherCustomTokenBalance.id);
+      await waitForAutoSimulation();
+
+      // The first token's "no" doesn't apply to this one.
+      expect(queryByTestId(accountBannerTestId)).toBeNull();
+
+      await act(() => {
+        otherTokenCheck.answer(true);
+        return Promise.resolve();
+      });
+      await waitForAutoSimulation();
+
+      expect(queryByTestId(accountBannerTestId)).toBeNull();
+      expect(isContinueDisabled(getByTestId)).toBe(false);
+      expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tokenAmount: "0",
+          selectedBalance: expect.objectContaining({
+            id: otherCustomTokenBalance.id,
+          }),
+        }),
+      );
+    });
+
+    it("ignores a late answer for a token that's no longer selected", async () => {
+      const firstTokenCheck = deferredSupportCheck();
+      mockCheckContractMuxedSupport.mockReturnValueOnce(
+        firstTokenCheck.promise,
+      );
+      const { getByTestId, queryByTestId, rerender } = renderSendToM(
+        customTokenBalance.id,
+      );
+      await waitForAutoSimulation();
+
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+      switchTokenTo(rerender, otherCustomTokenBalance.id);
+      await waitForAutoSimulation();
+      expect(queryByTestId(accountBannerTestId)).toBeNull();
+
+      // The first token's check answers last, and says no.
+      await act(() => {
+        firstTokenCheck.answer(false);
+        return Promise.resolve();
+      });
+
+      expect(queryByTestId(accountBannerTestId)).toBeNull();
+      expect(isContinueDisabled(getByTestId)).toBe(false);
     });
   });
 });

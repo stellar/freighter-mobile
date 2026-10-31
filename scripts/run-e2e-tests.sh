@@ -87,6 +87,17 @@ if [ -z "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ] && [ -f .env ]; then
   export E2E_TEST_FUNDED_RECOVERY_PHRASE
 fi
 
+# Load the custom (SEP-41) token the W-block flow sends, from .env when not set
+# (local runs): its contract and its code.
+if [ -z "${E2E_TEST_CUSTOM_TOKEN_CONTRACT:-}" ] && [ -f .env ]; then
+  E2E_TEST_CUSTOM_TOKEN_CONTRACT=$(sed -n 's/^E2E_TEST_CUSTOM_TOKEN_CONTRACT=//p' .env 2>/dev/null | head -1)
+  export E2E_TEST_CUSTOM_TOKEN_CONTRACT
+fi
+if [ -z "${E2E_TEST_CUSTOM_TOKEN_CODE:-}" ] && [ -f .env ]; then
+  E2E_TEST_CUSTOM_TOKEN_CODE=$(sed -n 's/^E2E_TEST_CUSTOM_TOKEN_CODE=//p' .env 2>/dev/null | head -1)
+  export E2E_TEST_CUSTOM_TOKEN_CODE
+fi
+
 # Function to ensure stable ADB connection
 ensure_adb_connection() {
   if [ "$PLATFORM" = "android" ] || ( [ -z "$PLATFORM" ] && command -v adb >/dev/null 2>&1 ); then
@@ -506,6 +517,12 @@ build_maestro_env_args() {
   fi
   if [ -n "${E2E_TEST_RECIPIENT_ADDRESS:-}" ]; then
     MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_RECIPIENT_ADDRESS=$E2E_TEST_RECIPIENT_ADDRESS")
+  fi
+  if [ -n "${E2E_TEST_CUSTOM_TOKEN_CONTRACT:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_CUSTOM_TOKEN_CONTRACT=$E2E_TEST_CUSTOM_TOKEN_CONTRACT")
+  fi
+  if [ -n "${E2E_TEST_CUSTOM_TOKEN_CODE:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_CUSTOM_TOKEN_CODE=$E2E_TEST_CUSTOM_TOKEN_CODE")
   fi
 }
 

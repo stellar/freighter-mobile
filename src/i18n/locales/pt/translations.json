@@ -839,6 +839,9 @@
         "title": "Endereço muxed não suportado",
         "description": "Este token não suporta endereço muxed (M-) como destino. Prosseguir com esta transação pode resultar na perda do token durante a transferência."
       },
+      "muxedContractWarning": {
+        "description": "Este token não suporta endereço de contrato muxed (W-) como destino."
+      },
       "malicious": "Este endereço foi marcado como malicioso",
       "suspicious": "Este endereço foi marcado como suspeito",
       "maliciousToken": "Um token foi marcado como malicioso",
@@ -1145,7 +1148,8 @@
       "cannotSendToSelf": "Não é possível enviar para você mesmo",
       "invalidDecimals": "Decimais inválidos ou ausentes para token personalizado",
       "invalidFederationMemo": "O servidor de federação retornou um memo inválido. Por favor, verifique o endereço e tente novamente.",
-      "recipientIsTokenContract": "Não é possível enviar para o contrato do próprio token"
+      "recipientIsTokenContract": "Não é possível enviar para o contrato do próprio token",
+      "muxedContractNotSupported": "Este token não suporta endereço de contrato muxed (W-) como destino."
     }
   },
   "tokenIconAlt": "ícone do token {{code}}",
@@ -1191,6 +1195,12 @@
       "swapPathForceEnabled": "✓ Forçar Falha de Caminho",
       "swapPathForceDisabled": "Forçar Falha de Caminho",
       "clearAll": "Limpar Todas as Falhas"
+    },
+    "muxedContractSimulationStub": {
+      "title": "Stub da Simulação para Endereço W",
+      "description": "Pula a simulação no backend para envios a um endereço de contrato muxed (W), para que a revisão abra com a transação não simulada. Ela não pode ser enviada (apenas DEV)",
+      "enabled": "✓ Stub da Simulação para Endereço W",
+      "disabled": "Stub da Simulação para Endereço W"
     }
   },
   "blockaid": {

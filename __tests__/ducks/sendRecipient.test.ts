@@ -1,8 +1,13 @@
 import { Federation, StrKey } from "@stellar/stellar-sdk";
 import { act } from "@testing-library/react-hooks";
+import {
+  BASE_CONTRACT,
+  MUXED_CONTRACT_ID_0,
+} from "__tests__/support/muxedContractFixtures";
 import { STORAGE_KEYS } from "config/constants";
 import { getActiveAccountPublicKey } from "ducks/auth";
 import { useSendRecipientStore } from "ducks/sendRecipient";
+import { isContractDestination } from "helpers/muxedContract";
 import * as stellarHelpers from "helpers/stellar";
 import { getAccount } from "services/stellar";
 import { dataStorage } from "services/storage/storageFactory";
@@ -36,6 +41,12 @@ jest.mock("helpers/stellar", () => ({
   isFederationAddress: jest.fn(),
   isSameAccount: jest.fn(),
   isValidStellarAddress: jest.fn(),
+}));
+
+// The stellar-sdk mock below has no `StrKey.isValidContract`, which the real
+// helper calls, so mock the helper itself.
+jest.mock("helpers/muxedContract", () => ({
+  isContractDestination: jest.fn(),
 }));
 
 jest.mock("@stellar/stellar-sdk", () => ({
@@ -100,6 +111,7 @@ describe("sendRecipient Duck", () => {
     (stellarHelpers.isValidStellarAddress as jest.Mock).mockReturnValue(true);
     (stellarHelpers.isSameAccount as jest.Mock).mockReturnValue(false);
     (stellarHelpers.isFederationAddress as jest.Mock).mockReturnValue(false);
+    (isContractDestination as jest.Mock).mockReturnValue(false);
     (getAccount as jest.Mock).mockResolvedValue({ id: mockPublicKey });
     (getActiveAccountPublicKey as jest.Mock).mockResolvedValue("DIFFERENT_KEY");
     (StrKey.isValidEd25519PublicKey as jest.Mock).mockReturnValue(true);
@@ -307,6 +319,28 @@ describe("sendRecipient Duck", () => {
     expect(store.getState().isValidDestination).toBe(true);
   });
 
+  it.each([
+    ["C", BASE_CONTRACT],
+    ["W", MUXED_CONTRACT_ID_0],
+  ])(
+    "searchAddress classifies a %s destination before any account lookup",
+    async (_type, address) => {
+      (isContractDestination as jest.Mock).mockImplementation(
+        (candidate: string) => candidate === address,
+      );
+
+      await store.getState().searchAddress(address);
+
+      expect(getAccount).not.toHaveBeenCalled();
+      expect(store.getState()).toMatchObject({
+        destinationAddress: address,
+        isValidDestination: true,
+        isDestinationFunded: false,
+        searchError: null,
+      });
+    },
+  );
+
   it("should set destination address", () => {
     store.getState().setDestinationAddress(mockPublicKey);
 
@@ -323,6 +357,26 @@ describe("sendRecipient Duck", () => {
     expect(store.getState().destinationAddress).toBe(mockPublicKey);
     expect(store.getState().federationAddress).toBe(mockFederationAddress);
   });
+
+  it.each([
+    ["C", BASE_CONTRACT],
+    ["W", MUXED_CONTRACT_ID_0],
+  ])(
+    "setDestinationAddress (Recents, My wallets) never looks up a %s destination",
+    (_type, address) => {
+      (isContractDestination as jest.Mock).mockImplementation(
+        (candidate: string) => candidate === address,
+      );
+
+      store.getState().setDestinationAddress(address);
+
+      expect(getAccount).not.toHaveBeenCalled();
+      expect(store.getState()).toMatchObject({
+        destinationAddress: address,
+        isDestinationFunded: false,
+      });
+    },
+  );
 
   it("should reset all search-related state", () => {
     act(() => {
