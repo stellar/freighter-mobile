@@ -6,6 +6,11 @@ import {
   Operation,
   xdr,
 } from "@stellar/stellar-sdk";
+import {
+  G_ACCOUNT,
+  MUXED_CONTRACT_ID_1234,
+} from "__tests__/support/muxedContractFixtures";
+import { sacTransferArgs } from "__tests__/support/sacTransferFixtures";
 import { BigNumber } from "bignumber.js";
 import { NETWORKS, TESTNET_NETWORK_DETAILS } from "config/constants";
 import {
@@ -177,6 +182,20 @@ describe("soroban helpers", () => {
         expect(typeof result.to).toBe("string");
         expect(result.tokenId).toBe(99999);
       });
+
+      it("reads a W destination from a SAC transfer", () => {
+        expect(
+          getArgsForTokenInvocation(
+            SorobanTokenInterface.transfer,
+            sacTransferArgs(),
+          ),
+        ).toEqual({
+          from: G_ACCOUNT,
+          to: MUXED_CONTRACT_ID_1234,
+          amount: BigInt(100),
+          tokenId: undefined,
+        });
+      });
     });
 
     describe("mint function", () => {
@@ -261,6 +280,22 @@ describe("soroban helpers", () => {
       expect(result).toBeTruthy();
       // Should start with 'C' for contract addresses
       expect(result[0]).toBe("C");
+    });
+
+    it("returns the W strkey for a muxed contract address", () => {
+      expect(
+        addressToString(new Address(MUXED_CONTRACT_ID_1234).toScAddress()),
+      ).toBe(MUXED_CONTRACT_ID_1234);
+    });
+
+    // validateAuthEntryAddress fails closed on this throw; a fallback string
+    // here would weaken it.
+    it("still throws for an address arm it cannot stringify", () => {
+      expect(() =>
+        addressToString({
+          type: "scAddressTypeUnknown",
+        } as unknown as xdr.ScAddress),
+      ).toThrow();
     });
   });
 
@@ -1524,6 +1559,15 @@ describe("display tokens", () => {
     );
     expect(first).toBe('tag("alice\\xff")');
     expect(first).not.toBe(second);
+  });
+
+  it("renders a W address as a single scvAddress token", () => {
+    const w = new Address(MUXED_CONTRACT_ID_1234).toScVal();
+
+    expect(scValToDisplayTokens(w)).toEqual([
+      { kind: "value", text: MUXED_CONTRACT_ID_1234, scValType: "scvAddress" },
+    ]);
+    expect(scValToDisplayValue(w)).toBe(MUXED_CONTRACT_ID_1234);
   });
 });
 

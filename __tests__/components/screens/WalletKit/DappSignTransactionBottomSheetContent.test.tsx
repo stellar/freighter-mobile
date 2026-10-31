@@ -1,0 +1,202 @@
+import { fireEvent } from "@testing-library/react-native";
+import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
+import { DappSignTransactionBottomSheetContent } from "components/screens/WalletKit/DappSignTransactionBottomSheetContent";
+import { TESTNET_NETWORK_DETAILS } from "config/constants";
+import { ActiveAccount } from "ducks/auth";
+import {
+  StellarRpcChains,
+  StellarRpcMethods,
+  WalletKitSessionRequest,
+} from "ducks/walletKit";
+import { renderWithProviders } from "helpers/testUtils";
+import React from "react";
+
+jest.mock("components/screens/WalletKit/useDappHeader", () => ({
+  useDappHeader: () => ({
+    dAppName: "Mock dApp",
+    dAppFavicon: "",
+    dAppDomain: "localhost",
+  }),
+}));
+
+jest.mock("hooks/blockaid/useTransactionBalanceListItems", () => ({
+  useTransactionBalanceListItems: () => [],
+}));
+
+jest.mock("components/screens/WalletKit/DappRequestButtons", () => {
+  const { View: MockView } = jest.requireActual("react-native");
+  return {
+    DappRequestButtons: () => <MockView testID="dapp-request-buttons" />,
+  };
+});
+
+/** The props the details button last rendered with; undefined if it never rendered. */
+let mockDetailsButtonProps: Record<string, unknown> | undefined;
+/** The props the details sheet last rendered with; undefined if it never rendered. */
+let mockDetailsSheetProps: Record<string, unknown> | undefined;
+
+jest.mock("components/screens/SignTransactionDetails", () => ({
+  __esModule: true,
+  SignTransactionDetailsButton: (props: Record<string, unknown>) => {
+    mockDetailsButtonProps = props;
+    return null;
+  },
+  SignTransactionDetailsSheet: (props: Record<string, unknown>) => {
+    mockDetailsSheetProps = props;
+    return null;
+  },
+}));
+
+jest.mock("components/sds/Avatar", () => () => null);
+
+jest.mock("hooks/useAppTranslation", () => ({
+  __esModule: true,
+  default: () => ({ t: (key: string) => key }),
+}));
+
+const ACCOUNT: ActiveAccount = {
+  publicKey: "GDVEU3DD4KOFECV66VIHWEZOYX4ZKR3WV27L464SIIPOU2IUI3JCZA57",
+  privateKey: "",
+  accountName: "Account 1",
+  id: "account-1",
+  subentryCount: 0,
+};
+
+const REQUEST_EVENT = {
+  id: 1,
+  topic: "topic",
+  params: {
+    chainId: StellarRpcChains.TESTNET,
+    request: { method: StellarRpcMethods.SIGN_XDR, params: { xdr: "AAAA" } },
+  },
+} as unknown as WalletKitSessionRequest;
+
+const SIGN_TRANSACTION_DETAILS: SignTransactionDetailsInterface = {
+  summary: {
+    operationsCount: 1,
+    feeXlm: "0.00001",
+    sequenceNumber: "1",
+    memo: null,
+    xdr: "AAAA",
+  },
+  authEntries: [],
+  operations: [],
+  hasTrustlineChanges: false,
+};
+
+describe("DappSignTransactionBottomSheetContent", () => {
+  const onCancelRequest = jest.fn();
+  const onConfirm = jest.fn();
+  const onDetailsRenderError = jest.fn();
+
+  /** Renders the sheet for a displayable request, with `overrides` on top. */
+  const renderSheet = (
+    overrides: Partial<
+      React.ComponentProps<typeof DappSignTransactionBottomSheetContent>
+    > = {},
+  ) =>
+    renderWithProviders(
+      <DappSignTransactionBottomSheetContent
+        requestEvent={REQUEST_EVENT}
+        account={ACCOUNT}
+        networkDetails={TESTNET_NETWORK_DETAILS}
+        onCancelRequest={onCancelRequest}
+        onConfirm={onConfirm}
+        isSigning={false}
+        signTransactionDetails={SIGN_TRANSACTION_DETAILS}
+        onDetailsRenderError={onDetailsRenderError}
+        {...overrides}
+      />,
+    );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockDetailsButtonProps = undefined;
+    mockDetailsSheetProps = undefined;
+  });
+
+  it("offers only Cancel, which rejects, when the request can't be displayed", () => {
+    const { getByTestId, getByText, queryByTestId } = renderSheet({
+      isUndisplayable: true,
+    });
+
+    expect(getByTestId("unreadable-transaction-notice")).toBeTruthy();
+    expect(queryByTestId("dapp-request-buttons")).toBeNull();
+    // There's no way to open the details, but their sheet stays mounted, so
+    // one that's open when the request fails closed stays on screen.
+    expect(mockDetailsButtonProps).toBeUndefined();
+    expect(mockDetailsSheetProps?.data).toBe(SIGN_TRANSACTION_DETAILS);
+    // The header still says who is asking.
+    expect(getByTestId("sign-transaction-title")).toBeTruthy();
+    expect(getByText("localhost")).toBeTruthy();
+
+    fireEvent.press(getByTestId("dapp-request-cancel-button"));
+
+    expect(onCancelRequest).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it("keeps the transaction wording on the notice", () => {
+    const { getByText, queryByText } = renderSheet({ isUndisplayable: true });
+
+    expect(getByText("signTransactionDetails.unreadable.title")).toBeTruthy();
+    expect(
+      getByText("signTransactionDetails.unreadable.description"),
+    ).toBeTruthy();
+    expect(
+      queryByText("signTransactionDetails.unreadableAuthEntry.title"),
+    ).toBeNull();
+    expect(
+      queryByText("signTransactionDetails.unreadableAuthEntry.description"),
+    ).toBeNull();
+  });
+
+  it("disables Cancel while an approval is in flight", () => {
+    const { getByTestId } = renderSheet({
+      isUndisplayable: true,
+      isSigning: true,
+    });
+
+    const cancel = getByTestId("dapp-request-cancel-button");
+    expect(cancel.props.accessibilityState?.disabled).toBe(true);
+
+    fireEvent.press(cancel);
+
+    expect(onCancelRequest).not.toHaveBeenCalled();
+  });
+
+  it("hides the Blockaid banner and Confirm anyway when an undisplayable request is also flagged", () => {
+    const { queryByTestId, queryByText } = renderSheet({
+      isUndisplayable: true,
+      isMalicious: true,
+    });
+
+    // The banner's onPress opens the Blockaid sheet, which offers to confirm
+    // anyway.
+    expect(
+      queryByText("dappConnectionBottomSheetContent.maliciousFlag"),
+    ).toBeNull();
+    expect(queryByTestId("dapp-request-buttons")).toBeNull();
+  });
+
+  it("shows the Blockaid banner on a flagged request it can display", () => {
+    const { getByTestId, getByText } = renderSheet({ isMalicious: true });
+
+    expect(
+      getByText("dappConnectionBottomSheetContent.maliciousFlag"),
+    ).toBeTruthy();
+    expect(getByTestId("dapp-request-buttons")).toBeTruthy();
+  });
+
+  it("renders the details and the buttons when displayable, wiring the boundary callback", () => {
+    const { getByTestId, queryByTestId } = renderSheet({
+      isUndisplayable: false,
+    });
+
+    expect(getByTestId("dapp-request-buttons")).toBeTruthy();
+    expect(queryByTestId("unreadable-transaction-notice")).toBeNull();
+    expect(mockDetailsButtonProps).toBeDefined();
+    expect(mockDetailsSheetProps?.data).toBe(SIGN_TRANSACTION_DETAILS);
+    expect(mockDetailsSheetProps?.onRenderError).toBe(onDetailsRenderError);
+  });
+});

@@ -1,8 +1,13 @@
 import { xdr } from "@stellar/stellar-sdk";
+import { ErrorBoundary } from "components/ErrorBoundary";
 import {
   ExternalExecutableNote,
   KeyValueInvokeHostFnArgs,
 } from "components/screens/SignTransactionDetails/components/KeyVal";
+import {
+  UnreadableTransactionNotice,
+  UnreadableTransactionNoticeVariant,
+} from "components/screens/SignTransactionDetails/components/UnreadableTransactionNotice";
 import { Banner } from "components/sds/Banner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -35,17 +40,30 @@ interface DappAuthEntryDisplayProps {
   entryXdr: string;
   /** When true all invocation cards start expanded */
   expandAll?: boolean;
+  /**
+   * Called once per card whose body throws while rendering, after the error is
+   * reported. A dApp request uses it to fail closed.
+   */
+  onRenderError?: () => void;
 }
 
 /**
  * Decodes a HashIdPreimage XDR and renders each invocation as an expandable
  * card — matching the extension's AuthEntries component.
  *
+ * The body of each expanded card, which holds the invocation's argument blocks,
+ * renders behind an error boundary. When a block throws while rendering, the
+ * boundary reports the error, shows the unreadable notice, in its auth-entry
+ * wording, in place of that card's body and calls `onRenderError`. The card's
+ * title and the rest of the screen stay. The body renders again once
+ * `entryXdr` changes.
+ *
  * Falls back to a scrollable raw-XDR view if parsing fails.
  */
 export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
   entryXdr,
   expandAll = false,
+  onRenderError,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -363,7 +381,18 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
               </TouchableOpacity>
               {isExpanded && (
                 <View className="px-[16px] pb-[16px]">
-                  {renderDetailContent(detail)}
+                  <ErrorBoundary
+                    name="DappAuthEntryDisplay"
+                    fallback={
+                      <UnreadableTransactionNotice
+                        variant={UnreadableTransactionNoticeVariant.AuthEntry}
+                      />
+                    }
+                    onError={onRenderError}
+                    resetKey={entryXdr}
+                  >
+                    {renderDetailContent(detail)}
+                  </ErrorBoundary>
                 </View>
               )}
             </View>

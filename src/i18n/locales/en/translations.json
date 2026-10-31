@@ -1232,6 +1232,14 @@
   },
   "signTransactionDetails": {
     "title": "Transaction Details",
+    "unreadable": {
+      "title": "Unable to read this transaction",
+      "description": "The transaction could not be decoded."
+    },
+    "unreadableAuthEntry": {
+      "title": "Unable to read this authorization",
+      "description": "The authorization entry could not be decoded."
+    },
     "summary": {
       "operationsCount": "Operations",
       "fee": "Fees",

@@ -29,8 +29,17 @@ interface DappRequestBottomSheetContentProps {
   isMemoMissing?: boolean;
   isValidatingMemo?: boolean;
   onBannerPress?: () => void;
+  /** The request's details can't be displayed, so it can only be rejected. */
+  isUndisplayable?: boolean;
+  /** Called when the request's details throw while rendering. */
+  onDetailsRenderError?: () => void;
 }
 
+/**
+ * The dApp request sheet's content. It picks the sheet for the request's
+ * method (sign message, sign auth entry, or a transaction for anything else)
+ * and hands it every prop.
+ */
 const DappRequestBottomSheetContent: React.FC<
   DappRequestBottomSheetContentProps
 > = (props) => {

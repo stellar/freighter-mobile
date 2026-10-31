@@ -5,7 +5,15 @@ import {
   Networks,
   xdr,
 } from "@stellar/stellar-sdk";
+import {
+  G_ACCOUNT,
+  MUXED_CONTRACT_ID_1234,
+} from "__tests__/support/muxedContractFixtures";
+import { sacTransferPreimageXdr } from "__tests__/support/sacTransferFixtures";
+import { DappAuthEntryDetailsSheet } from "components/screens/WalletKit/DappAuthEntryDetails";
 import { DappAuthEntryDisplay } from "components/screens/WalletKit/DappAuthEntryDisplay";
+import { logger } from "config/logger";
+import { scValToDisplayTokens } from "helpers/soroban";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { getContractSpecs } from "services/backend";
@@ -27,6 +35,32 @@ jest.mock("ducks/auth", () => ({
 jest.mock("services/backend", () => ({
   getContractSpecs: jest.fn(),
 }));
+
+// Renders the sheet's content as if it were presented. Only
+// DappAuthEntryDetailsSheet, which hosts the display, uses it.
+jest.mock("components/BottomSheet", () => ({
+  __esModule: true,
+  default: ({ customContent }: { customContent: React.ReactNode }) =>
+    customContent,
+}));
+
+// The token conversion is wrapped so a test can make it throw, which is what an
+// arm the app can't stringify does. The wrapper calls through by default.
+jest.mock("helpers/soroban", () => {
+  const actual = jest.requireActual("helpers/soroban");
+  return {
+    ...actual,
+    scValToDisplayTokens: jest.fn(actual.scValToDisplayTokens),
+  };
+});
+
+const actualSoroban = jest.requireActual("helpers/soroban");
+
+/** Every `scValToDisplayTokens` call throws, as it does for an arm it can't render. */
+const failTokens = () =>
+  jest.mocked(scValToDisplayTokens).mockImplementation(() => {
+    throw new Error("unsupported arm");
+  });
 
 const OWNER_CONTRACT =
   "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4";
@@ -87,6 +121,18 @@ const addressPreimage = xdr.ContractIdPreimage.contractIdPreimageFromAddress(
     salt: new xdr.Uint256Bytes(Buffer.alloc(32, 7)),
   }),
 );
+
+beforeEach(() => {
+  jest
+    .mocked(scValToDisplayTokens)
+    .mockReset()
+    .mockImplementation(actualSoroban.scValToDisplayTokens);
+  jest.mocked(logger.error).mockClear();
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
 
 describe("DappAuthEntryDisplay", () => {
   it("renders a CAP-85 external-executable creation with its owner, tag and note (Protocol 28)", () => {
@@ -183,5 +229,127 @@ describe("DappAuthEntryDisplay", () => {
     expect(queryByTestId("ContractSpecNote")).toBeNull();
     // The values themselves still render.
     expect(getAllByTestId("ParameterValue")).toHaveLength(3);
+  });
+
+  it("renders a W transfer destination in the invocation args", async () => {
+    const { findAllByTestId } = renderWithProviders(
+      <DappAuthEntryDisplay entryXdr={sacTransferPreimageXdr()} expandAll />,
+    );
+
+    const values = await findAllByTestId(
+      "ParameterValue",
+      {},
+      { timeout: 3000 },
+    );
+    expect(values.map((node) => node.props.accessibilityLabel)).toEqual([
+      G_ACCOUNT,
+      MUXED_CONTRACT_ID_1234,
+      "100",
+    ]);
+  });
+
+  it("shows the unreadable notice and calls onRenderError when an argument throws while rendering", async () => {
+    // React logs every error a boundary catches; the report is asserted on
+    // instead, so the log would only be noise.
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    failTokens();
+    const onRenderError = jest.fn();
+
+    const { findByTestId, getByText } = renderWithProviders(
+      <DappAuthEntryDisplay
+        entryXdr={sacTransferPreimageXdr()}
+        expandAll
+        onRenderError={onRenderError}
+      />,
+    );
+
+    expect(await findByTestId("unreadable-transaction-notice")).toBeTruthy();
+    // Only the card body is replaced.
+    expect(getByText("transfer")).toBeTruthy();
+    expect(onRenderError).toHaveBeenCalledTimes(1);
+    expect(logger.error).toHaveBeenCalledWith(
+      "DappAuthEntryDisplay",
+      "Render error caught by error boundary",
+      expect.any(Error),
+      expect.anything(),
+    );
+  });
+
+  it("renders the arguments again for a new entry, without reporting again", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    failTokens();
+    const onRenderError = jest.fn();
+    const { findAllByTestId, findByTestId, queryByTestId, rerender } =
+      renderWithProviders(
+        <DappAuthEntryDisplay
+          entryXdr={sacTransferPreimageXdr()}
+          expandAll
+          onRenderError={onRenderError}
+        />,
+      );
+    await findByTestId("unreadable-transaction-notice");
+
+    jest
+      .mocked(scValToDisplayTokens)
+      .mockImplementation(actualSoroban.scValToDisplayTokens);
+    rerender(
+      <DappAuthEntryDisplay
+        entryXdr={sacTransferPreimageXdr(G_ACCOUNT)}
+        expandAll
+        onRenderError={onRenderError}
+      />,
+    );
+
+    const values = await findAllByTestId(
+      "ParameterValue",
+      {},
+      { timeout: 3000 },
+    );
+    expect(values).toHaveLength(3);
+    expect(queryByTestId("unreadable-transaction-notice")).toBeNull();
+    // A reset isn't reported to the parent.
+    expect(onRenderError).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("DappAuthEntryDetailsSheet, which hosts the display", () => {
+  it("passes onRenderError through the details sheet to the display's boundary", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    failTokens();
+    const onRenderError = jest.fn();
+
+    const { findByTestId } = renderWithProviders(
+      <DappAuthEntryDetailsSheet
+        modalRef={React.createRef()}
+        entryXdr={sacTransferPreimageXdr()}
+        onRenderError={onRenderError}
+      />,
+    );
+
+    expect(await findByTestId("unreadable-transaction-notice")).toBeTruthy();
+    expect(onRenderError).toHaveBeenCalledTimes(1);
+  });
+
+  it("words the fallback for the authorization entry, not a transaction", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    failTokens();
+
+    const { findByText, getByText, queryByText } = renderWithProviders(
+      <DappAuthEntryDetailsSheet
+        modalRef={React.createRef()}
+        entryXdr={sacTransferPreimageXdr()}
+      />,
+    );
+
+    expect(
+      await findByText("signTransactionDetails.unreadableAuthEntry.title"),
+    ).toBeTruthy();
+    expect(
+      getByText("signTransactionDetails.unreadableAuthEntry.description"),
+    ).toBeTruthy();
+    expect(queryByText("signTransactionDetails.unreadable.title")).toBeNull();
+    expect(
+      queryByText("signTransactionDetails.unreadable.description"),
+    ).toBeNull();
   });
 });

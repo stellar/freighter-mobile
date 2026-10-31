@@ -6,6 +6,12 @@ import { View } from "react-native";
 
 interface DappAuthEntryDetailsBottomSheetProps {
   entryXdr: string;
+  /**
+   * Called when an invocation's body throws while rendering, after the error is
+   * reported. Passed through to {@link DappAuthEntryDisplay}, whose error
+   * boundaries call it.
+   */
+  onRenderError?: () => void;
 }
 
 /**
@@ -23,18 +29,28 @@ export const DappAuthEntryDetailsHeader: React.FC<{
       title={t("dappRequestBottomSheetContent.authEntryDetails")}
       layout="centered"
       onClose={onDismiss}
+      closeTestID="dapp-auth-entry-details-close-button"
     />
   );
 };
 
+/**
+ * The body of the auth entry details sheet: the entry's display, with every
+ * invocation expanded. Each invocation's body renders behind an error boundary,
+ * which reports a render error through `onRenderError`.
+ */
 const DappAuthEntryDetailsBottomSheet: React.FC<
   DappAuthEntryDetailsBottomSheetProps
-> = ({ entryXdr }) => (
+> = ({ entryXdr, onRenderError }) => (
   // The host renders this in the wrapper's scrollable mode, below the pinned
   // header: the sheet sizes to this content and scrolls once it reaches its
   // maximum height.
   <View className="w-full">
-    <DappAuthEntryDisplay entryXdr={entryXdr} expandAll />
+    <DappAuthEntryDisplay
+      entryXdr={entryXdr}
+      expandAll
+      onRenderError={onRenderError}
+    />
   </View>
 );
 
