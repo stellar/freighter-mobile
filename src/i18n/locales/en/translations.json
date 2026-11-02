@@ -1149,7 +1149,9 @@
       "invalidDecimals": "Invalid or missing decimals for custom token",
       "invalidFederationMemo": "The federation server returned an invalid memo. Please verify the address and try again.",
       "recipientIsTokenContract": "Cannot send to the token's own contract",
-      "muxedContractNotSupported": "This token does not support muxed contract address (W-) as a target destination."
+      "muxedContractNotSupported": "This token does not support muxed contract address (W-) as a target destination.",
+      "muxedAddressNotSupported": "This token does not support muxed address (M-) as a target destination.",
+      "nonNumericMemoNotSupported": "This token only accepts a numeric memo, from 0 to 18446744073709551615."
     }
   },
   "tokenIconAlt": "{{code}} token icon",

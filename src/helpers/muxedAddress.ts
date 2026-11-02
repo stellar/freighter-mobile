@@ -8,8 +8,9 @@ import {
   isMuxedAccount,
   isValidStellarAddress,
   createMuxedAccount,
-  getBaseAccount,
 } from "helpers/stellar";
+// Aliased so it doesn't clash with the `t` that getMemoDisabledState takes
+import { t as translate } from "i18next";
 import { checkContractSupportsMuxed } from "services/backend";
 
 export interface MemoDisabledStateParams {
@@ -123,27 +124,29 @@ export interface DetermineMuxedDestinationParams {
 }
 
 /**
- * Picks the address a Soroban transfer is sent to.
+ * Picks the address a Soroban transfer is sent to, or refuses the transfer.
  *
- * A muxed contract (`W...`) is returned unchanged, before anything else: the
- * mux id is already in the address, so it is never re-encoded, stripped to its
- * `C...` or rebuilt as an `M...`, and the memo and `contractSupportsMuxed` are
- * ignored for it.
+ * A Soroban transaction carries no memo, so the only id a transfer can carry
+ * is the one in a muxed destination. When the recipient or the memo can't
+ * arrive as entered, this throws instead of sending to a different address
+ * or without the memo.
  *
- * Every other recipient follows the existing rules:
- * - Contract supports muxed: a `G...` with a memo becomes an `M...` carrying
- *   the memo as its id. Anything else is kept as is, including an `M...` with
- *   a memo: `isValidStellarAddress` accepts an `M...`, so it takes the `G...`
- *   branch, where `createMuxedAccount` returns null for it. The branch that
- *   would re-mux an `M...` onto its base `G...` is never reached for a real
- *   `M...`.
- * - Contract does not support muxed: an `M...` falls back to its base `G...`,
- *   and anything else is kept as is.
+ * - A muxed contract (`W...`) is returned unchanged, before anything else: the
+ *   mux id is already in the address, so it is never re-encoded, stripped to
+ *   its `C...` or rebuilt as an `M...`, and the memo and
+ *   `contractSupportsMuxed` are ignored for it.
+ * - An `M...` is returned unchanged when the contract supports muxed
+ *   addresses, and refused when it doesn't. A memo for it is refused: the
+ *   `M...`'s own id is the only one the transfer can carry.
+ * - Any other recipient without a memo is returned unchanged.
+ * - A `G...` with a memo becomes an `M...` carrying the memo as its id. The
+ *   memo is refused when the contract doesn't support muxed addresses, when
+ *   the recipient isn't a `G...`, or when the memo isn't a decimal uint64.
  *
  * @param params The recipient, the memo, and whether the contract supports muxed
  * @returns The address to send to
- * @throws Error if the contract does not support muxed and an `M...` recipient
- * has no valid base `G...`
+ * @throws Error with a translated message when the recipient or the memo
+ * can't be carried
  */
 export function determineMuxedDestination(
   params: DetermineMuxedDestinationParams,
@@ -156,58 +159,41 @@ export function determineMuxedDestination(
     return recipientAddress;
   }
 
+  const hasMemo =
+    typeof transactionMemo === "string" && transactionMemo.length > 0;
+
+  if (isMuxedAccount(recipientAddress)) {
+    if (!contractSupportsMuxed) {
+      throw new Error(translate("transaction.errors.muxedAddressNotSupported"));
+    }
+
+    if (hasMemo) {
+      throw new Error(
+        translate("transactionSettings.memoInfo.memoDisabledForTransaction"),
+      );
+    }
+
+    return recipientAddress;
+  }
+
+  if (!hasMemo) {
+    return recipientAddress;
+  }
+
   const isRecipientGAddress =
     isValidStellarAddress(recipientAddress) && !isContractId(recipientAddress);
-  const isRecipientAlreadyMuxed = isMuxedAccount(recipientAddress);
-  const hasValidMemo =
-    transactionMemo &&
-    typeof transactionMemo === "string" &&
-    transactionMemo.length > 0;
 
-  if (contractSupportsMuxed) {
-    if (isRecipientGAddress && hasValidMemo) {
-      const muxedWithMemo = createMuxedAccount(
-        recipientAddress,
-        transactionMemo,
-      );
-      return muxedWithMemo || recipientAddress;
-    }
-
-    if (isRecipientGAddress && !hasValidMemo) {
-      return recipientAddress;
-    }
-
-    if (isRecipientAlreadyMuxed && hasValidMemo) {
-      const baseAccount = getBaseAccount(recipientAddress);
-      if (
-        baseAccount &&
-        isValidStellarAddress(baseAccount) &&
-        !isContractId(baseAccount)
-      ) {
-        const muxedWithNewMemo = createMuxedAccount(
-          baseAccount,
-          transactionMemo,
-        );
-        return muxedWithNewMemo || recipientAddress;
-      }
-    }
-
-    if (isRecipientAlreadyMuxed && !hasValidMemo) {
-      return recipientAddress;
-    }
-  } else if (isRecipientAlreadyMuxed) {
-    const baseAccount = getBaseAccount(recipientAddress);
-    if (
-      baseAccount &&
-      isValidStellarAddress(baseAccount) &&
-      !isContractId(baseAccount)
-    ) {
-      return baseAccount;
-    }
+  if (!contractSupportsMuxed || !isRecipientGAddress) {
     throw new Error(
-      "This contract does not support muxed addresses. Please use a regular address (G... or C...).",
+      translate("transactionSettings.memoInfo.memoNotSupportedForOperation"),
     );
   }
 
-  return recipientAddress;
+  const muxedWithMemo = createMuxedAccount(recipientAddress, transactionMemo);
+
+  if (!muxedWithMemo) {
+    throw new Error(translate("transaction.errors.nonNumericMemoNotSupported"));
+  }
+
+  return muxedWithMemo;
 }

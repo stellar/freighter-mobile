@@ -28,6 +28,11 @@ jest.mock("helpers/stellar");
 
 jest.mock("helpers/soroban");
 
+// A refusal's message is a translation; the key stands in for it.
+jest.mock("i18next", () => ({
+  t: jest.fn((key: string) => key),
+}));
+
 const mockCheckContractSupportsMuxed =
   checkContractSupportsMuxed as jest.MockedFunction<
     typeof checkContractSupportsMuxed
@@ -287,31 +292,18 @@ describe("muxedAddress helpers", () => {
       expect(result).toBe(gAddress);
     });
 
-    it("should create new muxed when M address provided with new memo and contract supports muxed", () => {
-      const newMuxed = "MNEW...";
-      // isRecipientGAddress checks: isValidStellarAddress && !isContractId
-      // For M address, isValidStellarAddress returns false, so isRecipientGAddress is false
-      mockIsValidStellarAddress.mockReturnValue(false);
-      mockIsContractId.mockReturnValue(false);
-      // isRecipientAlreadyMuxed returns true for M address
+    it("refuses a memo for an M, whose own id is the only one the transfer can carry", () => {
       mockIsMuxedAccount.mockReturnValue(true);
       mockGetBaseAccount.mockReturnValue(baseAddress);
-      // After getting base, check if it's valid G address (for validation)
-      mockIsValidStellarAddress
-        .mockReturnValueOnce(false)
-        .mockReturnValueOnce(true);
-      mockIsContractId.mockReturnValueOnce(false).mockReturnValueOnce(false);
-      mockCreateMuxedAccount.mockReturnValue(newMuxed);
+      mockCreateMuxedAccount.mockReturnValue("MNEW...");
 
-      const result = determineMuxedDestination({
-        recipientAddress: mAddress,
-        transactionMemo: "5678",
-        contractSupportsMuxed: true,
-      });
-
-      expect(mockGetBaseAccount).toHaveBeenCalledWith(mAddress);
-      expect(mockCreateMuxedAccount).toHaveBeenCalledWith(baseAddress, "5678");
-      expect(result).toBe(newMuxed);
+      expect(() =>
+        determineMuxedDestination({
+          recipientAddress: mAddress,
+          transactionMemo: "5678",
+          contractSupportsMuxed: true,
+        }),
+      ).toThrow("transactionSettings.memoInfo.memoDisabledForTransaction");
     });
 
     it("should use M address as-is when contract supports muxed and no memo", () => {
@@ -326,24 +318,9 @@ describe("muxedAddress helpers", () => {
       expect(result).toBe(mAddress);
     });
 
-    it("should extract base G when contract does not support muxed and M address provided", () => {
+    it("refuses an M when the contract does not support muxed addresses, instead of sending to its base G", () => {
       mockIsMuxedAccount.mockReturnValue(true);
       mockGetBaseAccount.mockReturnValue(baseAddress);
-      mockIsValidStellarAddress.mockReturnValue(true);
-
-      const result = determineMuxedDestination({
-        recipientAddress: mAddress,
-        transactionMemo: undefined,
-        contractSupportsMuxed: false,
-      });
-
-      expect(mockGetBaseAccount).toHaveBeenCalledWith(mAddress);
-      expect(result).toBe(baseAddress);
-    });
-
-    it("should throw error when contract does not support muxed, M address provided, but base is invalid", () => {
-      mockIsMuxedAccount.mockReturnValue(true);
-      mockGetBaseAccount.mockReturnValue(null);
 
       expect(() =>
         determineMuxedDestination({
@@ -351,19 +328,44 @@ describe("muxedAddress helpers", () => {
           transactionMemo: undefined,
           contractSupportsMuxed: false,
         }),
-      ).toThrow("This contract does not support muxed addresses");
+      ).toThrow("transaction.errors.muxedAddressNotSupported");
     });
 
-    it("should use G address as-is when contract does not support muxed", () => {
+    it("should use G address as-is when contract does not support muxed and there is no memo", () => {
       mockIsMuxedAccount.mockReturnValue(false);
 
       const result = determineMuxedDestination({
         recipientAddress: gAddress,
-        transactionMemo: "1234",
+        transactionMemo: undefined,
         contractSupportsMuxed: false,
       });
 
       expect(result).toBe(gAddress);
+    });
+
+    it("refuses a memo when the contract does not support muxed addresses, instead of dropping it", () => {
+      mockIsMuxedAccount.mockReturnValue(false);
+
+      expect(() =>
+        determineMuxedDestination({
+          recipientAddress: gAddress,
+          transactionMemo: "1234",
+          contractSupportsMuxed: false,
+        }),
+      ).toThrow("transactionSettings.memoInfo.memoNotSupportedForOperation");
+    });
+
+    it("refuses a memo that doesn't fold into an M, instead of dropping it", () => {
+      mockIsMuxedAccount.mockReturnValue(false);
+      mockCreateMuxedAccount.mockReturnValue(null);
+
+      expect(() =>
+        determineMuxedDestination({
+          recipientAddress: gAddress,
+          transactionMemo: "AB12CD",
+          contractSupportsMuxed: true,
+        }),
+      ).toThrow("transaction.errors.nonNumericMemoNotSupported");
     });
   });
 

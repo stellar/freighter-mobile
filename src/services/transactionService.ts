@@ -377,7 +377,8 @@ interface BuildPaymentTransactionResult {
  *   asset's Stellar Asset Contract (see `getSacContractIdForBalance`). Only the
  *   sender's account is loaded. It carries no transaction memo: when the token
  *   contract supports muxed addresses, a memo for a `G...` becomes the id of
- *   an `M...` destination instead.
+ *   an `M...` destination instead. A memo or an `M...` the transfer can't
+ *   carry is refused (see `determineMuxedDestination`).
  *
  * A `W...` always takes the SAC transfer, and is sent to exactly as given. It
  * is never re-encoded, stripped to its `C...` or rebuilt as an `M...`, and it
@@ -783,7 +784,8 @@ interface BuildSendCollectibleTransactionResult {
 /**
  * Builds a collectible transfer transaction: a `transfer(from, to, token_id)`
  * call on the collection contract. See `determineMuxedDestination` for how a
- * memo folds into the destination.
+ * memo folds into the destination, and when a memo or an `M...` recipient is
+ * refused.
  *
  * A muxed contract (`W...`) recipient is refused with
  * `transaction.errors.muxedContractNotSupported`, before any network call: no
@@ -793,7 +795,8 @@ interface BuildSendCollectibleTransactionResult {
  * timeout, and the network and sender
  * @returns The transaction, its XDR and the final destination
  * @throws Error `Failed to build send collectible transaction: ...` when a
- * parameter is missing or invalid, the recipient is a `W...`, or building fails
+ * parameter is missing or invalid, the recipient is a `W...`, the recipient or
+ * memo can't be carried, or building fails
  */
 export const buildSendCollectibleTransaction = async (
   params: BuildSendCollectibleParams,
