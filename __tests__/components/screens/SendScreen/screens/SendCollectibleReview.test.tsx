@@ -1236,3 +1236,36 @@ describe("SendCollectibleReview - muxed recipients (W and M)", () => {
     });
   });
 });
+
+describe("SendCollectibleReview - build errors", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setupDefaultMocks();
+    mockAssessTransactionSecurity.mockReturnValue({
+      level: SecurityLevel.SAFE,
+      isMalicious: false,
+      isSuspicious: false,
+      isUnableToScan: false,
+    });
+    mockExtractSecurityWarnings.mockReturnValue([]);
+  });
+
+  it("shows a failed build's error as a toast, so Review doesn't just do nothing", () => {
+    const buildError =
+      "Failed to build send collectible transaction: transactionSettings.memoInfo.memoNotSupportedForOperation";
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockUseTransactionBuilderStore(),
+      transactionXDR: null,
+      error: buildError,
+    });
+
+    const { getByText } = renderWithProviders(
+      <SendCollectibleReviewScreen
+        navigation={mockNavigation}
+        route={mockRoute}
+      />,
+    );
+
+    expect(getByText(buildError)).toBeTruthy();
+  });
+});

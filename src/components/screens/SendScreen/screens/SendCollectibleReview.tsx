@@ -59,6 +59,7 @@ import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
+import { useToast } from "providers/ToastProvider";
 import React, {
   useCallback,
   useEffect,
@@ -127,6 +128,7 @@ const SendCollectibleReviewScreen: React.FC<
     resetTransaction,
     isBuilding,
     transactionXDR,
+    error: transactionBuilderError,
   } = useTransactionBuilderStore();
 
   // Reset transaction on unmount, but keep selectedCollectibleDetails
@@ -137,6 +139,22 @@ const SendCollectibleReviewScreen: React.FC<
     },
     [resetTransaction],
   );
+
+  const { showToast } = useToast();
+
+  // Show why a build failed, as the amount screen does: otherwise Review just
+  // does nothing. Every failed build shows it, since a new build clears the
+  // error first.
+  useEffect(() => {
+    if (transactionBuilderError) {
+      showToast({
+        variant: "error",
+        title: transactionBuilderError,
+        toastId: "transaction-builder-error",
+        duration: 5000,
+      });
+    }
+  }, [transactionBuilderError, showToast]);
 
   const { isValidatingMemo } = useValidateTransactionMemo(transactionXDR);
 
