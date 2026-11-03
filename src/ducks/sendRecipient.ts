@@ -4,6 +4,7 @@ import { logger } from "config/logger";
 import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
 import { isContractDestination } from "helpers/muxedContract";
 import {
+  getBaseAccount,
   isFederationAddress,
   isSameAccount,
   isValidStellarAddress,
@@ -59,6 +60,18 @@ const SEARCH_RESET_STATE = {
   federationMemo: "",
   federationMemoType: "",
 };
+
+/**
+ * The account to look up to learn whether a destination is funded. A muxed
+ * account (`M...`) is its base `G...` plus an id, so it is funded exactly when
+ * its `G...` is; Horizon can't look up the `M...` itself. Any other address is
+ * looked up as is.
+ *
+ * @param address A destination that isn't a contract (`C...` or `W...`)
+ * @returns The address to pass to `getAccount`
+ */
+const getFundingLookupAddress = (address: string): string =>
+  getBaseAccount(address) ?? address;
 
 const initialState: Omit<
   SendStore,
@@ -184,7 +197,8 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
    * gets no account lookup and is recorded as unfunded
    * (`isDestinationFunded: false`), the value a `C…` already got because
    * looking up a contract address finds no account. Any other destination
-   * is looked up to learn whether its account exists.
+   * is looked up to learn whether its account exists, an `M…` through its
+   * base `G…` (see `getFundingLookupAddress`).
    *
    * @param searchTerm The address or federation address to search for
    */
@@ -281,7 +295,10 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
           // own storage. Same value the lookup of a `C…` yielded (no account).
           isFunded = false;
         } else {
-          const account = await getAccount(resolvedAddress, network);
+          const account = await getAccount(
+            getFundingLookupAddress(resolvedAddress),
+            network,
+          );
           isFunded = !!account;
         }
       } catch (error: unknown) {
@@ -350,7 +367,8 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
    * A contract destination (`C…` or `W…`) holds no classic account, so it is
    * never looked up: it is recorded as unfunded (`isDestinationFunded: false`)
    * straight away, as `searchAddress` does. Any other destination starts with
-   * an unknown funding status (`null`) until its account lookup settles.
+   * an unknown funding status (`null`) until its account lookup settles; an
+   * `M…` is looked up through its base `G…`.
    *
    * @param address The destination address
    * @param fedAddress The federation address the destination came from, if any
@@ -378,7 +396,10 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
     // Fetch the account funding status asynchronously
     (async () => {
       try {
-        const account = await getAccount(address, network);
+        const account = await getAccount(
+          getFundingLookupAddress(address),
+          network,
+        );
         set({
           isDestinationFunded: !!account,
         });
