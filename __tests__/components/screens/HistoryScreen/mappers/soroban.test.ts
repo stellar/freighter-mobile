@@ -212,8 +212,6 @@ describe("getAttrsFromSorobanHorizonOp", () => {
   it.each([
     ["XDR that doesn't decode", { envelope_xdr: "not-xdr" }],
     ["no envelope", {}],
-    ["no transaction_attr", undefined],
-    ["null transaction_attr", null],
   ])(
     "returns null instead of throwing for a record with %s",
     (_, transactionAttr) => {
@@ -229,6 +227,22 @@ describe("getAttrsFromSorobanHorizonOp", () => {
       );
     },
   );
+
+  it.each([
+    ["no transaction_attr", undefined],
+    ["a null transaction_attr", null],
+  ])("returns null instead of throwing for a record with %s", (_, attr) => {
+    const op = sorobanRecord({ transaction_attr: attr });
+    expect(
+      getAttrsFromSorobanHorizonOp(op, TESTNET_NETWORK_DETAILS),
+    ).toBeNull();
+    expect(logger.error).toHaveBeenCalledTimes(1);
+    expect(logger.error).toHaveBeenCalledWith(
+      "getAttrsFromSorobanHorizonOp",
+      "Soroban record has no transaction_attr",
+      "op-1",
+    );
+  });
 
   it("returns null without logging for a non-Soroban record", () => {
     // Mercury's classic records have no envelope: without the isSorobanOp

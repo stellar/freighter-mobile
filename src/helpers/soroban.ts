@@ -775,8 +775,8 @@ export const hasSorobanOperations = (
  * - Horizon: only the `envelope_xdr`, whose single operation (Soroban allows
  *   one per transaction for now) is decoded with `getTokenInvocationArgs`.
  *
- * Never throws: a record whose contents it can't read (no `transaction_attr`,
- * XDR that doesn't decode, ...) is logged and yields `null`, so one bad record
+ * A record it can't read (no `transaction_attr`, an envelope that doesn't
+ * decode) is logged and yields `null` instead of throwing, so one bad record
  * can't break the whole history load. `null` is also what a non-Soroban
  * operation gets and, for the Horizon shape, an invocation that isn't a token
  * `transfer` or `mint`.
@@ -794,27 +794,33 @@ export const getAttrsFromSorobanHorizonOp = (
     return null;
   }
 
+  const attrs = (operation as any).transaction_attr;
+
+  if (!attrs) {
+    logger.error(
+      "getAttrsFromSorobanHorizonOp",
+      "Soroban record has no transaction_attr",
+      operation.id,
+    );
+
+    return null;
+  }
+
+  if (attrs.contractId) {
+    return {
+      contractId: attrs.contractId,
+      fnName: attrs.fnName,
+      ...attrs.args,
+    };
+  }
+
+  let transaction: Transaction;
+
   try {
-    const op = operation as any;
-
-    if (op.transaction_attr.contractId) {
-      return {
-        contractId: op.transaction_attr.contractId,
-        fnName: op.transaction_attr.fnName,
-        ...op.transaction_attr.args,
-      };
-    }
-
-    const transaction = TransactionBuilder.fromXdr(
-      op.transaction_attr.envelope_xdr as string,
+    transaction = TransactionBuilder.fromXdr(
+      attrs.envelope_xdr as string,
       networkDetails.networkPassphrase,
     ) as Transaction;
-
-    // only one op per tx in Soroban right now
-    const invokeHostFn = transaction
-      .operations[0] as Operation.InvokeHostFunction;
-
-    return getTokenInvocationArgs(invokeHostFn);
   } catch (error) {
     logger.error(
       "getAttrsFromSorobanHorizonOp",
@@ -824,6 +830,12 @@ export const getAttrsFromSorobanHorizonOp = (
 
     return null;
   }
+
+  // only one op per tx in Soroban right now
+  const invokeHostFn = transaction
+    .operations[0] as Operation.InvokeHostFunction;
+
+  return getTokenInvocationArgs(invokeHostFn);
 };
 
 /**
