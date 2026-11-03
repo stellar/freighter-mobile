@@ -77,6 +77,13 @@ describe("W ↔ C + id", () => {
     );
   });
 
+  it("drops leading zeros from the id, which is read as a number", () => {
+    expect(buildMuxedContract(BASE_CONTRACT, "01234")).toBe(
+      MUXED_CONTRACT_ID_1234,
+    );
+    expect(buildMuxedContract(BASE_CONTRACT, "00")).toBe(MUXED_CONTRACT_ID_0);
+  });
+
   it("throws on invalid input", () => {
     ["18446744073709551616", "-1", "0x10", " 16 ", "", "abc"].forEach((id) =>
       expect(() => buildMuxedContract(BASE_CONTRACT, id)).toThrow(),
