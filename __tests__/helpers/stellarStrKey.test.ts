@@ -39,6 +39,14 @@ describe("scrubStrKeys", () => {
     },
   );
 
+  it("leaves a W one character short (68 characters) alone", () => {
+    const tooShort = MUXED_CONTRACT_ID_0.slice(0, -1);
+
+    expect(scrubStrKeys(`failed for ${tooShort} on testnet`)).toBe(
+      `failed for ${tooShort} on testnet`,
+    );
+  });
+
   it("returns undefined for a missing input", () => {
     expect(scrubStrKeys(null)).toBeUndefined();
     expect(scrubStrKeys(undefined)).toBeUndefined();
