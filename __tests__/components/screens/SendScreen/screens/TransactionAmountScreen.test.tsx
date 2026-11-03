@@ -3006,6 +3006,29 @@ describe("TransactionAmountScreen - muxed recipients (W and M)", () => {
       expect(mockCheckContractMuxedSupport).not.toHaveBeenCalled();
     });
 
+    it.each([
+      ["G", G_ACCOUNT],
+      ["C", BASE_CONTRACT],
+      ["W", MUXED_CONTRACT_ID_1234],
+    ])(
+      "looks up muxed support only for an M: none for a custom token sent to a %s",
+      async (_type, recipientAddress) => {
+        setSettingsStore({
+          selectedTokenId: customTokenBalance.id,
+          recipientAddress,
+        });
+        render(
+          <TransactionAmountScreen
+            navigation={mockNavigation}
+            route={routeFor(customTokenBalance.id, recipientAddress)}
+          />,
+        );
+        await waitForAutoSimulation();
+
+        expect(mockCheckContractMuxedSupport).not.toHaveBeenCalled();
+      },
+    );
+
     it("opens the M explanation from the banner once the keyboard is down", async () => {
       let keyboardDown!: () => void;
       const waitForKeyboard = jest

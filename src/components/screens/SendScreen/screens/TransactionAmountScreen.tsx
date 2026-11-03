@@ -407,7 +407,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       // apply to this one meanwhile.
       setContractSupportsMuxed(null);
 
-      if (!isCustomToken || !recipientAddress || !network || !contractId) {
+      // Only an M reads the answer. A G or C needs no muxed support, and a W
+      // is blocked for a custom token without any lookup.
+      if (
+        !isRecipientMuxed ||
+        !isCustomToken ||
+        !recipientAddress ||
+        !network ||
+        !contractId
+      ) {
         return;
       }
 
@@ -433,7 +441,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return () => {
       isLatestCheck = false;
     };
-  }, [isCustomToken, recipientAddress, network, contractId]);
+  }, [isRecipientMuxed, isCustomToken, recipientAddress, network, contractId]);
 
   // Determine if M address + contract doesn't support muxed
   const isMuxedAddressWithoutMemoSupport = Boolean(
