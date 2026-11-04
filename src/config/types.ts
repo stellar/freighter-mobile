@@ -310,6 +310,49 @@ export interface TokenStatsResponse {
   data: TokenStats;
 }
 
+/** Wire shapes of backend-v2 `POST /swap/quotes`. */
+export type SwapQuoteMode = "send" | "receive";
+
+export interface SwapHop {
+  venue: string;
+  from: string;
+  to: string;
+  pool?: string;
+}
+
+export interface SwapRoutePath {
+  share: string;
+  hops: SwapHop[];
+}
+
+export interface SwapFee {
+  name: string;
+  amount: string;
+  asset: string;
+}
+
+export interface SwapRoute {
+  source: string;
+  fromAmount: string;
+  toAmount: string;
+  paths: SwapRoutePath[];
+  fees: SwapFee[];
+}
+
+export interface SwapUnavailable {
+  source: string;
+  reason: string;
+}
+
+export interface SwapQuotes {
+  routes: SwapRoute[];
+  unavailable: SwapUnavailable[];
+}
+
+export interface SwapQuotesResponse {
+  data: SwapQuotes;
+}
+
 /**
  * Represents a balance with additional price and display information
  *

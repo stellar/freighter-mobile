@@ -1,10 +1,9 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { Asset, Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
+import { selectSwapRoute } from "components/screens/SwapScreen/helpers/selectSwapRoute";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import {
   DEFAULT_DECIMALS,
-  mapNetworkToNetworkDetails,
   NATIVE_TOKEN_CODE,
   NETWORKS,
 } from "config/constants";
@@ -14,11 +13,13 @@ import { isNativeAssetId } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useCallback, useRef } from "react";
+import { fetchSwapQuotes } from "services/backend";
 
 interface UseSwapForXlmReserveParams {
   sourceBalance: HeldBalanceItem | undefined;
   bestNonXlmClassicBalance: HeldBalanceItem | undefined;
   network: NETWORKS;
+  publicKey: string | undefined;
   subentryCount: number;
   swapFee: string;
   setSourceToken: (id: string, symbol: string) => void;
@@ -45,6 +46,7 @@ export const useSwapForXlmReserve = ({
   sourceBalance,
   bestNonXlmClassicBalance,
   network,
+  publicKey,
   subentryCount,
   swapFee,
   setSourceToken,
@@ -61,9 +63,9 @@ export const useSwapForXlmReserve = ({
   const canOfferSwapToXlm =
     isCurrentSourceNonXlmClassic || !!bestNonXlmClassicBalance;
 
-  // Picks the sell token, sets XLM as the Receive token, and asks Horizon's
-  // strictReceivePaths how much of the sell token it would take to receive at
-  // least 0.5 XLM.
+  // Picks the sell token, sets XLM as the Receive token, and asks the backend
+  // for a receive quote: how much of the sell token it would take to receive
+  // at least 0.5 XLM.
   //
   // Sell-token resolution:
   //   - Non-XLM classic source → reuse it. The amount survives because the
@@ -89,21 +91,24 @@ export const useSwapForXlmReserve = ({
 
     let receivedSourceAmount: string | null = null;
     try {
-      const networkDetails = mapNetworkToNetworkDetails(network);
-      const server = new Horizon.Server(networkDetails.networkUrl);
-      const sellAsset = new Asset(sellTokenCode, sellIssuer);
-      const result = await server
-        .strictReceivePaths([sellAsset], Asset.native(), "0.5")
-        .limit(1)
-        .call();
-      receivedSourceAmount = result.records[0]?.source_amount ?? null;
+      if (publicKey) {
+        const quotes = await fetchSwapQuotes({
+          network,
+          account: publicKey,
+          mode: "receive",
+          fromAsset: `${sellTokenCode}:${sellIssuer}`,
+          toAsset: NATIVE_TOKEN_CODE,
+          amount: "0.5",
+        });
+        receivedSourceAmount = selectSwapRoute(quotes)?.fromAmount ?? null;
+      }
     } catch (error) {
       // No path / network error — fall back to setting source+dest without
       // a pre-filled amount so the user can still adjust manually. Expected
       // and handled, so warn (not error → no red LogBox / Sentry issue).
       logger.warn(
         "useSwapForXlmReserve.handleSwapForXlmFromSheet",
-        "strictReceivePaths failed",
+        "receive quote failed",
         error,
       );
     }
@@ -147,6 +152,7 @@ export const useSwapForXlmReserve = ({
     sourceBalance,
     bestNonXlmClassicBalance,
     network,
+    publicKey,
     subentryCount,
     swapFee,
     setSourceToken,

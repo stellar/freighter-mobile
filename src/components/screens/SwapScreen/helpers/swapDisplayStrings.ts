@@ -94,7 +94,7 @@ export const buildReceiveTexts = ({
   receiveBigText: string;
   receiveSmallText: string;
 } => {
-  // `destinationAmount` arrives from Horizon/the path-finder as a raw
+  // `destinationAmount` arrives from the swap quote as a raw
   // dot-notation string ("0.1228789"). Run it through
   // formatTokenForDisplay so the rendered amount uses the device
   // locale's decimal separator (e.g. "0,1228789" on EU-style locales).

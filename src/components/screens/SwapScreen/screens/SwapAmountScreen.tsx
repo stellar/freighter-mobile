@@ -522,6 +522,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceBalance,
     bestNonXlmClassicBalance,
     network,
+    publicKey: account?.publicKey,
     subentryCount: account?.subentryCount ?? 0,
     swapFee,
     setSourceToken,

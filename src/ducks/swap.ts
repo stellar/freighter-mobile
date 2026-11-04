@@ -1,19 +1,26 @@
-import { Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
-import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers";
+import {
+  DestinationTokenDescriptor,
+  selectSwapRoute,
+  swapRouteIntermediateAssets,
+} from "components/screens/SwapScreen/helpers";
 import {
   DEFAULT_DECIMALS,
+  NATIVE_TOKEN_CODE,
   NETWORKS,
-  mapNetworkToNetworkDetails,
 } from "config/constants";
 import { logger } from "config/logger";
-import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
+import {
+  PricedBalance,
+  SwapQuotes,
+  TokenTypeWithCustomToken,
+} from "config/types";
 import { useDebugStore } from "ducks/debug";
-import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { t } from "i18next";
+import { fetchSwapQuotes } from "services/backend";
 import { getTokenForPayment } from "services/transactionService";
 import { create } from "zustand";
 
@@ -21,19 +28,6 @@ export interface SwapPathResult {
   sourceAmount: string;
   destinationAmount: string;
   destinationAmountMin: string;
-  path: string[];
-  conversionRate: string;
-}
-
-interface HorizonPathToken {
-  asset_type: string;
-  asset_code?: string;
-  asset_issuer?: string;
-}
-
-interface SwapPathData {
-  sourceAmount: string;
-  destinationAmount: string;
   path: string[];
   conversionRate: string;
 }
@@ -52,6 +46,8 @@ interface SwapState {
   sourceAmountDisplay: string; // Display value (locale formatted)
   destinationAmount: string;
   pathResult: SwapPathResult | null;
+  /** Every route and unavailable source from the last quote, for the route list. */
+  swapQuotes: SwapQuotes | null;
   isLoadingPath: boolean;
   pathError: string | null;
   isBuilding: boolean;
@@ -83,6 +79,7 @@ const initialState = {
   sourceAmountDisplay: "0",
   destinationAmount: "0",
   pathResult: null,
+  swapQuotes: null as SwapQuotes | null,
   isLoadingPath: false,
   pathError: null,
   isBuilding: false,
@@ -97,58 +94,25 @@ const computeDestMinWithSlippage = (
   return new BigNumber(destinationAmount).times(new BigNumber(mult)).toFixed(7);
 };
 
-/**
- * Finds the best swap path using Horizon's strict send paths endpoint
- * This is for classic token swaps using Stellar's built-in DEX
- */
-const findClassicSwapPath = async (params: {
-  sourceBalance: PricedBalance;
-  destinationBalance: PricedBalance;
-  sourceAmount: string;
-  network: NETWORKS;
-}): Promise<SwapPathData | null> => {
-  const { sourceBalance, destinationBalance, sourceAmount, network } = params;
-
-  try {
-    const networkDetails = mapNetworkToNetworkDetails(network);
-    const server = new Horizon.Server(networkDetails.networkUrl);
-
-    const sourceToken = getTokenForPayment(sourceBalance);
-    const destToken = getTokenForPayment(destinationBalance);
-
-    const pathsResult = await server
-      .strictSendPaths(sourceToken, sourceAmount, [destToken])
-      .limit(1)
-      .call();
-
-    if (pathsResult.records.length === 0) {
-      return null;
-    }
-
-    const bestPath = pathsResult.records[0];
-
-    const path: string[] = bestPath.path.map((token: HorizonPathToken) => {
-      if (isNativeAssetId(token.asset_type)) {
-        return "native";
-      }
-      return `${token.asset_code}:${token.asset_issuer}`;
-    });
-
-    const sourceAmountBN = new BigNumber(sourceAmount);
-    const destAmountBN = new BigNumber(bestPath.destination_amount);
-    const conversionRate = destAmountBN.dividedBy(sourceAmountBN).toFixed(7);
-
-    return {
-      sourceAmount,
-      destinationAmount: bestPath.destination_amount,
-      path,
-      conversionRate,
-    };
-  } catch (error) {
-    logger.error("SwapStore", "Failed to find classic swap path", error);
-    throw error;
-  }
+const toSwapWireAsset = (balance: PricedBalance): string => {
+  const token = getTokenForPayment(balance);
+  return token.isNative()
+    ? NATIVE_TOKEN_CODE
+    : `${token.getCode()}:${token.getIssuer()}`;
 };
+
+const quoteErrorMessage = (error: unknown): string | null => {
+  const status = (error as { status?: unknown } | null)?.status;
+  if (status === 400) return t("swapScreen.errors.noPathFound");
+  if (status === 502 || status === 503) {
+    return t("swapScreen.errors.swapsUnavailable");
+  }
+  return null;
+};
+
+// Quotes can take seconds, so a slower earlier request must not overwrite a
+// newer one or a cleared path.
+let quoteRequestId = 0;
 
 export const useSwapStore = create<SwapState>((set) => ({
   ...initialState,
@@ -200,9 +164,19 @@ export const useSwapStore = create<SwapState>((set) => ({
       sourceAmount,
       slippage,
       network,
+      publicKey,
     } = params;
 
-    set({ isLoadingPath: true, pathError: null, pathResult: null });
+    quoteRequestId += 1;
+    const requestId = quoteRequestId;
+    const isStale = () => requestId !== quoteRequestId;
+
+    set({
+      isLoadingPath: true,
+      pathError: null,
+      pathResult: null,
+      swapQuotes: null,
+    });
 
     try {
       const { forceSwapPathFailure } = useDebugStore.getState();
@@ -228,46 +202,58 @@ export const useSwapStore = create<SwapState>((set) => ({
         return;
       }
 
-      // TODO: Add Soroswap support for Testnet
-      const pathResult = await findClassicSwapPath({
-        sourceBalance,
-        destinationBalance,
-        sourceAmount,
+      const swapQuotes = await fetchSwapQuotes({
         network,
+        account: publicKey,
+        mode: "send",
+        fromAsset: toSwapWireAsset(sourceBalance),
+        toAsset: toSwapWireAsset(destinationBalance),
+        amount: sourceAmount,
       });
 
-      if (!pathResult) {
+      if (isStale()) return;
+
+      const route = selectSwapRoute(swapQuotes);
+
+      if (!route) {
         set({
           isLoadingPath: false,
+          swapQuotes,
           pathError: t("swapScreen.errors.noPathFound"),
         });
         return;
       }
 
-      const destinationAmountMin = computeDestMinWithSlippage(
-        pathResult.destinationAmount,
-        slippage,
-      );
-
-      const finalPathResult: SwapPathResult = {
-        ...pathResult,
-        destinationAmountMin,
+      const pathResult: SwapPathResult = {
+        sourceAmount,
+        destinationAmount: route.toAmount,
+        destinationAmountMin: computeDestMinWithSlippage(
+          route.toAmount,
+          slippage,
+        ),
+        path: swapRouteIntermediateAssets(route),
+        conversionRate: new BigNumber(route.toAmount)
+          .dividedBy(new BigNumber(sourceAmount))
+          .toFixed(7),
       };
 
       set({
         isLoadingPath: false,
-        pathResult: finalPathResult,
-        destinationAmount: pathResult.destinationAmount,
+        swapQuotes,
+        pathResult,
+        destinationAmount: route.toAmount,
       });
     } catch (error) {
+      if (isStale()) return;
+
       const errorMessage =
-        error instanceof Error ? error.message : String(error);
+        (error as { message?: string } | null)?.message ?? String(error);
 
       logger.error("SwapStore", "Failed to find swap path", error);
 
-      const displayError = __DEV__
-        ? errorMessage
-        : t("swapScreen.errors.pathFindFailed");
+      const displayError =
+        quoteErrorMessage(error) ??
+        (__DEV__ ? errorMessage : t("swapScreen.errors.pathFindFailed"));
 
       set({
         isLoadingPath: false,
@@ -276,14 +262,21 @@ export const useSwapStore = create<SwapState>((set) => ({
     }
   },
 
-  clearPath: () =>
+  clearPath: () => {
+    quoteRequestId += 1;
     set({
       pathResult: null,
+      swapQuotes: null,
       destinationAmount: "0",
       pathError: null,
-    }),
+      isLoadingPath: false,
+    });
+  },
 
-  resetSwap: () => set(initialState),
+  resetSwap: () => {
+    quoteRequestId += 1;
+    set(initialState);
+  },
 }));
 
 /**
