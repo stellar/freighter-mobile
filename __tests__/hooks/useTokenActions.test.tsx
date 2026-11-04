@@ -57,12 +57,46 @@ describe("useTokenActions.copyTokenAddress", () => {
     );
   });
 
-  it("copies the issuer for a classic CODE:ISSUER id", () => {
+  it.each([
+    [NETWORKS.PUBLIC, Networks.PUBLIC],
+    [NETWORKS.TESTNET, Networks.TESTNET],
+  ])(
+    "copies a classic asset's contract id on %s, not its issuer",
+    (network, passphrase) => {
+      mockNetwork = network;
+      const { result } = renderHook(() => useTokenActions());
+
+      result.current.copyTokenAddress(`USDC:${ISSUER}`, MESSAGE_KEY);
+
+      expect(mockCopyToClipboard).toHaveBeenCalledWith(
+        new Asset("USDC", ISSUER).contractId(passphrase),
+        { notificationMessage: MESSAGE_KEY },
+      );
+      expect(mockCopyToClipboard).not.toHaveBeenCalledWith(
+        ISSUER,
+        expect.anything(),
+      );
+    },
+  );
+
+  it("copies the contract id of a SYMBOL:CONTRACTID token", () => {
     const { result } = renderHook(() => useTokenActions());
 
-    result.current.copyTokenAddress(`USDC:${ISSUER}`, MESSAGE_KEY);
+    result.current.copyTokenAddress(`SYM:BOL:${CONTRACT_ID}`, MESSAGE_KEY);
 
-    expect(mockCopyToClipboard).toHaveBeenCalledWith(ISSUER, {
+    expect(mockCopyToClipboard).toHaveBeenCalledWith(CONTRACT_ID, {
+      notificationMessage: MESSAGE_KEY,
+    });
+  });
+
+  it("copies the pool id of a liquidity pool share", () => {
+    const poolId =
+      "4ac86c65b9f7b175ae0493da0d36cc5bc88b72677ca69fce8fe374233983d8e7";
+    const { result } = renderHook(() => useTokenActions());
+
+    result.current.copyTokenAddress(`${poolId}:lp`, MESSAGE_KEY);
+
+    expect(mockCopyToClipboard).toHaveBeenCalledWith(poolId, {
       notificationMessage: MESSAGE_KEY,
     });
   });
