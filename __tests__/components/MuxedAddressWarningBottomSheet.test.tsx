@@ -10,6 +10,13 @@ const MUXED_ACCOUNT_DESCRIPTION =
 const MUXED_CONTRACT_DESCRIPTION =
   "This token does not support muxed contract address (W-) as a target destination.";
 const TITLE = "Muxed address not supported";
+const MEMO_TITLE = "Memo not supported";
+const MEMO_DESCRIPTION =
+  "This token can't be sent with a memo to this address.";
+const COLLECTIBLE_MEMO_DESCRIPTION =
+  "This collectible can't be sent with a memo to this address.";
+const NUMERIC_MEMO_DESCRIPTION =
+  "This token only accepts a numeric memo, from 0 to 18446744073709551615.";
 
 describe("MuxedAddressWarningBottomSheet", () => {
   it("explains an M by default", () => {
@@ -50,6 +57,26 @@ describe("MuxedAddressWarningBottomSheet", () => {
       );
 
       expect(getByText(TITLE)).toBeTruthy();
+    },
+  );
+
+  it.each([
+    ["memo", MEMO_DESCRIPTION],
+    ["collectibleMemo", COLLECTIBLE_MEMO_DESCRIPTION],
+    ["numericMemo", NUMERIC_MEMO_DESCRIPTION],
+  ] as const)(
+    "explains a memo that can't be sent for variant %s",
+    (variant, description) => {
+      const { getByText, queryByText } = renderWithProviders(
+        <MuxedAddressWarningBottomSheet
+          variant={variant}
+          onClose={jest.fn()}
+        />,
+      );
+
+      expect(getByText(MEMO_TITLE)).toBeTruthy();
+      expect(getByText(description)).toBeTruthy();
+      expect(queryByText(TITLE)).toBeNull();
     },
   );
 

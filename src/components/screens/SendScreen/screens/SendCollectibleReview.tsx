@@ -6,7 +6,9 @@ import { CollectibleImage } from "components/CollectibleImage";
 import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import { List, ListItemProps } from "components/List";
-import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
+import MuxedAddressWarningBottomSheet, {
+  MuxedAddressWarningVariant,
+} from "components/MuxedAddressWarningBottomSheet";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -46,8 +48,12 @@ import { useHistoryStore } from "ducks/history";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { checkContractMuxedSupport } from "helpers/muxedAddress";
+import {
+  checkContractMuxedSupport,
+  getSorobanMemoRefusal,
+} from "helpers/muxedAddress";
 import { isMuxedContract } from "helpers/muxedContract";
+import { isContractId } from "helpers/soroban";
 import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -76,6 +82,16 @@ type SendCollectibleReviewScreenProps = NativeStackScreenProps<
   typeof SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW
 >;
 
+// The banner shown while the send is blocked, by the warning it opens.
+const BLOCKED_SEND_BANNER_TEST_IDS: Record<MuxedAddressWarningVariant, string> =
+  {
+    account: "muxed-address-not-supported-banner",
+    contract: "muxed-contract-not-supported-banner",
+    memo: "memo-not-supported-banner",
+    collectibleMemo: "memo-not-supported-banner",
+    numericMemo: "memo-not-supported-banner",
+  };
+
 /**
  * SendCollectibleReviewScreen Component
  *
@@ -99,8 +115,12 @@ const SendCollectibleReviewScreen: React.FC<
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { recipientAddress, saveSelectedCollectibleDetails, resetSettings } =
-    useTransactionSettingsStore();
+  const {
+    recipientAddress,
+    transactionMemo,
+    saveSelectedCollectibleDetails,
+    resetSettings,
+  } = useTransactionSettingsStore();
   const { getCollectible } = useCollectiblesStore();
   const { overriddenBlockaidResponse } = useDebugStore();
   const { resetSendRecipient } = useSendRecipientStore();
@@ -245,6 +265,23 @@ const SendCollectibleReviewScreen: React.FC<
     recipientAddress && isMuxedContract(recipientAddress),
   );
 
+  // A collectible transfer is a Soroban transfer, so it carries a memo only as
+  // the id of an M built from a G (see getSorobanMemoRefusal). An M or a W
+  // carries its own id and is handled above.
+  const isSorobanMemo = Boolean(
+    transactionMemo &&
+      recipientAddress &&
+      !isRecipientMuxed &&
+      !isRecipientMuxedContract,
+  );
+
+  // A memo for a G travels as an M's id only if the collection supports muxed
+  // addresses, so it takes the same lookup as an M. A memo for a C is refused
+  // without one.
+  const isMemoForAccount = Boolean(
+    isSorobanMemo && recipientAddress && !isContractId(recipientAddress),
+  );
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -253,9 +290,9 @@ const SendCollectibleReviewScreen: React.FC<
       // can't apply to this one meanwhile.
       setContractSupportsMuxed(null);
 
-      // Contract muxed support only matters for M-address recipients.
+      // Contract muxed support only matters for an M, or a memo for a G.
       if (
-        !isRecipientMuxed ||
+        !(isRecipientMuxed || isMemoForAccount) ||
         !collectionAddress ||
         !recipientAddress ||
         !network
@@ -286,7 +323,13 @@ const SendCollectibleReviewScreen: React.FC<
     return () => {
       isCancelled = true;
     };
-  }, [collectionAddress, recipientAddress, network, isRecipientMuxed]);
+  }, [
+    collectionAddress,
+    recipientAddress,
+    network,
+    isRecipientMuxed,
+    isMemoForAccount,
+  ]);
 
   // Determine if M address + contract doesn't support muxed
   const isMuxedAddressWithoutMemoSupport = Boolean(
@@ -300,15 +343,47 @@ const SendCollectibleReviewScreen: React.FC<
   const isRecipientUnsupported =
     isRecipientMuxedContract || isMuxedAddressWithoutMemoSupport;
 
-  // Until an M's collection check answers, it's unknown whether the
-  // collectible can go to it, so nothing is built yet either. The check can't
-  // hang: the backend client times out, and a failed check counts as no
-  // support.
+  // Until the collection check for an M, or for a memo to a G, answers, it's
+  // unknown whether the collectible can go to it, so nothing is built yet
+  // either. The check can't hang: the backend client times out, and a failed
+  // check counts as no support.
   const isMuxedSupportPending =
-    isRecipientMuxed && contractSupportsMuxed === null;
+    (isRecipientMuxed || isMemoForAccount) && contractSupportsMuxed === null;
 
-  const canBuildForRecipient =
-    !isRecipientUnsupported && !isMuxedSupportPending;
+  // Why the transfer can't carry the memo, if it can't. A memo for a G waits
+  // for the collection check (see isMuxedSupportPending).
+  const memoRefusal =
+    isSorobanMemo &&
+    recipientAddress &&
+    !(isMemoForAccount && contractSupportsMuxed === null)
+      ? getSorobanMemoRefusal({
+          recipientAddress,
+          transactionMemo,
+          contractSupportsMuxed: contractSupportsMuxed === true,
+        })
+      : null;
+
+  // A memo the transfer can't carry blocks the send the way an unsupported
+  // recipient does, instead of failing every build: the build refuses it
+  // rather than send without it.
+  const isMemoUnsupported = memoRefusal !== null;
+  const isSendBlocked = isRecipientUnsupported || isMemoUnsupported;
+
+  const canBuildForRecipient = !isSendBlocked && !isMuxedSupportPending;
+
+  // What the banner says, and which explanation it opens, while the send is
+  // blocked.
+  const blockedSendWarning = useMemo((): MuxedAddressWarningVariant => {
+    if (memoRefusal === "nonNumeric") {
+      return "numericMemo";
+    }
+
+    if (memoRefusal === "unsupported") {
+      return "collectibleMemo";
+    }
+
+    return isRecipientMuxedContract ? "contract" : "account";
+  }, [memoRefusal, isRecipientMuxedContract]);
 
   const handleTransactionScanSuccess = useCallback(
     (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
@@ -336,9 +411,12 @@ const SendCollectibleReviewScreen: React.FC<
    * then scans it, and opens the review sheet when `shouldOpenReview` is set.
    *
    * Returns first thing, building nothing, unless `canBuildForRecipient`: not
-   * for a recipient that can't take the collectible, nor while an M's
-   * collection check runs. The auto-simulation, a settings change and Review
-   * all come through here, so none of them can build one.
+   * for a recipient that can't take the collectible or a memo the transfer
+   * can't carry, nor while a collection check runs. The auto-simulation, a
+   * settings change and Review all come through here, so none of them can
+   * build one. A settings change calls this right after Settings saves,
+   * before the screen re-renders with the new memo, so the fresh memo is
+   * checked here too.
    *
    * @param shouldOpenReview - Open the review sheet once the scan returns
    */
@@ -362,6 +440,22 @@ const SendCollectibleReviewScreen: React.FC<
           transactionTimeout: freshTransactionTimeout,
           recipientAddress: storeRecipientAddress,
         } = useTransactionSettingsStore.getState();
+
+        // A memo just saved in Settings that the transfer can't carry builds
+        // nothing: the screen blocks the send once it re-renders with it. An
+        // unanswered collection check counts as support here, so only the
+        // refusals that don't depend on it apply until it answers.
+        if (
+          !isMuxedAccount(storeRecipientAddress) &&
+          !isMuxedContract(storeRecipientAddress) &&
+          getSorobanMemoRefusal({
+            recipientAddress: storeRecipientAddress,
+            transactionMemo: freshTransactionMemo,
+            contractSupportsMuxed: contractSupportsMuxed !== false,
+          })
+        ) {
+          return;
+        }
 
         const xdr = await buildSendCollectibleTransaction({
           collectionAddress: selectedCollectible.collectionAddress,
@@ -408,6 +502,7 @@ const SendCollectibleReviewScreen: React.FC<
       scanTransaction,
       recipientAddress,
       canBuildForRecipient,
+      contractSupportsMuxed,
       handleTransactionScanSuccess,
       handleTransactionScanError,
     ],
@@ -725,12 +820,12 @@ const SendCollectibleReviewScreen: React.FC<
         </View>
         {/* The screen doesn't scroll, so on a small screen the banner would
             push Review past the fold. The image is hidden there while the
-            recipient blocks the send; the details below still name the
-            collectible. */}
+            recipient or the memo blocks the send; the details below still
+            name the collectible. */}
         <View
           testID="send-collectible-image-section"
           className={`mt-[24px] w-full flex items-center justify-center${
-            isRecipientUnsupported ? " max-xs:hidden" : ""
+            isSendBlocked ? " max-xs:hidden" : ""
           }`}
         >
           <View
@@ -747,18 +842,16 @@ const SendCollectibleReviewScreen: React.FC<
           <List variant="secondary" items={selectCollectibleDetails} />
         </View>
         <View className="w-full mt-auto mb-4 gap-[12px]">
-          {isRecipientUnsupported && (
+          {isSendBlocked && (
             <Banner
               variant="error"
-              text={t(
-                "transactionAmountScreen.errors.muxedAddressNotSupported",
-              )}
-              onPress={openMuxedAddressWarningBottomSheet}
-              testID={
-                isRecipientMuxedContract
-                  ? "muxed-contract-not-supported-banner"
-                  : "muxed-address-not-supported-banner"
+              text={
+                isMemoUnsupported
+                  ? t("transactionAmountScreen.errors.memoNotSupported")
+                  : t("transactionAmountScreen.errors.muxedAddressNotSupported")
               }
+              onPress={openMuxedAddressWarningBottomSheet}
+              testID={BLOCKED_SEND_BANNER_TEST_IDS[blockedSendWarning]}
             />
           )}
           <Button
@@ -833,7 +926,7 @@ const SendCollectibleReviewScreen: React.FC<
         bottomSheetModalProps={{ accessible: false }}
         customContent={
           <MuxedAddressWarningBottomSheet
-            variant={isRecipientMuxedContract ? "contract" : "account"}
+            variant={blockedSendWarning}
             onCancel={handleCancelMuxedAddressWarning}
             onClose={handleCancelMuxedAddressWarning}
           />

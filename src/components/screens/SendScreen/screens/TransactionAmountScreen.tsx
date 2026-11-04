@@ -5,7 +5,9 @@ import { BigNumber } from "bignumber.js";
 import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
-import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
+import MuxedAddressWarningBottomSheet, {
+  MuxedAddressWarningVariant,
+} from "components/MuxedAddressWarningBottomSheet";
 import { PercentageButtons } from "components/PercentageButtons";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
@@ -65,9 +67,12 @@ import {
   formatFiatInputDisplay,
 } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
-import { checkContractMuxedSupport } from "helpers/muxedAddress";
+import {
+  checkContractMuxedSupport,
+  getSorobanMemoRefusal,
+} from "helpers/muxedAddress";
 import { isMuxedContract } from "helpers/muxedContract";
-import { isSorobanTransaction } from "helpers/soroban";
+import { isContractId, isSorobanTransaction } from "helpers/soroban";
 import {
   isFederationAddress,
   isMuxedAccount,
@@ -112,6 +117,16 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN
 >;
 
+// The banner shown while the send is blocked, by the warning it opens.
+const BLOCKED_SEND_BANNER_TEST_IDS: Record<MuxedAddressWarningVariant, string> =
+  {
+    account: "muxed-address-not-supported-banner",
+    contract: "muxed-contract-not-supported-banner",
+    memo: "memo-not-supported-banner",
+    collectibleMemo: "memo-not-supported-banner",
+    numericMemo: "memo-not-supported-banner",
+  };
+
 /**
  * TransactionAmountScreen Component
  *
@@ -121,7 +136,8 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
  * A custom token sent to a muxed contract (W) address is blocked here: a banner
  * explains why, Continue is disabled, the percentage buttons are hidden and
  * nothing is built. Native XLM and classic assets can still go to a W, through
- * their Stellar Asset Contract.
+ * their Stellar Asset Contract. An M the token doesn't support, and a memo the
+ * transfer can't carry, are blocked the same way.
  *
  * @param {TransactionAmountScreenProps} props - Component props
  * @returns {JSX.Element} The rendered component
@@ -397,6 +413,25 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBalance?.id, selectedBalance]);
 
+  // A Soroban transfer (a custom token, or any token to a C or W) carries a
+  // memo only as the id of an M built from a G (see getSorobanMemoRefusal). An
+  // M or a W carries its own id, and its memo is cleared above.
+  const isSorobanMemo = Boolean(
+    transactionMemo &&
+      recipientAddress &&
+      !isRecipientMuxed &&
+      !isRecipientMuxedContract &&
+      isSorobanTransaction(selectedBalance, recipientAddress),
+  );
+
+  // A memo for a G (so a custom token: XLM and classic assets pay a G
+  // directly) travels as an M's id only if the token contract supports muxed
+  // addresses, so it takes the same lookup as an M. A memo for a C is refused
+  // without one.
+  const isMemoForAccount = Boolean(
+    isSorobanMemo && recipientAddress && !isContractId(recipientAddress),
+  );
+
   useEffect(() => {
     // Only the latest check may answer: a slower one for a token or recipient
     // the user has since changed must not show or hide the M banner.
@@ -407,10 +442,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       // apply to this one meanwhile.
       setContractSupportsMuxed(null);
 
-      // Only an M reads the answer. A G or C needs no muxed support, and a W
-      // is blocked for a custom token without any lookup.
+      // Only an M, or a memo for a G, reads the answer. A G or C without a
+      // memo needs no muxed support, and a W is blocked for a custom token
+      // without any lookup.
       if (
-        !isRecipientMuxed ||
+        !(isRecipientMuxed || isMemoForAccount) ||
         !isCustomToken ||
         !recipientAddress ||
         !network ||
@@ -441,7 +477,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return () => {
       isLatestCheck = false;
     };
-  }, [isRecipientMuxed, isCustomToken, recipientAddress, network, contractId]);
+  }, [
+    isRecipientMuxed,
+    isMemoForAccount,
+    isCustomToken,
+    recipientAddress,
+    network,
+    contractId,
+  ]);
 
   // Determine if M address + contract doesn't support muxed
   const isMuxedAddressWithoutMemoSupport = Boolean(
@@ -460,14 +503,49 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const isRecipientUnsupported =
     isMuxedAddressWithoutMemoSupport || isMuxedContractWithoutSupport;
 
-  // Until an M's contract check answers, it's unknown whether the token can go
-  // to it, so nothing is built yet either. The check can't hang: the backend
-  // client times out, and a failed check counts as no support.
+  // Until the contract check for an M, or for a memo to a G, answers, it's
+  // unknown whether the token can go to it, so nothing is built yet either.
+  // The check can't hang: the backend client times out, and a failed check
+  // counts as no support.
   const isMuxedSupportPending =
-    isRecipientMuxed && isCustomToken && contractSupportsMuxed === null;
+    (isRecipientMuxed || isMemoForAccount) &&
+    isCustomToken &&
+    contractSupportsMuxed === null;
 
-  const canBuildForRecipient =
-    !isRecipientUnsupported && !isMuxedSupportPending;
+  // Why the transfer can't carry the memo, if it can't. A memo for a G waits
+  // for the contract check (see isMuxedSupportPending).
+  const memoRefusal =
+    isSorobanMemo &&
+    recipientAddress &&
+    !(isMemoForAccount && contractSupportsMuxed === null)
+      ? getSorobanMemoRefusal({
+          recipientAddress,
+          transactionMemo,
+          contractSupportsMuxed: contractSupportsMuxed === true,
+        })
+      : null;
+
+  // A memo the transfer can't carry blocks the send the way an unsupported
+  // recipient does, instead of failing every build: the build refuses it
+  // rather than send without it.
+  const isMemoUnsupported = memoRefusal !== null;
+  const isSendBlocked = isRecipientUnsupported || isMemoUnsupported;
+
+  const canBuildForRecipient = !isSendBlocked && !isMuxedSupportPending;
+
+  // What the banner says, and which explanation it opens, while the send is
+  // blocked.
+  const blockedSendWarning = useMemo((): MuxedAddressWarningVariant => {
+    if (memoRefusal === "nonNumeric") {
+      return "numericMemo";
+    }
+
+    if (memoRefusal === "unsupported") {
+      return "memo";
+    }
+
+    return isRecipientMuxedContract ? "contract" : "account";
+  }, [memoRefusal, isRecipientMuxedContract]);
 
   const isRequiredMemoMissing = isMemoMissing && !isValidatingMemo;
 
@@ -693,9 +771,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
    * review.
    *
    * Returns first thing, building nothing, unless `canBuildForRecipient`: not
-   * when the recipient can't take the token, nor while an M's contract check
-   * runs. The auto-simulation, a settings change and Continue all come
-   * through here, so none of them can build one.
+   * when the recipient can't take the token or the transfer can't carry the
+   * memo, nor while a contract check runs. The auto-simulation, a settings
+   * change and Continue all come through here, so none of them can build one.
+   * A settings change calls this right after Settings saves, before the
+   * screen re-renders with the new memo, so the fresh memo is checked here
+   * too.
    *
    * @param shouldOpenReview - Open the review sheet once the scan returns
    * @param feeEstimationAmount - Build for this amount instead of the entered one
@@ -727,6 +808,23 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           transactionTimeout: freshTransactionTimeout,
           recipientAddress: storeRecipientAddress,
         } = useTransactionSettingsStore.getState();
+
+        // A memo just saved in Settings that the transfer can't carry builds
+        // nothing: the screen blocks the send once it re-renders with it. An
+        // unanswered contract check counts as support here, so only the
+        // refusals that don't depend on it apply until it answers.
+        if (
+          isSorobanTransaction(selectedBalance, storeRecipientAddress) &&
+          !isMuxedAccount(storeRecipientAddress) &&
+          !isMuxedContract(storeRecipientAddress) &&
+          getSorobanMemoRefusal({
+            recipientAddress: storeRecipientAddress,
+            transactionMemo: freshTransactionMemo,
+            contractSupportsMuxed: contractSupportsMuxed !== false,
+          })
+        ) {
+          return;
+        }
 
         const finalXDR = await buildTransaction({
           tokenAmount: effectiveAmount,
@@ -769,6 +867,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       scanTransaction,
       recipientAddress,
       canBuildForRecipient,
+      contractSupportsMuxed,
       handleTransactionScanSuccess,
       handleTransactionScanError,
     ],
@@ -1300,10 +1399,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           />
         </View>
 
-        {/* Hidden while the recipient blocks the send: nothing can be sent,
-            and with the keyboard up on a small screen the banner would cover
-            them. */}
-        {!isRecipientUnsupported && (
+        {/* Hidden while the recipient or the memo blocks the send: nothing
+            can be sent, and with the keyboard up on a small screen the banner
+            would cover them. */}
+        {!isSendBlocked && (
           <View className="flex-1 items-center mt-[24px] gap-[24px]">
             <PercentageButtons onPress={handlePercentagePress} />
           </View>
@@ -1311,16 +1410,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       </View>
 
       <View className="w-full mt-auto mb-[8px] gap-[12px]">
-        {isRecipientUnsupported && (
+        {isSendBlocked && (
           <Banner
             variant="error"
-            text={t("transactionAmountScreen.errors.muxedAddressNotSupported")}
-            onPress={openUnsupportedRecipientWarningBottomSheet}
-            testID={
-              isMuxedContractWithoutSupport
-                ? "muxed-contract-not-supported-banner"
-                : "muxed-address-not-supported-banner"
+            text={
+              isMemoUnsupported
+                ? t("transactionAmountScreen.errors.memoNotSupported")
+                : t("transactionAmountScreen.errors.muxedAddressNotSupported")
             }
+            onPress={openUnsupportedRecipientWarningBottomSheet}
+            testID={BLOCKED_SEND_BANNER_TEST_IDS[blockedSendWarning]}
           />
         )}
         <Button
@@ -1409,7 +1508,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         bottomSheetModalProps={{ accessible: false }}
         customContent={
           <MuxedAddressWarningBottomSheet
-            variant={isRecipientMuxedContract ? "contract" : "account"}
+            variant={blockedSendWarning}
             onCancel={handleCancelMuxedAddressWarning}
             onClose={handleCancelMuxedAddressWarning}
           />

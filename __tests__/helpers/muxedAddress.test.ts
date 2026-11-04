@@ -3,14 +3,20 @@
  */
 // Mock the backend service
 import {
+  BASE_CONTRACT,
+  G_ACCOUNT,
+  M_ACCOUNT_ID_1234,
   MUXED_CONTRACT_ID_0,
   MUXED_CONTRACT_ID_1234,
+  U64_MAX,
 } from "__tests__/support/muxedContractFixtures";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
+import { logger } from "config/logger";
 import {
   getMemoDisabledState,
   checkContractMuxedSupport,
   determineMuxedDestination,
+  getSorobanMemoRefusal,
 } from "helpers/muxedAddress";
 import { isContractId } from "helpers/soroban";
 import {
@@ -366,6 +372,143 @@ describe("muxedAddress helpers", () => {
           contractSupportsMuxed: true,
         }),
       ).toThrow("transaction.errors.nonNumericMemoNotSupported");
+    });
+  });
+
+  // The send screens block a send up front with this check, so it must refuse
+  // exactly the memos determineMuxedDestination refuses at build time. Each
+  // case runs both, with the real address helpers and the SDK's own parsing.
+  describe("getSorobanMemoRefusal", () => {
+    beforeEach(() => {
+      const actualStellar = jest.requireActual("helpers/stellar");
+      mockIsValidStellarAddress.mockImplementation(
+        actualStellar.isValidStellarAddress,
+      );
+      mockIsMuxedAccount.mockImplementation(actualStellar.isMuxedAccount);
+      mockCreateMuxedAccount.mockImplementation(
+        actualStellar.createMuxedAccount,
+      );
+      mockIsContractId.mockImplementation(
+        jest.requireActual("helpers/soroban").isContractId,
+      );
+    });
+
+    const unsupported =
+      "transactionSettings.memoInfo.memoNotSupportedForOperation";
+    const nonNumeric = "transaction.errors.nonNumericMemoNotSupported";
+
+    it.each([
+      ["no memo", G_ACCOUNT, "", false, null, null],
+      ["no memo, for a C", BASE_CONTRACT, "", true, null, null],
+      [
+        "a contract without muxed support",
+        G_ACCOUNT,
+        "1234",
+        false,
+        "unsupported",
+        unsupported,
+      ],
+      [
+        "a C recipient, even with muxed support",
+        BASE_CONTRACT,
+        "1234",
+        true,
+        "unsupported",
+        unsupported,
+      ],
+      [
+        "an M recipient, which carries its own id",
+        M_ACCOUNT_ID_1234,
+        "1234",
+        true,
+        "unsupported",
+        "transactionSettings.memoInfo.memoDisabledForTransaction",
+      ],
+      [
+        "a memo with letters",
+        G_ACCOUNT,
+        "AB12CD",
+        true,
+        "nonNumeric",
+        nonNumeric,
+      ],
+      ["a negative memo", G_ACCOUNT, "-1", true, "nonNumeric", nonNumeric],
+      ["a decimal point", G_ACCOUNT, "1.5", true, "nonNumeric", nonNumeric],
+      ["an exponent", G_ACCOUNT, "1e3", true, "nonNumeric", nonNumeric],
+      ["a leading space", G_ACCOUNT, " 7", true, "nonNumeric", nonNumeric],
+      [
+        "a memo past the largest uint64",
+        G_ACCOUNT,
+        "18446744073709551616",
+        true,
+        "nonNumeric",
+        nonNumeric,
+      ],
+      ["a decimal uint64", G_ACCOUNT, "1234", true, null, null],
+      ["zero", G_ACCOUNT, "0", true, null, null],
+      ["leading zeros", G_ACCOUNT, "007", true, null, null],
+      ["the largest uint64", G_ACCOUNT, U64_MAX, true, null, null],
+    ])(
+      "refuses what determineMuxedDestination refuses: %s",
+      (
+        _label,
+        recipientAddress,
+        transactionMemo,
+        contractSupportsMuxed,
+        refusal,
+        buildError,
+      ) => {
+        const params = {
+          recipientAddress,
+          transactionMemo,
+          contractSupportsMuxed,
+        };
+        let thrown: string | null = null;
+        try {
+          determineMuxedDestination(params);
+        } catch (error) {
+          thrown = (error as Error).message;
+        }
+
+        expect(getSorobanMemoRefusal(params)).toBe(refusal);
+        expect(thrown).toBe(buildError);
+      },
+    );
+
+    it("refuses nothing without a memo, whatever the recipient and contract", () => {
+      expect(
+        getSorobanMemoRefusal({
+          recipientAddress: BASE_CONTRACT,
+          transactionMemo: undefined,
+          contractSupportsMuxed: false,
+        }),
+      ).toBeNull();
+    });
+
+    // The send screens run this on every memo the user saves, and a typed memo
+    // isn't an app error. createMuxedAccount logs one it can't fold as an
+    // error, which goes to Sentry in production.
+    it("logs nothing for a memo it refuses", () => {
+      const logError = jest.spyOn(logger, "error");
+
+      expect(
+        getSorobanMemoRefusal({
+          recipientAddress: G_ACCOUNT,
+          transactionMemo: "AB12CD",
+          contractSupportsMuxed: true,
+        }),
+      ).toBe("nonNumeric");
+      expect(logError).not.toHaveBeenCalled();
+
+      logError.mockRestore();
+    });
+
+    afterAll(() => {
+      // Back to the automocks the other describes expect.
+      mockIsValidStellarAddress.mockReset();
+      mockIsMuxedAccount.mockReset();
+      mockCreateMuxedAccount.mockReset();
+      mockIsContractId.mockReset();
     });
   });
 

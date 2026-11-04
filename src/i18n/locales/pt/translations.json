@@ -842,6 +842,11 @@
       "muxedContractWarning": {
         "description": "Este token não suporta endereço de contrato muxed (W-) como destino."
       },
+      "memoNotSupported": "Memo não suportado",
+      "memoNotSupportedWarning": {
+        "description": "Este token não pode ser enviado com um memo para este endereço.",
+        "collectibleDescription": "Este colecionável não pode ser enviado com um memo para este endereço."
+      },
       "malicious": "Este endereço foi marcado como malicioso",
       "suspicious": "Este endereço foi marcado como suspeito",
       "maliciousToken": "Um token foi marcado como malicioso",

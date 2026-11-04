@@ -1,6 +1,7 @@
 /**
  * Utility functions for handling muxed addresses and memo logic
  */
+import { StrKey } from "@stellar/stellar-sdk";
 import { NetworkDetails } from "config/constants";
 import { isMuxedContract } from "helpers/muxedContract";
 import { isContractId } from "helpers/soroban";
@@ -121,6 +122,58 @@ export interface DetermineMuxedDestinationParams {
   recipientAddress: string;
   transactionMemo?: string;
   contractSupportsMuxed: boolean;
+}
+
+/**
+ * Why a Soroban transfer can't carry a memo:
+ * - `"unsupported"`: the recipient isn't a `G...`, or the token contract
+ *   doesn't support muxed addresses.
+ * - `"nonNumeric"`: the memo isn't a decimal uint64, so it can't be the id of
+ *   an `M...`.
+ */
+export type SorobanMemoRefusal = "unsupported" | "nonNumeric";
+
+// The largest mux id: a mux id is a uint64.
+const MAX_MUX_ID = BigInt("18446744073709551615");
+
+/**
+ * Checks whether a Soroban transfer can carry a memo, so a send screen can
+ * block the send up front instead of letting the build fail.
+ *
+ * The only memo a Soroban transfer can carry is the id of an `M...` built from
+ * a `G...` recipient, so the memo is refused when the recipient isn't a
+ * `G...`, when the contract doesn't support muxed addresses, or when the memo
+ * isn't a decimal uint64 (leading zeros are allowed, as the SDK allows them).
+ * These are the memos the build refuses: `determineMuxedDestination` throws
+ * for each of them, and `buildPaymentTransaction` refuses a memo for a `W...`.
+ *
+ * Unlike `createMuxedAccount`, this logs nothing: a memo the user typed isn't
+ * an app error.
+ *
+ * @param params The recipient, the memo, and whether the contract supports muxed
+ * @returns Why the memo can't be carried, or `null` when there's no memo or it
+ * can be
+ */
+export function getSorobanMemoRefusal(
+  params: DetermineMuxedDestinationParams,
+): SorobanMemoRefusal | null {
+  const { recipientAddress, transactionMemo, contractSupportsMuxed } = params;
+
+  if (!transactionMemo) {
+    return null;
+  }
+
+  if (
+    !contractSupportsMuxed ||
+    !StrKey.isValidEd25519PublicKey(recipientAddress)
+  ) {
+    return "unsupported";
+  }
+
+  const isMuxId =
+    /^\d+$/.test(transactionMemo) && BigInt(transactionMemo) <= MAX_MUX_ID;
+
+  return isMuxId ? null : "nonNumeric";
 }
 
 /**
