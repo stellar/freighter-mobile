@@ -6,7 +6,6 @@ import {
 import BigNumber from "bignumber.js";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { TransactionContext, NETWORKS } from "config/constants";
-import { logger } from "config/logger";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -17,7 +16,6 @@ import { renderWithProviders } from "helpers/testUtils";
 import { useBalancesList } from "hooks/useBalancesList";
 import React from "react";
 import { checkContractSupportsMuxed } from "services/backend";
-import { getSacContractIdForBalance } from "services/transactionService";
 
 jest.mock("ducks/transactionSettings");
 jest.mock("ducks/auth", () => ({
@@ -120,10 +118,6 @@ jest.mock("services/backend", () => ({
   checkContractSupportsMuxed: jest.fn(),
 }));
 
-jest.mock("services/transactionService", () => ({
-  getSacContractIdForBalance: jest.fn(),
-}));
-
 jest.mock("helpers/stellar", () => ({
   isMuxedAccount: jest.fn(),
   isValidStellarAddress: jest.fn(),
@@ -142,10 +136,6 @@ const mockIsContractId = isContractId as jest.MockedFunction<
 const mockCheckContractSupportsMuxed =
   checkContractSupportsMuxed as jest.MockedFunction<
     typeof checkContractSupportsMuxed
-  >;
-const mockGetSacContractIdForBalance =
-  getSacContractIdForBalance as jest.MockedFunction<
-    typeof getSacContractIdForBalance
   >;
 const mockIsMuxedAccount = isMuxedAccount as jest.MockedFunction<
   typeof isMuxedAccount
@@ -1082,8 +1072,6 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
   });
 
   describe("contract destinations (C and W)", () => {
-    const sacContractId =
-      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
     const customTokenContractId =
       "CBHUX3RSBKAL7MJUOUA3PPW3TA65YRFLCGASJ5TNHY7HDLXCHWZQA6GR";
     const xlmBalance = {
@@ -1119,12 +1107,9 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
 
     afterEach(() => {
       memoStateSpy.mockRestore();
-      // A test may leave the SAC lookup returning or throwing; don't let that
-      // reach the next one.
-      mockGetSacContractIdForBalance.mockReset();
     });
 
-    it("disables memo for a W recipient and resolves its contract to the asset's SAC", async () => {
+    it("disables memo for a W recipient without a contract lookup", async () => {
       mockUseBalancesListTyped.mockReturnValue({
         ...defaultBalancesList,
         balanceItems: [xlmBalance],
@@ -1135,8 +1120,6 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
           selectedTokenId: "XLM",
         }),
       );
-      mockGetSacContractIdForBalance.mockReturnValue(sacContractId);
-
       const { getByPlaceholderText, getByText } = renderWithProviders(
         <TransactionSettingsBottomSheet
           onCancel={mockOnCancel}
@@ -1155,110 +1138,11 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
           getByText("transactionSettings.memoInfo.memoDisabledForTransaction"),
         ).toBeTruthy();
       });
-      expect(mockGetSacContractIdForBalance).toHaveBeenCalledWith(
-        xlmBalance,
-        NETWORKS.PUBLIC,
-      );
-      // The memo check is handed the asset's SAC, never the W itself.
-      expect(memoStateSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          targetAddress: MUXED_CONTRACT_ID_0,
-          contractId: sacContractId,
-        }),
-      );
-      expect(memoStateSpy).not.toHaveBeenCalledWith(
-        expect.objectContaining({ contractId: MUXED_CONTRACT_ID_0 }),
-      );
       expect(getByText("transactionSettings.inclusionFeeTitle")).toBeTruthy();
       expect(mockCheckContractSupportsMuxed).not.toHaveBeenCalled();
     });
 
-    it("resolves no contract for a W when the selected asset is not held", async () => {
-      mockUseTransactionSettingsStore.mockReturnValue(
-        createMockState({
-          recipientAddress: MUXED_CONTRACT_ID_0,
-          selectedTokenId: "XLM",
-        }),
-      );
-
-      const { getByPlaceholderText, getByText } = renderWithProviders(
-        <TransactionSettingsBottomSheet
-          onCancel={mockOnCancel}
-          onConfirm={mockOnConfirm}
-          context={TransactionContext.Send}
-          onSettingsChange={mockOnSettingsChange}
-        />,
-      );
-
-      await waitFor(() => {
-        expect(
-          getByPlaceholderText("transactionSettings.memoPlaceholder").props
-            .editable,
-        ).toBe(false);
-      });
-      expect(mockGetSacContractIdForBalance).not.toHaveBeenCalled();
-      expect(memoStateSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          targetAddress: MUXED_CONTRACT_ID_0,
-          contractId: undefined,
-        }),
-      );
-      expect(getByText("transactionSettings.inclusionFeeTitle")).toBeTruthy();
-    });
-
-    it("resolves no contract, and still renders, when the asset has no SAC", async () => {
-      const sacError = new Error("A liquidity pool share has no SAC");
-      mockUseBalancesListTyped.mockReturnValue({
-        ...defaultBalancesList,
-        balanceItems: [xlmBalance],
-      } as never);
-      mockUseTransactionSettingsStore.mockReturnValue(
-        createMockState({
-          recipientAddress: MUXED_CONTRACT_ID_0,
-          selectedTokenId: "XLM",
-        }),
-      );
-      mockGetSacContractIdForBalance.mockImplementation(() => {
-        throw sacError;
-      });
-
-      const { getByPlaceholderText, getByText } = renderWithProviders(
-        <TransactionSettingsBottomSheet
-          onCancel={mockOnCancel}
-          onConfirm={mockOnConfirm}
-          context={TransactionContext.Send}
-          onSettingsChange={mockOnSettingsChange}
-        />,
-      );
-
-      await waitFor(() => {
-        expect(
-          getByPlaceholderText("transactionSettings.memoPlaceholder").props
-            .editable,
-        ).toBe(false);
-        expect(
-          getByText("transactionSettings.memoInfo.memoDisabledForTransaction"),
-        ).toBeTruthy();
-      });
-      expect(mockGetSacContractIdForBalance).toHaveBeenCalledWith(
-        xlmBalance,
-        NETWORKS.PUBLIC,
-      );
-      expect(memoStateSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          targetAddress: MUXED_CONTRACT_ID_0,
-          contractId: undefined,
-        }),
-      );
-      // The failure is reported, not swallowed.
-      expect(logger.warn).toHaveBeenCalledWith(
-        "TransactionSettingsBottomSheet",
-        expect.any(String),
-        sacError,
-      );
-    });
-
-    it("keeps a custom token's contract over the SAC for a W recipient", async () => {
+    it("keeps a custom token's contract for a W recipient", async () => {
       mockUseBalancesListTyped.mockReturnValue({
         ...defaultBalancesList,
         balanceItems: [customTokenBalance],
@@ -1269,8 +1153,6 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
           selectedTokenId: customTokenBalance.id,
         }),
       );
-      mockGetSacContractIdForBalance.mockReturnValue(sacContractId);
-
       const { getByPlaceholderText } = renderWithProviders(
         <TransactionSettingsBottomSheet
           onCancel={mockOnCancel}
@@ -1286,7 +1168,6 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
             .editable,
         ).toBe(false);
       });
-      expect(mockGetSacContractIdForBalance).not.toHaveBeenCalled();
       expect(memoStateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           targetAddress: MUXED_CONTRACT_ID_0,
@@ -1295,7 +1176,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       );
     });
 
-    it("keeps a collectible's collection over the SAC for a W recipient", async () => {
+    it("keeps a collectible's collection for a W recipient", async () => {
       mockUseBalancesListTyped.mockReturnValue({
         ...defaultBalancesList,
         balanceItems: [xlmBalance],
@@ -1310,8 +1191,6 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
           },
         }),
       );
-      mockGetSacContractIdForBalance.mockReturnValue(sacContractId);
-
       const { getByPlaceholderText } = renderWithProviders(
         <TransactionSettingsBottomSheet
           onCancel={mockOnCancel}
@@ -1327,7 +1206,6 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
             .editable,
         ).toBe(false);
       });
-      expect(mockGetSacContractIdForBalance).not.toHaveBeenCalled();
       expect(memoStateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           targetAddress: MUXED_CONTRACT_ID_0,
@@ -1400,7 +1278,6 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
           ),
         ).toBeTruthy();
       });
-      expect(mockGetSacContractIdForBalance).not.toHaveBeenCalled();
       expect(memoStateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           targetAddress: BASE_CONTRACT,

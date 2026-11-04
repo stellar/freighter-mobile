@@ -19,7 +19,6 @@ import {
   TransactionSetting,
   mapNetworkToNetworkDetails,
 } from "config/constants";
-import { logger } from "config/logger";
 import { FeePresets, FeePriority } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapSettingsStore } from "ducks/swapSettings";
@@ -29,7 +28,7 @@ import {
   formatNumberForDisplay,
 } from "helpers/formatAmount";
 import { getMemoDisabledState } from "helpers/muxedAddress";
-import { isContractDestination, isMuxedContract } from "helpers/muxedContract";
+import { isContractDestination } from "helpers/muxedContract";
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -49,7 +48,6 @@ import React, {
   useMemo,
 } from "react";
 import { Keyboard, TouchableOpacity, View } from "react-native";
-import { getSacContractIdForBalance } from "services/transactionService";
 
 type TransactionSettingsBottomSheetProps = {
   onCancel: () => void;
@@ -180,12 +178,9 @@ const TransactionSettingsBottomSheet: React.FC<
    * against. In order:
    * 1. A collectible transfer: the collection's contract.
    * 2. A custom token: its own contract.
-   * 3. A W recipient: the Stellar Asset Contract (SAC) of the selected asset.
-   *    Never the W itself; `undefined` when no balance is selected or the
-   *    balance has no SAC.
-   * 4. A C recipient: the recipient itself.
-   *
-   * The collectible and custom-token cases come first, so they win over a W.
+   * 3. A C or W recipient: the recipient itself. A W is never looked up: the
+   *    memo check turns the memo off for any M or W before it reads the
+   *    contract.
    */
   const contractId = useMemo(() => {
     if (!isSorobanTransaction || !recipientAddress) {
@@ -197,25 +192,6 @@ const TransactionSettingsBottomSheet: React.FC<
     }
     if (isCustomToken && selectedBalance && "contractId" in selectedBalance) {
       return selectedBalance.contractId;
-    }
-
-    if (isMuxedContract(recipientAddress)) {
-      if (!selectedBalance) {
-        return undefined;
-      }
-
-      try {
-        return getSacContractIdForBalance(selectedBalance, network);
-      } catch (error) {
-        // A balance with no SAC (e.g. a liquidity pool share) leaves the
-        // contract unresolved rather than crashing the sheet.
-        logger.warn(
-          "TransactionSettingsBottomSheet",
-          "Failed to resolve the SAC for the selected balance",
-          error,
-        );
-        return undefined;
-      }
     }
 
     if (isSorobanRecipient) {
@@ -231,7 +207,6 @@ const TransactionSettingsBottomSheet: React.FC<
     isSorobanRecipient,
     selectedCollectibleDetails?.collectionAddress,
     selectedBalance,
-    network,
   ]);
 
   // Get memo disabled state using the helper
