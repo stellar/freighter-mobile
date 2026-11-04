@@ -7,9 +7,9 @@ import { View } from "react-native";
 interface DappAuthEntryDetailsBottomSheetProps {
   entryXdr: string;
   /**
-   * Called when an invocation's body throws while rendering, after the error is
+   * Called when the entry's display throws while rendering, after the error is
    * reported. Passed through to {@link DappAuthEntryDisplay}, whose error
-   * boundaries call it.
+   * boundary calls it.
    */
   onRenderError?: () => void;
 }
@@ -36,8 +36,8 @@ export const DappAuthEntryDetailsHeader: React.FC<{
 
 /**
  * The body of the auth entry details sheet: the entry's display, with every
- * invocation expanded. Each invocation's body renders behind an error boundary,
- * which reports a render error through `onRenderError`.
+ * invocation expanded. The display renders behind an error boundary, which
+ * reports a render error through `onRenderError`.
  */
 const DappAuthEntryDetailsBottomSheet: React.FC<
   DappAuthEntryDetailsBottomSheetProps

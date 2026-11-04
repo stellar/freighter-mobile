@@ -41,7 +41,7 @@ interface DappAuthEntryDisplayProps {
   /** When true all invocation cards start expanded */
   expandAll?: boolean;
   /**
-   * Called once per card whose body throws while rendering, after the error is
+   * Called once when the display throws while rendering, after the error is
    * reported. A dApp request uses it to fail closed.
    */
   onRenderError?: () => void;
@@ -51,20 +51,11 @@ interface DappAuthEntryDisplayProps {
  * Decodes a HashIdPreimage XDR and renders each invocation as an expandable
  * card — matching the extension's AuthEntries component.
  *
- * The body of each expanded card, which holds the invocation's argument blocks,
- * renders behind an error boundary. When a block throws while rendering, the
- * boundary reports the error, shows the unreadable notice, in its auth-entry
- * wording, in place of that card's body and calls `onRenderError`. The card's
- * title and the rest of the screen stay. The body renders again once
- * `entryXdr` changes.
- *
  * Falls back to a scrollable raw-XDR view if parsing fails.
  */
-export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
-  entryXdr,
-  expandAll = false,
-  onRenderError,
-}) => {
+const DappAuthEntryDisplayContent: React.FC<
+  Omit<DappAuthEntryDisplayProps, "onRenderError">
+> = ({ entryXdr, expandAll = false }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
@@ -381,18 +372,7 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
               </TouchableOpacity>
               {isExpanded && (
                 <View className="px-[16px] pb-[16px]">
-                  <ErrorBoundary
-                    name="DappAuthEntryDisplay"
-                    fallback={
-                      <UnreadableTransactionNotice
-                        variant={UnreadableTransactionNoticeVariant.AuthEntry}
-                      />
-                    }
-                    onError={onRenderError}
-                    resetKey={entryXdr}
-                  >
-                    {renderDetailContent(detail)}
-                  </ErrorBoundary>
+                  {renderDetailContent(detail)}
                 </View>
               )}
             </View>
@@ -425,3 +405,32 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
     </View>
   );
 };
+
+/**
+ * The auth entry's invocations (see {@link DappAuthEntryDisplayContent}),
+ * behind one error boundary.
+ *
+ * If anything in the display throws while rendering, the boundary reports the
+ * error, shows the unreadable notice, in its auth-entry wording, in place of
+ * the whole display and calls `onRenderError`. The display renders again once
+ * `entryXdr` changes. The boundary sits above the cards, so collapsing one
+ * can't unmount it: a broken entry is reported once.
+ */
+export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
+  entryXdr,
+  expandAll = false,
+  onRenderError,
+}) => (
+  <ErrorBoundary
+    name="DappAuthEntryDisplay"
+    fallback={
+      <UnreadableTransactionNotice
+        variant={UnreadableTransactionNoticeVariant.AuthEntry}
+      />
+    }
+    onError={onRenderError}
+    resetKey={entryXdr}
+  >
+    <DappAuthEntryDisplayContent entryXdr={entryXdr} expandAll={expandAll} />
+  </ErrorBoundary>
+);

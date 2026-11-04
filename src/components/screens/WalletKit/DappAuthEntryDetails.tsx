@@ -46,15 +46,15 @@ interface DappAuthEntryDetailsSheetProps {
   entryXdr: string;
   /**
    * Called when the entry's details throw while rendering, after the error is
-   * reported. Passed down, through the details sheet, to the error boundaries
-   * around the invocations' bodies.
+   * reported. Passed down, through the details sheet, to the error boundary
+   * around the entry's display.
    */
   onRenderError?: () => void;
 }
 
 /**
- * The details sheet for `entryXdr`, opened through `modalRef`. It renders each
- * invocation's body behind an error boundary, which reports a render error
+ * The details sheet for `entryXdr`, opened through `modalRef`. It renders the
+ * entry's display behind an error boundary, which reports a render error
  * through `onRenderError`.
  *
  * It is apart from {@link DappAuthEntryDetailsButton} so that the request sheet

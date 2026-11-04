@@ -5,6 +5,7 @@ import {
   Networks,
   xdr,
 } from "@stellar/stellar-sdk";
+import { fireEvent } from "@testing-library/react-native";
 import {
   G_ACCOUNT,
   MUXED_CONTRACT_ID_1234,
@@ -14,6 +15,7 @@ import { DappAuthEntryDetailsSheet } from "components/screens/WalletKit/DappAuth
 import { DappAuthEntryDisplay } from "components/screens/WalletKit/DappAuthEntryDisplay";
 import { logger } from "config/logger";
 import { scValToDisplayTokens } from "helpers/soroban";
+import { truncateAddress } from "helpers/stellar";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { getContractSpecs } from "services/backend";
@@ -55,6 +57,18 @@ jest.mock("helpers/soroban", () => {
 });
 
 const actualSoroban = jest.requireActual("helpers/soroban");
+
+// Wrapped the same way, so a test can make the display itself throw: a
+// card body calls it while the display renders, not inside a child.
+jest.mock("helpers/stellar", () => {
+  const actual = jest.requireActual("helpers/stellar");
+  return {
+    ...actual,
+    truncateAddress: jest.fn(actual.truncateAddress),
+  };
+});
+
+const actualStellar = jest.requireActual("helpers/stellar");
 
 /** Every `scValToDisplayTokens` call throws, as it does for an arm it can't render. */
 const failTokens = () =>
@@ -127,6 +141,10 @@ beforeEach(() => {
     .mocked(scValToDisplayTokens)
     .mockReset()
     .mockImplementation(actualSoroban.scValToDisplayTokens);
+  jest
+    .mocked(truncateAddress)
+    .mockReset()
+    .mockImplementation(actualStellar.truncateAddress);
   jest.mocked(logger.error).mockClear();
 });
 
@@ -255,7 +273,7 @@ describe("DappAuthEntryDisplay", () => {
     failTokens();
     const onRenderError = jest.fn();
 
-    const { findByTestId, getByText } = renderWithProviders(
+    const { findByTestId, queryByText } = renderWithProviders(
       <DappAuthEntryDisplay
         entryXdr={sacTransferPreimageXdr()}
         expandAll
@@ -264,8 +282,8 @@ describe("DappAuthEntryDisplay", () => {
     );
 
     expect(await findByTestId("unreadable-transaction-notice")).toBeTruthy();
-    // Only the card body is replaced.
-    expect(getByText("transfer")).toBeTruthy();
+    // The notice replaces the whole display, the card's title too.
+    expect(queryByText("transfer")).toBeNull();
     expect(onRenderError).toHaveBeenCalledTimes(1);
     expect(logger.error).toHaveBeenCalledWith(
       "DappAuthEntryDisplay",
@@ -273,6 +291,46 @@ describe("DappAuthEntryDisplay", () => {
       expect.any(Error),
       expect.anything(),
     );
+  });
+
+  it("catches a throw in the display's own render, not only in a card's components", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    // The card body formats the contract ID while the display itself renders.
+    jest.mocked(truncateAddress).mockImplementation(() => {
+      throw new Error("unsupported address");
+    });
+    const onRenderError = jest.fn();
+
+    const { findByTestId } = renderWithProviders(
+      <DappAuthEntryDisplay
+        entryXdr={sacTransferPreimageXdr()}
+        expandAll
+        onRenderError={onRenderError}
+      />,
+    );
+
+    expect(await findByTestId("unreadable-transaction-notice")).toBeTruthy();
+    expect(onRenderError).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a broken entry once: no card is left to collapse and expand again", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    failTokens();
+    const onRenderError = jest.fn();
+
+    const { findByTestId, getByText, queryByText } = renderWithProviders(
+      <DappAuthEntryDisplay
+        entryXdr={sacTransferPreimageXdr()}
+        onRenderError={onRenderError}
+      />,
+    );
+    // Collapsed, nothing has thrown yet. Expanding the card trips it.
+    fireEvent.press(getByText("transfer"));
+
+    expect(await findByTestId("unreadable-transaction-notice")).toBeTruthy();
+    expect(queryByText("transfer")).toBeNull();
+    expect(logger.error).toHaveBeenCalledTimes(1);
+    expect(onRenderError).toHaveBeenCalledTimes(1);
   });
 
   it("renders the arguments again for a new entry, without reporting again", async () => {
