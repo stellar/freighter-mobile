@@ -1,5 +1,6 @@
 import {
   selectSwapRoute,
+  swapQuoteErrorReason,
   swapRouteIntermediateAssets,
 } from "components/screens/SwapScreen/helpers/selectSwapRoute";
 import { SwapQuotes, SwapRoute } from "config/types";
@@ -63,5 +64,17 @@ describe("swapRouteIntermediateAssets", () => {
 
   it("returns no intermediates for a direct hop", () => {
     expect(swapRouteIntermediateAssets(route("classic", "17"))).toEqual([]);
+  });
+});
+
+describe("swapQuoteErrorReason", () => {
+  const apiError = (status: number) => ({
+    message: `status ${status}`,
+    status,
+    isNetworkError: false,
+  });
+
+  it("treats a backend rate limit (429) as unavailable", () => {
+    expect(swapQuoteErrorReason(apiError(429))).toBe("unavailable");
   });
 });

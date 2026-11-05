@@ -94,7 +94,7 @@ export const useSwapForXlmReserve = ({
 
     let receivedSourceAmount: string | null = null;
     try {
-      if (publicKey) {
+      if (publicKey && isCurrentSourceNonXlmClassic) {
         const quotes = await fetchSwapQuotes({
           network,
           account: publicKey,

@@ -38,7 +38,7 @@ export const swapQuoteErrorReason = (
 ): "unavailable" | "noRoute" | null => {
   if (!isApiError(error)) return null;
   if (error.status === 400) return "noRoute";
-  if (error.status === 0 || error.status === 401 || error.status >= 500) {
+  if ([0, 401, 429].includes(error.status) || error.status >= 500) {
     return "unavailable";
   }
   return null;

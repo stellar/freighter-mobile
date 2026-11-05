@@ -180,7 +180,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     );
   });
 
-  it.each([0, 401, 500, 502, 503, 504])(
+  it.each([0, 401, 429, 500, 502, 503, 504])(
     "shows swaps temporarily unavailable on %i",
     async (status) => {
       mockFetchSwapQuotes.mockRejectedValue(apiError(status));
@@ -337,5 +337,26 @@ describe("swapQuoteKey", () => {
     expect(
       swapQuoteKey({ ...inputs("10"), network: NETWORKS.TESTNET }),
     ).not.toBe(base);
+  });
+});
+
+describe("swap quote amount wire format", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    useSwapStore.getState().resetSwap();
+  });
+
+  it.each([
+    ["5.", "5"],
+    ["1e-7", "0.0000001"],
+  ])("sends the amount %s as the plain decimal %s", async (amount, wire) => {
+    mockFetchSwapQuotes.mockResolvedValue({ routes: [], unavailable: [] });
+
+    await find(amount);
+
+    expect(mockFetchSwapQuotes).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: wire }),
+    );
+    expect(swapQuoteKey(inputs(amount))).toBe(swapQuoteKey(inputs(wire)));
   });
 });

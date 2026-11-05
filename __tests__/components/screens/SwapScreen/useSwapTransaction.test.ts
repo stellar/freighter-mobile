@@ -342,6 +342,21 @@ describe("useSwapTransaction", () => {
     });
   });
 
+  describe("setupSwapTransaction — slippage", () => {
+    it("computes the minimum from the current slippage, not the quote-time minimum", async () => {
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      // destinationAmount 2.5 at the settings mock's 0.5% slippage.
+      expect(mockBuildSwapTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ destinationAmountMin: "2.4875000" }),
+      );
+    });
+  });
+
   describe("setupSwapTransaction — quote freshness", () => {
     it("refuses to build from a quote for other inputs", async () => {
       const { result } = renderHook(() =>

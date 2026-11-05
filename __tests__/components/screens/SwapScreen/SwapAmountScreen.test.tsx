@@ -3,6 +3,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
+import BottomSheet from "components/BottomSheet";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
 import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
@@ -1890,6 +1891,55 @@ describe("SwapAmountScreen", () => {
           tokenIssuer: expect.any(String),
         }),
       );
+    });
+  });
+
+  describe("settings change rebuild", () => {
+    const fireSettingsChange = (
+      getAllByType: (type: unknown) => { props: Record<string, unknown> }[],
+    ) => {
+      const settingsSheet = getAllByType(BottomSheet).find(
+        (sheet) =>
+          (sheet.props.customContent as { props?: Record<string, unknown> })
+            ?.props?.onSettingsChange,
+      );
+      const { onSettingsChange } = (
+        settingsSheet?.props.customContent as {
+          props: { onSettingsChange: () => void };
+        }
+      ).props;
+      return act(async () => {
+        onSettingsChange();
+        await Promise.resolve();
+      });
+    };
+
+    it("rebuilds when the quote matches the current inputs", async () => {
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+      const { UNSAFE_getAllByType } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await fireSettingsChange(UNSAFE_getAllByType as never);
+
+      expect(mockSetupSwapTransaction).toHaveBeenCalled();
+    });
+
+    it("skips the rebuild while the matching quote is still pending", async () => {
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "older-key" },
+      });
+      const { UNSAFE_getAllByType } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await fireSettingsChange(UNSAFE_getAllByType as never);
+
+      expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
     });
   });
 });

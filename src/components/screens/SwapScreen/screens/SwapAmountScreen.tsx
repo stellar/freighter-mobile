@@ -709,9 +709,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [executeSwap]);
 
   const handleSettingsChange = useCallback(() => {
+    // Review stays disabled until the matching quote lands, so there is
+    // nothing to rebuild yet.
+    if (pathResult?.quoteKey !== currentQuoteKey) return;
     // Settings have changed, rebuild the swap transaction with new values
     prepareSwapTransaction(false);
-  }, [prepareSwapTransaction]);
+  }, [prepareSwapTransaction, pathResult?.quoteKey, currentQuoteKey]);
 
   const handleMainButtonPress = useCallback(async () => {
     // "enter" branch focuses the input — let the keyboard rise naturally.

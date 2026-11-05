@@ -26,7 +26,11 @@ import { useBalancesStore } from "ducks/balances";
 import { useHistoryStore } from "ducks/history";
 import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
-import { SwapPathResult, useSwapStore } from "ducks/swap";
+import {
+  computeDestMinWithSlippage,
+  SwapPathResult,
+  useSwapStore,
+} from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import {
   SubmitResultCodes,
@@ -149,8 +153,11 @@ export const useSwapTransaction = ({
     }
 
     // Get fresh settings values each time the function is called
-    const { swapFee: freshSwapFee, swapTimeout: freshSwapTimeout } =
-      useSwapSettingsStore.getState();
+    const {
+      swapFee: freshSwapFee,
+      swapTimeout: freshSwapTimeout,
+      swapSlippage: freshSwapSlippage,
+    } = useSwapSettingsStore.getState();
 
     // Derive includeTrustline from the swap store's destinationToken.
     // When requiresTrustline === true the user doesn't yet hold a trustline for the
@@ -178,7 +185,12 @@ export const useSwapTransaction = ({
       destinationBalance: destinationTokenInput,
       path: pathResult.path,
       destinationAmount: pathResult.destinationAmount,
-      destinationAmountMin: pathResult.destinationAmountMin,
+      // Slippage isn't in the quote key; the settings sheet can change it
+      // after quoting.
+      destinationAmountMin: computeDestMinWithSlippage(
+        pathResult.destinationAmount,
+        freshSwapSlippage,
+      ),
       transactionFee: freshSwapFee,
       transactionTimeout: freshSwapTimeout,
       network,

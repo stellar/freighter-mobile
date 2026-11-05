@@ -90,7 +90,7 @@ const initialState = {
   buildError: null,
 };
 
-const computeDestMinWithSlippage = (
+export const computeDestMinWithSlippage = (
   destinationAmount: string,
   slippage: number,
 ): string => {
@@ -119,7 +119,8 @@ const sendQuoteRequest = (inputs: SwapQuoteInputs) => ({
   mode: "send" as const,
   fromAsset: toSwapWireAsset(inputs.sourceBalance),
   toAsset: toSwapWireAsset(inputs.destinationBalance),
-  amount: inputs.sourceAmount,
+  // The backend accepts only plain decimals; the store can hold "5." or "1e-7".
+  amount: new BigNumber(inputs.sourceAmount).toFixed(),
 });
 
 const quoteKeyOf = (r: ReturnType<typeof sendQuoteRequest>): string =>

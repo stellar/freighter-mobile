@@ -175,4 +175,28 @@ describe("useSwapForXlmReserve — 0.5 XLM estimate", () => {
 
     expect(logger.warn).not.toHaveBeenCalled();
   });
+
+  it("does not quote when the sell side falls back to another token", async () => {
+    const setTokenAmount = jest.fn();
+    const { result } = renderHook(() =>
+      useSwapForXlmReserve({
+        sourceBalance: undefined,
+        bestNonXlmClassicBalance: usdcBalance,
+        network: NETWORKS.PUBLIC,
+        publicKey: ACCOUNT,
+        subentryCount: 0,
+        swapFee: "0.00001",
+        setSourceToken: jest.fn(),
+        setDestinationToken: jest.fn(),
+        setTokenAmount,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleSwapForXlmFromSheet();
+    });
+
+    expect(mockFetchSwapQuotes).not.toHaveBeenCalled();
+    expect(setTokenAmount).toHaveBeenCalledWith("0");
+  });
 });
