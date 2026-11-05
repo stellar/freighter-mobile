@@ -765,12 +765,26 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   );
 
   /**
+   * Throws away the transaction built for earlier settings, and closes the
+   * review sheet, when the current settings can't be built. The review sheet's
+   * gear opens Settings, so the memo can change while the review is open:
+   * without this the review would come back showing the new memo over a
+   * transaction built without it, and Confirm would sign that one. The
+   * screen's banner then says why the send is blocked.
+   */
+  const discardBuiltTransaction = useCallback(() => {
+    resetTransaction();
+    reviewBottomSheetModalRef.current?.dismiss();
+  }, [resetTransaction]);
+
+  /**
    * Builds the transaction for the current token, recipient and settings, then
    * scans it, and opens the review sheet when `shouldOpenReview` is set. With a
    * `feeEstimationAmount` it only builds, to estimate fees: no scan and no
    * review.
    *
-   * Returns first thing, building nothing, unless `canBuildForRecipient`: not
+   * Returns first thing, building nothing and throwing away what was built
+   * before (see `discardBuiltTransaction`), unless `canBuildForRecipient`: not
    * when the recipient can't take the token or the transfer can't carry the
    * memo, nor while a contract check runs. The auto-simulation, a settings
    * change and Continue all come through here, so none of them can build one.
@@ -784,6 +798,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const prepareTransaction = useCallback(
     async (shouldOpenReview = false, feeEstimationAmount?: string) => {
       if (!canBuildForRecipient) {
+        discardBuiltTransaction();
         return;
       }
 
@@ -823,6 +838,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             contractSupportsMuxed: contractSupportsMuxed !== false,
           })
         ) {
+          discardBuiltTransaction();
           return;
         }
 
@@ -868,6 +884,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       recipientAddress,
       canBuildForRecipient,
       contractSupportsMuxed,
+      discardBuiltTransaction,
       handleTransactionScanSuccess,
       handleTransactionScanError,
     ],

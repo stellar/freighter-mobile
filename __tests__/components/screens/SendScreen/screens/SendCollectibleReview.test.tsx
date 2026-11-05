@@ -7,6 +7,7 @@ import {
   MUXED_CONTRACT_ID_0,
 } from "__tests__/support/muxedContractFixtures";
 import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
+import { SendReviewBottomSheet } from "components/screens/SendScreen/components";
 import SendCollectibleReviewScreen from "components/screens/SendScreen/screens/SendCollectibleReview";
 import { NETWORKS } from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
@@ -1370,6 +1371,61 @@ describe("SendCollectibleReview - muxed recipients (W and M)", () => {
       });
 
       expect(buildSendCollectibleTransaction).not.toHaveBeenCalled();
+    });
+
+    it("throws away the earlier build and closes the review when its Settings saves a memo the collection can't carry", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+      const buildSendCollectibleTransaction = setRecipient(G_ACCOUNT);
+      // A host View has no ref in the test renderer, so each bottom sheet
+      // modal (the only elements rendered `detached`) gets its own dismiss()
+      // to watch, kept with the content it holds.
+      const sheets: { dismiss: jest.Mock; content: React.ReactNode }[] = [];
+      const { getByText } = render(
+        <SendCollectibleReviewScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+        {
+          // The settings sheet's inputs read the toast context.
+          wrapper: ToastProvider,
+          createNodeMock: (element) => {
+            const props = element.props as {
+              detached?: boolean;
+              children?: React.ReactNode;
+            };
+            if (!props.detached) {
+              return null;
+            }
+            const sheet = { dismiss: jest.fn(), content: props.children };
+            sheets.push(sheet);
+
+            return { present: jest.fn(), dismiss: sheet.dismiss };
+          },
+        },
+      );
+      await act(async () => {});
+      expect(buildSendCollectibleTransaction).toHaveBeenCalledTimes(1);
+      const { resetTransaction } = mockUseTransactionBuilderStore();
+      (resetTransaction as jest.Mock).mockClear();
+
+      // The review sheet's gear opens Settings, and the memo typed there is in
+      // the store by the time the screen hears of the save.
+      const settings = (useTransactionSettingsStore as any).getState();
+      (useTransactionSettingsStore as any).getState = jest
+        .fn()
+        .mockReturnValue({ ...settings, transactionMemo: "deposit-42" });
+      await act(() => {
+        fireEvent.press(getByText("common.save"));
+        return Promise.resolve();
+      });
+
+      // The transaction built without the memo can't be confirmed under it.
+      const review = sheets.find((sheet) =>
+        findElementOfType(sheet.content, SendReviewBottomSheet),
+      );
+      expect(resetTransaction).toHaveBeenCalled();
+      expect(review?.dismiss).toHaveBeenCalled();
+      expect(buildSendCollectibleTransaction).toHaveBeenCalledTimes(1);
     });
 
     it("hides the image on small screens while the memo blocks the send", async () => {

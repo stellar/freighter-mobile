@@ -407,10 +407,24 @@ const SendCollectibleReviewScreen: React.FC<
   }, []);
 
   /**
+   * Throws away the transaction built for earlier settings, and closes the
+   * review sheet, when the current settings can't be built. The review sheet's
+   * gear opens Settings, so the memo can change while the review is open:
+   * without this the review would come back showing the new memo over a
+   * transaction built without it, and Confirm would sign that one. The
+   * screen's banner then says why the send is blocked.
+   */
+  const discardBuiltTransaction = useCallback(() => {
+    resetTransaction();
+    reviewBottomSheetModalRef.current?.dismiss();
+  }, [resetTransaction]);
+
+  /**
    * Builds the collectible transfer for the current recipient and settings,
    * then scans it, and opens the review sheet when `shouldOpenReview` is set.
    *
-   * Returns first thing, building nothing, unless `canBuildForRecipient`: not
+   * Returns first thing, building nothing and throwing away what was built
+   * before (see `discardBuiltTransaction`), unless `canBuildForRecipient`: not
    * for a recipient that can't take the collectible or a memo the transfer
    * can't carry, nor while a collection check runs. The auto-simulation, a
    * settings change and Review all come through here, so none of them can
@@ -423,6 +437,7 @@ const SendCollectibleReviewScreen: React.FC<
   const prepareTransaction = useCallback(
     async (shouldOpenReview = false) => {
       if (!canBuildForRecipient) {
+        discardBuiltTransaction();
         return;
       }
 
@@ -454,6 +469,7 @@ const SendCollectibleReviewScreen: React.FC<
             contractSupportsMuxed: contractSupportsMuxed !== false,
           })
         ) {
+          discardBuiltTransaction();
           return;
         }
 
@@ -503,6 +519,7 @@ const SendCollectibleReviewScreen: React.FC<
       recipientAddress,
       canBuildForRecipient,
       contractSupportsMuxed,
+      discardBuiltTransaction,
       handleTransactionScanSuccess,
       handleTransactionScanError,
     ],
