@@ -97,9 +97,10 @@ const BLOCKED_SEND_BANNER_TEST_IDS: Record<MuxedAddressWarningVariant, string> =
  *
  * A screen for reviewing details of a collectible before sending.
  *
- * A collectible can't be sent to a muxed contract (W) address: a banner
- * explains why, Review is disabled and nothing is built. On a small screen
- * the collectible image is hidden then, so the banner and Review both fit.
+ * A collectible can't be sent to a muxed contract (W) address, nor to an M
+ * whose collection doesn't support muxed addresses: a banner explains why,
+ * Review is disabled and nothing is built. On a small screen the collectible
+ * image is hidden then, so the banner and Review both fit.
  *
  * @param {SendCollectibleReviewScreenProps} props - Component props
  * @returns {JSX.Element} The rendered component
@@ -259,8 +260,8 @@ const SendCollectibleReviewScreen: React.FC<
   );
 
   // A collectible is never sent to a muxed contract (W) address, the same
-  // rule as the extension. It blocks here on the screen: the build is refused,
-  // so the review sheet that carries the M banner would never open.
+  // rule as the extension. It blocks here on the screen, since the build is
+  // refused and the review sheet would never open.
   const isRecipientMuxedContract = Boolean(
     recipientAddress && isMuxedContract(recipientAddress),
   );
