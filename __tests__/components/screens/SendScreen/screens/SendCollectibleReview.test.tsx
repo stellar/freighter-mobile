@@ -1287,15 +1287,25 @@ describe("SendCollectibleReview - muxed recipients (W and M)", () => {
     it("blocks a memo that isn't a number for a collection that supports muxed addresses", async () => {
       mockCheckContractMuxedSupport.mockResolvedValue(true);
 
-      const { getByTestId, getByText, buildSendCollectibleTransaction } =
-        await renderWithRecipient(G_ACCOUNT, "deposit-42");
+      const {
+        getByTestId,
+        getByText,
+        queryByText,
+        buildSendCollectibleTransaction,
+      } = await renderWithRecipient(G_ACCOUNT, "deposit-42");
 
       expect(getByTestId(memoBannerTestId)).toBeTruthy();
       expect(isReviewDisabled(getByTestId)).toBe(true);
       expect(buildSendCollectibleTransaction).not.toHaveBeenCalled();
+      // The sheet says "collectible", not the token wording.
       expect(
-        getByText("transaction.errors.nonNumericMemoNotSupported"),
+        getByText(
+          "transactionAmountScreen.errors.memoNotSupportedWarning.collectibleNumericDescription",
+        ),
       ).toBeTruthy();
+      expect(
+        queryByText("transaction.errors.nonNumericMemoNotSupported"),
+      ).toBeNull();
     });
 
     it("builds with a numeric memo for a collection that supports muxed addresses", async () => {

@@ -879,7 +879,8 @@
       "memoNotSupported": "Memo not supported",
       "memoNotSupportedWarning": {
         "description": "This token can't be sent with a memo to this address.",
-        "collectibleDescription": "This collectible can't be sent with a memo to this address."
+        "collectibleDescription": "This collectible can't be sent with a memo to this address.",
+        "collectibleNumericDescription": "This collectible only accepts a numeric memo, from 0 to 18446744073709551615."
       },
       "malicious": "This address was flagged as malicious",
       "suspicious": "This address was flagged as suspicious",

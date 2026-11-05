@@ -14,13 +14,16 @@ import { View } from "react-native";
  *   address.
  * - `"numericMemo"`: a memo that isn't a number, for a token that only takes
  *   a numeric one.
+ * - `"collectibleNumericMemo"`: a memo that isn't a number, for a collectible
+ *   that only takes a numeric one.
  */
 export type MuxedAddressWarningVariant =
   | "account"
   | "contract"
   | "memo"
   | "collectibleMemo"
-  | "numericMemo";
+  | "numericMemo"
+  | "collectibleNumericMemo";
 
 const DESCRIPTION_KEYS = {
   account: "transactionAmountScreen.errors.muxedAddressWarning.description",
@@ -29,6 +32,8 @@ const DESCRIPTION_KEYS = {
   collectibleMemo:
     "transactionAmountScreen.errors.memoNotSupportedWarning.collectibleDescription",
   numericMemo: "transaction.errors.nonNumericMemoNotSupported",
+  collectibleNumericMemo:
+    "transactionAmountScreen.errors.memoNotSupportedWarning.collectibleNumericDescription",
 } as const;
 
 export interface MuxedAddressWarningBottomSheetProps {

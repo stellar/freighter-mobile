@@ -125,6 +125,7 @@ const BLOCKED_SEND_BANNER_TEST_IDS: Record<MuxedAddressWarningVariant, string> =
     memo: "memo-not-supported-banner",
     collectibleMemo: "memo-not-supported-banner",
     numericMemo: "memo-not-supported-banner",
+    collectibleNumericMemo: "memo-not-supported-banner",
   };
 
 /**

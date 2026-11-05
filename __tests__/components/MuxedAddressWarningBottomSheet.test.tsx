@@ -17,6 +17,8 @@ const COLLECTIBLE_MEMO_DESCRIPTION =
   "This collectible can't be sent with a memo to this address.";
 const NUMERIC_MEMO_DESCRIPTION =
   "This token only accepts a numeric memo, from 0 to 18446744073709551615.";
+const COLLECTIBLE_NUMERIC_MEMO_DESCRIPTION =
+  "This collectible only accepts a numeric memo, from 0 to 18446744073709551615.";
 
 describe("MuxedAddressWarningBottomSheet", () => {
   it("explains an M by default", () => {
@@ -64,6 +66,7 @@ describe("MuxedAddressWarningBottomSheet", () => {
     ["memo", MEMO_DESCRIPTION],
     ["collectibleMemo", COLLECTIBLE_MEMO_DESCRIPTION],
     ["numericMemo", NUMERIC_MEMO_DESCRIPTION],
+    ["collectibleNumericMemo", COLLECTIBLE_NUMERIC_MEMO_DESCRIPTION],
   ] as const)(
     "explains a memo that can't be sent for variant %s",
     (variant, description) => {

@@ -845,7 +845,8 @@
       "memoNotSupported": "Memo não suportado",
       "memoNotSupportedWarning": {
         "description": "Este token não pode ser enviado com um memo para este endereço.",
-        "collectibleDescription": "Este colecionável não pode ser enviado com um memo para este endereço."
+        "collectibleDescription": "Este colecionável não pode ser enviado com um memo para este endereço.",
+        "collectibleNumericDescription": "Este colecionável só aceita um memo numérico, de 0 a 18446744073709551615."
       },
       "malicious": "Este endereço foi marcado como malicioso",
       "suspicious": "Este endereço foi marcado como suspeito",

@@ -90,6 +90,7 @@ const BLOCKED_SEND_BANNER_TEST_IDS: Record<MuxedAddressWarningVariant, string> =
     memo: "memo-not-supported-banner",
     collectibleMemo: "memo-not-supported-banner",
     numericMemo: "memo-not-supported-banner",
+    collectibleNumericMemo: "memo-not-supported-banner",
   };
 
 /**
@@ -377,7 +378,7 @@ const SendCollectibleReviewScreen: React.FC<
   // blocked.
   const blockedSendWarning = useMemo((): MuxedAddressWarningVariant => {
     if (memoRefusal === "nonNumeric") {
-      return "numericMemo";
+      return "collectibleNumericMemo";
     }
 
     if (memoRefusal === "unsupported") {
