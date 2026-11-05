@@ -106,7 +106,7 @@ type SwapStoreState = {
   sourceAmount: string;
   sourceAmountDisplay: string;
   destinationAmount: string;
-  pathResult: null | { destinationAmount: string };
+  pathResult: null | { destinationAmount: string; quoteKey: string };
   isLoadingPath: boolean;
   pathError: string | null;
   setSourceToken: jest.Mock;
@@ -145,6 +145,7 @@ const makeDefaultSwapState = (): SwapStoreState => ({
 
 jest.mock("ducks/swap", () => ({
   useSwapStore: jest.fn(),
+  swapQuoteKey: jest.fn(() => "quote-key"),
   // Pass-through adapter — tests can inspect the call by passing in a
   // descriptor that doesn't match any held balance and asserting that the
   // useSwapPathFinding mock receives an object with `tokenCode`/`id` from
@@ -834,7 +835,7 @@ describe("SwapAmountScreen", () => {
     it("shows 'Review swap' (enabled) when path-finding succeeds", async () => {
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
       });
 
       const { getByTestId } = renderWithProviders(
@@ -876,7 +877,7 @@ describe("SwapAmountScreen", () => {
 
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
       });
 
       const { getByTestId } = renderWithProviders(
@@ -969,7 +970,7 @@ describe("SwapAmountScreen", () => {
 
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           tokenCode: "FTT",
@@ -1011,7 +1012,7 @@ describe("SwapAmountScreen", () => {
       // The pre-flight gate should NOT fire, so setupSwapTransaction is called.
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           tokenCode: "FTT",
@@ -1077,7 +1078,7 @@ describe("SwapAmountScreen", () => {
         // sourceTokenId = "XLM" (NATIVE_TOKEN_CODE) — XLM is the source
         sourceTokenId: "XLM",
         sourceAmount: "0.39",
-        pathResult: { destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           tokenCode: "FTT",
@@ -1139,7 +1140,7 @@ describe("SwapAmountScreen", () => {
       setSwapStoreState({
         sourceTokenId: "XLM",
         sourceAmount: "0.89",
-        pathResult: { destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           tokenCode: "FTT",

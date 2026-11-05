@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react-hooks";
 import BigNumber from "bignumber.js";
 import { useSwapForXlmReserve } from "components/screens/SwapScreen/hooks/useSwapForXlmReserve";
 import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import { TokenTypeWithCustomToken } from "config/types";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { fetchSwapQuotes } from "services/backend";
@@ -144,5 +145,34 @@ describe("useSwapForXlmReserve — 0.5 XLM estimate", () => {
     expect(setDestinationToken).toHaveBeenCalledWith(
       expect.objectContaining({ id: "XLM" }),
     );
+  });
+
+  it("reports a classic outage the way a failed quote is reported", async () => {
+    mockFetchSwapQuotes.mockResolvedValue({
+      routes: [],
+      unavailable: [{ source: "classic", reason: "timeout" }],
+    });
+    const { result, setTokenAmount } = renderReserveHook();
+
+    await act(async () => {
+      await result.current.handleSwapForXlmFromSheet();
+    });
+
+    expect(setTokenAmount).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalled();
+  });
+
+  it("does not report a plain no-route answer", async () => {
+    mockFetchSwapQuotes.mockResolvedValue({
+      routes: [],
+      unavailable: [{ source: "classic", reason: "no_route" }],
+    });
+    const { result } = renderReserveHook();
+
+    await act(async () => {
+      await result.current.handleSwapForXlmFromSheet();
+    });
+
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 });

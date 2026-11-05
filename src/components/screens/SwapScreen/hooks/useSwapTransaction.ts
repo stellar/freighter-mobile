@@ -75,6 +75,8 @@ interface SwapTransactionParams {
   sourceBalance: PricedBalance | undefined;
   destinationTokenInput: PricedBalance | undefined;
   pathResult: SwapPathResult | null;
+  /** `swapQuoteKey` of the current inputs; `pathResult` must match it. */
+  currentQuoteKey: string | null;
   account: ActiveAccount | null;
   network: NETWORKS;
   navigation: NativeStackNavigationProp<
@@ -107,6 +109,7 @@ export const useSwapTransaction = ({
   sourceBalance,
   destinationTokenInput,
   pathResult,
+  currentQuoteKey,
   account,
   network,
   navigation,
@@ -139,6 +142,10 @@ export const useSwapTransaction = ({
       !account?.publicKey
     ) {
       return undefined;
+    }
+
+    if (pathResult.quoteKey !== currentQuoteKey) {
+      throw new Error(t("swapScreen.errors.quoteExpired"));
     }
 
     // Get fresh settings values each time the function is called
@@ -198,11 +205,13 @@ export const useSwapTransaction = ({
     sourceBalance,
     destinationTokenInput,
     pathResult,
+    currentQuoteKey,
     buildSwapTransaction,
     account?.publicKey,
     sourceAmount,
     network,
     scanTransaction,
+    t,
   ]);
 
   const executeSwap = useCallback(async () => {

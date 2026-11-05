@@ -1,6 +1,9 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BigNumber from "bignumber.js";
-import { selectSwapRoute } from "components/screens/SwapScreen/helpers/selectSwapRoute";
+import {
+  missingSwapRouteReason,
+  selectSwapRoute,
+} from "components/screens/SwapScreen/helpers/selectSwapRoute";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import {
   DEFAULT_DECIMALS,
@@ -101,6 +104,16 @@ export const useSwapForXlmReserve = ({
           amount: "0.5",
         });
         receivedSourceAmount = selectSwapRoute(quotes)?.fromAmount ?? null;
+        if (
+          !receivedSourceAmount &&
+          missingSwapRouteReason(quotes) === "unavailable"
+        ) {
+          logger.warn(
+            "useSwapForXlmReserve.handleSwapForXlmFromSheet",
+            "receive quote source unavailable",
+            quotes.unavailable,
+          );
+        }
       }
     } catch (error) {
       // No path / network error — fall back to setting source+dest without

@@ -42,6 +42,7 @@ export const useSwapCtaState = ({
   pathResult,
   pathError,
   amountError,
+  currentQuoteKey,
 }: {
   sourceBalance: PricedBalance | undefined;
   destinationTokenDescriptor: DestinationTokenDescriptor | null;
@@ -52,6 +53,8 @@ export const useSwapCtaState = ({
   pathResult: SwapPathResult | null;
   pathError: string | null;
   amountError: string | null;
+  /** `swapQuoteKey` of the current inputs. */
+  currentQuoteKey: string | null;
 }): { ctaState: SwapCtaState; ctaLabel: string; isCtaDisabled: boolean } => {
   const { t } = useAppTranslation();
 
@@ -74,7 +77,12 @@ export const useSwapCtaState = ({
 
     if (isLoadingPath || isBuilding) return { kind: "loading" };
 
-    if (pathResult && !pathError) return { kind: "review" };
+    if (pathResult && !pathError) {
+      // An older quote stays in the store until the debounced re-quote lands.
+      return pathResult.quoteKey === currentQuoteKey
+        ? { kind: "review" }
+        : { kind: "loading" };
+    }
 
     // Path-finding finished without a result (or threw) — keep the user on
     // the amount step. The persistent toast (set up by the screen) already
@@ -89,6 +97,7 @@ export const useSwapCtaState = ({
     isBuilding,
     pathResult,
     pathError,
+    currentQuoteKey,
   ]);
 
   const ctaLabel = useMemo(() => {

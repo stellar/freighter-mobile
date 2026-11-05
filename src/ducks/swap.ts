@@ -1,7 +1,9 @@
 import BigNumber from "bignumber.js";
 import {
   DestinationTokenDescriptor,
+  missingSwapRouteReason,
   selectSwapRoute,
+  swapQuoteErrorReason,
   swapRouteIntermediateAssets,
 } from "components/screens/SwapScreen/helpers";
 import {
@@ -30,6 +32,8 @@ export interface SwapPathResult {
   destinationAmountMin: string;
   path: string[];
   conversionRate: string;
+  /** `swapQuoteKey` of the inputs this quote answered. */
+  quoteKey: string;
 }
 
 interface SwapState {
@@ -101,14 +105,43 @@ const toSwapWireAsset = (balance: PricedBalance): string => {
     : `${token.getCode()}:${token.getIssuer()}`;
 };
 
-const quoteErrorMessage = (error: unknown): string | null => {
-  const status = (error as { status?: unknown } | null)?.status;
-  if (status === 400) return t("swapScreen.errors.noPathFound");
-  if (status === 502 || status === 503) {
-    return t("swapScreen.errors.swapsUnavailable");
+interface SwapQuoteInputs {
+  sourceBalance: PricedBalance;
+  destinationBalance: PricedBalance;
+  sourceAmount: string;
+  network: NETWORKS;
+  publicKey: string;
+}
+
+const sendQuoteRequest = (inputs: SwapQuoteInputs) => ({
+  network: inputs.network,
+  account: inputs.publicKey,
+  mode: "send" as const,
+  fromAsset: toSwapWireAsset(inputs.sourceBalance),
+  toAsset: toSwapWireAsset(inputs.destinationBalance),
+  amount: inputs.sourceAmount,
+});
+
+const quoteKeyOf = (r: ReturnType<typeof sendQuoteRequest>): string =>
+  [r.account, r.network, r.mode, r.fromAsset, r.toAsset, r.amount].join("|");
+
+/**
+ * Identifies the send-quote request for these inputs. Review and build use
+ * `pathResult` only when its `quoteKey` equals the key of the current inputs.
+ * Null when the inputs can't be quoted.
+ */
+export const swapQuoteKey = (inputs: SwapQuoteInputs): string | null => {
+  try {
+    return quoteKeyOf(sendQuoteRequest(inputs));
+  } catch {
+    return null;
   }
-  return null;
 };
+
+const QUOTE_ERROR_KEYS = {
+  unavailable: "swapScreen.errors.swapsUnavailable",
+  noRoute: "swapScreen.errors.noPathFound",
+} as const;
 
 // Quotes can take seconds, so a slower earlier request must not overwrite a
 // newer one or a cleared path.
@@ -158,14 +191,8 @@ export const useSwapStore = create<SwapState>((set) => ({
   },
 
   findSwapPath: async (params) => {
-    const {
-      sourceBalance,
-      destinationBalance,
-      sourceAmount,
-      slippage,
-      network,
-      publicKey,
-    } = params;
+    const { sourceBalance, destinationBalance, sourceAmount, slippage } =
+      params;
 
     quoteRequestId += 1;
     const requestId = quoteRequestId;
@@ -202,24 +229,26 @@ export const useSwapStore = create<SwapState>((set) => ({
         return;
       }
 
-      const swapQuotes = await fetchSwapQuotes({
-        network,
-        account: publicKey,
-        mode: "send",
-        fromAsset: toSwapWireAsset(sourceBalance),
-        toAsset: toSwapWireAsset(destinationBalance),
-        amount: sourceAmount,
-      });
+      const request = sendQuoteRequest(params);
+      const swapQuotes = await fetchSwapQuotes(request);
 
       if (isStale()) return;
 
       const route = selectSwapRoute(swapQuotes);
 
       if (!route) {
+        const reason = missingSwapRouteReason(swapQuotes);
+        if (reason === "unavailable") {
+          logger.error(
+            "SwapStore",
+            "Swap source unavailable",
+            swapQuotes.unavailable,
+          );
+        }
         set({
           isLoadingPath: false,
           swapQuotes,
-          pathError: t("swapScreen.errors.noPathFound"),
+          pathError: t(QUOTE_ERROR_KEYS[reason]),
         });
         return;
       }
@@ -235,6 +264,7 @@ export const useSwapStore = create<SwapState>((set) => ({
         conversionRate: new BigNumber(route.toAmount)
           .dividedBy(new BigNumber(sourceAmount))
           .toFixed(7),
+        quoteKey: quoteKeyOf(request),
       };
 
       set({
@@ -251,9 +281,11 @@ export const useSwapStore = create<SwapState>((set) => ({
 
       logger.error("SwapStore", "Failed to find swap path", error);
 
-      const displayError =
-        quoteErrorMessage(error) ??
-        (__DEV__ ? errorMessage : t("swapScreen.errors.pathFindFailed"));
+      const reason = swapQuoteErrorReason(error);
+      const fallbackError = __DEV__
+        ? errorMessage
+        : t("swapScreen.errors.pathFindFailed");
+      const displayError = reason ? t(QUOTE_ERROR_KEYS[reason]) : fallbackError;
 
       set({
         isLoadingPath: false,

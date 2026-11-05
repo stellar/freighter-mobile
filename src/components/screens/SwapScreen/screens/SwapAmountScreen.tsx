@@ -57,7 +57,11 @@ import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { FormattedSearchTokenRecord } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
-import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
+import {
+  descriptorAsPathBalance,
+  swapQuoteKey,
+  useSwapStore,
+} from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { isNativeAssetId } from "helpers/assetIdentity";
@@ -250,6 +254,26 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     return undefined;
   }, [destinationBalance, destinationTokenDescriptor]);
 
+  const currentQuoteKey = useMemo(
+    () =>
+      sourceBalance && destinationForPath && account?.publicKey
+        ? swapQuoteKey({
+            sourceBalance,
+            destinationBalance: destinationForPath,
+            sourceAmount,
+            network,
+            publicKey: account.publicKey,
+          })
+        : null,
+    [
+      sourceBalance,
+      destinationForPath,
+      sourceAmount,
+      network,
+      account?.publicKey,
+    ],
+  );
+
   useSwapPathFinding({
     sourceBalance,
     destinationTokenForPath: destinationForPath,
@@ -273,7 +297,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceBalance,
     destinationTokenInput: destinationForPath,
     pathResult,
-
+    currentQuoteKey,
     account,
     network,
     navigation,
@@ -384,6 +408,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     pathResult,
     pathError,
     amountError,
+    currentQuoteKey,
   });
 
   useEffect(() => {

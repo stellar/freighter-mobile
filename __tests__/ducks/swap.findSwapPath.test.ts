@@ -1,7 +1,8 @@
 import BigNumber from "bignumber.js";
 import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import { PricedBalance, SwapQuotes, SwapRoute } from "config/types";
-import { useSwapStore } from "ducks/swap";
+import { swapQuoteKey, useSwapStore } from "ducks/swap";
 import { fetchSwapQuotes } from "services/backend";
 
 jest.mock("services/backend", () => ({
@@ -74,15 +75,18 @@ const lifiRoute: SwapRoute = {
   fees: [],
 };
 
+const inputs = (sourceAmount = "10") => ({
+  sourceBalance: xlmBalance,
+  destinationBalance: usdcBalance,
+  sourceAmount,
+  network: NETWORKS.PUBLIC,
+  publicKey: ACCOUNT,
+});
+
 const find = (sourceAmount = "10") =>
-  useSwapStore.getState().findSwapPath({
-    sourceBalance: xlmBalance,
-    destinationBalance: usdcBalance,
-    sourceAmount,
-    slippage: 1,
-    network: NETWORKS.PUBLIC,
-    publicKey: ACCOUNT,
-  });
+  useSwapStore
+    .getState()
+    .findSwapPath({ ...inputs(sourceAmount), slippage: 1 });
 
 const apiError = (status: number) => ({
   message: `Request failed with status code ${status}`,
@@ -132,6 +136,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
       destinationAmountMin: "1.9800000",
       path: [AQUA],
       conversionRate: "0.2000000",
+      quoteKey: swapQuoteKey(inputs("10")),
     });
     expect(state.destinationAmount).toBe("2.0000000");
     expect(state.swapQuotes).toEqual(quotes);
@@ -175,7 +180,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     );
   });
 
-  it.each([502, 503])(
+  it.each([0, 401, 500, 502, 503, 504])(
     "shows swaps temporarily unavailable on %i",
     async (status) => {
       mockFetchSwapQuotes.mockRejectedValue(apiError(status));
@@ -231,5 +236,106 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(state.swapQuotes).toBeNull();
     expect(state.destinationAmount).toBe("0");
     expect(state.isLoadingPath).toBe(false);
+  });
+
+  it("reports a thrown outage to Sentry", async () => {
+    mockFetchSwapQuotes.mockRejectedValue(apiError(0));
+
+    await find();
+
+    expect(logger.error).toHaveBeenCalled();
+  });
+
+  it.each(["error", "timeout", "rate_limited"])(
+    "shows swaps temporarily unavailable and reports when classic is unavailable with %s",
+    async (reason) => {
+      mockFetchSwapQuotes.mockResolvedValue({
+        routes: [lifiRoute],
+        unavailable: [{ source: "classic", reason }],
+      });
+
+      await find();
+
+      const state = useSwapStore.getState();
+      expect(state.pathResult).toBeNull();
+      expect(state.pathError).toBe("swapScreen.errors.swapsUnavailable");
+      expect(logger.error).toHaveBeenCalled();
+    },
+  );
+
+  it.each(["no_route", "insufficient_balance"])(
+    "shows no path when classic is unavailable with %s",
+    async (reason) => {
+      mockFetchSwapQuotes.mockResolvedValue({
+        routes: [],
+        unavailable: [{ source: "classic", reason }],
+      });
+
+      await find();
+
+      expect(useSwapStore.getState().pathError).toBe(
+        "swapScreen.errors.noPathFound",
+      );
+      expect(logger.error).not.toHaveBeenCalled();
+    },
+  );
+
+  it("ignores an in-flight response after resetSwap", async () => {
+    let resolveFirst: (q: SwapQuotes) => void = () => {};
+    mockFetchSwapQuotes.mockImplementationOnce(
+      () =>
+        new Promise<SwapQuotes>((resolve) => {
+          resolveFirst = resolve;
+        }),
+    );
+
+    const first = find("10");
+    useSwapStore.getState().resetSwap();
+    resolveFirst({ routes: [classicRoute], unavailable: [] });
+    await first;
+
+    const state = useSwapStore.getState();
+    expect(state.pathResult).toBeNull();
+    expect(state.swapQuotes).toBeNull();
+    expect(state.isLoadingPath).toBe(false);
+  });
+
+  it("ignores a failure that lands after a newer request was started", async () => {
+    let rejectFirst: (e: unknown) => void = () => {};
+    mockFetchSwapQuotes
+      .mockImplementationOnce(
+        () =>
+          new Promise<SwapQuotes>((_, reject) => {
+            rejectFirst = reject;
+          }),
+      )
+      .mockResolvedValueOnce({ routes: [classicRoute], unavailable: [] });
+
+    const first = find("10");
+    await find("20");
+    rejectFirst(apiError(503));
+    await first;
+
+    const state = useSwapStore.getState();
+    expect(state.pathError).toBeNull();
+    expect(state.pathResult).not.toBeNull();
+  });
+});
+
+describe("swapQuoteKey", () => {
+  it("changes with the amount, the destination, the account and the network", () => {
+    const base = swapQuoteKey(inputs("10"));
+
+    expect(swapQuoteKey(inputs("10"))).toBe(base);
+    expect(swapQuoteKey(inputs("11"))).not.toBe(base);
+    expect(
+      swapQuoteKey({ ...inputs("10"), destinationBalance: xlmBalance }),
+    ).not.toBe(base);
+    expect(swapQuoteKey({ ...inputs("10"), publicKey: "GOTHER" })).not.toBe(
+      base,
+    );
+    expect(
+      swapQuoteKey({ ...inputs("10"), network: NETWORKS.TESTNET }),
+    ).not.toBe(base);
   });
 });
