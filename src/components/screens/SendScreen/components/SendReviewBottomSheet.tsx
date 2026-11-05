@@ -469,7 +469,6 @@ type SendReviewFooterProps = {
   isSuspicious?: boolean;
   isUnableToScan?: boolean;
   isExpectedToFail?: boolean;
-  isMuxedAddressWithoutMemoSupport?: boolean;
   onSettingsPress?: () => void;
   amountError?: string | null;
 };
@@ -535,21 +534,16 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isSuspicious,
       isUnableToScan,
       isExpectedToFail,
-      isMuxedAddressWithoutMemoSupport,
       onSettingsPress,
       amountError,
     } = props;
 
     const isTrusted =
-      !isMalicious &&
-      !isSuspicious &&
-      !isUnableToScan &&
-      !isExpectedToFail &&
-      !isMuxedAddressWithoutMemoSupport;
+      !isMalicious && !isSuspicious && !isUnableToScan && !isExpectedToFail;
     const isLoading = isBuilding;
     const isDisabled = !transactionXDR || isLoading;
 
-    const shouldUseRowLayout = isTrusted || isMuxedAddressWithoutMemoSupport;
+    const shouldUseRowLayout = isTrusted;
 
     const renderConfirmButton = useCallback(() => {
       const getButtonText = () => {
@@ -569,7 +563,6 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
         !transactionXDR ||
         !!error ||
         isValidatingMemo ||
-        isMuxedAddressWithoutMemoSupport ||
         !!amountError;
 
       return (
@@ -597,7 +590,6 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isBuilding,
       transactionXDR,
       error,
-      isMuxedAddressWithoutMemoSupport,
       amountError,
     ]);
 

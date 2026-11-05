@@ -173,11 +173,9 @@ export interface UseSendBannerContentParams {
   isExpectedToFail?: boolean;
   isUnableToScan?: boolean;
   isRequiredMemoMissing?: boolean;
-  isMuxedAddressWithoutMemoSupport?: boolean;
   unfundedContext?: UnfundedDestinationContext;
   onSecurityWarningPress: () => void;
   onMemoMissingPress?: () => void;
-  onMuxedAddressWithoutMemoSupportPress?: () => void;
 }
 
 /**
@@ -190,11 +188,9 @@ export function useSendBannerContent({
   isExpectedToFail = false,
   isUnableToScan = false,
   isRequiredMemoMissing = false,
-  isMuxedAddressWithoutMemoSupport = false,
   unfundedContext,
   onSecurityWarningPress,
   onMemoMissingPress,
-  onMuxedAddressWithoutMemoSupportPress,
 }: UseSendBannerContentParams): BannerContent | undefined {
   const { t } = useAppTranslation();
 
@@ -213,7 +209,6 @@ export function useSendBannerContent({
       isSuspicious ||
       isExpectedToFail ||
       isUnfundedDestination ||
-      isMuxedAddressWithoutMemoSupport ||
       isUnableToScan;
 
     if (!shouldShowNoticeBanner) {
@@ -244,17 +239,6 @@ export function useSendBannerContent({
       };
     }
 
-    if (
-      isMuxedAddressWithoutMemoSupport &&
-      onMuxedAddressWithoutMemoSupportPress
-    ) {
-      return {
-        text: t("transactionAmountScreen.errors.muxedAddressNotSupported"),
-        variant: "error" as const,
-        onPress: onMuxedAddressWithoutMemoSupportPress,
-      };
-    }
-
     if (isRequiredMemoMissing && onMemoMissingPress) {
       return {
         text: t("transactionAmountScreen.errors.memoMissing"),
@@ -278,12 +262,10 @@ export function useSendBannerContent({
     isMalicious,
     isSuspicious,
     isExpectedToFail,
-    isMuxedAddressWithoutMemoSupport,
     isUnableToScan,
     isUnfundedDestination,
     onSecurityWarningPress,
     onMemoMissingPress,
-    onMuxedAddressWithoutMemoSupportPress,
     t,
   ]);
 }

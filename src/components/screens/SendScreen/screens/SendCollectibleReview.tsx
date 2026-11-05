@@ -666,7 +666,6 @@ const SendCollectibleReviewScreen: React.FC<
       isSuspicious: transactionSecurityAssessment.isSuspicious,
       isUnableToScan: transactionSecurityAssessment.isUnableToScan,
       isExpectedToFail: transactionSecurityAssessment.isExpectedToFail,
-      isMuxedAddressWithoutMemoSupport,
       isValidatingMemo,
       onSettingsPress: handleOpenSettingsFromReview,
     }),
@@ -676,7 +675,6 @@ const SendCollectibleReviewScreen: React.FC<
       transactionSecurityAssessment.isSuspicious,
       transactionSecurityAssessment.isUnableToScan,
       transactionSecurityAssessment.isExpectedToFail,
-      isMuxedAddressWithoutMemoSupport,
       handleTransactionConfirmation,
       isValidatingMemo,
     ],
@@ -753,10 +751,8 @@ const SendCollectibleReviewScreen: React.FC<
     isSuspicious: transactionSecurityAssessment.isSuspicious,
     isExpectedToFail: transactionSecurityAssessment.isExpectedToFail,
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
-    isMuxedAddressWithoutMemoSupport,
     unfundedContext: undefined,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
-    onMuxedAddressWithoutMemoSupportPress: openMuxedAddressWarningBottomSheet,
   });
 
   const handleConfirmAnyway = useCallback(() => {

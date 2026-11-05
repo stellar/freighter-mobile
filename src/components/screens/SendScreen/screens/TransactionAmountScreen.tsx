@@ -1171,7 +1171,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       isSuspicious: transactionSecurityAssessment.isSuspicious,
       isUnableToScan: transactionSecurityAssessment.isUnableToScan,
       isExpectedToFail: transactionSecurityAssessment.isExpectedToFail,
-      isMuxedAddressWithoutMemoSupport,
       isValidatingMemo,
       onSettingsPress: handleOpenSettingsFromReview,
       amountError,
@@ -1183,7 +1182,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       transactionSecurityAssessment.isSuspicious,
       transactionSecurityAssessment.isUnableToScan,
       transactionSecurityAssessment.isExpectedToFail,
-      isMuxedAddressWithoutMemoSupport,
       amountError,
       onConfirmAddMemo,
       handleTransactionConfirmation,
@@ -1244,10 +1242,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     addMemoExplanationBottomSheetModalRef.current?.present();
   }, []);
 
-  const openMuxedAddressWarningBottomSheet = useCallback(() => {
-    muxedAddressInfoBottomSheetModalRef.current?.present();
-  }, []);
-
   /**
    * Opens the explanation for a recipient that can't take the token, an M or a
    * W, from this screen's banner. The amount input still holds the keyboard
@@ -1282,11 +1276,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     isExpectedToFail: transactionSecurityAssessment.isExpectedToFail,
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isRequiredMemoMissing,
-    isMuxedAddressWithoutMemoSupport,
     unfundedContext,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
     onMemoMissingPress: openAddMemoExplanationBottomSheet,
-    onMuxedAddressWithoutMemoSupportPress: openMuxedAddressWarningBottomSheet,
   });
 
   if (isProcessing) {
