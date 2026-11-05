@@ -448,6 +448,22 @@ describe("muxedAddress helpers", () => {
       ["zero", G_ACCOUNT, "0", true, null, null],
       ["leading zeros", G_ACCOUNT, "007", true, null, null],
       ["the largest uint64", G_ACCOUNT, U64_MAX, true, null, null],
+      [
+        "a zero-padded memo of 22 digits, the SDK's limit",
+        G_ACCOUNT,
+        `${"0".repeat(21)}1`,
+        true,
+        null,
+        null,
+      ],
+      [
+        "a zero-padded memo past the SDK's 22 digits",
+        G_ACCOUNT,
+        `${"0".repeat(22)}1`,
+        true,
+        "nonNumeric",
+        nonNumeric,
+      ],
     ])(
       "refuses what determineMuxedDestination refuses: %s",
       (

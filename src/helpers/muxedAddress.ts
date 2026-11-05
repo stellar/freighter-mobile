@@ -136,6 +136,9 @@ export type SorobanMemoRefusal = "unsupported" | "nonNumeric";
 // The largest mux id: a mux id is a uint64.
 const MAX_MUX_ID = BigInt("18446744073709551615");
 
+// The SDK refuses a mux id longer than this, even a zero-padded one in range.
+const MAX_MUX_ID_DIGITS = 22;
+
 /**
  * Checks whether a Soroban transfer can carry a memo, so a send screen can
  * block the send up front instead of letting the build fail.
@@ -143,7 +146,8 @@ const MAX_MUX_ID = BigInt("18446744073709551615");
  * The only memo a Soroban transfer can carry is the id of an `M...` built from
  * a `G...` recipient, so the memo is refused when the recipient isn't a
  * `G...`, when the contract doesn't support muxed addresses, or when the memo
- * isn't a decimal uint64 (leading zeros are allowed, as the SDK allows them).
+ * isn't a decimal uint64 (leading zeros are allowed, as the SDK allows them,
+ * up to its 22 digits).
  * These are the memos the build refuses: `determineMuxedDestination` throws
  * for each of them, and `buildPaymentTransaction` refuses a memo for a `W...`.
  *
@@ -171,7 +175,9 @@ export function getSorobanMemoRefusal(
   }
 
   const isMuxId =
-    /^\d+$/.test(transactionMemo) && BigInt(transactionMemo) <= MAX_MUX_ID;
+    transactionMemo.length <= MAX_MUX_ID_DIGITS &&
+    /^\d+$/.test(transactionMemo) &&
+    BigInt(transactionMemo) <= MAX_MUX_ID;
 
   return isMuxId ? null : "nonNumeric";
 }
