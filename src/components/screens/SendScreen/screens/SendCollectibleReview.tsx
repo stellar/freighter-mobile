@@ -98,9 +98,10 @@ const BLOCKED_SEND_BANNER_TEST_IDS: Record<MuxedAddressWarningVariant, string> =
  * A screen for reviewing details of a collectible before sending.
  *
  * A collectible can't be sent to a muxed contract (W) address, nor to an M
- * whose collection doesn't support muxed addresses: a banner explains why,
- * Review is disabled and nothing is built. On a small screen the collectible
- * image is hidden then, so the banner and Review both fit.
+ * whose collection doesn't support muxed addresses, nor with a memo the
+ * transfer can't carry: a banner explains why, Review is disabled and
+ * nothing is built. On a small screen the collectible image is hidden then,
+ * so the banner and Review both fit.
  *
  * @param {SendCollectibleReviewScreenProps} props - Component props
  * @returns {JSX.Element} The rendered component
@@ -267,8 +268,8 @@ const SendCollectibleReviewScreen: React.FC<
   );
 
   // A collectible transfer is a Soroban transfer, so it carries a memo only as
-  // the id of an M built from a G (see getSorobanMemoRefusal). An M or a W
-  // carries its own id and is handled above.
+  // the id of an M built from a G (see getSorobanMemoRefusal). A W is blocked
+  // above, and an M carries its own id: Settings disables the memo for one.
   const isSorobanMemo = Boolean(
     transactionMemo &&
       recipientAddress &&

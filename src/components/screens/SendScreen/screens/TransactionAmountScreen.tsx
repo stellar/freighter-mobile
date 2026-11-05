@@ -1261,7 +1261,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   /**
    * Opens the explanation for a recipient that can't take the token, an M or a
-   * W, from this screen's banner. The amount input still holds the keyboard
+   * W, or for a memo the transfer can't carry, from this screen's banner. The
+   * sheet's variant says which. The amount input still holds the keyboard
    * here, so the sheet waits for the keyboard to hide before it presents, the
    * way `onConfirmAddMemo` does, but for 500 ms at most: if the hide event
    * never comes, the sheet still opens.
