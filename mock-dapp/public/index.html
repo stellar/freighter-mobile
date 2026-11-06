@@ -354,6 +354,8 @@
       </div>
 
       <button onclick="signXDR()">Sign XDR</button>
+      <button onclick="signSacTransferToMuxedContract()" style="margin-left:8px;">Sign SAC transfer to W</button>
+      <p style="color: #666; font-size: 12px; margin-top: 6px;">Server generates a native SAC transfer from the session's account to a muxed contract (W...) address.</p>
 
       <div id="sign-xdr-status" style="display:none; margin-top: 15px;">
         <div class="status-box info">
@@ -790,6 +792,64 @@
         }
       } catch (error) {
         logDebug('Error signing XDR', error);
+        document.getElementById('signXdrStatusText').textContent = `❌ Error: ${error.message}`;
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    /**
+     * Sends the "SAC transfer to W" fixture as a stellar_signXDR request.
+     * Mirrors signXDR(), but posts the fixture name instead of an XDR, so the
+     * server builds a native SAC transfer from the session's account to a
+     * muxed contract (W...) address. A rejected request (for example a session
+     * with no Stellar account) is shown as is, since there is nothing to poll.
+     */
+    async function signSacTransferToMuxedContract() {
+      if (!currentSessionId || !isApproved) {
+        showStatus('❌ Session not approved. Wait for approval first.', 'error');
+        return;
+      }
+
+      const network = document.getElementById('global-network').value;
+
+      try {
+        logDebug('Sending SAC transfer to W request...');
+        document.getElementById('sign-xdr-status').style.display = 'block';
+        document.getElementById('signXdrStatusText').textContent = 'Waiting for signature...';
+
+        const response = await fetch(`${API_BASE}/session/${currentSessionId}/request/signXDR`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fixture: 'sacTransferToMuxedContract', network })
+        });
+        const data = await response.json();
+        logDebug('SAC transfer to W request sent', data);
+
+        if (!response.ok) {
+          const reason = data.message ? `${data.error}: ${data.message}` : (data.error || 'Request failed');
+          document.getElementById('signXdrStatusText').textContent = `❌ ${reason}`;
+          showStatus(`❌ ${reason}`, 'error');
+          return;
+        }
+
+        const respResponse = await fetch(`${API_BASE}/session/${currentSessionId}/response?wait=true&timeout=60000`);
+        const respData = await respResponse.json();
+        logDebug('SAC transfer to W response', respData);
+
+        if (respData.status === 'approved') {
+          document.getElementById('signXdrStatusText').textContent = '✅ XDR signed!';
+          document.getElementById('xdr-result').style.display = 'block';
+          document.getElementById('xdr-response-json').textContent = JSON.stringify(respData, null, 2);
+          showStatus('✅ Signed XDR received!', 'success');
+        } else if (respData.status === 'rejected') {
+          document.getElementById('signXdrStatusText').textContent = '❌ Signing rejected by user';
+          showStatus('❌ User rejected the signing request', 'error');
+        } else {
+          document.getElementById('signXdrStatusText').textContent = respData.message || 'Error';
+          showStatus(`❌ ${respData.error || 'Unexpected response'}`, 'error');
+        }
+      } catch (error) {
+        logDebug('Error signing SAC transfer to W', error);
         document.getElementById('signXdrStatusText').textContent = `❌ Error: ${error.message}`;
         showStatus(`❌ Error: ${error.message}`, 'error');
       }
