@@ -6,7 +6,8 @@
 
 ## Node Version
 
-Node >= 20 is required (specified in `package.json` engines). CI uses Node 20.
+Node >= 22.12 is required (specified in `package.json` engines). CI uses
+Node 22.
 
 ## Native Dependencies
 

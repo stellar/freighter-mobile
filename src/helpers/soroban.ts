@@ -215,13 +215,14 @@ const hexEscape = (byte: number) => `\\x${byte.toString(16).padStart(2, "0")}`;
  * Decodes the UTF-8 sequence starting at `index`, or `null` when the bytes
  * there are not valid UTF-8.
  *
- * Written out rather than delegating to `new TextDecoder("utf-8", { fatal:
- * true })`: React Native's `TextDecoder` polyfill does not implement the
- * `fatal` option and *throws from the constructor* when given it, so a strict
- * decoder built that way works under Jest (Node implements it) and breaks on
- * device. The arithmetic below avoids bitwise operators for the same reason
- * the rest of this file does -- the lint rules forbid them -- and is exact for
- * these ranges.
+ * Written out rather than delegating to a `TextDecoder`: `escapeXdrString`
+ * needs the one code point at `index` and its width, so that an invalid byte
+ * is escaped on its own and decoding resumes right after it. A decoder of a
+ * whole buffer cannot do that: a strict one only accepts or rejects all of it,
+ * and a lenient one substitutes U+FFFD. (`{ fatal: true }` itself works on
+ * device through `src/polyfills/textDecoder.ts`.) The arithmetic below avoids
+ * bitwise operators for the same reason the rest of this file does -- the lint
+ * rules forbid them -- and is exact for these ranges.
  */
 const decodeUtf8At = (
   bytes: Uint8Array,
