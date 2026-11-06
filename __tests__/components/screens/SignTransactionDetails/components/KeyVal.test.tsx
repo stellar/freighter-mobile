@@ -1,9 +1,17 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
-import { xdr } from "@stellar/stellar-sdk";
-import { fireEvent, render, screen } from "@testing-library/react-native";
-import { renderHook, waitFor } from "@testing-library/react-native";
-import { KeyValueInvokeHostFnArgs } from "components/screens/SignTransactionDetails/components/KeyVal";
-import { useContractArgNames } from "components/screens/SignTransactionDetails/components/KeyVal";
+import { Address, xdr } from "@stellar/stellar-sdk";
+import {
+  fireEvent,
+  render,
+  screen,
+  renderHook,
+  waitFor,
+} from "@testing-library/react-native";
+import { MUXED_CONTRACT_ID_1234 } from "__tests__/support/muxedContractFixtures";
+import {
+  KeyValueInvokeHostFnArgs,
+  useContractArgNames,
+} from "components/screens/SignTransactionDetails/components/KeyVal";
 import { ContractSpecSchema } from "helpers/soroban";
 import React from "react";
 import { getContractSpecs } from "services/backend";
@@ -164,9 +172,9 @@ describe("useContractArgNames", () => {
     rerender({ contractId: CONTRACT_B, specFnName: "swap", argCount: 2 });
 
     expect(renders.length).toBeGreaterThan(0);
-    renders.forEach((render) => {
-      expect(render.argNames).toBeNull();
-      expect(render.isLoading).toBe(true);
+    renders.forEach((frame) => {
+      expect(frame.argNames).toBeNull();
+      expect(frame.isLoading).toBe(true);
     });
   });
 
@@ -359,5 +367,22 @@ describe("KeyValueInvokeHostFnArgs — signed value display", () => {
       '{\n  1: "from-u64",\n  "1": "from-string"\n}',
     );
     expect(screen.queryAllByTestId(/^ScValTokenType-/)).toHaveLength(0);
+  });
+
+  it("renders a W argument in full, reveals its arm and copies it", async () => {
+    renderArgs([new Address(MUXED_CONTRACT_ID_1234).toScVal()]);
+
+    await screen.findAllByTestId("ParameterValue");
+    expect(screen.getByTestId("ScValToken-0:0")).toHaveTextContent(
+      MUXED_CONTRACT_ID_1234,
+    );
+
+    fireEvent.press(screen.getByTestId("ScValToken-0:0"));
+    expect(screen.getByTestId("ScValTokenType-0:0")).toHaveTextContent(
+      "scvAddress",
+    );
+
+    fireEvent.press(screen.getByTestId("ScValCopy-0"));
+    expect(mockCopyToClipboard).toHaveBeenCalledWith(MUXED_CONTRACT_ID_1234);
   });
 });
