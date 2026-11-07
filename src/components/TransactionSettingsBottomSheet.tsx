@@ -28,7 +28,7 @@ import {
   formatNumberForDisplay,
 } from "helpers/formatAmount";
 import { getMemoDisabledState } from "helpers/muxedAddress";
-import { isContractId } from "helpers/soroban";
+import { isContractDestination } from "helpers/muxedContract";
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -71,6 +71,23 @@ const PRESET_PRIORITIES: Array<keyof FeePresets> = [
   FeePriority.HIGH,
 ];
 
+/**
+ * TransactionSettingsBottomSheet Component
+ *
+ * A bottom sheet for editing a transaction's settings: fee, timeout and memo
+ * for a send, or fee, timeout and slippage for a swap.
+ *
+ * The memo is disabled, with the reason shown beside the field, when the
+ * destination can't take one: an M or W address already carries its mux id, a
+ * C address is a contract, and a token contract may not support muxed
+ * addresses. A memo already stored for such a destination is cleared.
+ *
+ * A contract destination (C or W) makes the transaction a Soroban one, so the
+ * fee row reads as the inclusion fee.
+ *
+ * @param {TransactionSettingsBottomSheetProps} props - Component props
+ * @returns {JSX.Element} The rendered settings sheet
+ */
 const TransactionSettingsBottomSheet: React.FC<
   TransactionSettingsBottomSheetProps
 > = ({
@@ -144,8 +161,9 @@ const TransactionSettingsBottomSheet: React.FC<
       Boolean(selectedBalance.contractId),
   );
 
+  // A contract destination (C or W) is a Soroban recipient
   const isSorobanRecipient = Boolean(
-    recipientAddress && isContractId(recipientAddress),
+    recipientAddress && isContractDestination(recipientAddress),
   );
 
   // Derived from current context parameters (balance, recipient, collectible)
@@ -155,7 +173,15 @@ const TransactionSettingsBottomSheet: React.FC<
     isCollectibleTransfer || isCustomToken || isSorobanRecipient,
   );
 
-  // Determine contract ID for Soroban transactions
+  /**
+   * The contract ID of a Soroban transaction, which the memo check runs
+   * against. In order:
+   * 1. A collectible transfer: the collection's contract.
+   * 2. A custom token: its own contract.
+   * 3. A C or W recipient: the recipient itself. A W is never looked up: the
+   *    memo check turns the memo off for any M or W before it reads the
+   *    contract.
+   */
   const contractId = useMemo(() => {
     if (!isSorobanTransaction || !recipientAddress) {
       return undefined;

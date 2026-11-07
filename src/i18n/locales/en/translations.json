@@ -873,6 +873,15 @@
         "title": "Muxed address not supported",
         "description": "This token does not support muxed address (M-) as a target destination. Proceeding with this transaction could result in the loss of the token during the transfer."
       },
+      "muxedContractWarning": {
+        "description": "This token does not support muxed contract address (W-) as a target destination."
+      },
+      "memoNotSupported": "Memo not supported",
+      "memoNotSupportedWarning": {
+        "description": "This token can't be sent with a memo to this address.",
+        "collectibleDescription": "This collectible can't be sent with a memo to this address.",
+        "collectibleNumericDescription": "This collectible only accepts a numeric memo, from 0 to 18446744073709551615."
+      },
       "malicious": "This address was flagged as malicious",
       "suspicious": "This address was flagged as suspicious",
       "maliciousToken": "A token was flagged as malicious",
@@ -1145,7 +1154,10 @@
       "cannotSendToSelf": "Cannot send to yourself",
       "invalidDecimals": "Invalid or missing decimals for custom token",
       "invalidFederationMemo": "The federation server returned an invalid memo. Please verify the address and try again.",
-      "recipientIsTokenContract": "Cannot send to the token's own contract"
+      "recipientIsTokenContract": "Cannot send to the token's own contract",
+      "muxedContractNotSupported": "This token does not support muxed contract address (W-) as a target destination.",
+      "muxedAddressNotSupported": "This token does not support muxed address (M-) as a target destination.",
+      "nonNumericMemoNotSupported": "This token only accepts a numeric memo, from 0 to 18446744073709551615."
     }
   },
   "tokenIconAlt": "{{code}} token icon",
@@ -1191,6 +1203,12 @@
       "swapPathForceEnabled": "✓ Force Swap Path Failure",
       "swapPathForceDisabled": "Force Swap Path Failure",
       "clearAll": "Clear All Failures"
+    },
+    "muxedContractSimulationStub": {
+      "title": "W Address Simulation Stub",
+      "description": "Skip backend simulation for sends to a muxed contract (W) address, so the review sheet opens with the unsimulated transaction. It can't be submitted (DEV only)",
+      "enabled": "✓ Stub W Address Simulation",
+      "disabled": "Stub W Address Simulation"
     }
   },
   "blockaid": {
@@ -1232,6 +1250,14 @@
   },
   "signTransactionDetails": {
     "title": "Transaction Details",
+    "unreadable": {
+      "title": "Unable to read this transaction",
+      "description": "The transaction could not be decoded."
+    },
+    "unreadableAuthEntry": {
+      "title": "Unable to read this authorization",
+      "description": "The authorization entry could not be decoded."
+    },
     "summary": {
       "operationsCount": "Operations",
       "fee": "Fees",
