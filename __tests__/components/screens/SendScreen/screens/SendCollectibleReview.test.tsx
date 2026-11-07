@@ -7,6 +7,7 @@ import {
   MUXED_CONTRACT_ID_0,
 } from "__tests__/support/muxedContractFixtures";
 import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
+import { SendReviewBottomSheet } from "components/screens/SendScreen/components";
 import SendCollectibleReviewScreen from "components/screens/SendScreen/screens/SendCollectibleReview";
 import { NETWORKS } from "config/constants";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
@@ -53,6 +54,8 @@ const mockCheckContractMuxedSupport = jest.fn().mockResolvedValue(false);
 jest.mock("helpers/muxedAddress", () => ({
   checkContractMuxedSupport: (...args: unknown[]) =>
     mockCheckContractMuxedSupport(...args),
+  getSorobanMemoRefusal: jest.requireActual("helpers/muxedAddress")
+    .getSorobanMemoRefusal,
 }));
 
 // Hook mocks
@@ -886,10 +889,11 @@ describe("SendCollectibleReview - muxed recipients (W and M)", () => {
    * state as the hook. Without that every build would throw before it called
    * the builder, and "nothing was built" would hold whatever the screen did.
    */
-  const setRecipient = (recipientAddress: string) => {
+  const setRecipient = (recipientAddress: string, transactionMemo = "") => {
     const settings = {
       ...mockUseTransactionSettingsStore(),
       recipientAddress,
+      transactionMemo,
     };
     mockUseTransactionSettingsStore.mockReturnValue(settings);
     (useTransactionSettingsStore as any).getState = jest
@@ -900,11 +904,17 @@ describe("SendCollectibleReview - muxed recipients (W and M)", () => {
   };
 
   /**
-   * Sets the recipient, then renders the screen and flushes what it starts on
-   * mount, inside act.
+   * Sets the recipient and the memo, then renders the screen and flushes what
+   * it starts on mount, inside act.
    */
-  const renderWithRecipient = async (recipientAddress: string) => {
-    const buildSendCollectibleTransaction = setRecipient(recipientAddress);
+  const renderWithRecipient = async (
+    recipientAddress: string,
+    transactionMemo = "",
+  ) => {
+    const buildSendCollectibleTransaction = setRecipient(
+      recipientAddress,
+      transactionMemo,
+    );
 
     const view = renderWithProviders(
       <SendCollectibleReviewScreen
@@ -1234,5 +1244,239 @@ describe("SendCollectibleReview - muxed recipients (W and M)", () => {
         classNameOf(getByTestId("send-collectible-image-section")),
       ).not.toContain("max-xs:");
     });
+  });
+
+  // A collectible transfer is a Soroban transfer, so it carries a memo only as
+  // the id of an M built from a G. A memo it can't carry, such as a
+  // federation memo, blocks the send here the way an unsupported M or W does,
+  // instead of failing every build.
+  describe("memo the transfer can't carry", () => {
+    const memoBannerTestId = "memo-not-supported-banner";
+    const isReviewDisabled = (getByTestId: (id: string) => any) =>
+      getByTestId(continueButtonTestId).props.accessibilityState?.disabled;
+
+    beforeEach(() => {
+      mockCheckContractMuxedSupport.mockReset();
+      mockCheckContractMuxedSupport.mockResolvedValue(false);
+    });
+
+    afterAll(() => {
+      mockCheckContractMuxedSupport.mockReset();
+      mockCheckContractMuxedSupport.mockResolvedValue(false);
+    });
+
+    it("blocks a memo for a collection without muxed support: banner, Review disabled, nothing built", async () => {
+      const { getByTestId, getByText, buildSendCollectibleTransaction } =
+        await renderWithRecipient(G_ACCOUNT, "1234");
+
+      expect(
+        within(getByTestId(memoBannerTestId)).getByText(
+          "transactionAmountScreen.errors.memoNotSupported",
+        ),
+      ).toBeTruthy();
+      expect(isReviewDisabled(getByTestId)).toBe(true);
+      expect(buildSendCollectibleTransaction).not.toHaveBeenCalled();
+      // The banner opens the collectible's memo explanation.
+      expect(
+        getByText(
+          "transactionAmountScreen.errors.memoNotSupportedWarning.collectibleDescription",
+        ),
+      ).toBeTruthy();
+    });
+
+    it("blocks a memo that isn't a number for a collection that supports muxed addresses", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+
+      const {
+        getByTestId,
+        getByText,
+        queryByText,
+        buildSendCollectibleTransaction,
+      } = await renderWithRecipient(G_ACCOUNT, "deposit-42");
+
+      expect(getByTestId(memoBannerTestId)).toBeTruthy();
+      expect(isReviewDisabled(getByTestId)).toBe(true);
+      expect(buildSendCollectibleTransaction).not.toHaveBeenCalled();
+      // The sheet says "collectible", not the token wording.
+      expect(
+        getByText(
+          "transactionAmountScreen.errors.memoNotSupportedWarning.collectibleNumericDescription",
+        ),
+      ).toBeTruthy();
+      expect(
+        queryByText("transaction.errors.nonNumericMemoNotSupported"),
+      ).toBeNull();
+    });
+
+    it("builds with a numeric memo for a collection that supports muxed addresses", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+
+      const { getByTestId, queryByTestId, buildSendCollectibleTransaction } =
+        await renderWithRecipient(G_ACCOUNT, "1234");
+
+      expect(queryByTestId(memoBannerTestId)).toBeNull();
+      expect(isReviewDisabled(getByTestId)).toBe(false);
+      expect(buildSendCollectibleTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          destinationAccount: G_ACCOUNT,
+          transactionMemo: "1234",
+        }),
+      );
+    });
+
+    it("builds nothing and keeps Review off until the collection check answers", async () => {
+      let answer!: (supportsMuxed: boolean) => void;
+      mockCheckContractMuxedSupport.mockReturnValueOnce(
+        new Promise<boolean>((resolve) => {
+          answer = resolve;
+        }),
+      );
+
+      const { getByTestId, queryByTestId, buildSendCollectibleTransaction } =
+        await renderWithRecipient(G_ACCOUNT, "1234");
+
+      // Still unknown: no banner yet, but nothing built and no Review.
+      expect(queryByTestId(memoBannerTestId)).toBeNull();
+      expect(isReviewDisabled(getByTestId)).toBe(true);
+      expect(buildSendCollectibleTransaction).not.toHaveBeenCalled();
+
+      await act(() => {
+        answer(false);
+        return Promise.resolve();
+      });
+
+      expect(getByTestId(memoBannerTestId)).toBeTruthy();
+      expect(buildSendCollectibleTransaction).not.toHaveBeenCalled();
+    });
+
+    it("blocks a memo for a C recipient, with no collection lookup", async () => {
+      const { getByTestId, buildSendCollectibleTransaction } =
+        await renderWithRecipient(BASE_CONTRACT, "1234");
+
+      expect(getByTestId(memoBannerTestId)).toBeTruthy();
+      expect(isReviewDisabled(getByTestId)).toBe(true);
+      expect(buildSendCollectibleTransaction).not.toHaveBeenCalled();
+      expect(mockCheckContractMuxedSupport).not.toHaveBeenCalled();
+    });
+
+    // Settings saves, then tells the screen, which rebuilds before it
+    // re-renders with the new memo.
+    it("builds nothing when Settings saves a memo the collection can't carry", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+      const { getByText, buildSendCollectibleTransaction } =
+        await renderWithRecipient(G_ACCOUNT);
+      // Without a memo the fee simulation ran as usual.
+      expect(buildSendCollectibleTransaction).toHaveBeenCalledTimes(1);
+      (buildSendCollectibleTransaction as jest.Mock).mockClear();
+
+      // The memo the user typed is in the store by the time the screen hears
+      // of the save.
+      const settings = (useTransactionSettingsStore as any).getState();
+      (useTransactionSettingsStore as any).getState = jest
+        .fn()
+        .mockReturnValue({ ...settings, transactionMemo: "deposit-42" });
+      await act(() => {
+        fireEvent.press(getByText("common.save"));
+        return Promise.resolve();
+      });
+
+      expect(buildSendCollectibleTransaction).not.toHaveBeenCalled();
+    });
+
+    it("throws away the earlier build and closes the review when its Settings saves a memo the collection can't carry", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+      const buildSendCollectibleTransaction = setRecipient(G_ACCOUNT);
+      // A host View has no ref in the test renderer, so each bottom sheet
+      // modal (the only elements rendered `detached`) gets its own dismiss()
+      // to watch, kept with the content it holds.
+      const sheets: { dismiss: jest.Mock; content: React.ReactNode }[] = [];
+      const { getByText } = render(
+        <SendCollectibleReviewScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+        {
+          // The settings sheet's inputs read the toast context.
+          wrapper: ToastProvider,
+          createNodeMock: (element) => {
+            const props = element.props as {
+              detached?: boolean;
+              children?: React.ReactNode;
+            };
+            if (!props.detached) {
+              return null;
+            }
+            const sheet = { dismiss: jest.fn(), content: props.children };
+            sheets.push(sheet);
+
+            return { present: jest.fn(), dismiss: sheet.dismiss };
+          },
+        },
+      );
+      await act(async () => {});
+      expect(buildSendCollectibleTransaction).toHaveBeenCalledTimes(1);
+      const { resetTransaction } = mockUseTransactionBuilderStore();
+      (resetTransaction as jest.Mock).mockClear();
+
+      // The review sheet's gear opens Settings, and the memo typed there is in
+      // the store by the time the screen hears of the save.
+      const settings = (useTransactionSettingsStore as any).getState();
+      (useTransactionSettingsStore as any).getState = jest
+        .fn()
+        .mockReturnValue({ ...settings, transactionMemo: "deposit-42" });
+      await act(() => {
+        fireEvent.press(getByText("common.save"));
+        return Promise.resolve();
+      });
+
+      // The transaction built without the memo can't be confirmed under it.
+      const review = sheets.find((sheet) =>
+        findElementOfType(sheet.content, SendReviewBottomSheet),
+      );
+      expect(resetTransaction).toHaveBeenCalled();
+      expect(review?.dismiss).toHaveBeenCalled();
+      expect(buildSendCollectibleTransaction).toHaveBeenCalledTimes(1);
+    });
+
+    it("hides the image on small screens while the memo blocks the send", async () => {
+      const { getByTestId } = await renderWithRecipient(G_ACCOUNT, "1234");
+
+      expect(
+        classNameOf(getByTestId("send-collectible-image-section")),
+      ).toContain("max-xs:hidden");
+    });
+  });
+});
+
+describe("SendCollectibleReview - build errors", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setupDefaultMocks();
+    mockAssessTransactionSecurity.mockReturnValue({
+      level: SecurityLevel.SAFE,
+      isMalicious: false,
+      isSuspicious: false,
+      isUnableToScan: false,
+    });
+    mockExtractSecurityWarnings.mockReturnValue([]);
+  });
+
+  it("shows a failed build's error as a toast, so Review doesn't just do nothing", () => {
+    const buildError =
+      "Failed to build send collectible transaction: transactionSettings.memoInfo.memoNotSupportedForOperation";
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockUseTransactionBuilderStore(),
+      transactionXDR: null,
+      error: buildError,
+    });
+
+    const { getByText } = renderWithProviders(
+      <SendCollectibleReviewScreen
+        navigation={mockNavigation}
+        route={mockRoute}
+      />,
+    );
+
+    expect(getByText(buildError)).toBeTruthy();
   });
 });

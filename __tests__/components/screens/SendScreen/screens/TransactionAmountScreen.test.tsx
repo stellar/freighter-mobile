@@ -87,6 +87,8 @@ const mockCheckContractMuxedSupport = jest.fn().mockResolvedValue(false);
 jest.mock("helpers/muxedAddress", () => ({
   checkContractMuxedSupport: (...args: unknown[]) =>
     mockCheckContractMuxedSupport(...args),
+  getSorobanMemoRefusal: jest.requireActual("helpers/muxedAddress")
+    .getSorobanMemoRefusal,
 }));
 jest.mock("helpers/cachedFetch");
 
@@ -3011,7 +3013,7 @@ describe("TransactionAmountScreen - muxed recipients (W and M)", () => {
       ["C", BASE_CONTRACT],
       ["W", MUXED_CONTRACT_ID_1234],
     ])(
-      "looks up muxed support only for an M: none for a custom token sent to a %s",
+      "looks up muxed support only for an M or a memo: none for a custom token sent to a %s without a memo",
       async (_type, recipientAddress) => {
         setSettingsStore({
           selectedTokenId: customTokenBalance.id,
@@ -3141,6 +3143,373 @@ describe("TransactionAmountScreen - muxed recipients (W and M)", () => {
 
       expect(queryByTestId(accountBannerTestId)).toBeNull();
       expect(isContinueDisabled(getByTestId)).toBe(false);
+    });
+  });
+
+  // A Soroban transfer (a custom token, or any token to a C) carries a memo
+  // only as the id of an M built from a G. A memo it can't carry, such as a
+  // federation memo or one saved while XLM was selected, blocks the send here
+  // the way an unsupported M or W does, instead of failing every build.
+  describe("memo a Soroban transfer can't carry", () => {
+    const memoBannerTestId = "memo-not-supported-banner";
+    const memoSheetDescription =
+      "transactionAmountScreen.errors.memoNotSupportedWarning.description";
+    const numericMemoSheetDescription =
+      "transaction.errors.nonNumericMemoNotSupported";
+
+    /**
+     * Renders the screen sending a token, with a memo, to a recipient.
+     *
+     * @param tokenId The id of the balance being sent
+     * @param recipientAddress The recipient
+     * @param transactionMemo The memo in the settings store
+     * @returns The render result
+     */
+    const renderSend = (
+      tokenId: string,
+      recipientAddress: string,
+      transactionMemo: string,
+    ) => {
+      setSettingsStore({
+        selectedTokenId: tokenId,
+        recipientAddress,
+        transactionMemo,
+      });
+
+      return render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor(tokenId, recipientAddress)}
+        />,
+      );
+    };
+
+    beforeEach(() => {
+      mockCheckContractMuxedSupport.mockReset();
+      mockCheckContractMuxedSupport.mockResolvedValue(false);
+    });
+
+    afterAll(() => {
+      mockCheckContractMuxedSupport.mockReset();
+      mockCheckContractMuxedSupport.mockResolvedValue(false);
+    });
+
+    it("blocks a memo for a custom token without muxed support: banner, Continue disabled, nothing built", async () => {
+      const { getByTestId, getByText, queryByTestId } = renderSend(
+        customTokenBalance.id,
+        G_ACCOUNT,
+        "1234",
+      );
+      await waitForAutoSimulation();
+
+      expect(
+        within(getByTestId(memoBannerTestId)).getByText(
+          "transactionAmountScreen.errors.memoNotSupported",
+        ),
+      ).toBeTruthy();
+      expect(queryByTestId("muxed-address-not-supported-banner")).toBeNull();
+      expect(isContinueDisabled(getByTestId)).toBe(true);
+      expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+      expect(mockCheckContractMuxedSupport).toHaveBeenCalledWith(
+        expect.objectContaining({ contractId: customTokenContractId }),
+      );
+      // The banner opens the memo explanation.
+      expect(getByText(memoSheetDescription)).toBeTruthy();
+    });
+
+    it("blocks a memo that isn't a number for a token that supports muxed addresses", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+
+      const { getByTestId, getByText } = renderSend(
+        customTokenBalance.id,
+        G_ACCOUNT,
+        "deposit-42",
+      );
+      await waitForAutoSimulation();
+
+      expect(getByTestId(memoBannerTestId)).toBeTruthy();
+      expect(isContinueDisabled(getByTestId)).toBe(true);
+      expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+      expect(getByText(numericMemoSheetDescription)).toBeTruthy();
+    });
+
+    it("builds with a numeric memo when the token supports muxed addresses", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+
+      const { getByTestId, queryByTestId } = renderSend(
+        customTokenBalance.id,
+        G_ACCOUNT,
+        "1234",
+      );
+      await waitForAutoSimulation();
+      // The fee estimate starts once the check has answered.
+      await waitForAutoSimulation();
+
+      expect(queryByTestId(memoBannerTestId)).toBeNull();
+      expect(isContinueDisabled(getByTestId)).toBe(false);
+      expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tokenAmount: "0",
+          recipientAddress: G_ACCOUNT,
+          transactionMemo: "1234",
+        }),
+      );
+    });
+
+    it("builds nothing and keeps Continue off until the contract check answers", async () => {
+      let answer!: (supportsMuxed: boolean) => void;
+      mockCheckContractMuxedSupport.mockReturnValueOnce(
+        new Promise<boolean>((resolve) => {
+          answer = resolve;
+        }),
+      );
+
+      const { getByTestId, queryByTestId } = renderSend(
+        customTokenBalance.id,
+        G_ACCOUNT,
+        "1234",
+      );
+      await waitForAutoSimulation();
+
+      // Still unknown: no banner yet, but nothing built and no Continue.
+      expect(queryByTestId(memoBannerTestId)).toBeNull();
+      expect(isContinueDisabled(getByTestId)).toBe(true);
+      expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+
+      await act(() => {
+        answer(false);
+        return Promise.resolve();
+      });
+      await waitForAutoSimulation();
+
+      expect(getByTestId(memoBannerTestId)).toBeTruthy();
+      expect(isContinueDisabled(getByTestId)).toBe(true);
+      expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+    });
+
+    it("blocks a memo for a C recipient, with no contract lookup", async () => {
+      const { getByTestId } = renderSend("XLM", BASE_CONTRACT, "1234");
+      await waitForAutoSimulation();
+
+      expect(getByTestId(memoBannerTestId)).toBeTruthy();
+      expect(isContinueDisabled(getByTestId)).toBe(true);
+      expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+      expect(mockCheckContractMuxedSupport).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["XLM", "XLM"],
+      ["a classic asset", classicAssetBalance.id],
+    ])(
+      "doesn't block a memo for %s sent to a G, which carries it as the transaction memo",
+      async (_label, tokenId) => {
+        const { getByTestId, queryByTestId } = renderSend(
+          tokenId,
+          G_ACCOUNT,
+          "deposit-42",
+        );
+        await waitForAutoSimulation();
+
+        expect(queryByTestId(memoBannerTestId)).toBeNull();
+        expect(isContinueDisabled(getByTestId)).toBe(false);
+        expect(mockCheckContractMuxedSupport).not.toHaveBeenCalled();
+      },
+    );
+
+    it("unblocks when the token switches to XLM, which carries the memo", async () => {
+      const { getByTestId, queryByTestId, rerender } = renderSend(
+        customTokenBalance.id,
+        G_ACCOUNT,
+        "1234",
+      );
+      await waitForAutoSimulation();
+      expect(getByTestId(memoBannerTestId)).toBeTruthy();
+
+      setSettingsStore({
+        selectedTokenId: "XLM",
+        recipientAddress: G_ACCOUNT,
+        transactionMemo: "1234",
+      });
+      rerender(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor("XLM", G_ACCOUNT)}
+        />,
+      );
+      await waitForAutoSimulation();
+
+      expect(queryByTestId(memoBannerTestId)).toBeNull();
+      expect(isContinueDisabled(getByTestId)).toBe(false);
+    });
+
+    // Settings saves, then tells the screen, which rebuilds before it
+    // re-renders with the new memo.
+    it("builds nothing when Settings saves a memo the token can't carry", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+      const { getByText, getByTestId, rerender } = renderSend(
+        customTokenBalance.id,
+        G_ACCOUNT,
+        "",
+      );
+      await waitForAutoSimulation();
+      // Without a memo the fee estimate ran as usual.
+      expect(mockBuildTransactionFn).toHaveBeenCalledTimes(1);
+      mockBuildTransactionFn.mockClear();
+
+      // The memo the user typed is in the store by the time the screen hears
+      // of the save.
+      const settings = setSettingsStore({
+        selectedTokenId: customTokenBalance.id,
+        recipientAddress: G_ACCOUNT,
+        transactionMemo: "deposit-42",
+      });
+      settings.saveMemo.mockImplementation(() => {});
+      await act(() => {
+        fireEvent.press(getByText("common.save"));
+        return Promise.resolve();
+      });
+
+      expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+
+      rerender(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor(customTokenBalance.id, G_ACCOUNT)}
+        />,
+      );
+      await waitForAutoSimulation();
+
+      expect(getByTestId(memoBannerTestId)).toBeTruthy();
+      expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Renders the screen with a watched dismiss() for the review sheet. A host
+     * View has no ref in the test renderer, so each bottom sheet modal (the
+     * only elements rendered `detached`) gets one; the review sheet is the
+     * only one with an onDismiss handler.
+     */
+    const renderWatchingReview = (recipientAddress: string, memo: string) => {
+      setSettingsStore({
+        selectedTokenId: customTokenBalance.id,
+        recipientAddress,
+        transactionMemo: memo,
+      });
+      const dismissReview = jest.fn();
+      const view = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor(customTokenBalance.id, recipientAddress)}
+        />,
+        {
+          createNodeMock: (element) => {
+            const props = element.props as {
+              detached?: boolean;
+              onDismiss?: () => void;
+            };
+            if (!props.detached) {
+              return null;
+            }
+
+            return {
+              present: jest.fn(),
+              dismiss: props.onDismiss ? dismissReview : jest.fn(),
+            };
+          },
+        },
+      );
+
+      return { ...view, dismissReview };
+    };
+
+    it("throws away the earlier build and closes the review when its Settings saves a memo the token can't carry", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+      const { getByText, dismissReview } = renderWatchingReview(G_ACCOUNT, "");
+      await waitForAutoSimulation();
+      expect(mockBuildTransactionFn).toHaveBeenCalledTimes(1);
+      const { resetTransaction } = mockUseTransactionBuilderStore();
+      (resetTransaction as jest.Mock).mockClear();
+
+      // The review sheet's gear opens Settings, and the memo typed there is in
+      // the store by the time the screen hears of the save.
+      setSettingsStore({
+        selectedTokenId: customTokenBalance.id,
+        recipientAddress: G_ACCOUNT,
+        transactionMemo: "deposit-42",
+      });
+      await act(() => {
+        fireEvent.press(getByText("common.save"));
+        return Promise.resolve();
+      });
+
+      // The transaction built without the memo can't be confirmed under it.
+      expect(resetTransaction).toHaveBeenCalled();
+      expect(dismissReview).toHaveBeenCalled();
+      expect(mockBuildTransactionFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("throws away the earlier build when Settings saves again while the memo blocks the send", async () => {
+      mockCheckContractMuxedSupport.mockResolvedValue(true);
+      const { getByText, getByTestId, dismissReview } = renderWatchingReview(
+        G_ACCOUNT,
+        "deposit-42",
+      );
+      await waitForAutoSimulation();
+      expect(getByTestId(memoBannerTestId)).toBeTruthy();
+      const { resetTransaction } = mockUseTransactionBuilderStore();
+      (resetTransaction as jest.Mock).mockClear();
+
+      // A valid memo now, but the save still runs with the blocked render's
+      // state, so it builds nothing and must not leave an earlier build behind.
+      setSettingsStore({
+        selectedTokenId: customTokenBalance.id,
+        recipientAddress: G_ACCOUNT,
+        transactionMemo: "2222",
+      });
+      await act(() => {
+        fireEvent.press(getByText("common.save"));
+        return Promise.resolve();
+      });
+
+      expect(resetTransaction).toHaveBeenCalled();
+      expect(dismissReview).toHaveBeenCalled();
+      expect(mockBuildTransactionFn).not.toHaveBeenCalled();
+    });
+
+    it("builds XLM with a text memo on Continue: a classic payment carries any memo", async () => {
+      setSettingsStore({
+        selectedTokenId: "XLM",
+        recipientAddress: G_ACCOUNT,
+        transactionMemo: "deposit-42",
+      });
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor("XLM", G_ACCOUNT)}
+        />,
+      );
+      await waitForAutoSimulation();
+
+      await act(() => {
+        fireEvent.press(getByTestId("send-continue-button"));
+        return Promise.resolve();
+      });
+
+      expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+        expect.objectContaining({ transactionMemo: "deposit-42" }),
+      );
+    });
+
+    it("hides the percentage buttons while the memo blocks the send", async () => {
+      const { getByTestId, queryByTestId } = renderSend(
+        customTokenBalance.id,
+        G_ACCOUNT,
+        "1234",
+      );
+      await waitForAutoSimulation();
+
+      expect(getByTestId(memoBannerTestId)).toBeTruthy();
+      expect(queryByTestId("percentage-25")).toBeNull();
     });
   });
 });
