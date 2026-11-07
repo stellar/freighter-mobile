@@ -8,6 +8,8 @@ import {
 } from "@stellar/stellar-sdk";
 import {
   G_ACCOUNT,
+  M_ACCOUNT_ID_1234,
+  MUXED_CONTRACT_ID_0,
   MUXED_CONTRACT_ID_1234,
 } from "__tests__/support/muxedContractFixtures";
 import { sacTransferArgs } from "__tests__/support/sacTransferFixtures";
@@ -1035,6 +1037,23 @@ describe("soroban helpers", () => {
         const result = isSorobanTransaction(nativeBalance, contractAddress);
 
         expect(result).toBe(true);
+      });
+    });
+
+    describe("when recipientAddress is a muxed contract (W)", () => {
+      it.each([
+        ["native", () => createMockNativeBalance()],
+        ["classic", () => createMockClassicBalance()],
+        ["no", () => undefined],
+      ])("returns true with a %s balance", (_label, balance) => {
+        expect(isSorobanTransaction(balance(), MUXED_CONTRACT_ID_0)).toBe(true);
+      });
+
+      it("returns false for an M or a lower-cased W", () => {
+        expect(isSorobanTransaction(undefined, M_ACCOUNT_ID_1234)).toBe(false);
+        expect(
+          isSorobanTransaction(undefined, MUXED_CONTRACT_ID_0.toLowerCase()),
+        ).toBe(false);
       });
     });
 

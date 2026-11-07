@@ -1,11 +1,17 @@
 import { act } from "@testing-library/react-hooks";
+import {
+  BASE_CONTRACT,
+  MUXED_CONTRACT_ID_0,
+  MUXED_CONTRACT_ID_U64_MAX,
+} from "__tests__/support/muxedContractFixtures";
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
+import { PricedBalance } from "config/types";
+import { useDebugStore } from "ducks/debug";
 import {
   SubmitTransactionOutcome,
   useTransactionBuilderStore,
 } from "ducks/transactionBuilder";
-import * as sorobanHelpers from "helpers/soroban";
 import * as stellarServices from "services/stellar";
 import * as transactionService from "services/transactionService";
 
@@ -25,7 +31,6 @@ jest.mock("config/logger", () => ({
   },
 }));
 
-jest.mock("helpers/soroban");
 jest.mock("services/stellar");
 jest.mock("services/transactionService");
 
@@ -38,8 +43,7 @@ describe("transactionBuilder Duck", () => {
     "SA5ZNKYRB4F4ABC65G464G75G6ROLL55GBXXGDE3BV4IT634KMH42M7U";
   const mockRecipientAddress =
     "GAEXPERIMENTALEXAMPLEACCOUNTXXXXXXXXXXXXXXXXXPXV4BSJHU";
-  const mockContractAddress =
-    "CAEXPERIMENTALEXAMPLEACCOUNTXXXXXXXXXXXXXXXXXPXV4BSJHU";
+  const mockContractAddress = BASE_CONTRACT;
   const mockTokenValue = "100";
   const mockBuiltXDR = "mockBuiltXDR";
   const mockPreparedXDR = "mockPreparedXDR";
@@ -81,9 +85,6 @@ describe("transactionBuilder Duck", () => {
       hash: mockTxHash,
       result_xdr: mockResultXdr,
     });
-    (sorobanHelpers.isContractId as jest.Mock).mockImplementation((addr) =>
-      addr?.startsWith("C"),
-    );
   });
 
   it("should have correct initial state", () => {
@@ -178,6 +179,252 @@ describe("transactionBuilder Duck", () => {
     expect(state.isBuilding).toBe(false);
     expect(state.transactionXDR).toBeNull();
     expect(state.error).toContain("amountInBaseUnits");
+  });
+
+  it("simulates a W recipient through /simulate-token-transfer with an empty memo", async () => {
+    (
+      transactionService.buildPaymentTransaction as jest.Mock
+    ).mockResolvedValueOnce({
+      xdr: mockBuiltXDR,
+      tx: { sequence: "1" },
+      contractId: mockContractAddress,
+      finalDestination: MUXED_CONTRACT_ID_U64_MAX,
+      amountInBaseUnits: "1000000000",
+    });
+
+    await act(async () => {
+      await store.getState().buildTransaction({
+        tokenAmount: mockTokenValue,
+        recipientAddress: MUXED_CONTRACT_ID_U64_MAX,
+        transactionMemo: "leftover",
+        senderAddress: mockPublicKey,
+        network: mockNetwork,
+      });
+    });
+
+    expect(store.getState().isSoroban).toBe(true);
+    expect(transactionService.simulateContractTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memo: "",
+        params: expect.objectContaining({
+          destination: MUXED_CONTRACT_ID_U64_MAX,
+        }),
+      }),
+    );
+  });
+
+  it("keeps the memo when simulating a custom token sent to a G recipient", async () => {
+    // A custom token is a balance with a contractId, which makes the send
+    // Soroban even to a G. Only an M or a W final destination drops the memo.
+    const customTokenBalance = {
+      id: `CUSTOM:${mockContractAddress}`,
+      contractId: mockContractAddress,
+      decimals: 7,
+    } as unknown as PricedBalance;
+    (
+      transactionService.buildPaymentTransaction as jest.Mock
+    ).mockResolvedValueOnce({
+      xdr: mockBuiltXDR,
+      tx: { sequence: "1" },
+      contractId: mockContractAddress,
+      finalDestination: mockRecipientAddress,
+      amountInBaseUnits: "1000000000",
+    });
+
+    await act(async () => {
+      await store.getState().buildTransaction({
+        tokenAmount: mockTokenValue,
+        selectedBalance: customTokenBalance,
+        recipientAddress: mockRecipientAddress,
+        transactionMemo: "kept-memo",
+        senderAddress: mockPublicKey,
+        network: mockNetwork,
+      });
+    });
+
+    expect(store.getState().isSoroban).toBe(true);
+    expect(transactionService.simulateContractTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memo: "kept-memo",
+        params: expect.objectContaining({
+          destination: mockRecipientAddress,
+        }),
+      }),
+    );
+  });
+
+  it("estimates W fees through /simulate-tx with the device-built XDR", async () => {
+    (
+      transactionService.buildPaymentTransaction as jest.Mock
+    ).mockResolvedValueOnce({
+      xdr: mockBuiltXDR,
+      tx: { sequence: "1" },
+      contractId: mockContractAddress,
+      finalDestination: MUXED_CONTRACT_ID_0,
+      amountInBaseUnits: "0",
+    });
+    (
+      transactionService.simulateCollectibleTransfer as jest.Mock
+    ).mockResolvedValueOnce({ preparedTransaction: mockPreparedXDR });
+
+    await act(async () => {
+      await store.getState().buildTransaction({
+        tokenAmount: "0",
+        recipientAddress: MUXED_CONTRACT_ID_0,
+        senderAddress: mockPublicKey,
+        network: mockNetwork,
+      });
+    });
+
+    expect(transactionService.simulateCollectibleTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({ transactionXdr: mockBuiltXDR }),
+    );
+    expect(transactionService.simulateContractTransfer).not.toHaveBeenCalled();
+  });
+
+  describe("DEV muxed contract simulation stub", () => {
+    afterEach(() =>
+      useDebugStore.setState({ stubMuxedContractSimulation: false }),
+    );
+
+    it("skips backend simulation for a W and keeps the device-built XDR", async () => {
+      useDebugStore.setState({ stubMuxedContractSimulation: true });
+      (
+        transactionService.buildPaymentTransaction as jest.Mock
+      ).mockResolvedValueOnce({
+        xdr: mockBuiltXDR,
+        tx: { sequence: "1" },
+        contractId: mockContractAddress,
+        finalDestination: MUXED_CONTRACT_ID_0,
+        amountInBaseUnits: "1000000000",
+      });
+
+      await act(async () => {
+        await store.getState().buildTransaction({
+          tokenAmount: mockTokenValue,
+          recipientAddress: MUXED_CONTRACT_ID_0,
+          senderAddress: mockPublicKey,
+          network: mockNetwork,
+        });
+      });
+
+      expect(
+        transactionService.simulateContractTransfer,
+      ).not.toHaveBeenCalled();
+      expect(
+        transactionService.simulateCollectibleTransfer,
+      ).not.toHaveBeenCalled();
+      expect(store.getState()).toMatchObject({
+        transactionXDR: mockBuiltXDR,
+        isSoroban: true,
+        sorobanResourceFeeXlm: null,
+      });
+    });
+
+    it("skips the fee-estimation simulation for a W too", async () => {
+      useDebugStore.setState({ stubMuxedContractSimulation: true });
+      (
+        transactionService.buildPaymentTransaction as jest.Mock
+      ).mockResolvedValueOnce({
+        xdr: mockBuiltXDR,
+        tx: { sequence: "1" },
+        contractId: mockContractAddress,
+        finalDestination: MUXED_CONTRACT_ID_0,
+        amountInBaseUnits: "0",
+      });
+
+      await act(async () => {
+        await store.getState().buildTransaction({
+          tokenAmount: "0",
+          recipientAddress: MUXED_CONTRACT_ID_0,
+          senderAddress: mockPublicKey,
+          network: mockNetwork,
+        });
+      });
+
+      expect(
+        transactionService.simulateCollectibleTransfer,
+      ).not.toHaveBeenCalled();
+      expect(store.getState()).toMatchObject({
+        transactionXDR: mockBuiltXDR,
+        error: null,
+      });
+    });
+
+    it("still simulates a C destination with the stub on", async () => {
+      useDebugStore.setState({ stubMuxedContractSimulation: true });
+      (
+        transactionService.buildPaymentTransaction as jest.Mock
+      ).mockResolvedValueOnce({
+        xdr: mockBuiltXDR,
+        tx: { sequence: "1" },
+        contractId: mockContractAddress,
+        finalDestination: mockContractAddress,
+        amountInBaseUnits: "1000000000",
+      });
+
+      await act(async () => {
+        await store.getState().buildTransaction({
+          tokenAmount: mockTokenValue,
+          recipientAddress: mockContractAddress,
+          senderAddress: mockPublicKey,
+          network: mockNetwork,
+        });
+      });
+
+      expect(transactionService.simulateContractTransfer).toHaveBeenCalled();
+    });
+
+    it("simulates a W as normal outside a debug build, even with the stub on", async () => {
+      // A dev-bundle release build, such as a PR preview, has `__DEV__` false
+      // but the persisted debug store, so it can inherit the stub from an
+      // earlier debug build on the same install. `__DEV__` is a React Native
+      // global, which jest defines as true.
+      // eslint-disable-next-line no-underscore-dangle
+      const devGlobal = global as unknown as { __DEV__: boolean };
+      // eslint-disable-next-line no-underscore-dangle
+      const previousDev = devGlobal.__DEV__;
+      useDebugStore.setState({ stubMuxedContractSimulation: true });
+      (
+        transactionService.buildPaymentTransaction as jest.Mock
+      ).mockResolvedValueOnce({
+        xdr: mockBuiltXDR,
+        tx: { sequence: "1" },
+        contractId: mockContractAddress,
+        finalDestination: MUXED_CONTRACT_ID_0,
+        amountInBaseUnits: "1000000000",
+      });
+
+      try {
+        // eslint-disable-next-line no-underscore-dangle
+        devGlobal.__DEV__ = false;
+
+        await act(async () => {
+          await store.getState().buildTransaction({
+            tokenAmount: mockTokenValue,
+            recipientAddress: MUXED_CONTRACT_ID_0,
+            senderAddress: mockPublicKey,
+            network: mockNetwork,
+          });
+        });
+      } finally {
+        // eslint-disable-next-line no-underscore-dangle
+        devGlobal.__DEV__ = previousDev;
+      }
+
+      expect(transactionService.simulateContractTransfer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            destination: MUXED_CONTRACT_ID_0,
+          }),
+        }),
+      );
+      expect(store.getState()).toMatchObject({
+        transactionXDR: mockPreparedXDR,
+        sorobanResourceFeeXlm: "0.0000100",
+        error: null,
+      });
+    });
   });
 
   it("should handle errors during buildTransaction", async () => {

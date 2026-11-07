@@ -43,13 +43,19 @@ tags:
             visible:
               text: "Allow Paste|Don't Allow Paste"
           commands:
-            - tapOn:
-                text: "Allow Paste"
-            # Wait for the allow paste dialog to fully dismiss
-            - extendedWaitUntil:
-                notVisible:
-                  text: "Allow Paste|Don't Allow Paste"
-                timeout: 5000
+            # The paste prompt sometimes ignores a tap that comes right after
+            # it appears (seen on an iOS 26.5 simulator), so tap again if it's
+            # still up.
+            - retry:
+                maxRetries: 2
+                commands:
+                  - tapOn:
+                      text: "Allow Paste"
+                  # Wait for the allow paste dialog to fully dismiss
+                  - extendedWaitUntil:
+                      notVisible:
+                        text: "Allow Paste|Don't Allow Paste"
+                      timeout: 5000
 # Android: inputText approach
 - runFlow:
     when:

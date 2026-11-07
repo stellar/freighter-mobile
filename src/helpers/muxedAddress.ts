@@ -1,14 +1,17 @@
 /**
  * Utility functions for handling muxed addresses and memo logic
  */
+import { StrKey } from "@stellar/stellar-sdk";
 import { NetworkDetails } from "config/constants";
+import { isMuxedContract } from "helpers/muxedContract";
 import { isContractId } from "helpers/soroban";
 import {
   isMuxedAccount,
   isValidStellarAddress,
   createMuxedAccount,
-  getBaseAccount,
 } from "helpers/stellar";
+// Aliased so it doesn't clash with the `t` that getMemoDisabledState takes
+import { t as translate } from "i18next";
 import { checkContractSupportsMuxed } from "services/backend";
 
 export interface MemoDisabledStateParams {
@@ -24,13 +27,27 @@ export interface MemoDisabledState {
   memoDisabledMessage?: string;
 }
 
+/**
+ * Works out whether the memo field is disabled for a send, and why.
+ *
+ * - `M...` and `W...` destinations: always disabled, because the mux id is
+ *   already in the address. This is decided first, so no contract lookup runs.
+ * - Classic sends (no `contractId` or network): enabled.
+ * - Soroban sends: disabled for a `C...` or an invalid destination. For a
+ *   `G...`, enabled only when the token contract supports muxed addresses
+ *   (CAP-67); a failed lookup counts as unsupported.
+ *
+ * @param params The destination, the token contract and network (Soroban sends
+ * only), and the translation function
+ * @returns Whether the memo is disabled, with the message to show when it is
+ */
 export async function getMemoDisabledState(
   params: MemoDisabledStateParams,
 ): Promise<MemoDisabledState> {
   const { targetAddress, contractId, networkDetails, t } = params;
 
-  // Disable memo for all M addresses (memo is encoded in the address)
-  if (isMuxedAccount(targetAddress)) {
+  // Disable memo for all M and W addresses (memo is encoded in the address)
+  if (isMuxedAccount(targetAddress) || isMuxedContract(targetAddress)) {
     return {
       isMemoDisabled: true,
       memoDisabledMessage: t(
@@ -107,63 +124,135 @@ export interface DetermineMuxedDestinationParams {
   contractSupportsMuxed: boolean;
 }
 
+/**
+ * Why a Soroban transfer can't carry a memo:
+ * - `"unsupported"`: the recipient isn't a `G...`, or the token contract
+ *   doesn't support muxed addresses.
+ * - `"nonNumeric"`: the memo isn't a decimal uint64, so it can't be the id of
+ *   an `M...`.
+ */
+export type SorobanMemoRefusal = "unsupported" | "nonNumeric";
+
+// The largest mux id: a mux id is a uint64.
+const MAX_MUX_ID = BigInt("18446744073709551615");
+
+// The SDK refuses a mux id longer than this, even a zero-padded one in range.
+const MAX_MUX_ID_DIGITS = 22;
+
+/**
+ * Checks whether a Soroban transfer can carry a memo, so a send screen can
+ * block the send up front instead of letting the build fail.
+ *
+ * The only memo a Soroban transfer can carry is the id of an `M...` built from
+ * a `G...` recipient, so the memo is refused when the recipient isn't a
+ * `G...`, when the contract doesn't support muxed addresses, or when the memo
+ * isn't a decimal uint64 (leading zeros are allowed, as the SDK allows them,
+ * up to its 22 digits).
+ * These are the memos the build refuses: `determineMuxedDestination` throws
+ * for each of them, and `buildPaymentTransaction` refuses a memo for a `W...`.
+ *
+ * Unlike `createMuxedAccount`, this logs nothing: a memo the user typed isn't
+ * an app error.
+ *
+ * @param params The recipient, the memo, and whether the contract supports muxed
+ * @returns Why the memo can't be carried, or `null` when there's no memo or it
+ * can be
+ */
+export function getSorobanMemoRefusal(
+  params: DetermineMuxedDestinationParams,
+): SorobanMemoRefusal | null {
+  const { recipientAddress, transactionMemo, contractSupportsMuxed } = params;
+
+  if (!transactionMemo) {
+    return null;
+  }
+
+  if (
+    !contractSupportsMuxed ||
+    !StrKey.isValidEd25519PublicKey(recipientAddress)
+  ) {
+    return "unsupported";
+  }
+
+  const isMuxId =
+    transactionMemo.length <= MAX_MUX_ID_DIGITS &&
+    /^\d+$/.test(transactionMemo) &&
+    BigInt(transactionMemo) <= MAX_MUX_ID;
+
+  return isMuxId ? null : "nonNumeric";
+}
+
+/**
+ * Picks the address a Soroban transfer is sent to, or refuses the transfer.
+ *
+ * A Soroban transaction carries no memo, so the only id a transfer can carry
+ * is the one in a muxed destination. When the recipient or the memo can't
+ * arrive as entered, this throws instead of sending to a different address
+ * or without the memo.
+ *
+ * - A muxed contract (`W...`) is returned unchanged, before anything else: the
+ *   mux id is already in the address, so it is never re-encoded, stripped to
+ *   its `C...` or rebuilt as an `M...`, and the memo and
+ *   `contractSupportsMuxed` are ignored for it.
+ * - An `M...` is returned unchanged when the contract supports muxed
+ *   addresses, and refused when it doesn't. A memo for it is refused: the
+ *   `M...`'s own id is the only one the transfer can carry.
+ * - Any other recipient without a memo is returned unchanged.
+ * - A `G...` with a memo becomes an `M...` carrying the memo as its id. The
+ *   memo is refused when the contract doesn't support muxed addresses, when
+ *   the recipient isn't a `G...`, or when the memo isn't a decimal uint64.
+ *
+ * @param params The recipient, the memo, and whether the contract supports muxed
+ * @returns The address to send to
+ * @throws Error with a translated message when the recipient or the memo
+ * can't be carried
+ */
 export function determineMuxedDestination(
   params: DetermineMuxedDestinationParams,
 ): string {
   const { recipientAddress, transactionMemo, contractSupportsMuxed } = params;
 
+  // A W already carries its own mux id: pass it through before any G/M logic
+  // can validate, rebuild or unwrap it.
+  if (isMuxedContract(recipientAddress)) {
+    return recipientAddress;
+  }
+
+  const hasMemo =
+    typeof transactionMemo === "string" && transactionMemo.length > 0;
+
+  if (isMuxedAccount(recipientAddress)) {
+    if (!contractSupportsMuxed) {
+      throw new Error(translate("transaction.errors.muxedAddressNotSupported"));
+    }
+
+    if (hasMemo) {
+      throw new Error(
+        translate("transactionSettings.memoInfo.memoDisabledForTransaction"),
+      );
+    }
+
+    return recipientAddress;
+  }
+
+  if (!hasMemo) {
+    return recipientAddress;
+  }
+
   const isRecipientGAddress =
     isValidStellarAddress(recipientAddress) && !isContractId(recipientAddress);
-  const isRecipientAlreadyMuxed = isMuxedAccount(recipientAddress);
-  const hasValidMemo =
-    transactionMemo &&
-    typeof transactionMemo === "string" &&
-    transactionMemo.length > 0;
 
-  if (contractSupportsMuxed) {
-    if (isRecipientGAddress && hasValidMemo) {
-      const muxedWithMemo = createMuxedAccount(
-        recipientAddress,
-        transactionMemo,
-      );
-      return muxedWithMemo || recipientAddress;
-    }
-
-    if (isRecipientGAddress && !hasValidMemo) {
-      return recipientAddress;
-    }
-
-    if (isRecipientAlreadyMuxed && hasValidMemo) {
-      const baseAccount = getBaseAccount(recipientAddress);
-      if (
-        baseAccount &&
-        isValidStellarAddress(baseAccount) &&
-        !isContractId(baseAccount)
-      ) {
-        const muxedWithNewMemo = createMuxedAccount(
-          baseAccount,
-          transactionMemo,
-        );
-        return muxedWithNewMemo || recipientAddress;
-      }
-    }
-
-    if (isRecipientAlreadyMuxed && !hasValidMemo) {
-      return recipientAddress;
-    }
-  } else if (isRecipientAlreadyMuxed) {
-    const baseAccount = getBaseAccount(recipientAddress);
-    if (
-      baseAccount &&
-      isValidStellarAddress(baseAccount) &&
-      !isContractId(baseAccount)
-    ) {
-      return baseAccount;
-    }
+  if (!contractSupportsMuxed || !isRecipientGAddress) {
     throw new Error(
-      "This contract does not support muxed addresses. Please use a regular address (G... or C...).",
+      translate("transactionSettings.memoInfo.memoNotSupportedForOperation"),
     );
   }
 
-  return recipientAddress;
+  const muxedWithMemo = createMuxedAccount(recipientAddress, transactionMemo);
+
+  if (!muxedWithMemo) {
+    throw new Error(translate("transaction.errors.nonNumericMemoNotSupported"));
+  }
+
+  return muxedWithMemo;
 }
