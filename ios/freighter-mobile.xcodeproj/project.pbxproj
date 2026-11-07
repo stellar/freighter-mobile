@@ -11,12 +11,18 @@
 		153F939388F35C5CC4D3FF0B /* libPods-freighter-mobile-freighter-mobile-dev.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A52DDB7E15C8F92AC3DE4102 /* libPods-freighter-mobile-freighter-mobile-dev.a */; };
 		3B54C0C8649A44048D6CE6F1 /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6EA47F7F1A9043699AECB850 /* Colors.xcassets */; };
 		4C1900C63580B5D670E4E67B /* libPods-freighter-mobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 57FA3985442F69076EFBCA2A /* libPods-freighter-mobile.a */; };
+		57C057B78601F60CA80DDCF1 /* FunnelSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 79D0CE9A76586DB4B8FFA3A5 /* FunnelSans-Medium.ttf */; };
+		5A29328654BC8B5086E82E65 /* FunnelSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 118AD84D3DF7D4C29919F749 /* FunnelSans-Regular.ttf */; };
 		732E4F42687E4C04AD873507 /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D10BE9F6D7D84A598084C6B9 /* BootSplash.storyboard */; };
 		75BAEB762E32B39B0084934A /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 75BAEB742E32B39B0084934A /* InfoPlist.strings */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
+		81662721E0ADBD57F971404E /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FBB5B5C258F5BDECDB5A20F /* SceneDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		899750EEAA2ABAD58F8FFE01 /* FunnelSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 70A7F79CEDCABD58C30FF87D /* FunnelSans-Bold.ttf */; };
+		8A6B88375363C1964CA6DC58 /* FunnelSans-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8C2273B0A56497D5091971A4 /* FunnelSans-Light.ttf */; };
 		A020C2C89FD30438BCD65DF0 /* libPods-freighter-mobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 57FA3985442F69076EFBCA2A /* libPods-freighter-mobile.a */; };
 		D88BF41236E08F0EB644DD53 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		DEC18A2561B384281BB39BBB /* FunnelSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 16769F847F843C28014E7353 /* FunnelSans-SemiBold.ttf */; };
 		EC8D0BF92E8DDA8100429D7F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		EC8D0BFD2E8DDA8100429D7F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		EC8D0BFE2E8DDA8100429D7F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 75BAEB742E32B39B0084934A /* InfoPlist.strings */; };
@@ -25,44 +31,41 @@
 		EC8D0C012E8DDA8100429D7F /* Inter-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BE3DD2A38FDF490B8902728A /* Inter-Bold.ttf */; };
 		EC8D0C022E8DDA8100429D7F /* Inter-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6962430A58434A4F99BDACDC /* Inter-Light.ttf */; };
 		EC8D0C032E8DDA8100429D7F /* Inter-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AFA1D0A6FE1E4E61A68B2CE8 /* Inter-Medium.ttf */; };
-		5A29328654BC8B5086E82E65 /* FunnelSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 118AD84D3DF7D4C29919F749 /* FunnelSans-Regular.ttf */; };
-		8A6B88375363C1964CA6DC58 /* FunnelSans-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8C2273B0A56497D5091971A4 /* FunnelSans-Light.ttf */; };
-		57C057B78601F60CA80DDCF1 /* FunnelSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 79D0CE9A76586DB4B8FFA3A5 /* FunnelSans-Medium.ttf */; };
-		DEC18A2561B384281BB39BBB /* FunnelSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 16769F847F843C28014E7353 /* FunnelSans-SemiBold.ttf */; };
-		899750EEAA2ABAD58F8FFE01 /* FunnelSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 70A7F79CEDCABD58C30FF87D /* FunnelSans-Bold.ttf */; };
 		EC8D0C042E8DDA8100429D7F /* Inter-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0CD67D6730C74635991EDEFF /* Inter-Regular.ttf */; };
 		EC8D0C052E8DDA8100429D7F /* Inter-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9E2FF4E1433641DCA5850C7E /* Inter-SemiBold.ttf */; };
 		EC8D0C062E8DDA8100429D7F /* Inter-VariableFont_opsz,wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 302D33B0FE4D45C9ABEC3073 /* Inter-VariableFont_opsz,wght.ttf */; };
 		EC8D0C072E8DDA8100429D7F /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D10BE9F6D7D84A598084C6B9 /* BootSplash.storyboard */; };
 		EC8D0C082E8DDA8100429D7F /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6EA47F7F1A9043699AECB850 /* Colors.xcassets */; };
+		FB0FFEA53918CA6F323B67EF /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FBB5B5C258F5BDECDB5A20F /* SceneDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0CD67D6730C74635991EDEFF /* Inter-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter-Regular.ttf"; path = "../src/assets/fonts/Inter-Regular.ttf"; sourceTree = "<group>"; };
+		118AD84D3DF7D4C29919F749 /* FunnelSans-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "FunnelSans-Regular.ttf"; path = "../src/assets/fonts/FunnelSans-Regular.ttf"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* freighter-mobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "freighter-mobile.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = "freighter-mobile/Images.xcassets"; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = "freighter-mobile/Info.plist"; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = "freighter-mobile/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
+		16769F847F843C28014E7353 /* FunnelSans-SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "FunnelSans-SemiBold.ttf"; path = "../src/assets/fonts/FunnelSans-SemiBold.ttf"; sourceTree = "<group>"; };
 		302D33B0FE4D45C9ABEC3073 /* Inter-VariableFont_opsz,wght.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter-VariableFont_opsz,wght.ttf"; path = "../src/assets/fonts/Inter-VariableFont_opsz,wght.ttf"; sourceTree = "<group>"; };
 		529AF2012E693E0F003B92F4 /* freighter-mobile-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "freighter-mobile-Bridging-Header.h"; sourceTree = "<group>"; };
 		57FA3985442F69076EFBCA2A /* libPods-freighter-mobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-freighter-mobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6962430A58434A4F99BDACDC /* Inter-Light.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter-Light.ttf"; path = "../src/assets/fonts/Inter-Light.ttf"; sourceTree = "<group>"; };
 		6EA47F7F1A9043699AECB850 /* Colors.xcassets */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = folder.assetcatalog; name = Colors.xcassets; path = "freighter-mobile/Colors.xcassets"; sourceTree = "<group>"; };
+		70A7F79CEDCABD58C30FF87D /* FunnelSans-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "FunnelSans-Bold.ttf"; path = "../src/assets/fonts/FunnelSans-Bold.ttf"; sourceTree = "<group>"; };
 		75BAEB752E32B39B0084934A /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		75BAEB782E3789260084934A /* pt */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = pt; path = pt.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = "freighter-mobile/AppDelegate.swift"; sourceTree = "<group>"; };
+		79D0CE9A76586DB4B8FFA3A5 /* FunnelSans-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "FunnelSans-Medium.ttf"; path = "../src/assets/fonts/FunnelSans-Medium.ttf"; sourceTree = "<group>"; };
+		7FBB5B5C258F5BDECDB5A20F /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = "freighter-mobile/SceneDelegate.swift"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = "freighter-mobile/LaunchScreen.storyboard"; sourceTree = "<group>"; };
 		87C4DD51580C7F62D544B174 /* Pods-freighter-mobile.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-freighter-mobile.debug.xcconfig"; path = "Target Support Files/Pods-freighter-mobile/Pods-freighter-mobile.debug.xcconfig"; sourceTree = "<group>"; };
+		8C2273B0A56497D5091971A4 /* FunnelSans-Light.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "FunnelSans-Light.ttf"; path = "../src/assets/fonts/FunnelSans-Light.ttf"; sourceTree = "<group>"; };
 		9E2FF4E1433641DCA5850C7E /* Inter-SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter-SemiBold.ttf"; path = "../src/assets/fonts/Inter-SemiBold.ttf"; sourceTree = "<group>"; };
 		A52DDB7E15C8F92AC3DE4102 /* libPods-freighter-mobile-freighter-mobile-dev.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-freighter-mobile-freighter-mobile-dev.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A6A442E0F2B829FA8C711B49 /* Pods-freighter-mobile-freighter-mobile-dev.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-freighter-mobile-freighter-mobile-dev.debug.xcconfig"; path = "Target Support Files/Pods-freighter-mobile-freighter-mobile-dev/Pods-freighter-mobile-freighter-mobile-dev.debug.xcconfig"; sourceTree = "<group>"; };
 		AB0E25A029EB5B8EFB425629 /* Pods-freighter-mobile-freighter-mobile-dev.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-freighter-mobile-freighter-mobile-dev.release.xcconfig"; path = "Target Support Files/Pods-freighter-mobile-freighter-mobile-dev/Pods-freighter-mobile-freighter-mobile-dev.release.xcconfig"; sourceTree = "<group>"; };
 		AFA1D0A6FE1E4E61A68B2CE8 /* Inter-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter-Medium.ttf"; path = "../src/assets/fonts/Inter-Medium.ttf"; sourceTree = "<group>"; };
-		118AD84D3DF7D4C29919F749 /* FunnelSans-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "FunnelSans-Regular.ttf"; path = "../src/assets/fonts/FunnelSans-Regular.ttf"; sourceTree = "<group>"; };
-		8C2273B0A56497D5091971A4 /* FunnelSans-Light.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "FunnelSans-Light.ttf"; path = "../src/assets/fonts/FunnelSans-Light.ttf"; sourceTree = "<group>"; };
-		79D0CE9A76586DB4B8FFA3A5 /* FunnelSans-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "FunnelSans-Medium.ttf"; path = "../src/assets/fonts/FunnelSans-Medium.ttf"; sourceTree = "<group>"; };
-		16769F847F843C28014E7353 /* FunnelSans-SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "FunnelSans-SemiBold.ttf"; path = "../src/assets/fonts/FunnelSans-SemiBold.ttf"; sourceTree = "<group>"; };
-		70A7F79CEDCABD58C30FF87D /* FunnelSans-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "FunnelSans-Bold.ttf"; path = "../src/assets/fonts/FunnelSans-Bold.ttf"; sourceTree = "<group>"; };
 		BE3DD2A38FDF490B8902728A /* Inter-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter-Bold.ttf"; path = "../src/assets/fonts/Inter-Bold.ttf"; sourceTree = "<group>"; };
 		D10BE9F6D7D84A598084C6B9 /* BootSplash.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = BootSplash.storyboard; path = "freighter-mobile/BootSplash.storyboard"; sourceTree = "<group>"; };
 		EC0984E5FFD5FF5490DEB006 /* Pods-freighter-mobile.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-freighter-mobile.release.xcconfig"; path = "Target Support Files/Pods-freighter-mobile/Pods-freighter-mobile.release.xcconfig"; sourceTree = "<group>"; };
@@ -97,6 +100,7 @@
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				7FBB5B5C258F5BDECDB5A20F /* SceneDelegate.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				EC8D0C172E8DDD8000429D7F /* Info-Dev.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -480,6 +484,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				FB0FFEA53918CA6F323B67EF /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -488,6 +493,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EC8D0BF92E8DDA8100429D7F /* AppDelegate.swift in Sources */,
+				81662721E0ADBD57F971404E /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
