@@ -1,6 +1,8 @@
 import {
+  Account,
   Asset,
   Keypair,
+  MuxedAccount,
   Networks,
   TransactionBuilder,
   Address,
@@ -239,21 +241,22 @@ describe("buildPaymentTransaction unfunded destination", () => {
   });
 });
 
+const customTokenContract =
+  "CBOVW5CXOPHYWGLJPWBQMGX2F3REBY2ZTZX3N47RTYWWHZV2BXCIIGTL";
+
+const customTokenBalance = {
+  token: { code: "WETH", issuer: { key: customTokenContract } },
+  contractId: customTokenContract,
+  total: new BigNumber("1000"),
+  available: new BigNumber("1000"),
+  name: "Wrapped Ether",
+  symbol: "WETH",
+  decimals: 18,
+  tokenCode: "WETH",
+} as unknown as PricedBalance;
+
 describe("buildPaymentTransaction muxed contract (W) destination", () => {
   const sender = Keypair.random().publicKey();
-  const customTokenContract =
-    "CBOVW5CXOPHYWGLJPWBQMGX2F3REBY2ZTZX3N47RTYWWHZV2BXCIIGTL";
-
-  const customTokenBalance = {
-    token: { code: "WETH", issuer: { key: customTokenContract } },
-    contractId: customTokenContract,
-    total: new BigNumber("1000"),
-    available: new BigNumber("1000"),
-    name: "Wrapped Ether",
-    symbol: "WETH",
-    decimals: 18,
-    tokenCode: "WETH",
-  } as unknown as PricedBalance;
 
   const baseParams = {
     tokenAmount: "1",
@@ -304,6 +307,45 @@ describe("buildPaymentTransaction muxed contract (W) destination", () => {
       expect(mockLoadAccount).not.toHaveBeenCalled();
     },
   );
+});
+
+// checkContractSupportsMuxed answers false here: the token doesn't support
+// muxed addresses.
+describe("buildPaymentTransaction custom token to an M, or with a memo", () => {
+  const recipient = Keypair.random().publicKey();
+
+  const baseParams = {
+    tokenAmount: "1",
+    selectedBalance: customTokenBalance,
+    transactionFee: "0.001",
+    transactionTimeout: 300,
+    network: NETWORKS.TESTNET,
+    senderAddress: Keypair.random().publicKey(),
+  };
+
+  it("refuses an M the token doesn't support, instead of sending to its base G", async () => {
+    await expect(
+      buildPaymentTransaction({
+        ...baseParams,
+        recipientAddress: new MuxedAccount(
+          new Account(recipient, "0"),
+          "7",
+        ).accountId(),
+      } as never),
+    ).rejects.toThrow("transaction.errors.muxedAddressNotSupported");
+  });
+
+  it("refuses a memo the token can't carry, instead of building without it", async () => {
+    await expect(
+      buildPaymentTransaction({
+        ...baseParams,
+        recipientAddress: recipient,
+        transactionMemo: "1234",
+      } as never),
+    ).rejects.toThrow(
+      "transactionSettings.memoInfo.memoNotSupportedForOperation",
+    );
+  });
 });
 
 describe("buildSwapTransaction asset resolution", () => {
@@ -372,6 +414,76 @@ describe("buildSendCollectibleTransaction", () => {
     ).rejects.toThrow("transaction.errors.muxedContractNotSupported");
     expect(mockLoadAccount).not.toHaveBeenCalled();
     expect(backend.checkContractSupportsMuxed).not.toHaveBeenCalled();
+  });
+
+  describe("memo and M recipients", () => {
+    const recipientWithId1234 = new MuxedAccount(
+      new Account(mockRecipientKeypair.publicKey(), "0"),
+      "1234",
+    ).accountId();
+
+    const transferRecipient = (transactionXdr: string) => {
+      const parsedTx = TransactionBuilder.fromXdr(
+        transactionXdr,
+        Networks.TESTNET,
+      ) as Transaction;
+      const operation = parsedTx.operations[0] as Operation.InvokeHostFunction;
+      const { args } = xdr.expectUnionVariant(
+        operation.func,
+        "hostFunctionTypeInvokeContract",
+      ).invokeContract;
+
+      return Address.fromScVal(args[1]).toString();
+    };
+
+    it("sends a decimal memo as the id of an M when the collection supports muxed addresses", async () => {
+      (backend.checkContractSupportsMuxed as jest.Mock).mockResolvedValueOnce(
+        true,
+      );
+
+      const result = await buildSendCollectibleTransaction({
+        ...baseParams,
+        transactionMemo: "1234",
+      });
+
+      expect(result.finalDestination).toBe(recipientWithId1234);
+      expect(transferRecipient(result.xdr)).toBe(recipientWithId1234);
+    });
+
+    it.each([
+      [
+        "the collection doesn't support muxed addresses",
+        false,
+        "1234",
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+      ],
+      [
+        "it isn't a decimal id",
+        true,
+        "AB12CD",
+        "transaction.errors.nonNumericMemoNotSupported",
+      ],
+    ])(
+      "refuses a memo when %s, instead of sending without it",
+      async (_label, supportsMuxed, transactionMemo, errorKey) => {
+        (backend.checkContractSupportsMuxed as jest.Mock).mockResolvedValueOnce(
+          supportsMuxed,
+        );
+
+        await expect(
+          buildSendCollectibleTransaction({ ...baseParams, transactionMemo }),
+        ).rejects.toThrow(errorKey);
+      },
+    );
+
+    it("refuses an M the collection doesn't support, instead of sending to its base G", async () => {
+      await expect(
+        buildSendCollectibleTransaction({
+          ...baseParams,
+          recipientAddress: recipientWithId1234,
+        }),
+      ).rejects.toThrow("transaction.errors.muxedAddressNotSupported");
+    });
   });
 
   it("should create transaction with correct sender address from parsed XDR", async () => {

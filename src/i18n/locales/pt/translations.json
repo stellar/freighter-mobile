@@ -842,6 +842,12 @@
       "muxedContractWarning": {
         "description": "Este token não suporta endereço de contrato muxed (W-) como destino."
       },
+      "memoNotSupported": "Memo não suportado",
+      "memoNotSupportedWarning": {
+        "description": "Este token não pode ser enviado com um memo para este endereço.",
+        "collectibleDescription": "Este colecionável não pode ser enviado com um memo para este endereço.",
+        "collectibleNumericDescription": "Este colecionável só aceita um memo numérico, de 0 a 18446744073709551615."
+      },
       "malicious": "Este endereço foi marcado como malicioso",
       "suspicious": "Este endereço foi marcado como suspeito",
       "maliciousToken": "Um token foi marcado como malicioso",
@@ -1149,7 +1155,9 @@
       "invalidDecimals": "Decimais inválidos ou ausentes para token personalizado",
       "invalidFederationMemo": "O servidor de federação retornou um memo inválido. Por favor, verifique o endereço e tente novamente.",
       "recipientIsTokenContract": "Não é possível enviar para o contrato do próprio token",
-      "muxedContractNotSupported": "Este token não suporta endereço de contrato muxed (W-) como destino."
+      "muxedContractNotSupported": "Este token não suporta endereço de contrato muxed (W-) como destino.",
+      "muxedAddressNotSupported": "Este token não suporta endereço muxed (M-) como destino.",
+      "nonNumericMemoNotSupported": "Este token só aceita um memo numérico, de 0 a 18446744073709551615."
     }
   },
   "tokenIconAlt": "ícone do token {{code}}",

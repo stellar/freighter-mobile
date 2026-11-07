@@ -2,6 +2,8 @@ import { Federation, StrKey } from "@stellar/stellar-sdk";
 import { act } from "@testing-library/react-hooks";
 import {
   BASE_CONTRACT,
+  G_ACCOUNT,
+  M_ACCOUNT_ID_1234,
   MUXED_CONTRACT_ID_0,
 } from "__tests__/support/muxedContractFixtures";
 import { STORAGE_KEYS } from "config/constants";
@@ -38,6 +40,7 @@ jest.mock("ducks/auth", () => ({
 }));
 
 jest.mock("helpers/stellar", () => ({
+  getBaseAccount: jest.fn(),
   isFederationAddress: jest.fn(),
   isSameAccount: jest.fn(),
   isValidStellarAddress: jest.fn(),
@@ -111,6 +114,11 @@ describe("sendRecipient Duck", () => {
     (stellarHelpers.isValidStellarAddress as jest.Mock).mockReturnValue(true);
     (stellarHelpers.isSameAccount as jest.Mock).mockReturnValue(false);
     (stellarHelpers.isFederationAddress as jest.Mock).mockReturnValue(false);
+    // As the real helper: an M maps to its base G, anything else to itself
+    (stellarHelpers.getBaseAccount as jest.Mock).mockImplementation(
+      (address: string) =>
+        address === M_ACCOUNT_ID_1234 ? G_ACCOUNT : address,
+    );
     (isContractDestination as jest.Mock).mockReturnValue(false);
     (getAccount as jest.Mock).mockResolvedValue({ id: mockPublicKey });
     (getActiveAccountPublicKey as jest.Mock).mockResolvedValue("DIFFERENT_KEY");
@@ -377,6 +385,41 @@ describe("sendRecipient Duck", () => {
       });
     },
   );
+
+  describe("muxed account (M) destinations", () => {
+    // Horizon can't look up an M itself, and the lookup returns null for it,
+    // so only the base G is a funded account here.
+    beforeEach(() => {
+      (getAccount as jest.Mock).mockImplementation((address: string) =>
+        Promise.resolve(address === G_ACCOUNT ? { id: G_ACCOUNT } : null),
+      );
+    });
+
+    it("searchAddress looks up an M's base account, so an M of a funded account is funded", async () => {
+      await store.getState().searchAddress(M_ACCOUNT_ID_1234);
+
+      expect(getAccount).toHaveBeenCalledWith(G_ACCOUNT, "TESTNET");
+      expect(store.getState()).toMatchObject({
+        destinationAddress: M_ACCOUNT_ID_1234,
+        isValidDestination: true,
+        isDestinationFunded: true,
+        searchError: null,
+      });
+    });
+
+    it("setDestinationAddress (Recents, My wallets) looks up an M's base account", async () => {
+      store.getState().setDestinationAddress(M_ACCOUNT_ID_1234);
+      await new Promise((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(getAccount).toHaveBeenCalledWith(G_ACCOUNT, "TESTNET");
+      expect(store.getState()).toMatchObject({
+        destinationAddress: M_ACCOUNT_ID_1234,
+        isDestinationFunded: true,
+      });
+    });
+  });
 
   it("should reset all search-related state", () => {
     act(() => {
