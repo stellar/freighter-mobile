@@ -3,7 +3,8 @@
  *
  * These run against the real `@stellar/stellar-sdk` on purpose: the expected
  * `M…` strings are SDK-encoded, and the accepted id format is SDK behavior
- * that a mock would only restate. Only `services/backend` is mocked.
+ * that a mock would only restate. Only `services/backend` and `i18next` are
+ * mocked.
  */
 import {
   G_ACCOUNT,
@@ -15,6 +16,11 @@ import { createMuxedAccount } from "helpers/stellar";
 
 // The muxed helpers import the backend client, which these tests never call.
 jest.mock("services/backend");
+
+// A refusal's message is a translation; the key stands in for it.
+jest.mock("i18next", () => ({
+  t: jest.fn((key: string) => key),
+}));
 
 describe("memo folding into M addresses", () => {
   it.each([
@@ -55,16 +61,36 @@ describe("memo folding into M addresses", () => {
     ).toBe(M_ACCOUNT_ID_1234);
   });
 
-  it.each(["0x10", "AB12CD"])(
-    "determineMuxedDestination keeps the base address for memo %j",
+  it.each(["0x10", " 16 ", "AB12CD", "18446744073709551616"])(
+    "determineMuxedDestination refuses memo %j, which can't be an M's id, instead of dropping it",
     (memo) => {
-      expect(
+      expect(() =>
         determineMuxedDestination({
           recipientAddress: G_ACCOUNT,
           transactionMemo: memo,
           contractSupportsMuxed: true,
         }),
-      ).toBe(G_ACCOUNT);
+      ).toThrow("transaction.errors.nonNumericMemoNotSupported");
     },
   );
+
+  it("determineMuxedDestination refuses a memo when the contract doesn't support muxed addresses", () => {
+    expect(() =>
+      determineMuxedDestination({
+        recipientAddress: G_ACCOUNT,
+        transactionMemo: "1234",
+        contractSupportsMuxed: false,
+      }),
+    ).toThrow("transactionSettings.memoInfo.memoNotSupportedForOperation");
+  });
+
+  it("determineMuxedDestination refuses a memo for an M, which already carries its own id", () => {
+    expect(() =>
+      determineMuxedDestination({
+        recipientAddress: M_ACCOUNT_ID_1234,
+        transactionMemo: "5678",
+        contractSupportsMuxed: true,
+      }),
+    ).toThrow("transactionSettings.memoInfo.memoDisabledForTransaction");
+  });
 });

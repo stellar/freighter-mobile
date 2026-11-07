@@ -19,7 +19,7 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatTokenForDisplay } from "helpers/formatAmount";
-import { isContractId } from "helpers/soroban";
+import { isContractDestination } from "helpers/muxedContract";
 import { isSameAccount, truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -88,7 +88,8 @@ const TransactionProcessingScreen: React.FC<
   );
   const hasEmittedSuccess = useRef(false);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const isContractAddress = isContractId(recipientAddress);
+  // A contract (`C…`) or a muxed contract (`W…`) recipient.
+  const isContractAddress = isContractDestination(recipientAddress);
 
   // Emit the canonical screen.viewed for the in-flight submission stage. This
   // screen is the mobile analog of the extension's PENDING state (stellar/

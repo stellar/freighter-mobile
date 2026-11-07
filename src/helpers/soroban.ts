@@ -30,6 +30,7 @@ import {
   isNativeContract,
   isNativeToken,
 } from "helpers/assetIdentity";
+import { isContractDestination } from "helpers/muxedContract";
 
 export const SOROBAN_OPERATION_TYPES = [
   "invoke_host_function",
@@ -77,7 +78,7 @@ export const isContractId = (contractId: string) => {
  * Checks if a transaction is a Soroban transaction.
  * A transaction is considered Soroban if:
  * - The selected balance is a Soroban token (has a contractId), OR
- * - The recipient address is a contract address
+ * - The recipient is a contract destination (`C…` or muxed contract `W…`)
  *
  * @param selectedBalance - The selected balance (can be undefined)
  * @param recipientAddress - The recipient address (can be undefined)
@@ -91,7 +92,7 @@ export const isSorobanTransaction = (
     (selectedBalance &&
       "contractId" in selectedBalance &&
       Boolean(selectedBalance.contractId)) ||
-      (recipientAddress && isContractId(recipientAddress)),
+      (recipientAddress && isContractDestination(recipientAddress)),
   );
 
 /**
