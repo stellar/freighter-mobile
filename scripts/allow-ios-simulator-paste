@@ -1,0 +1,66 @@
+#!/usr/bin/env node
+
+/**
+ * Sets the app's "Paste from Other Apps" permission to Allow on every booted
+ * iOS 27 simulator, so its Paste buttons work there. `yarn ios` runs it after
+ * launching the app.
+ *
+ * Before an app reads text another app copied (a recovery phrase from Notes,
+ * an address synced from the Mac), iOS asks with an "Allow Paste" prompt. The
+ * iOS 27 simulators can't show it: SpringBoard refuses the alert because their
+ * pasteboard daemon lacks the com.apple.springboard.CFUserNotification
+ * entitlement. The read then fails without a prompt, and Paste does nothing.
+ * Allowing the paste up front skips the prompt.
+ *
+ * `xcrun simctl privacy` has no pasteboard service, so this writes the
+ * permission to the simulator's TCC database. iOS 26 simulators still show the
+ * prompt, so they're left alone; test the prompt itself there.
+ */
+
+const { execFileSync } = require("child_process");
+const fs = require("fs");
+const path = require("path");
+
+// The dev and prod apps.
+const BUNDLE_IDS = ["org.stellar.freighterdev", "org.stellar.freighterwallet"];
+const FIRST_IOS_WITHOUT_PROMPT = 27;
+
+// A runtime identifier carries the iOS version, e.g.
+// com.apple.CoreSimulator.SimRuntime.iOS-27-2.
+const iosMajorVersion = (runtimeIdentifier) => {
+  const match = runtimeIdentifier.match(/\.iOS-(\d+)/);
+  return match ? Number(match[1]) : 0;
+};
+
+// auth_value 2 is Allow; client_type 0 means `client` is a bundle ID.
+const allowPasteSql = BUNDLE_IDS.map(
+  (bundleId) =>
+    "INSERT OR REPLACE INTO access " +
+    "(service, client, client_type, auth_value, auth_reason, auth_version, flags) " +
+    `VALUES ('kTCCServicePasteboard', '${bundleId}', 0, 2, 4, 2, 0);`,
+).join("\n");
+
+const { devices } = JSON.parse(
+  execFileSync("xcrun", ["simctl", "list", "devices", "booted", "--json"], {
+    encoding: "utf8",
+  }),
+);
+
+Object.entries(devices)
+  .filter(([runtime]) => iosMajorVersion(runtime) >= FIRST_IOS_WITHOUT_PROMPT)
+  .flatMap(([, runtimeDevices]) => runtimeDevices)
+  .filter((device) => device.state === "Booted")
+  .forEach((device) => {
+    const database = path.join(device.dataPath, "Library", "TCC", "TCC.db");
+    if (!fs.existsSync(database)) return;
+
+    // A failure here shouldn't fail `yarn ios`, which already launched the app.
+    try {
+      execFileSync("sqlite3", [database, allowPasteSql]);
+      process.stdout.write(`Allowed paste from other apps on ${device.name}\n`);
+    } catch (error) {
+      process.stderr.write(
+        `Couldn't allow paste from other apps on ${device.name}: ${error.message}\n`,
+      );
+    }
+  });
