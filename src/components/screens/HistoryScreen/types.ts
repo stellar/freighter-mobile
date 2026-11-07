@@ -12,6 +12,8 @@ export interface AssetBalanceChange {
   from: string;
   to: string;
   amount: string;
+  /** Mux id (decimal uint64) of a muxed destination; `to` then holds the base `G…`/`C…`. */
+  destination_muxed_id?: string;
 }
 
 // Asset diff summary for UI display

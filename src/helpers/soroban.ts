@@ -215,13 +215,14 @@ const hexEscape = (byte: number) => `\\x${byte.toString(16).padStart(2, "0")}`;
  * Decodes the UTF-8 sequence starting at `index`, or `null` when the bytes
  * there are not valid UTF-8.
  *
- * Written out rather than delegating to `new TextDecoder("utf-8", { fatal:
- * true })`: React Native's `TextDecoder` polyfill does not implement the
- * `fatal` option and *throws from the constructor* when given it, so a strict
- * decoder built that way works under Jest (Node implements it) and breaks on
- * device. The arithmetic below avoids bitwise operators for the same reason
- * the rest of this file does -- the lint rules forbid them -- and is exact for
- * these ranges.
+ * Written out rather than delegating to a `TextDecoder`: `escapeXdrString`
+ * needs the one code point at `index` and its width, so that an invalid byte
+ * is escaped on its own and decoding resumes right after it. A decoder of a
+ * whole buffer cannot do that: a strict one only accepts or rejects all of it,
+ * and a lenient one substitutes U+FFFD. (`{ fatal: true }` itself works on
+ * device through `src/polyfills/textDecoder.ts`.) The arithmetic below avoids
+ * bitwise operators for the same reason the rest of this file does -- the lint
+ * rules forbid them -- and is exact for these ranges.
  */
 const decodeUtf8At = (
   bytes: Uint8Array,
@@ -764,6 +765,27 @@ export const hasSorobanOperations = (
   transaction: ReturnType<typeof TransactionBuilder.fromXdr>,
 ) => transaction.operations.some((operation) => isSorobanOp(operation));
 
+/**
+ * Reads the token invocation (`contractId`, `fnName` and the call's arguments)
+ * out of a Soroban history record.
+ *
+ * A record's `transaction_attr` comes in one of two shapes:
+ * - Mercury: pre-decoded as `{ contractId, fnName, args }`, returned here as
+ *   `{ contractId, fnName, ...args }`.
+ * - Horizon: only the `envelope_xdr`, whose single operation (Soroban allows
+ *   one per transaction for now) is decoded with `getTokenInvocationArgs`.
+ *
+ * A record it can't read (no `transaction_attr`, an envelope that doesn't
+ * decode) is logged and yields `null` instead of throwing, so one bad record
+ * can't break the whole history load. `null` is also what a non-Soroban
+ * operation gets and, for the Horizon shape, an invocation that isn't a token
+ * `transfer` or `mint`.
+ *
+ * @param operation - A history operation record.
+ * @param networkDetails - The network the record belongs to; its passphrase is
+ * needed to decode the envelope.
+ * @returns The invocation attributes, or `null`.
+ */
 export const getAttrsFromSorobanHorizonOp = (
   operation: Horizon.ServerApi.OperationRecord,
   networkDetails: NetworkDetails,
@@ -772,20 +794,42 @@ export const getAttrsFromSorobanHorizonOp = (
     return null;
   }
 
-  const op = operation as any;
+  const attrs = (operation as any).transaction_attr;
 
-  if (op.transaction_attr.contractId) {
+  if (!attrs) {
+    logger.error(
+      "getAttrsFromSorobanHorizonOp",
+      "Soroban record has no transaction_attr",
+      operation.id,
+    );
+
+    return null;
+  }
+
+  if (attrs.contractId) {
     return {
-      contractId: op.transaction_attr.contractId,
-      fnName: op.transaction_attr.fnName,
-      ...op.transaction_attr.args,
+      contractId: attrs.contractId,
+      fnName: attrs.fnName,
+      ...attrs.args,
     };
   }
 
-  const transaction = TransactionBuilder.fromXdr(
-    op.transaction_attr.envelope_xdr as string,
-    networkDetails.networkPassphrase,
-  ) as Transaction;
+  let transaction: Transaction;
+
+  try {
+    transaction = TransactionBuilder.fromXdr(
+      attrs.envelope_xdr as string,
+      networkDetails.networkPassphrase,
+    ) as Transaction;
+  } catch (error) {
+    logger.error(
+      "getAttrsFromSorobanHorizonOp",
+      "Failed to decode Soroban operation",
+      error,
+    );
+
+    return null;
+  }
 
   // only one op per tx in Soroban right now
   const invokeHostFn = transaction

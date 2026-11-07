@@ -23,6 +23,8 @@ npm start
 # Server runs on http://localhost:3001
 ```
 
+Requires Node 22.12 or newer (see the SAC transfer fixture below).
+
 ## API Endpoints
 
 ### Create Session
@@ -57,6 +59,72 @@ Response:
   "status": "pending"
 }
 ```
+
+### Send stellar_signXDR Request
+
+```bash
+POST http://localhost:3001/session/:sessionId/request/signXDR
+
+Body:
+{
+  "xdr": "AAAAAgAAAAD...",  # base64 transaction XDR
+  "description": "Send 1 XLM",  # optional
+  "network": "testnet"  # or "pubnet"
+}
+
+Response:
+{
+  "requestId": "req-457",
+  "status": "pending"
+}
+```
+
+Poll the result with `GET /session/:sessionId/response`, as above.
+
+#### SAC transfer to a muxed contract (`W...`) fixture
+
+In place of `xdr`, the body can name a fixture, and the server builds the
+transaction itself: a native Stellar Asset Contract (SAC) `transfer` from the
+session's account to `to`, with a source-account auth entry for the same
+invocation. It exists to put a muxed contract (`W...`) recipient on the signing
+screens.
+
+```bash
+POST http://localhost:3001/session/:sessionId/request/signXDR
+
+Body:
+{
+  "fixture": "sacTransferToMuxedContract",
+  "network": "testnet",  # or "pubnet"
+  "to": "WA7Q..."  # optional: any G..., C... or W... address
+}
+
+Response:
+{
+  "requestId": "req-458",
+  "status": "pending",
+  "xdr": "AAAAAgAAAAD..."  # the generated transaction
+}
+```
+
+- `to` defaults to the SEP-23 muxed contract vector
+  (`WA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAAAWWC`). The
+  amount is always 1 XLM (10000000 stroops).
+- The source is the session's first Stellar account. A session without one gets
+  `400 { "error": "Session has no Stellar account" }`. A `to` that isn't an
+  address string gets `400 { "error": "Invalid request" }`, since it's bad
+  input.
+- If the body also has an `xdr`, the fixture is ignored: a non-empty string
+  `xdr` is sent as is, and any other `xdr` gets a `400`. So does a body with
+  neither a non-empty string `xdr` nor the fixture.
+- The web UI has a "Sign SAC transfer to W" button next to "Sign XDR" that sends
+  this body.
+
+The fixture is the only code that uses `@stellar/stellar-sdk` (17.x). Everything
+else, including the `signAuthEntry` preimage generator, stays on
+`@stellar/stellar-base` 14. The server loads the SDK the first time the fixture
+is requested, so no other route loads it. The SDK's CommonJS build `require()`s
+ESM-only packages, which is why `engines.node` is `>=22.12.0`.
 
 ### Get Response
 
