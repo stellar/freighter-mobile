@@ -281,14 +281,17 @@ export const useSwapTokenLookup = ({
       ),
     [hiddenTokenIds],
   );
-  const withoutHidden = useCallback(
+  // Off mainnet, LI.FI can't quote a Soroban token, so only held ones list.
+  const visibleRecords = useCallback(
     (tokens: FormattedSearchTokenRecord[]) =>
-      hiddenIdsSet.size === 0
-        ? tokens
-        : tokens.filter(
-            (t) => !hiddenIdsSet.has(canonicalId(t.tokenCode, t.issuer)),
-          ),
-    [hiddenIdsSet],
+      tokens.filter(
+        (t) =>
+          !hiddenIdsSet.has(canonicalId(t.tokenCode, t.issuer)) &&
+          (isMainnet(network) ||
+            t.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN ||
+            hasExistingTrustline(t.tokenCode, t.issuer)),
+      ),
+    [hiddenIdsSet, network, hasExistingTrustline],
   );
 
   // -- Idle surface ---------------------------------------------------------
@@ -753,8 +756,8 @@ export const useSwapTokenLookup = ({
   // Filtered here rather than in the fetch pipeline, so unhiding a token
   // brings it back straight away without refetching.
   const visibleTrendingTokens = useMemo(
-    () => withoutHidden(trendingTokens),
-    [withoutHidden, trendingTokens],
+    () => visibleRecords(trendingTokens),
+    [visibleRecords, trendingTokens],
   );
   // popularTokens is the same verified intersection as trendingTokens,
   // additionally EXCLUDING held tokens for the picker.
@@ -766,12 +769,12 @@ export const useSwapTokenLookup = ({
     [visibleTrendingTokens, hasExistingTrustline],
   );
   const verifiedSearchMatches = useMemo(
-    () => withoutHidden(searchPartition.verified),
-    [withoutHidden, searchPartition.verified],
+    () => visibleRecords(searchPartition.verified),
+    [visibleRecords, searchPartition.verified],
   );
   const unverifiedSearchMatches = useMemo(
-    () => withoutHidden(searchPartition.unverified),
-    [withoutHidden, searchPartition.unverified],
+    () => visibleRecords(searchPartition.unverified),
+    [visibleRecords, searchPartition.unverified],
   );
 
   return {

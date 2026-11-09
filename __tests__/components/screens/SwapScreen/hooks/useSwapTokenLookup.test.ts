@@ -333,6 +333,31 @@ describe("useSwapTokenLookup — idle mode", () => {
     );
   });
 
+  it.each([
+    [NETWORKS.PUBLIC, true],
+    [NETWORKS.TESTNET, false],
+  ])(
+    "on %s, lists a verified Soroban token the account doesn't hold in trending: %s",
+    async (network, listed) => {
+      mockStores.getVerifiedTokens.mockResolvedValue([
+        { contract: SOROBAN_CONTRACT, name: "", code: "SOROBANTOKEN" },
+      ]);
+
+      const { result } = renderHook(() =>
+        useSwapTokenLookup({ network, balanceItems: [] }),
+      );
+      await act(async () => {
+        await settleAsync();
+      });
+
+      expect(
+        result.current.trendingTokens.some(
+          (t) => t.tokenCode === "SOROBANTOKEN",
+        ),
+      ).toBe(listed);
+    },
+  );
+
   it("excludes held tokens from popularTokens but keeps them in trendingTokens", async () => {
     const held = buildHeldBalances();
     const { result } = renderHook(() =>
@@ -885,6 +910,35 @@ describe("useSwapTokenLookup — active search", () => {
 
     expect(mockHandleContractLookup).toHaveBeenCalled();
     expect(result.current.stellarExpertDown).toBe(true);
+  });
+
+  it("hides Soroban tokens the account doesn't hold from search off mainnet", async () => {
+    (stellarExpert.searchToken as jest.Mock).mockResolvedValue({
+      _embedded: {
+        records: [
+          { asset: SOROBAN_CONTRACT, domain: "", code: "SOROBANTOKEN" },
+          { asset: `FOO-${FOO_ISSUER}-1`, domain: "foo.com" },
+        ],
+      },
+      _links: {},
+    });
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.TESTNET, balanceItems: [] }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+    act(() => {
+      result.current.handleSearch("o");
+    });
+    await settleDebounce();
+
+    const listed = [
+      ...result.current.verifiedSearchMatches,
+      ...result.current.unverifiedSearchMatches,
+    ].map((t) => t.tokenCode);
+    expect(listed).toEqual(["FOO"]);
   });
 
   it("matches a held Soroban token by name, with its decimals", async () => {
