@@ -28,6 +28,14 @@ const seg = (v: unknown): string =>
 // authenticated request.
 const HEADER_SEG = seg({ alg: "EdDSA", typ: "JWT" });
 
+/**
+ * The JWT `iat` for a clock reading: whole unix seconds, floored. A
+ * /user/link consent signs the iat of the JWT it travels with, so build both
+ * from the same `now` through this.
+ */
+export const issuedAtSeconds = (now?: number): number =>
+  Math.floor((now ?? Date.now()) / 1000);
+
 export const buildAuthJwt = ({
   keypair,
   method,
@@ -35,7 +43,7 @@ export const buildAuthJwt = ({
   body,
   now,
 }: BuildAuthJwtParams): string => {
-  const iat = Math.floor((now ?? Date.now()) / 1000);
+  const iat = issuedAtSeconds(now);
   const bodyHash = createHash("sha256")
     .update(body ?? "")
     .digest("hex");

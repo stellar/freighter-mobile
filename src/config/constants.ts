@@ -386,6 +386,17 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  *
  * REBRAND_ANNOUNCEMENT_STATUS Gate for the one-time rebrand announcement: "pending" for wallets that existed
  * before the first Varial launch, "seen" otherwise or once shown. Survives wallet wipes. @see helpers/rebrandAnnouncement
+ * SECRET_SOURCES The set of secret sources the wallet holds (every seed phrase and every
+ * standalone secret key), keyed by source id. @see SecretSourceMap
+ * Nothing here is secret: a source id is a derived public key that is not linkable to a
+ * G address, and the label and timestamp exist only for the UI.
+ * PINNED_SOURCE_ID The source that signs every backend request. Survives lock; cleared on wipe.
+ * DERIVATION_INDICES The derivation indices each seed phrase has in use, keyed by phrase source id.
+ * A new account takes its phrase's lowest unused index. An index is not secret; cleared on wipe.
+ * SOURCE_LINK_STATUS What /user/link last answered for each source ("linked" or "conflict"), keyed
+ * by source id. A source id is a one-way hash and the status carries no secret; cleared on wipe.
+ * CANONICAL_USER_ID The user id GET /user or /user/link last returned: the cluster's canonical
+ * source id and the analytics id. A one-way hash; cleared with SOURCE_LINK_STATUS and on wipe.
  *
  * APP_UPDATE_DISMISSED_REQUIRED_VERSION The version that the user has dismissed the app update notice for.
  * This is used to prevent the app update full screen notice from being shown again after the user has dismissed it.
@@ -411,12 +422,18 @@ export enum STORAGE_KEYS {
   HAS_SEEN_DISCOVER_WELCOME = "hasSeenDiscoverWelcome",
   REBRAND_ANNOUNCEMENT_STATUS = "rebrandAnnouncementStatus",
   APP_UPDATE_DISMISSED_REQUIRED_VERSION = "appUpdateDismissedRequiredVersion",
+  SECRET_SOURCES = "secretSources",
+  PINNED_SOURCE_ID = "pinnedSourceId",
+  DERIVATION_INDICES = "derivationIndices",
+  SOURCE_LINK_STATUS = "sourceLinkStatus",
+  CANONICAL_USER_ID = "canonicalUserId",
 }
 
 /**
  * Sensitive storage keys.
  *
- * TEMPORARY_STORE The temporary store contains encrypted private keys and mnemonic phrase.
+ * TEMPORARY_STORE The temporary store contains encrypted private keys and every held mnemonic
+ * keyed by phrase source id. @see TemporaryStore
  * HASH_KEY The hash key and salt in an JSON stryngified object. This is used to encrypt and decrypt the temporary store.
  * HASH_KEY format: { hashKey: string, salt: string, expiresAt: number }
  * AUTH_STATUS The authentication status is stored securely to prevent tampering on rooted/jailbroken devices.

@@ -6,7 +6,17 @@ import { SecurityLevel } from "services/blockaid/constants";
 import { SecurityWarning } from "services/blockaid/helper";
 
 export type Account = {
+  /**
+   * The keystore id exactly as the key manager issued it. Stable and unique;
+   * every lookup resolves by it, never by list position.
+   */
   id: string;
+  /**
+   * The `SecretSource` this account is rooted in: the phrase it was derived
+   * from, or its own secret key for a standalone import. Absent on records
+   * written before sources existed until sign-in fills it in.
+   */
+  sourceId?: string;
   name: string;
   publicKey: string;
   importedFromSecretKey?: boolean;
@@ -65,9 +75,42 @@ export enum HookStatus {
   REFRESHING = "refreshing",
 }
 
+/**
+ * A secret the wallet holds that roots accounts: one seed phrase, or one
+ * standalone imported secret key. Hardware accounts have no secret and are
+ * never a source. See unified-user-model/v2.md "Enumerating a wallet's
+ * identities".
+ */
+export enum SecretSourceType {
+  PHRASE = "phrase",
+  SECRET_KEY = "secret_key",
+}
+
+export interface SecretSource {
+  /**
+   * The source's v2 identity: `deriveAuthKeypair(mnemonic).userId` for a
+   * phrase, `deriveSourceIdentity(seed32).sourceId` for a secret key.
+   */
+  id: string;
+  type: SecretSourceType;
+  /** Sequential within its type: "Seed Phrase 1", "Secret Key 1", ... */
+  label: string;
+  /** Epoch milliseconds. */
+  createdAt: number;
+}
+
+export type SecretSourceMap = Record<string, SecretSource>;
+
+/** Every mnemonic the unlocked session holds, keyed by phrase source id. */
+export type MnemonicMap = Record<string, string>;
+
 export interface TemporaryStore {
   privateKeys: Record<string, string>;
-  mnemonicPhrase: string;
+  /**
+   * The held phrases keyed by source id. A standalone secret key is a source
+   * with no mnemonic, so a secret-key-only wallet holds an empty map.
+   */
+  mnemonics: MnemonicMap;
   password: string;
 }
 

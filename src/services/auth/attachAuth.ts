@@ -6,13 +6,24 @@
  *
  * 1. **Request interceptor**: builds a short-lived EdDSA JWT (via
  *    `buildAuthJwt`) and injects it as `Authorization: Bearer <jwt>`.
- *    When the wallet is locked (`getAuthKeypair()` → null) the config is
- *    returned unmodified and the backend permissively allows the request.
+ *    The signer is the wallet's pinned source (`getSigningIdentity`), never
+ *    the active account, so nothing in the request selects the identity.
+ *    When the session holds no signer (`getSigningIdentity()` → null) the
+ *    config is returned unmodified and the backend permissively allows the
+ *    request.
  *
  * 2. **Response interceptor**: on a 401, rebuilds the JWT once and re-issues
  *    the request via `instance.request(config)`, returning that response
  *    (success or the second 401). A `__isAuthRetry` flag prevents infinite
  *    loops. Mirrors the extension's `authedFetch` (retry-once-then-return).
+ *
+ * Per-request options
+ * -------------------
+ * `authNow` fixes the clock reading the JWT's iat is built from, and
+ * `authRetryOnUnauthorized: false` turns the 401 retry off. A /user/link body
+ * is signed against one iat, so it passes both: a retry would send the same
+ * body under a new iat and fail anyway. Mirrors `authedFetch`'s `now` and
+ * `retryOnUnauthorized`.
  *
  * Path derivation
  * ---------------
@@ -39,7 +50,7 @@
  *
  * Import strategy
  * ---------------
- * `getAuthKeypair` and `buildAuthJwt` are imported lazily inside the
+ * `getSigningIdentity` and `buildAuthJwt` are imported lazily inside the
  * interceptor callbacks (via `require()`). This keeps the module load of
  * `attachAuth.ts` itself side-effect-free so that tests which import
  * `backend.ts` indirectly (e.g. via a duck) do not inadvertently pull in
@@ -49,6 +60,22 @@
  * backend HTTP layer.
  */
 import { AxiosInstance, InternalAxiosRequestConfig } from "axios";
+
+declare module "axios" {
+  interface AxiosRequestConfig {
+    /**
+     * Clock reading in ms epoch for the JWT's iat; defaults to Date.now(). A
+     * body signed against a specific iat (a /user/link consent) passes the
+     * same reading here.
+     */
+    authNow?: number;
+    /**
+     * Retry once with a fresh JWT on 401. Defaults to true. Turn it off when
+     * the body is bound to the first JWT's iat.
+     */
+    authRetryOnUnauthorized?: boolean;
+  }
+}
 
 /**
  * Internal marker added to config when we have already attempted one
@@ -118,7 +145,7 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
   // ------------------------------------------------------------------
   // 1. Request interceptor — inject JWT when unlocked
   //
-  // `getAuthKeypair` and `buildAuthJwt` are required lazily here so that
+  // `getSigningIdentity` and `buildAuthJwt` are required lazily here so that
   // importing `attachAuth` (and transitively `backend.ts`) does not pull
   // `ducks/auth` into the module graph at import time. Tests that load
   // `backend.ts` indirectly (e.g. via a duck) but never make HTTP
@@ -127,11 +154,11 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
   instance.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
       /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, global-require */
-      const { getAuthKeypair } =
-        require("services/auth/getAuthKeypair") as typeof import("services/auth/getAuthKeypair");
+      const { getSigningIdentity } =
+        require("services/auth/signingIdentity") as typeof import("services/auth/signingIdentity");
       /* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, global-require */
-      const keypair = await getAuthKeypair();
-      if (!keypair) {
+      const identity = await getSigningIdentity();
+      if (!identity) {
         // Wallet is locked — pass through anonymously. Strip any stale
         // Authorization header first: a 401-retry copies the failed request's
         // config (which carried a Bearer token), so if the wallet locked
@@ -171,10 +198,11 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
       const body = typeof config.data === "string" ? config.data : undefined;
 
       const jwt = buildAuthJwt({
-        keypair,
+        keypair: identity.keypair,
         method,
         path: serverPath,
         body,
+        now: config.authNow,
       });
 
       // `config.headers` is always present on InternalAxiosRequestConfig.
@@ -209,6 +237,7 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
         err.response?.status === 401 &&
         config !== undefined &&
         !config.__isAuthRetry &&
+        config.authRetryOnUnauthorized !== false &&
         hadAuth
       ) {
         // Spread into a new config object to avoid mutating the original
@@ -222,7 +251,8 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
         return instance.request(retryConfig);
       }
 
-      // Not a retryable 401 (already retried, non-401, or anonymous): reject.
+      // Not a retryable 401 (already retried, retry turned off, non-401, or
+      // anonymous): reject.
       // A persistent 401 surfaces to the caller — we do NOT fall back to an
       // anonymous request (matches the extension's authedFetch; clock-skew
       // handling is deferred to the backend leeway, see #930).

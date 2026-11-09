@@ -19,7 +19,7 @@
  *   - services/apiFactory       (createApiService, integration only)
  *
  * Dependencies mocked:
- *   - services/auth/getAuthKeypair  (getAuthKeypair)
+ *   - services/auth/signingIdentity (getSigningIdentity)
  *   - services/auth/buildAuthJwt    (buildAuthJwt — mocked for isolated tests,
  *                                    real implementation used for integration)
  */
@@ -29,14 +29,14 @@ import { debug } from "helpers/debug";
 import { createApiService, isApiError } from "services/apiFactory";
 import { attachAuthInterceptors } from "services/auth/attachAuth";
 import { buildAuthJwt } from "services/auth/buildAuthJwt";
-import { getAuthKeypair } from "services/auth/getAuthKeypair";
+import { getSigningIdentity } from "services/auth/signingIdentity";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-jest.mock("services/auth/getAuthKeypair", () => ({
-  getAuthKeypair: jest.fn(),
+jest.mock("services/auth/signingIdentity", () => ({
+  getSigningIdentity: jest.fn(),
 }));
 
 // apiFactory's logRequests debug logger — spy so we can assert redaction.
@@ -58,7 +58,7 @@ jest.mock("config/logger", () => ({
   },
 }));
 
-const mockGetAuthKeypair = jest.mocked(getAuthKeypair);
+const mockGetSigningIdentity = jest.mocked(getSigningIdentity);
 const mockBuildAuthJwt = jest.mocked(buildAuthJwt);
 
 // ---------------------------------------------------------------------------
@@ -68,6 +68,10 @@ const mockBuildAuthJwt = jest.mocked(buildAuthJwt);
 /** Fixed test keypair — deterministic, never changes. */
 const SEED = Buffer.alloc(32, 7);
 const TEST_KEYPAIR = Keypair.fromRawEd25519Seed(SEED);
+const TEST_IDENTITY = {
+  sourceId: Buffer.from(TEST_KEYPAIR.rawPublicKey()).toString("hex"),
+  keypair: TEST_KEYPAIR,
+};
 
 /** b64url → plain JSON */
 const decodeSegment = (seg: string): Record<string, unknown> =>
@@ -180,9 +184,9 @@ describe("attachAuthInterceptors", () => {
   // (a) Unlocked wallet — Authorization header present, path includes /api/v1
   // -------------------------------------------------------------------------
 
-  describe("when wallet is unlocked (getAuthKeypair returns a Keypair)", () => {
+  describe("when wallet is unlocked (getSigningIdentity returns an identity)", () => {
     it("sets Authorization: Bearer <jwt> on the config", async () => {
-      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockGetSigningIdentity.mockResolvedValue(TEST_IDENTITY);
       // Use jest.requireActual to get the real buildAuthJwt without going
       // through the mock (which would cause an infinite loop).
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -207,7 +211,7 @@ describe("attachAuthInterceptors", () => {
     });
 
     it("builds the JWT with methodAndPath including /api/v1 prefix and query", async () => {
-      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockGetSigningIdentity.mockResolvedValue(TEST_IDENTITY);
       mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
 
       const { instance, runRequestInterceptors } = makeFakeInstance();
@@ -234,7 +238,7 @@ describe("attachAuthInterceptors", () => {
       // signed path used `new URL().pathname` it would be "/api/v1/protocols/"
       // on device (≠ wire "/api/v1/protocols" → 401). The origin-strip must
       // preserve getUri's output verbatim.
-      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockGetSigningIdentity.mockResolvedValue(TEST_IDENTITY);
       mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
 
       const { instance, runRequestInterceptors } = makeFakeInstance();
@@ -255,7 +259,7 @@ describe("attachAuthInterceptors", () => {
     });
 
     it("passes method and body correctly to buildAuthJwt", async () => {
-      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockGetSigningIdentity.mockResolvedValue(TEST_IDENTITY);
       mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
 
       const { instance, runRequestInterceptors } = makeFakeInstance();
@@ -282,7 +286,7 @@ describe("attachAuthInterceptors", () => {
     });
 
     it("serializes an object body so the hashed bytes equal the wire bytes", async () => {
-      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockGetSigningIdentity.mockResolvedValue(TEST_IDENTITY);
       mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
 
       const { instance, runRequestInterceptors } = makeFakeInstance();
@@ -307,7 +311,7 @@ describe("attachAuthInterceptors", () => {
     });
 
     it("leaves an already-serialized string body untouched (no double-encode)", async () => {
-      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockGetSigningIdentity.mockResolvedValue(TEST_IDENTITY);
       mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
 
       const { instance, runRequestInterceptors } = makeFakeInstance();
@@ -330,7 +334,7 @@ describe("attachAuthInterceptors", () => {
     });
 
     it("decoded JWT methodAndPath equals full path derived from baseURL + url", async () => {
-      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockGetSigningIdentity.mockResolvedValue(TEST_IDENTITY);
       // Use jest.requireActual to get the real buildAuthJwt so we can decode the JWT.
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const { buildAuthJwt: realBuildAuthJwt } = jest.requireActual(
@@ -366,7 +370,7 @@ describe("attachAuthInterceptors", () => {
 
   describe("when wallet is unlocked and config.params is supplied", () => {
     it("signs the request-target from instance.getUri and leaves config.params for axios", async () => {
-      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockGetSigningIdentity.mockResolvedValue(TEST_IDENTITY);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const { buildAuthJwt: realBuildAuthJwt } = jest.requireActual(
         "services/auth/buildAuthJwt",
@@ -410,9 +414,9 @@ describe("attachAuthInterceptors", () => {
   // (b) Locked wallet — no Authorization header
   // -------------------------------------------------------------------------
 
-  describe("when wallet is locked (getAuthKeypair returns null)", () => {
+  describe("when wallet is locked (getSigningIdentity returns null)", () => {
     it("returns config unmodified (no Authorization header)", async () => {
-      mockGetAuthKeypair.mockResolvedValue(null);
+      mockGetSigningIdentity.mockResolvedValue(null);
 
       const { instance, runRequestInterceptors } = makeFakeInstance();
       attachAuthInterceptors(instance);
@@ -431,7 +435,7 @@ describe("attachAuthInterceptors", () => {
     });
 
     it("does NOT touch config.params when wallet is locked (params flow through axios normally)", async () => {
-      mockGetAuthKeypair.mockResolvedValue(null);
+      mockGetSigningIdentity.mockResolvedValue(null);
 
       const { instance, runRequestInterceptors } = makeFakeInstance();
       attachAuthInterceptors(instance);
@@ -456,7 +460,7 @@ describe("attachAuthInterceptors", () => {
     });
 
     it("strips a stale Authorization header when locked (401-retry copies the pre-lock token)", async () => {
-      mockGetAuthKeypair.mockResolvedValue(null);
+      mockGetSigningIdentity.mockResolvedValue(null);
 
       const { instance, runRequestInterceptors } = makeFakeInstance();
       attachAuthInterceptors(instance);
@@ -484,7 +488,7 @@ describe("attachAuthInterceptors", () => {
 
   describe("on 401 response", () => {
     it("retries exactly once via instance.request with __isAuthRetry=true", async () => {
-      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockGetSigningIdentity.mockResolvedValue(TEST_IDENTITY);
       mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
 
       const { instance, runResponseError, requestCalls } = makeFakeInstance();
@@ -512,7 +516,7 @@ describe("attachAuthInterceptors", () => {
     });
 
     it("does NOT retry a second time when __isAuthRetry is already true (returns the second 401)", async () => {
-      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockGetSigningIdentity.mockResolvedValue(TEST_IDENTITY);
       mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
 
       const { instance, runResponseError, requestCalls } = makeFakeInstance();
@@ -650,7 +654,7 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
       "services/auth/buildAuthJwt",
     );
     mockBuildAuthJwt.mockImplementation(realBuildAuthJwt);
-    mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+    mockGetSigningIdentity.mockResolvedValue(TEST_IDENTITY);
   });
 
   it("adapter is called exactly twice and request succeeds with 200 on the second call", async () => {
@@ -774,6 +778,47 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
     expect(capturedConfigs).toHaveLength(2);
   });
 
+  it("does not retry a 401 when authRetryOnUnauthorized is false", async () => {
+    const capturedConfigs: InternalAxiosRequestConfig[] = [];
+    const api = createApiService({
+      baseURL: BASE_URL,
+      configureInstance: attachAuthInterceptors,
+    });
+    api.getInstance().defaults.adapter = makeTwoCallAdapter(capturedConfigs);
+
+    await expect(
+      api.post("/user/link", {}, { authRetryOnUnauthorized: false }),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(capturedConfigs).toHaveLength(1);
+  });
+
+  it("signs the JWT iat from authNow", async () => {
+    const capturedConfigs: InternalAxiosRequestConfig[] = [];
+    const api = createApiService({
+      baseURL: BASE_URL,
+      configureInstance: attachAuthInterceptors,
+    });
+    api.getInstance().defaults.adapter = (
+      config: InternalAxiosRequestConfig,
+    ) => {
+      capturedConfigs.push(config);
+      return Promise.resolve({
+        data: {},
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        config,
+      });
+    };
+
+    await api.get("/protocols", { authNow: 1_700_000_000_999 });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const token = (capturedConfigs[0].headers as Record<string, any>)
+      .Authorization as string;
+    expect(decodePayload(token.replace("Bearer ", "")).iat).toBe(1_700_000_000);
+  });
+
   // -------------------------------------------------------------------------
   // isApiError type guard
   // -------------------------------------------------------------------------
@@ -799,11 +844,11 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
   });
 
   it("anonymous request (no JWT) that receives a 401 does NOT retry", async () => {
-    // When the wallet is locked, getAuthKeypair() returns null and no
+    // When the wallet is locked, getSigningIdentity() returns null and no
     // Authorization header is attached.  Retrying such a request is pointless
     // — nothing would change on the second attempt.  The response interceptor
     // must detect the absence of an Authorization header and skip the retry.
-    mockGetAuthKeypair.mockResolvedValue(null);
+    mockGetSigningIdentity.mockResolvedValue(null);
 
     const capturedConfigs: InternalAxiosRequestConfig[] = [];
     const api = createApiService({
@@ -903,7 +948,7 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
   });
 
   it("anonymous request with config.params: interceptor leaves params for axios to handle", async () => {
-    mockGetAuthKeypair.mockResolvedValue(null);
+    mockGetSigningIdentity.mockResolvedValue(null);
 
     const capturedConfigs: InternalAxiosRequestConfig[] = [];
     const api = createApiService({
@@ -939,7 +984,7 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
   });
 
   it("logRequests never logs the Bearer token (redacted)", async () => {
-    mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+    mockGetSigningIdentity.mockResolvedValue(TEST_IDENTITY);
     mockBuildAuthJwt.mockReturnValue("super.secret.jwt");
     (debug as jest.Mock).mockClear();
 
