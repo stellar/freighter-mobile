@@ -16,6 +16,13 @@ jest.mock("config/logger", () => ({
 }));
 jest.mock("services/analytics", () => ({ analytics: { track: jest.fn() } }));
 jest.mock("hooks/useAppTranslation", () => () => ({ t: (k: string) => k }));
+let mockSwapState: { sourceTokenId: string; destinationToken: unknown } = {
+  sourceTokenId: "XLM",
+  destinationToken: null,
+};
+jest.mock("ducks/swap", () => ({
+  useSwapStore: { getState: () => mockSwapState },
+}));
 
 const CONTRACT = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
 const ACCOUNT = "GBTYAFHGNZSTE4VBWZYAGB3SRGJEPTI5I4Y22KZ4JTVAN56LESB6JZOF";
@@ -65,5 +72,45 @@ describe("useTrendingTokenDetail", () => {
     expect(setDestinationToken).toHaveBeenCalledWith(
       expect.objectContaining({ id: `TKN:${CONTRACT}`, decimals: 18 }),
     );
+  });
+
+  it("drops a late decimals result if the destination changed since the press", async () => {
+    let resolveDetails: (v: unknown) => void = () => {};
+    mockGetTokenDetails.mockReturnValue(
+      new Promise((r) => {
+        resolveDetails = r;
+      }),
+    );
+    mockSwapState = { sourceTokenId: "XLM", destinationToken: null };
+    const setDestinationToken = jest.fn();
+    const { result } = renderHook(() =>
+      useTrendingTokenDetail({
+        balanceItems: [],
+        sourceTokenId: "XLM",
+        setSourceToken: jest.fn(),
+        setDestinationToken,
+        publicKey: ACCOUNT,
+        network: NETWORKS.PUBLIC,
+      }),
+    );
+
+    act(() => {
+      result.current.openTrendingDetail(record, 0);
+    });
+    act(() => {
+      result.current.confirmTrendingSelection();
+    });
+    mockSwapState = {
+      sourceTokenId: "XLM",
+      destinationToken: { id: "AQUA:GBNZ" },
+    };
+    await act(async () => {
+      resolveDetails({ name: "Token", symbol: "TKN", decimals: 18 });
+      await new Promise((r) => {
+        setImmediate(r);
+      });
+    });
+
+    expect(setDestinationToken).not.toHaveBeenCalled();
   });
 });

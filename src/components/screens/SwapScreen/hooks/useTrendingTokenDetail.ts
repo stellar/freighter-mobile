@@ -8,6 +8,7 @@ import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helper
 import { AnalyticsEvent, SwapSelectionSource } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
 import { FormattedSearchTokenRecord } from "config/types";
+import { useSwapStore } from "ducks/swap";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useToast } from "providers/ToastProvider";
@@ -131,16 +132,29 @@ export const useTrendingTokenDetail = ({
         select(descriptorFromBalance(heldMatch));
         return;
       }
+      const pickedFrom = useSwapStore.getState();
+      // A late result must not undo a pick made while it was loading.
+      const isUnchanged = () => {
+        const now = useSwapStore.getState();
+        return (
+          now.sourceTokenId === pickedFrom.sourceTokenId &&
+          now.destinationToken?.id === pickedFrom.destinationToken?.id
+        );
+      };
       withTokenDecimals(
         record,
         { publicKey, network },
-        (resolved) => select(descriptorFromSearchRecord(resolved)),
-        () =>
+        (resolved) => {
+          if (isUnchanged()) select(descriptorFromSearchRecord(resolved));
+        },
+        () => {
+          if (!isUnchanged()) return;
           showToast({
             variant: "error",
             title: t("swapScreen.errors.tokenDetailsUnavailable"),
             toastId: "swap-token-details-unavailable",
-          }),
+          });
+        },
       );
     },
     [
