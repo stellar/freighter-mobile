@@ -23,6 +23,7 @@ import {
   formatFiatAmount,
   formatPercentageAmount,
 } from "helpers/formatAmount";
+import { truncateAddress } from "helpers/stellar";
 import useColors from "hooks/useColors";
 import React, { useEffect } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -120,7 +121,7 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
     if (variant === "held") return undefined;
     if (record?.isNative) return "Stellar Lumens";
     if (isSorobanRecord && record?.issuer) {
-      return `${record.issuer.slice(0, 4)}…${record.issuer.slice(-4)}`;
+      return truncateAddress(record.issuer);
     }
     return record?.domain || record?.name || record?.tokenCode;
   })();

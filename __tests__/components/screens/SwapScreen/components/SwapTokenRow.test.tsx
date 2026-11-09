@@ -192,7 +192,7 @@ describe("SwapTokenRow", () => {
             onPress={jest.fn()}
           />,
         );
-        expect(getByText("CBI7…IHRV")).toBeTruthy();
+        expect(getByText("CBI7...IHRV")).toBeTruthy();
         expect(queryByText("circle.com")).toBeNull();
       },
     );
