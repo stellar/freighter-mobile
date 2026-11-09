@@ -335,6 +335,88 @@ describe("SwapToScreen", () => {
     expect(mockGoBack).not.toHaveBeenCalled();
   });
 
+  describe("a Soroban pick waiting on /token-details", () => {
+    const sorobanRecord = {
+      tokenCode: "TKN",
+      issuer: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      domain: "",
+      hasTrustline: false,
+      isNative: false,
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+    };
+    const flush = () =>
+      new Promise((r) => {
+        setImmediate(r);
+      });
+    let resolveDetails: (v: unknown) => void = () => {};
+    let setDestinationTokenSpy: jest.Mock;
+
+    beforeEach(() => {
+      mockGetTokenDetails.mockReturnValue(
+        new Promise((r) => {
+          resolveDetails = r;
+        }),
+      );
+      setDestinationTokenSpy = jest.fn();
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        setSourceToken: jest.fn(),
+        setDestinationToken: setDestinationTokenSpy,
+        sourceTokenId: "XLM",
+        destinationToken: null,
+      });
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [mockHeldBalance],
+        verifiedSearchMatches: [sorobanRecord, mockPopularRecord],
+        searchTerm: "t",
+      });
+    });
+
+    it("ignores a second tap while the first is in flight", async () => {
+      const { getByText } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+      );
+      fireEvent.press(getByText("TKN"));
+      fireEvent.press(getByText("TKN"));
+      resolveDetails({ name: "Token", symbol: "TKN", decimals: 7 });
+      await flush();
+
+      expect(mockGetTokenDetails).toHaveBeenCalledTimes(1);
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
+    });
+
+    it("drops the result when another row was picked meanwhile", async () => {
+      const { getByText } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+      );
+      fireEvent.press(getByText("TKN"));
+      fireEvent.press(getByText("AQUA"));
+      resolveDetails({ name: "Token", symbol: "TKN", decimals: 7 });
+      await flush();
+
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
+      expect(setDestinationTokenSpy).toHaveBeenCalledTimes(1);
+      expect(setDestinationTokenSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ tokenCode: "AQUA" }),
+      );
+    });
+
+    it("drops the result when the picker closed meanwhile", async () => {
+      const { getByText, unmount } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+      );
+      fireEvent.press(getByText("TKN"));
+      unmount();
+      resolveDetails({ name: "Token", symbol: "TKN", decimals: 7 });
+      await flush();
+
+      expect(mockGoBack).not.toHaveBeenCalled();
+      expect(setDestinationTokenSpy).not.toHaveBeenCalled();
+    });
+  });
+
   it("shows no match, not a Soroban notice, for a contract ID nothing resolves", () => {
     const contractId =
       "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL";
