@@ -1,9 +1,12 @@
 import BigNumber from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
-import { DEFAULT_DECIMALS } from "config/constants";
 import { SwapPathResult } from "ducks/swap";
 import { hasXLMForFees, isAmountSpendable } from "helpers/balances";
-import { formatBigNumberForDisplay, hasDecimals } from "helpers/formatAmount";
+import {
+  formatBigNumberForDisplay,
+  getTokenDecimals,
+  hasDecimals,
+} from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useToast } from "providers/ToastProvider";
@@ -110,7 +113,7 @@ export const useSwapAmountError = ({
       const errorMessage = t("swapScreen.errors.insufficientBalance", {
         amount: spendableAmount
           ? formatBigNumberForDisplay(spendableAmount, {
-              decimalPlaces: DEFAULT_DECIMALS,
+              decimalPlaces: getTokenDecimals(sourceBalance),
             })
           : "0",
         symbol: sourceTokenSymbol,

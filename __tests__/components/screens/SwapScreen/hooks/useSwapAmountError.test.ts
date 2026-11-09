@@ -60,6 +60,13 @@ const baseDestinationDescriptor = {
 // gate writes back to activeError.
 const STABLE_BALANCE_ITEMS: never[] = [];
 const STABLE_SPENDABLE = new BigNumber("10");
+const STABLE_SOROBAN_SOURCE = {
+  id: "TKN:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+  tokenCode: "TKN",
+  decimals: 18,
+  total: new BigNumber("1000000"),
+} as never;
+const STABLE_TINY_SPENDABLE = new BigNumber("0.000000000001");
 
 const baseProps: HookProps = {
   sourceBalance: baseSourceBalance,
@@ -222,6 +229,19 @@ describe("useSwapAmountError", () => {
     expect(mockIsAmountSpendable).toHaveBeenCalledWith(
       expect.objectContaining({ amount: "1500000000000000000" }),
     );
+  });
+
+  it("shows a Soroban source's spendable amount at the token's decimals", () => {
+    mockIsAmountSpendable.mockReturnValue(false);
+    const props = {
+      ...baseProps,
+      sourceBalance: STABLE_SOROBAN_SOURCE,
+      spendableAmount: STABLE_TINY_SPENDABLE,
+    };
+
+    const { result } = renderHook(() => useSwapAmountError(props));
+
+    expect(result.current.amountError).toContain("0.000000000001");
   });
 
   describe("path-error toast lifecycle", () => {
