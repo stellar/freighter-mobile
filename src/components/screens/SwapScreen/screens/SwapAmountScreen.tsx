@@ -183,13 +183,57 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       destinationTokenDescriptor,
     });
 
+  // For held destinations, useSwapPathFinding / useSwapTransaction
+  // receive the matching held PricedBalance. For non-held destinations
+  // the balance list doesn't include the token; we feed them a shim of
+  // the descriptor (`descriptorAsPathBalance`) that exposes the same
+  // fields findSwapPath / buildSwapTransaction read (token.code/issuer/
+  // type + id + tokenCode + tokenType). The shim returns PricedBalance
+  // structurally — no `any` cast needed.
+  const destinationForPath: HeldBalanceItem | undefined = useMemo(() => {
+    if (destinationBalance) return destinationBalance;
+    if (destinationTokenDescriptor) {
+      return descriptorAsPathBalance(destinationTokenDescriptor);
+    }
+    return undefined;
+  }, [destinationBalance, destinationTokenDescriptor]);
+
+  const currentQuoteKey = useMemo(
+    () =>
+      sourceBalance && destinationForPath && account?.publicKey
+        ? swapQuoteKey({
+            sourceBalance,
+            destinationBalance: destinationForPath,
+            sourceAmount,
+            network,
+            publicKey: account.publicKey,
+          })
+        : null,
+    [
+      sourceBalance,
+      destinationForPath,
+      sourceAmount,
+      network,
+      account?.publicKey,
+    ],
+  );
+
+  // The store keeps the last quote until the debounced re-quote replaces it.
+  const isQuoteCurrent =
+    !!pathResult && pathResult.quoteKey === currentQuoteKey;
+  const resourceFee =
+    isQuoteCurrent && swapQuotes
+      ? selectSwapRoute(swapQuotes)?.resourceFee
+      : undefined;
+  const totalFee = computeTotalFeeXlm(swapFee, resourceFee ?? null, swapFee);
+
   const spendableAmount = useMemo(() => {
     if (!sourceBalance || !account) return null;
 
     const rawSpendable = calculateSpendableAmount({
       balance: sourceBalance,
       subentryCount: account.subentryCount || 0,
-      transactionFee: swapFee,
+      transactionFee: totalFee,
     });
     // A Soroban balance is in the token's smallest unit.
     const baseSpendable = hasDecimals(sourceBalance)
@@ -213,7 +257,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [
     sourceBalance,
     account,
-    swapFee,
+    totalFee,
     destinationTokenDescriptor?.requiresTrustline,
   ]);
 
@@ -257,44 +301,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationTokenDescriptor,
   });
 
-  // For held destinations, useSwapPathFinding / useSwapTransaction
-  // receive the matching held PricedBalance. For non-held destinations
-  // the balance list doesn't include the token; we feed them a shim of
-  // the descriptor (`descriptorAsPathBalance`) that exposes the same
-  // fields findSwapPath / buildSwapTransaction read (token.code/issuer/
-  // type + id + tokenCode + tokenType). The shim returns PricedBalance
-  // structurally — no `any` cast needed.
-  const destinationForPath: HeldBalanceItem | undefined = useMemo(() => {
-    if (destinationBalance) return destinationBalance;
-    if (destinationTokenDescriptor) {
-      return descriptorAsPathBalance(destinationTokenDescriptor);
-    }
-    return undefined;
-  }, [destinationBalance, destinationTokenDescriptor]);
-
-  const currentQuoteKey = useMemo(
-    () =>
-      sourceBalance && destinationForPath && account?.publicKey
-        ? swapQuoteKey({
-            sourceBalance,
-            destinationBalance: destinationForPath,
-            sourceAmount,
-            network,
-            publicKey: account.publicKey,
-          })
-        : null,
-    [
-      sourceBalance,
-      destinationForPath,
-      sourceAmount,
-      network,
-      account?.publicKey,
-    ],
-  );
-
-  // The store keeps the last quote until the debounced re-quote replaces it.
-  const isQuoteCurrent =
-    !!pathResult && pathResult.quoteKey === currentQuoteKey;
   const swapRouteView = useSwapRouteView(balanceItems);
   const { stableConversionRate } = useStableConversionRate({
     pathResult: isQuoteCurrent ? pathResult : null,
@@ -915,11 +921,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     spendableAmount,
     availableLabel: t("common.available"),
   });
-  const resourceFee =
-    isQuoteCurrent && swapQuotes
-      ? selectSwapRoute(swapQuotes)?.resourceFee
-      : undefined;
-  const totalFee = computeTotalFeeXlm(swapFee, resourceFee ?? null, swapFee);
   const networkFeeText = formatTokenForDisplay(totalFee, NATIVE_TOKEN_CODE);
   const xlmPrice = balanceItems.find((b) =>
     isNativeAssetId(b.id),

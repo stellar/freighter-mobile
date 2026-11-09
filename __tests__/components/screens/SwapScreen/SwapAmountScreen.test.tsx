@@ -2215,6 +2215,48 @@ describe("SwapAmountScreen", () => {
       expect(detailsProps.showSorobanFeeNote).toBe(false);
     });
 
+    describe("Max on an XLM source", () => {
+      // XLM: 1000.5 total, 1 minimum balance; swapFee 100.
+      const pressMax = (
+        route: ReturnType<typeof feeRoute>,
+        quoteKey = "quote-key",
+      ) => {
+        setSwapStoreState({
+          sourceTokenId: "XLM",
+          sourceTokenSymbol: "XLM",
+          pathResult: { destinationAmount: "2", quoteKey, route },
+          swapQuotes: { routes: [route], unavailable: [] },
+        } as Partial<SwapStoreState>);
+        const { getByTestId } = renderWithProviders(
+          <SwapAmountScreen
+            navigation={makeNavigation()}
+            route={makeRoute()}
+          />,
+        );
+        act(() => {
+          fireEvent.press(getByTestId("percentage-100"));
+        });
+      };
+
+      it("holds back the inclusion fee plus a current LI.FI quote's resource fee", () => {
+        pressMax(feeRoute("0.0858459"));
+
+        expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.4141541");
+      });
+
+      it("holds back the inclusion fee alone on a classic route", () => {
+        pressMax(feeRoute());
+
+        expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.5000000");
+      });
+
+      it("ignores a stale quote's resource fee", () => {
+        pressMax(feeRoute("0.0858459"), "older-key");
+
+        expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.5000000");
+      });
+    });
+
     it("hides the fee line until there is a quote", () => {
       setSwapStoreState({ pathResult: null });
       const { queryByTestId } = renderWithProviders(
