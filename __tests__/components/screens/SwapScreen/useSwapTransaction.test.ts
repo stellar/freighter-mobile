@@ -193,7 +193,10 @@ const submitFailed = (
 describe("useSwapTransaction", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetBuilderState.mockReturnValue({ error: "Submit error from store" });
+    mockGetBuilderState.mockReturnValue({
+      error: "Submit error from store",
+      transactionXDR: "xdr",
+    });
     mockSwapSettings = DEFAULT_SWAP_SETTINGS;
     mockBuildSwapTransaction.mockResolvedValue({ xdr: "xdr", review: {} });
     mockPricesByNetwork = {};
@@ -392,6 +395,8 @@ describe("useSwapTransaction", () => {
         }),
       );
       expect(mockScanTransaction).toHaveBeenCalledWith("xdr", "internal");
+      // The scan result is tied to the transaction it scanned.
+      expect(result.current.scannedTransactionXDR).toBe("xdr");
     });
   });
 
@@ -433,6 +438,80 @@ describe("useSwapTransaction", () => {
       expect(mockBuildSwapTransaction.mock.calls[0][0].request.minOut).toBe(
         "0.9900000",
       );
+    });
+  });
+
+  describe("setupSwapTransaction — superseded while running", () => {
+    const deferred = <T>() => {
+      let resolve: (value: T) => void = () => {};
+      const promise = new Promise<T>((r) => {
+        resolve = r;
+      });
+      return { promise, resolve };
+    };
+
+    it("discards a build whose amount was edited while it ran", async () => {
+      const build = deferred<{ xdr: string; review: object }>();
+      mockBuildSwapTransaction.mockReturnValue(build.promise);
+      const { result, rerender } = renderHook(
+        (props: typeof baseParams) => useSwapTransaction(props),
+        { initialProps: baseParams },
+      );
+
+      let setup: Promise<unknown> = Promise.resolve();
+      act(() => {
+        setup = result.current.setupSwapTransaction();
+      });
+      rerender({ ...baseParams, sourceAmount: "2", currentQuoteKey: "2-key" });
+
+      await act(async () => {
+        build.resolve({ xdr: "xdr", review: {} });
+        await expect(setup).resolves.toEqual({ superseded: true });
+      });
+
+      expect(mockScanTransaction).not.toHaveBeenCalled();
+    });
+
+    it("discards a build whose slippage setting changed while it ran", async () => {
+      const build = deferred<{ xdr: string; review: object }>();
+      mockBuildSwapTransaction.mockReturnValue(build.promise);
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      let setup: Promise<unknown> = Promise.resolve();
+      act(() => {
+        setup = result.current.setupSwapTransaction();
+      });
+      mockSwapSettings = { ...DEFAULT_SWAP_SETTINGS, swapSlippage: "3" };
+
+      await act(async () => {
+        build.resolve({ xdr: "xdr", review: {} });
+        await expect(setup).resolves.toEqual({ superseded: true });
+      });
+
+      expect(mockScanTransaction).not.toHaveBeenCalled();
+    });
+
+    it("does not apply a scan for a transaction a newer build replaced", async () => {
+      const scan = deferred<object>();
+      mockScanTransaction.mockReturnValueOnce(scan.promise);
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      let setup: Promise<unknown> = Promise.resolve();
+      act(() => {
+        setup = result.current.setupSwapTransaction();
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(mockScanTransaction).toHaveBeenCalledWith("xdr", "internal");
+      mockGetBuilderState.mockReturnValue({ transactionXDR: "newer-xdr" });
+
+      await act(async () => {
+        scan.resolve({ validation: { result_type: "Malicious" } });
+        await expect(setup).resolves.toEqual({ superseded: true });
+      });
+
+      expect(result.current.transactionScanResult).toBeUndefined();
     });
   });
 

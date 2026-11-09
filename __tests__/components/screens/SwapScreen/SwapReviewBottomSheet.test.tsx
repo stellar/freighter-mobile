@@ -1,7 +1,9 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { userEvent } from "@testing-library/react-native";
 import { TokenIcon } from "components/TokenIcon";
-import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
+import SwapReviewBottomSheet, {
+  SwapReviewFooter,
+} from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
 import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { renderWithProviders } from "helpers/testUtils";
@@ -486,5 +488,47 @@ describe("SwapReviewBottomSheet", () => {
 
       expect(queryByText(/This will add a trustline/)).toBeNull();
     });
+  });
+});
+
+describe("SwapReviewFooter", () => {
+  it.each([
+    ["while the transaction is building", { isBuilding: true }],
+    ["without a transaction", { transactionXDR: undefined }],
+  ])("disables Confirm anyway %s", async (_, overrides) => {
+    const user = userEvent.setup();
+    const onConfirm = jest.fn();
+
+    const { getByTestId } = renderWithProviders(
+      <SwapReviewFooter
+        isMalicious
+        isSuspicious={false}
+        onConfirm={onConfirm}
+        onCancel={jest.fn()}
+        transactionXDR="xdr"
+        {...overrides}
+      />,
+    );
+
+    await user.press(getByTestId("swap-review-confirm-anyway-button"));
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it("lets Confirm anyway through once the transaction is built", async () => {
+    const user = userEvent.setup();
+    const onConfirm = jest.fn();
+
+    const { getByTestId } = renderWithProviders(
+      <SwapReviewFooter
+        isMalicious
+        isSuspicious={false}
+        onConfirm={onConfirm}
+        onCancel={jest.fn()}
+        transactionXDR="xdr"
+      />,
+    );
+
+    await user.press(getByTestId("swap-review-confirm-anyway-button"));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 });

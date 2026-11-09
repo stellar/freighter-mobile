@@ -383,6 +383,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
         <TextButton
           text={t("transactionAmountScreen.confirmAnyway")}
           onPress={onConfirm}
+          disabled={isDisabled}
           variant={isMalicious ? "error" : "secondary"}
           testID="swap-review-confirm-anyway-button"
         />

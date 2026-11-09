@@ -293,6 +293,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceToken,
     destinationToken,
     transactionScanResult,
+    scannedTransactionXDR,
   } = useSwapTransaction({
     sourceAmount,
     sourceBalance,
@@ -631,6 +632,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       if (shouldPresent) setIsOpeningReviewSheet(true);
       try {
         const setup = await setupSwapTransaction();
+        if (setup && "superseded" in setup) {
+          if (shouldPresent) setIsOpeningReviewSheet(false);
+          return;
+        }
 
         if (shouldPresent) {
           // Decide the gate from the FRESH tx scan (the lazily-scanned XDR),
@@ -798,12 +803,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
   };
 
+  // A rebuild stores its XDR before its scan lands; until then the shown
+  // verdict is the previous transaction's, so confirming waits.
+  const confirmableXDR =
+    transactionXDR && scannedTransactionXDR === transactionXDR
+      ? transactionXDR
+      : undefined;
+
   const handleConfirmAnyway = () => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
     if (isUnableToScan) {
       swapReviewBottomSheetModalRef.current?.present();
-    } else {
+    } else if (!isBuilding && confirmableXDR) {
       handleConfirmSwap();
     }
   };
@@ -814,7 +826,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     isBuilding,
     isMalicious,
     isSuspicious,
-    transactionXDR,
+    transactionXDR: confirmableXDR,
     onSettingsPress: openSettings,
   });
 

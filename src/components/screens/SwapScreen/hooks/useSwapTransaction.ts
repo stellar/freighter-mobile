@@ -102,15 +102,21 @@ interface UseSwapTransactionResult {
    * result so callers can decide the post-scan UX (e.g. the unable-to-scan
    * gate) without reading the lagging `transactionScanResult` render state.
    * `scanResult` is undefined when the scan fails (treated as unable-to-scan).
-   * Returns undefined only when required params are missing (no build).
+   * Returns undefined only when required params are missing (no build), and
+   * `superseded` when the inputs, the settings or the stored transaction
+   * changed while it ran: the caller must not open review on it.
    */
-  setupSwapTransaction: () => Promise<{
-    scanResult: Blockaid.StellarTransactionScanResponse | undefined;
-  } | void>;
+  setupSwapTransaction: () => Promise<
+    | { scanResult: Blockaid.StellarTransactionScanResponse | undefined }
+    | { superseded: true }
+    | void
+  >;
   handleProcessingScreenClose: () => void;
   sourceToken: NativeToken | NonNativeToken;
   destinationToken: NativeToken | NonNativeToken;
   transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined;
+  /** The XDR `transactionScanResult` is for; review waits until it is current. */
+  scannedTransactionXDR: string | undefined;
 }
 
 export const useSwapTransaction = ({
@@ -124,8 +130,10 @@ export const useSwapTransaction = ({
   navigation,
 }: SwapTransactionParams): UseSwapTransactionResult => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [transactionScanResult, setTransactionScanResult] =
-    useState<UseSwapTransactionResult["transactionScanResult"]>(undefined);
+  const [scan, setScan] = useState<{
+    xdr: string;
+    result: Blockaid.StellarTransactionScanResponse | undefined;
+  } | null>(null);
   const { buildSwapTransaction, signTransaction, submitTransaction } =
     useTransactionBuilderStore();
   const { fetchAccountHistory } = useHistoryStore();
@@ -142,6 +150,10 @@ export const useSwapTransaction = ({
   useEffect(() => {
     swapBalancesRef.current = { sourceBalance, destinationTokenInput };
   }, [sourceBalance, destinationTokenInput]);
+
+  // Read after the build's await, which can outlive an edit to the inputs.
+  const currentQuoteKeyRef = useRef(currentQuoteKey);
+  currentQuoteKeyRef.current = currentQuoteKey;
 
   // Re-quotes after the quote expired, so the user's retry uses a new quote
   // instead of the expired one. Fire-and-forget: findSwapPath updates the
@@ -182,6 +194,17 @@ export const useSwapTransaction = ({
       swapSlippage: freshSwapSlippage,
     } = useSwapSettingsStore.getState();
     const { route } = pathResult;
+
+    const isStillCurrent = (xdr: string) => {
+      const settings = useSwapSettingsStore.getState();
+      return (
+        currentQuoteKeyRef.current === pathResult.quoteKey &&
+        settings.swapFee === freshSwapFee &&
+        settings.swapTimeout === freshSwapTimeout &&
+        settings.swapSlippage === freshSwapSlippage &&
+        useTransactionBuilderStore.getState().transactionXDR === xdr
+      );
+    };
 
     let transactionXDR: string;
     try {
@@ -231,16 +254,19 @@ export const useSwapTransaction = ({
       throw error;
     }
 
+    if (!isStillCurrent(transactionXDR)) return { superseded: true as const };
+
+    let scanResult: Blockaid.StellarTransactionScanResponse | undefined;
     try {
-      const scanResult = await scanTransaction(transactionXDR, "internal");
-      setTransactionScanResult(scanResult);
-      return { scanResult };
+      scanResult = await scanTransaction(transactionXDR, "internal");
     } catch (error) {
       logger.error("SwapTransaction", "Transaction scan failed", error);
       // Scan failed → undefined classifies as unable-to-scan downstream.
-      setTransactionScanResult(undefined);
-      return { scanResult: undefined };
+      scanResult = undefined;
     }
+    if (!isStillCurrent(transactionXDR)) return { superseded: true as const };
+    setScan({ xdr: transactionXDR, result: scanResult });
+    return { scanResult };
   }, [
     sourceBalance,
     destinationTokenInput,
@@ -706,6 +732,7 @@ export const useSwapTransaction = ({
     handleProcessingScreenClose,
     sourceToken,
     destinationToken,
-    transactionScanResult,
+    transactionScanResult: scan?.result,
+    scannedTransactionXDR: scan?.xdr,
   };
 };
