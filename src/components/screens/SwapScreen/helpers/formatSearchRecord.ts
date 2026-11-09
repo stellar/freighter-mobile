@@ -3,12 +3,10 @@ import {
   StellarExpertRecord,
 } from "components/screens/SwapScreen/helpers/recordPredicates";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import {
-  FormattedSearchTokenRecord,
-  TokenTypeWithCustomToken,
-} from "config/types";
+import { FormattedSearchTokenRecord } from "config/types";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { getTokenType } from "helpers/balances";
+import { formatSorobanSearchRecord } from "helpers/formatSorobanSearchRecord";
 
 /**
  * Format a stellar.expert record into a FormattedSearchTokenRecord. A Soroban
@@ -19,18 +17,9 @@ export const formatSearchRecord = (
   hasTrustline: (tokenCode: string, issuer: string) => boolean,
 ): FormattedSearchTokenRecord => {
   if (isSorobanRecord(record)) {
-    const contractId = record.asset;
-    const tokenCode = record.code ?? record.tomlInfo?.code ?? contractId;
     return {
-      tokenCode,
-      domain: record.domain ?? "",
-      hasTrustline: hasTrustline(tokenCode, contractId),
+      ...formatSorobanSearchRecord(record, hasTrustline),
       iconUrl: record.tomlInfo?.image,
-      issuer: contractId,
-      isNative: false,
-      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
-      decimals: record.decimals ?? record.tomlInfo?.decimals,
-      name: record.token_name ?? record.tomlInfo?.name,
       price: record.price,
     };
   }
