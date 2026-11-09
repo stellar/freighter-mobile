@@ -94,6 +94,8 @@ export interface UseSwapTokenLookupProps {
    * "Swap from" picker so typing in the search box stays instant.
    */
   holdsOnly?: boolean;
+  /** The active account, for the contract-ID lookup. */
+  publicKey?: string;
 }
 
 /** Partial-match: does `text` contain `term` (case-insensitive)? */
@@ -136,6 +138,7 @@ export const useSwapTokenLookup = ({
   network,
   balanceItems,
   holdsOnly = false,
+  publicKey,
 }: UseSwapTokenLookupProps): SwapTokenLookupResult => {
   const latestRequestRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -504,11 +507,10 @@ export const useSwapTokenLookup = ({
         const found = await handleContractLookup(
           term,
           network,
-          undefined,
+          publicKey,
           signal,
         ).catch(() => null);
         if (signal.aborted || latestRequestRef.current !== requestId) return;
-        setStellarExpertDown(false);
         formatted = found
           ? [
               {
@@ -611,7 +613,13 @@ export const useSwapTokenLookup = ({
     // inline without thrashing the callback identity). hasExistingTrustline
     // is the held-set fingerprint; enhanceWithSecurityInfo carries the
     // network + Blockaid debug-override fingerprint.
-    [enhanceWithSecurityInfo, hasExistingTrustline, network, holdsOnly],
+    [
+      enhanceWithSecurityInfo,
+      hasExistingTrustline,
+      network,
+      holdsOnly,
+      publicKey,
+    ],
   );
 
   // Debounce wiring: a user keystroke updates `searchTerm` immediately so the

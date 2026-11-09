@@ -267,6 +267,18 @@ describe("SwapToScreen", () => {
     expect(queryByText("Unverified")).toBeNull();
   });
 
+  it("gives the token lookup the active account", () => {
+    renderWithProviders(
+      <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+    );
+
+    expect(useSwapTokenLookupModule.useSwapTokenLookup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publicKey: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+      }),
+    );
+  });
+
   it("shows no match, not a Soroban notice, for a contract ID nothing resolves", () => {
     const contractId =
       "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL";

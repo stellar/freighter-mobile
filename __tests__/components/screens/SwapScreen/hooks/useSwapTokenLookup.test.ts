@@ -129,6 +129,7 @@ const AQUA_ISSUER = "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA";
 const FOO_ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4FOOO";
 const SOROBAN_CONTRACT =
   "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL";
+const ACCOUNT = "GBTYAFHGNZSTE4VBWZYAGB3SRGJEPTI5I4Y22KZ4JTVAN56LESB6JZOF";
 
 const buildHeldBalances = (): HeldBalanceItem[] => [
   {
@@ -826,7 +827,11 @@ describe("useSwapTokenLookup — active search", () => {
     });
 
     const { result } = renderHook(() =>
-      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: [] }),
+      useSwapTokenLookup({
+        network: NETWORKS.PUBLIC,
+        balanceItems: [],
+        publicKey: ACCOUNT,
+      }),
     );
     await act(async () => {
       await settleAsync();
@@ -840,7 +845,7 @@ describe("useSwapTokenLookup — active search", () => {
     expect(mockHandleContractLookup).toHaveBeenCalledWith(
       SOROBAN_CONTRACT,
       NETWORKS.PUBLIC,
-      undefined,
+      ACCOUNT,
       expect.anything(),
     );
     expect(result.current.verifiedSearchMatches).toEqual([
@@ -851,6 +856,35 @@ describe("useSwapTokenLookup — active search", () => {
       }),
     ]);
     expect(result.current.stellarExpertDown).toBe(false);
+  });
+
+  it("keeps the search-unavailable notice when a contract lookup fails", async () => {
+    (stellarExpert.searchToken as jest.Mock).mockResolvedValue(null);
+    mockHandleContractLookup.mockResolvedValue(null);
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({
+        network: NETWORKS.PUBLIC,
+        balanceItems: [],
+        publicKey: ACCOUNT,
+      }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+    act(() => {
+      result.current.handleSearch("usdc");
+    });
+    await settleDebounce();
+    expect(result.current.stellarExpertDown).toBe(true);
+
+    act(() => {
+      result.current.handleSearch(SOROBAN_CONTRACT);
+    });
+    await settleDebounce();
+
+    expect(mockHandleContractLookup).toHaveBeenCalled();
+    expect(result.current.stellarExpertDown).toBe(true);
   });
 
   it("matches a held Soroban token by name, with its decimals", async () => {

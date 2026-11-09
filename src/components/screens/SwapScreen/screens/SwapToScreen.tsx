@@ -95,6 +95,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     // trending fetch and the per-keystroke stellar.expert search so
     // typing in the search box stays instant.
     holdsOnly: selectionType === SWAP_SELECTION_TYPES.SOURCE,
+    publicKey: account?.publicKey,
   });
 
   const handlePasteFromClipboard = () => {
