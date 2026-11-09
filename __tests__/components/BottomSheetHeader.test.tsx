@@ -120,6 +120,22 @@ describe("BottomSheetHeader", () => {
     expect(flatStyle.textAlign).toBe("center");
   });
 
+  it("shows a back arrow that calls onBack in the centered layout", () => {
+    const onBack = jest.fn();
+    const { getByTestId, getByLabelText } = renderWithProviders(
+      <BottomSheetHeader
+        title="Route"
+        layout="centered"
+        onBack={onBack}
+        backTestID="sheet-back"
+      />,
+    );
+
+    expect(getByLabelText("Back")).toBeTruthy();
+    fireEvent.press(getByTestId("sheet-back"));
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
   it("accepts a custom leading element", () => {
     const { getByText } = renderWithProviders(
       <BottomSheetHeader leading={<Text>Settings</Text>} onClose={jest.fn()} />,
