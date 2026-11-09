@@ -4,6 +4,10 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
+import {
+  SwapDetailsBottomSheet,
+  SwapDetailsBottomSheetProps,
+} from "components/screens/SwapScreen/components/SwapDetailsBottomSheet";
 import { SwapSetupAnswerError } from "components/screens/SwapScreen/helpers/quoteErrors";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
@@ -2127,6 +2131,72 @@ describe("SwapAmountScreen", () => {
       await fireSettingsChange(UNSAFE_getAllByType as never);
 
       expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("See details", () => {
+    const findDetailsSheet = () =>
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs.find(
+        (sheet) => sheet.customContent?.type === SwapDetailsBottomSheet,
+      );
+
+    it("hides the fee line until there is a quote", () => {
+      setSwapStoreState({ pathResult: null });
+      const { queryByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(queryByTestId("swap-see-details")).toBeNull();
+    });
+
+    it("opens Details with the quote's route", async () => {
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      setSwapStoreState({
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+        swapQuotes: {
+          routes: [
+            {
+              source: "lifi",
+              fromAmount: "1",
+              toAmount: "2",
+              paths: [
+                {
+                  share: "1",
+                  hops: [
+                    {
+                      venue: "Aquarius",
+                      from: "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+                      to: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+                      pool: "p1",
+                    },
+                  ],
+                },
+              ],
+              fees: [],
+            },
+          ],
+          unavailable: [],
+        },
+      } as Partial<SwapStoreState>);
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(getByTestId("swap-see-details")).toHaveTextContent(
+        /network fee.*See details/,
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-see-details"));
+        await Promise.resolve();
+      });
+
+      const sheet = findDetailsSheet();
+      expect(sheet?.present).toHaveBeenCalled();
+      const { routeView } = sheet?.customContent
+        ?.props as SwapDetailsBottomSheetProps;
+      expect(routeView?.providers.map((p) => p.name)).toEqual(["Aquarius"]);
     });
   });
 });

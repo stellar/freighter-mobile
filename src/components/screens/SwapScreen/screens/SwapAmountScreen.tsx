@@ -10,6 +10,7 @@ import TransactionSettingsBottomSheet from "components/TransactionSettingsBottom
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
+  SwapDetailsBottomSheet,
   SwapReviewBottomSheet,
   TrendingListItem,
   TrendingTokenDetailBottomSheet,
@@ -36,9 +37,11 @@ import {
   useSwapForXlmReserve,
   useSwapNavigation,
   useSwapPathFinding,
+  useSwapRouteView,
   useSwapSecurityAssessments,
   useSwapTransactionSettings,
   useSwapTokenPrices,
+  useStableConversionRate,
   useTrendingTokenDetail,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
@@ -51,6 +54,7 @@ import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
 import {
   BASE_RESERVE,
   DEFAULT_DECIMALS,
+  NATIVE_TOKEN_CODE,
   TransactionContext,
 } from "config/constants";
 import { logger } from "config/logger";
@@ -69,6 +73,7 @@ import { isNativeAssetId } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
 import {
   formatFiatAmount,
+  formatTokenForDisplay,
   getTokenDecimals,
   hasDecimals,
 } from "helpers/formatAmount";
@@ -129,6 +134,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { transactionXDR, transactionHash } = useTransactionBuilderStore();
 
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const swapDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   // Review-side security sheet — its Proceed Anyway submits a tx. The
   // trending-detail security sheet is owned by useTrendingTokenDetail and
   // kept structurally separate so the two can't share a proceed handler.
@@ -173,6 +179,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       sourceTokenId,
       destinationTokenDescriptor,
     });
+
+  const swapRouteView = useSwapRouteView(balanceItems);
+  const { stableConversionRate } = useStableConversionRate({
+    pathResult,
+    sourceTokenSymbol,
+    destinationTokenSymbol: destinationTokenDescriptor?.tokenCode ?? "",
+  });
 
   const spendableAmount = useMemo(() => {
     if (!sourceBalance || !account) return null;
@@ -896,6 +909,20 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     spendableAmount,
     availableLabel: t("common.available"),
   });
+  const networkFeeText = formatTokenForDisplay(swapFee, NATIVE_TOKEN_CODE);
+  const xlmPrice = balanceItems.find((b) =>
+    isNativeAssetId(b.id),
+  )?.currentPrice;
+  const networkFeeFiat = xlmPrice?.times(swapFee);
+  // A fee under a cent would read "$0.00", so it shows in XLM instead.
+  const networkFeeFiatText =
+    networkFeeFiat?.isFinite() && networkFeeFiat.gte(0.01)
+      ? formatFiatAmount(networkFeeFiat)
+      : undefined;
+  const openSwapDetails = async () => {
+    await waitForKeyboardDismiss();
+    swapDetailsBottomSheetModalRef.current?.present();
+  };
   const listHeader = (
     <View>
       {/* Sell card */}
@@ -970,6 +997,30 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         }
         placeholderActive={!destinationTokenDescriptor}
       />
+
+      {pathResult && destinationTokenDescriptor && (
+        <TouchableOpacity
+          className="flex-row items-center justify-center gap-[6px] mt-[16px]"
+          onPress={() => {
+            openSwapDetails();
+          }}
+          hitSlop={8}
+          testID="swap-see-details"
+        >
+          <Text sm secondary>
+            {t("swapScreen.details.networkFeeLine", {
+              fee: networkFeeFiatText ?? networkFeeText,
+            })}
+          </Text>
+          <Text sm secondary>
+            ·
+          </Text>
+          <Text sm secondary>
+            {t("swapScreen.details.seeDetails")}
+          </Text>
+          <Icon.InfoCircle size={14} color={themeColors.text.secondary} />
+        </TouchableOpacity>
+      )}
 
       <View className="items-center mt-[24px]">
         <PercentageButtons onPress={handlePercentagePress} />
@@ -1073,6 +1124,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           />
         }
         scrollViewFooterComponent={renderFooterComponent}
+      />
+      <BottomSheet
+        modalRef={swapDetailsBottomSheetModalRef}
+        scrollable
+        customContent={
+          <SwapDetailsBottomSheet
+            networkFee={networkFeeText}
+            networkFeeFiat={networkFeeFiatText}
+            rate={stableConversionRate}
+            routeView={swapRouteView}
+            onClose={() => swapDetailsBottomSheetModalRef.current?.dismiss()}
+          />
+        }
       />
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}

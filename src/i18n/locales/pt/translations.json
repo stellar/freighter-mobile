@@ -677,6 +677,26 @@
       "xdr": "XDR",
       "sheetTitle": "Revisar troca"
     },
+    "details": {
+      "networkFeeLine": "Taxa de rede de {{fee}}",
+      "seeDetails": "Ver detalhes",
+      "title": "Detalhes",
+      "networkFee": "Taxa de rede",
+      "rate": "Cotação",
+      "route": "Rota",
+      "oneProvider": "1 provedor",
+      "providers": "{{count}} provedores",
+      "footer": "Melhor rota selecionada com base em cotações e taxas. A cotação pode mudar conforme as condições do mercado."
+    },
+    "route": {
+      "title": "Rota",
+      "splitAcross": "Dividida em {{count}} caminhos",
+      "onePath": "1 caminho",
+      "onePool": "1 pool",
+      "pools": "{{count}} pools",
+      "hint": "As rotas podem ser divididas em várias etapas para otimizar cotações e taxas.",
+      "providers": "Provedores"
+    },
     "errors": {
       "failedToSetupTransaction": "Falha ao configurar transação de troca",
       "swapTransactionFailed": "Transação de troca falhou",
