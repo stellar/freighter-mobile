@@ -43,7 +43,7 @@ const toClassicAsset = (wire: string): Asset => {
   if (isNativeAssetId(wire)) return Asset.native();
   const [code, issuer, ...rest] = wire.split(":");
   if (!code || !issuer || rest.length) {
-    throw new Error(`Swap: unsupported asset ${wire}`);
+    throw mismatch(`unsupported asset ${wire}`);
   }
   return new Asset(code, issuer);
 };

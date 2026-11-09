@@ -21,16 +21,12 @@ import {
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import {
-  isNativeAssetId,
   isNativeBalance,
   isNativeToken,
   getNativeContractId,
 } from "helpers/assetIdentity";
 import { isLiquidityPool } from "helpers/balances";
-import {
-  getPerOperationBaseFeeStroops,
-  xlmToStroop,
-} from "helpers/formatAmount";
+import { xlmToStroop } from "helpers/formatAmount";
 import {
   determineMuxedDestination,
   checkContractMuxedSupport,
@@ -46,7 +42,7 @@ import { t } from "i18next";
 import { analytics } from "services/analytics";
 import { SimulationTransactionType } from "services/analytics/types";
 import { simulateTokenTransfer, simulateTransaction } from "services/backend";
-import { buildChangeTrustOperation, stellarSdkServer } from "services/stellar";
+import { stellarSdkServer } from "services/stellar";
 
 export interface BuildPaymentTransactionParams {
   tokenAmount: string;
@@ -58,27 +54,6 @@ export interface BuildPaymentTransactionParams {
   transactionTimeout?: number;
   network?: NETWORKS;
   senderAddress?: string;
-}
-
-export interface BuildSwapTransactionParams {
-  sourceAmount: string;
-  sourceBalance: PricedBalance;
-  destinationBalance: PricedBalance;
-  path: string[];
-  destinationAmount: string;
-  destinationAmountMin: string;
-  transactionFee?: string;
-  transactionTimeout?: number;
-  network?: NETWORKS;
-  senderAddress?: string;
-  /**
-   * When present, the builder prepends a `changeTrust` op as op #0 so the
-   * trustline and the path payment submit atomically as a single transaction.
-   * Used for swaps to a new (non-held) destination token. Pass this only when
-   * `destinationToken.requiresTrustline === true` (i.e. the user does not yet hold a
-   * trustline for the destination asset).
-   */
-  includeTrustline?: { tokenCode: string; issuer: string };
 }
 
 export interface BuildSendCollectibleParams {
@@ -579,102 +554,6 @@ export const buildPaymentTransaction = async (
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     throw new Error(`Failed to build payment transaction: ${errorMessage}`);
-  }
-};
-
-export const buildSwapTransaction = async (
-  params: BuildSwapTransactionParams,
-): Promise<BuildPaymentTransactionResult> => {
-  const {
-    sourceAmount,
-    sourceBalance,
-    destinationBalance,
-    path,
-    destinationAmount,
-    destinationAmountMin,
-    transactionFee,
-    transactionTimeout,
-    network,
-    senderAddress,
-    includeTrustline,
-  } = params;
-
-  try {
-    if (!senderAddress || !network || !transactionFee || !transactionTimeout) {
-      throw new Error("Missing required parameters for building transaction");
-    }
-
-    const validationError = validateSwapTransactionParams({
-      sourceBalance,
-      destinationBalance,
-      sourceAmount,
-      destinationAmount,
-      fee: transactionFee,
-      timeout: transactionTimeout,
-    });
-
-    if (validationError) {
-      throw new Error(validationError);
-    }
-
-    const networkDetails = mapNetworkToNetworkDetails(network);
-    const server = stellarSdkServer(networkDetails.networkUrl);
-    const sourceAccount = await server.loadAccount(senderAddress);
-    // transactionFee is the TOTAL the user set; the SDK fee is per-operation
-    // and the network charges baseFee × numOps. Adding a changeTrust op makes
-    // this a 2-op tx, so split the total across ops to keep the charged total
-    // equal to what the user set/sees.
-    const fee = getPerOperationBaseFeeStroops(
-      transactionFee,
-      includeTrustline ? 2 : 1,
-    );
-
-    const txBuilder = new TransactionBuilder(sourceAccount, {
-      fee,
-      timebounds: await server.fetchTimebounds(transactionTimeout),
-      networkPassphrase: networkDetails.networkPassphrase,
-    });
-
-    const sourceToken = getTokenForPayment(sourceBalance);
-    const destToken = getTokenForPayment(destinationBalance);
-    const pathTokens = path.map((pathItem) => {
-      if (isNativeAssetId(pathItem)) {
-        return SdkToken.native();
-      }
-
-      const [code, issuer] = pathItem.split(":");
-
-      return new SdkToken(code, issuer);
-    });
-
-    // Op ordering is load-bearing: changeTrust must be op #0 so the trustline
-    // is established before the path-payment op consumes the destination asset.
-    if (includeTrustline) {
-      txBuilder.addOperation(
-        buildChangeTrustOperation({
-          tokenCode: includeTrustline.tokenCode,
-          issuer: includeTrustline.issuer,
-        }),
-      );
-    }
-
-    txBuilder.addOperation(
-      Operation.pathPaymentStrictSend({
-        sendAsset: sourceToken,
-        sendAmount: sourceAmount,
-        destination: senderAddress,
-        destAsset: destToken,
-        destMin: destinationAmountMin,
-        path: pathTokens,
-      }),
-    );
-
-    const transaction = txBuilder.build();
-    return { tx: transaction, xdr: transaction.toXdr() };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    throw new Error(`Failed to build swap transaction: ${errorMessage}`);
   }
 };
 

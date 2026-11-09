@@ -686,7 +686,8 @@
       "pathFindFailed": "Não foi possível buscar o caminho de troca. Tente novamente.",
       "swapsUnavailable": "As trocas estão temporariamente indisponíveis",
       "customTokenSwapNotSupported": "Troca de tokens customizados ainda não é suportada",
-      "quoteExpired": "A cotação expirou, tente novamente para obter uma nova cotação"
+      "quoteExpired": "A cotação expirou, tente novamente para obter uma nova cotação",
+      "swapTransactionMismatch": "A transação de troca não corresponde à sua solicitação. Tente novamente."
     },
     "stellarExpertDown": "A descoberta de tokens está temporariamente indisponível. Você ainda pode trocar entre tokens que já possui.",
     "sorobanEmptyState": "Tokens de contrato Soroban não são suportados para trocas ainda. Tente buscar por um token Clássico.",

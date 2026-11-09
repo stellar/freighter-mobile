@@ -24,7 +24,6 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
-import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay } from "helpers/formatAmount";
@@ -64,9 +63,9 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     sourceTokenId,
     destinationToken: destinationTokenDescriptor,
   } = useSwapStore();
-  const { transactionXDR, sorobanInclusionFeeXlm } =
-    useTransactionBuilderStore();
-  const { swapFee } = useSwapSettingsStore();
+  // Amount sold, fee and trustline come from the transaction the user signs,
+  // not the quote.
+  const { transactionXDR, swapReview } = useTransactionBuilderStore();
   const transactionDetails = useSignTransactionDetails({
     xdr: transactionXDR || "",
   });
@@ -74,9 +73,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     useRef<BottomSheetModal>(null);
   const trustlineInfoRef = useRef<BottomSheetModal>(null);
 
-  // The fee row mirrors the settings sheet: the inclusion fee the user set.
-  // Swaps are classic, so the info icon opens the fee info sheet (not a breakdown).
-  const inclusionFeeXlm = sorobanInclusionFeeXlm ?? swapFee;
   const { openFeeDetails, feeDetailsSheets } = useFeeDetailsBottomSheet({
     isSorobanContext: false,
   });
@@ -154,7 +150,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         <View className="gap-[16px]">
           <SwapReviewTokenRow
             token={sourceToken}
-            amount={sourceAmount}
+            amount={swapReview?.sendAmount ?? sourceAmount}
             symbol={sourceTokenSymbol}
             fiatString={sourceTokenFiatAmount}
             isMalicious={isSourceMalicious}
@@ -182,7 +178,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         </View>
       </View>
 
-      {destinationTokenDescriptor?.requiresTrustline && (
+      {swapReview?.addsTrustline && destinationTokenDescriptor && (
         <Banner
           className="mt-[16px]"
           variant="highlight"
@@ -264,8 +260,10 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
                 >
                   <Icon.InfoCircle themeColor="gray" size={16} />
                 </TouchableOpacity>
-                <Text md medium>
-                  {formatTokenForDisplay(inclusionFeeXlm, NATIVE_TOKEN_CODE)}
+                <Text md medium testID="swap-review-fee">
+                  {swapReview
+                    ? formatTokenForDisplay(swapReview.fee, NATIVE_TOKEN_CODE)
+                    : "--"}
                 </Text>
               </View>
             ),

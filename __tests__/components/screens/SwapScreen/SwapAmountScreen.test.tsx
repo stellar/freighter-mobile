@@ -4,10 +4,12 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
+import { SwapSetupAnswerError } from "components/screens/SwapScreen/helpers/quoteErrors";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
 import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { Token } from "config/types";
 import { useSwapStore } from "ducks/swap";
@@ -1041,6 +1043,32 @@ describe("SwapAmountScreen", () => {
       expect(analytics.track).not.toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
       );
+    });
+
+    it.each([
+      ["does not report", new SwapSetupAnswerError("quote expired"), false],
+      ["reports", new Error("boom"), true],
+    ])("%s a setup failure to Sentry: %s", async (_, failure, reported) => {
+      const errorSpy = jest.spyOn(logger, "error").mockImplementation();
+      mockSetupSwapTransaction.mockRejectedValueOnce(failure);
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      const calls = errorSpy.mock.calls.filter(
+        ([tag]) => tag === "SwapAmountScreen",
+      );
+      errorSpy.mockRestore();
+      expect(calls.length > 0).toBe(reported);
     });
 
     it("opens XlmReserveBottomSheet when XLM is the source and initial spendable < BASE_RESERVE", async () => {

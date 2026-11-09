@@ -5,7 +5,10 @@ import BigNumber from "bignumber.js";
 import {
   getQuoteExpiredOperationCodes,
   getTokenFromBalance,
+  SwapSetupAnswerError,
+  swapQuoteErrorReason,
 } from "components/screens/SwapScreen/helpers";
+import { SwapTxMismatchError } from "components/screens/SwapScreen/helpers/decodeSwapTx";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
@@ -29,6 +32,7 @@ import { useRemoteConfigStore } from "ducks/remoteConfig";
 import {
   computeDestMinWithSlippage,
   SwapPathResult,
+  toSwapWireAsset,
   useSwapStore,
 } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
@@ -63,6 +67,7 @@ import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "services/analytics";
 import { FailureVolume } from "services/analytics/types";
+import { isApiError } from "services/apiFactory";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -138,6 +143,24 @@ export const useSwapTransaction = ({
     swapBalancesRef.current = { sourceBalance, destinationTokenInput };
   }, [sourceBalance, destinationTokenInput]);
 
+  // Re-quotes after the quote expired, so the user's retry uses a new quote
+  // instead of the expired one. Fire-and-forget: findSwapPath updates the
+  // store and handles its own errors (as useSwapPathFinding invokes it).
+  const requote = useCallback(() => {
+    const { sourceBalance: latestSource, destinationTokenInput: latestDest } =
+      swapBalancesRef.current;
+    if (latestSource && latestDest && account?.publicKey) {
+      useSwapStore.getState().findSwapPath({
+        sourceBalance: latestSource,
+        destinationBalance: latestDest,
+        sourceAmount,
+        slippage: useSwapSettingsStore.getState().swapSlippage,
+        network,
+        publicKey: account.publicKey,
+      });
+    }
+  }, [account?.publicKey, sourceAmount, network]);
+
   const setupSwapTransaction = useCallback(async () => {
     if (
       !sourceBalance ||
@@ -158,51 +181,56 @@ export const useSwapTransaction = ({
       swapTimeout: freshSwapTimeout,
       swapSlippage: freshSwapSlippage,
     } = useSwapSettingsStore.getState();
+    const { route } = pathResult;
 
-    // Derive includeTrustline from the swap store's destinationToken.
-    // When requiresTrustline === true the user doesn't yet hold a trustline for the
-    // destination asset; the changeTrust op is prepended atomically.
-    const { destinationToken } = useSwapStore.getState();
-    let includeTrustline: { tokenCode: string; issuer: string } | undefined;
-    if (destinationToken?.requiresTrustline) {
-      if (!destinationToken.issuer) {
-        // Unreachable in practice: native XLM can't be requiresTrustline, and the picker
-        // filters out Soroban. Fail fast so the bug surfaces here rather than
-        // submitting a doomed transaction that fails on-chain with tx_no_trust.
-        throw new Error(
-          `useSwapTransaction: requiresTrustline=true but issuer missing on destinationToken (id=${destinationToken.id})`,
+    let transactionXDR: string;
+    try {
+      ({ xdr: transactionXDR } = await buildSwapTransaction({
+        request: {
+          network,
+          account: account.publicKey,
+          source: route.source,
+          fromAsset: toSwapWireAsset(sourceBalance),
+          toAsset: toSwapWireAsset(destinationTokenInput),
+          // The quote key holds the same plain decimal.
+          amount: new BigNumber(sourceAmount).toFixed(),
+          // Slippage isn't in the quote key; the settings sheet can change it
+          // after quoting.
+          minOut: computeDestMinWithSlippage(route.toAmount, freshSwapSlippage),
+          slippage: new BigNumber(freshSwapSlippage).toFixed(),
+          timeout: freshSwapTimeout,
+          fee: new BigNumber(freshSwapFee).toFixed(),
+          // Only classic builds read them; the backend ignores them otherwise.
+          paths: route.paths,
+        },
+        sourceBalance,
+        destinationBalance: destinationTokenInput,
+        destinationAmount: pathResult.destinationAmount,
+      }));
+    } catch (error) {
+      if (isApiError(error) && error.status === 409) {
+        analytics.track(AnalyticsEvent.SWAP_QUOTE_EXPIRED, {
+          from_asset_code: sourceBalance.tokenCode,
+          to_asset_code: destinationTokenInput.tokenCode,
+          result_code: "quote_moved",
+        });
+        requote();
+        throw new SwapSetupAnswerError(t("swapScreen.errors.quoteExpired"));
+      }
+      if (swapQuoteErrorReason(error) === "unavailable") {
+        throw new Error(t("swapScreen.errors.swapsUnavailable"));
+      }
+      if (isApiError(error) && error.status === 400) {
+        throw new SwapSetupAnswerError(
+          t("swapScreen.errors.failedToSetupTransaction"),
         );
       }
-      includeTrustline = {
-        tokenCode: destinationToken.tokenCode,
-        issuer: destinationToken.issuer,
-      };
+      if (error instanceof SwapTxMismatchError) {
+        throw new Error(t("swapScreen.errors.swapTransactionMismatch"));
+      }
+      throw error;
     }
 
-    const transactionXDR = await buildSwapTransaction({
-      sourceAmount,
-      sourceBalance,
-      destinationBalance: destinationTokenInput,
-      path: pathResult.path,
-      destinationAmount: pathResult.destinationAmount,
-      // Slippage isn't in the quote key; the settings sheet can change it
-      // after quoting.
-      destinationAmountMin: computeDestMinWithSlippage(
-        pathResult.destinationAmount,
-        freshSwapSlippage,
-      ),
-      transactionFee: freshSwapFee,
-      transactionTimeout: freshSwapTimeout,
-      network,
-      senderAddress: account.publicKey,
-      includeTrustline,
-    });
-
-    if (!transactionXDR) {
-      // Get the error message stored in the transaction builder
-      const { error: builderError } = useTransactionBuilderStore.getState();
-      throw new Error(builderError || "Failed to build swap transaction");
-    }
     try {
       const scanResult = await scanTransaction(transactionXDR, "internal");
       setTransactionScanResult(scanResult);
@@ -223,6 +251,7 @@ export const useSwapTransaction = ({
     sourceAmount,
     network,
     scanTransaction,
+    requote,
     t,
   ]);
 
@@ -374,6 +403,9 @@ export const useSwapTransaction = ({
       // rather than the one this swap was actually built with.
       const { swapSlippage: freshSwapSlippage } =
         useSwapSettingsStore.getState();
+      const addsTrustline =
+        !!useTransactionBuilderStore.getState().swapReview?.addsTrustline;
+      const { destinationToken: swappedDestination } = useSwapStore.getState();
 
       // submitTransaction throws only for a debug override; otherwise it
       // resolves with this attempt's own outcome. That outcome is read from
@@ -489,13 +521,10 @@ export const useSwapTransaction = ({
         },
       });
 
-      // Fire SWAP_TRUSTLINE_ADDED when the combined changeTrust +
-      // pathPaymentStrictSend transaction confirmed a new trustline.
-      const { destinationToken: swappedDestination } = useSwapStore.getState();
-      if (swappedDestination?.requiresTrustline) {
+      if (addsTrustline) {
         analytics.track(AnalyticsEvent.SWAP_TRUSTLINE_ADDED, {
           asset_code: destinationTokenInput.tokenCode,
-          asset_issuer: swappedDestination.issuer ?? "",
+          asset_issuer: swappedDestination?.issuer ?? "",
         });
       }
     } catch (error) {
@@ -592,24 +621,7 @@ export const useSwapTransaction = ({
           duration: 0,
         });
 
-        // The frozen quote is stale — fetch a fresh path so the user's retry
-        // uses a new quote instead of resubmitting the expired one.
-        const {
-          sourceBalance: latestSource,
-          destinationTokenInput: latestDest,
-        } = swapBalancesRef.current;
-        if (latestSource && latestDest && account.publicKey) {
-          // Fire-and-forget: findSwapPath updates the store and handles its own
-          // errors (matches how useSwapPathFinding invokes it).
-          useSwapStore.getState().findSwapPath({
-            sourceBalance: latestSource,
-            destinationBalance: latestDest,
-            sourceAmount,
-            slippage: useSwapSettingsStore.getState().swapSlippage,
-            network,
-            publicKey: account.publicKey,
-          });
-        }
+        requote();
 
         return;
       }
@@ -652,6 +664,7 @@ export const useSwapTransaction = ({
     signTransaction,
     network,
     submitTransaction,
+    requote,
     t,
     showToast,
   ]);

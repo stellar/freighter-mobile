@@ -4,7 +4,6 @@ import {
   missingSwapRouteReason,
   selectSwapRoute,
   swapQuoteErrorReason,
-  swapRouteIntermediateAssets,
 } from "components/screens/SwapScreen/helpers";
 import {
   DEFAULT_DECIMALS,
@@ -15,6 +14,7 @@ import { logger } from "config/logger";
 import {
   PricedBalance,
   SwapQuotes,
+  SwapRoute,
   TokenTypeWithCustomToken,
 } from "config/types";
 import { useDebugStore } from "ducks/debug";
@@ -30,7 +30,8 @@ export interface SwapPathResult {
   sourceAmount: string;
   destinationAmount: string;
   destinationAmountMin: string;
-  path: string[];
+  /** The quoted route `/swap/tx` builds */
+  route: SwapRoute;
   conversionRate: string;
   /** `swapQuoteKey` of the inputs this quote answered. */
   quoteKey: string;
@@ -98,7 +99,7 @@ export const computeDestMinWithSlippage = (
   return new BigNumber(destinationAmount).times(new BigNumber(mult)).toFixed(7);
 };
 
-const toSwapWireAsset = (balance: PricedBalance): string => {
+export const toSwapWireAsset = (balance: PricedBalance): string => {
   const token = getTokenForPayment(balance);
   return token.isNative()
     ? NATIVE_TOKEN_CODE
@@ -261,7 +262,7 @@ export const useSwapStore = create<SwapState>((set) => ({
           route.toAmount,
           slippage,
         ),
-        path: swapRouteIntermediateAssets(route),
+        route,
         conversionRate: new BigNumber(route.toAmount)
           .dividedBy(new BigNumber(sourceAmount))
           .toFixed(7),

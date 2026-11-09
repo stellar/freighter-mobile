@@ -118,7 +118,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     });
   });
 
-  it("builds the path result from the classic route, not the first-ranked route", async () => {
+  it("builds the path result from the first-ranked route, whichever source quoted it", async () => {
     const quotes: SwapQuotes = {
       routes: [lifiRoute, classicRoute],
       unavailable: [],
@@ -132,13 +132,13 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(state.isLoadingPath).toBe(false);
     expect(state.pathResult).toEqual({
       sourceAmount: "10",
-      destinationAmount: "2.0000000",
-      destinationAmountMin: "1.9800000",
-      path: [AQUA],
-      conversionRate: "0.2000000",
+      destinationAmount: "2.1000000",
+      destinationAmountMin: "2.0790000",
+      route: lifiRoute,
+      conversionRate: "0.2100000",
       quoteKey: swapQuoteKey(inputs("10")),
     });
-    expect(state.destinationAmount).toBe("2.0000000");
+    expect(state.destinationAmount).toBe("2.1000000");
     expect(state.swapQuotes).toEqual(quotes);
   });
 
@@ -155,19 +155,6 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(state.pathResult).toBeNull();
     expect(state.pathError).toBe("swapScreen.errors.noPathFound");
     expect(state.swapQuotes).toEqual(quotes);
-  });
-
-  it("shows no path when only a non-classic route was quoted", async () => {
-    mockFetchSwapQuotes.mockResolvedValue({
-      routes: [lifiRoute],
-      unavailable: [],
-    });
-
-    await find();
-
-    const state = useSwapStore.getState();
-    expect(state.pathResult).toBeNull();
-    expect(state.pathError).toBe("swapScreen.errors.noPathFound");
   });
 
   it("treats a 400 as bad input (no path), not as an outage", async () => {
@@ -250,7 +237,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     "shows swaps temporarily unavailable and reports when classic is unavailable with %s",
     async (reason) => {
       mockFetchSwapQuotes.mockResolvedValue({
-        routes: [lifiRoute],
+        routes: [],
         unavailable: [{ source: "classic", reason }],
       });
 

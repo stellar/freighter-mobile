@@ -1,5 +1,9 @@
 import BigNumber from "bignumber.js";
 import {
+  DecodedSwapTx,
+  decodeSwapTx,
+} from "components/screens/SwapScreen/helpers/decodeSwapTx";
+import {
   MIN_TRANSACTION_FEE,
   NETWORKS,
   mapNetworkToNetworkDetails,
@@ -12,13 +16,15 @@ import { isContractId } from "helpers/soroban";
 import { isMuxedAccount } from "helpers/stellar";
 import { t } from "i18next";
 import { SimulationTransactionType } from "services/analytics/types";
+import { isApiError } from "services/apiFactory";
+import { BuildSwapTxParams, buildSwapTx } from "services/backend";
 import { isHorizonError, signTransaction, submitTx } from "services/stellar";
 import {
   buildPaymentTransaction,
   buildSendCollectibleTransaction,
-  buildSwapTransaction,
   simulateCollectibleTransfer,
   simulateContractTransfer,
+  validateSwapTransactionParams,
 } from "services/transactionService";
 import { create } from "zustand";
 
@@ -95,6 +101,8 @@ interface TransactionBuilderState {
   isSoroban: boolean;
   sorobanResourceFeeXlm: string | null;
   sorobanInclusionFeeXlm: string | null;
+  /** The review values of `transactionXDR` when it is a swap from `/swap/tx`. */
+  swapReview: DecodedSwapTx | null;
 
   buildTransaction: (params: {
     tokenAmount: string;
@@ -108,21 +116,17 @@ interface TransactionBuilderState {
     senderAddress?: string;
   }) => Promise<string | null>;
 
+  /**
+   * Builds the swap on the backend and decodes it for review. Throws on
+   * failure, with the backend's `ApiError` (and its status) passed through.
+   */
   buildSwapTransaction: (params: {
-    sourceAmount: string;
+    request: BuildSwapTxParams;
     sourceBalance: PricedBalance;
     destinationBalance: PricedBalance;
-    path: string[];
+    /** The quoted amount received */
     destinationAmount: string;
-    destinationAmountMin: string;
-    transactionMemo?: string;
-    transactionFee?: string;
-    transactionTimeout?: number;
-    network?: NETWORKS;
-    senderAddress?: string;
-    /** When present, a changeTrust op for the destination asset is prepended atomically. */
-    includeTrustline?: { tokenCode: string; issuer: string };
-  }) => Promise<string | null>;
+  }) => Promise<{ xdr: string; review: DecodedSwapTx }>;
 
   buildSendCollectibleTransaction: (params: {
     collectionAddress: string;
@@ -167,6 +171,7 @@ const initialState: Omit<
   isSoroban: false,
   sorobanResourceFeeXlm: null,
   sorobanInclusionFeeXlm: null,
+  swapReview: null,
 };
 
 // Unique id to correlate async responses to the latest request
@@ -337,6 +342,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
 
     buildSwapTransaction: async (params) => {
       const newRequestId = createRequestId();
+      const { request } = params;
 
       // Mark new cycle and reset flags (include Soroban fields so they don't carry over from a prior Soroban build)
       set({
@@ -355,46 +361,51 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           throw new Error(t("debug.debugMessages.buildFailure"));
         }
 
-        const builtTxResult = await buildSwapTransaction({
-          sourceAmount: params.sourceAmount,
+        const validationError = validateSwapTransactionParams({
           sourceBalance: params.sourceBalance,
           destinationBalance: params.destinationBalance,
-          path: params.path,
+          sourceAmount: request.amount,
           destinationAmount: params.destinationAmount,
-          destinationAmountMin: params.destinationAmountMin,
-          transactionFee: params.transactionFee,
-          transactionTimeout: params.transactionTimeout,
-          network: params.network,
-          senderAddress: params.senderAddress,
-          includeTrustline: params.includeTrustline,
+          fee: request.fee,
+          timeout: request.timeout,
         });
-
-        if (!builtTxResult) {
-          throw new Error("Failed to build swap transaction");
+        if (validationError) {
+          throw new Error(validationError);
         }
 
-        // For swaps, we don't need Soroban preparation since we're using pathPaymentStrictSend
-        const finalXdr = builtTxResult.xdr;
+        const { xdr } = await buildSwapTx(request);
+        const review = decodeSwapTx({
+          transactionXdr: xdr,
+          networkPassphrase: mapNetworkToNetworkDetails(request.network)
+            .networkPassphrase,
+          account: request.account,
+          fromAsset: request.fromAsset,
+          toAsset: request.toAsset,
+        });
 
         // Only update store if this swap build is still the latest one.
         // Prevents race conditions from concurrent swap transactions.
         if (get().requestId === newRequestId) {
           set({
-            transactionXDR: finalXdr,
+            transactionXDR: xdr,
+            swapReview: review,
             isBuilding: false,
             signedTransactionXDR: null,
             transactionHash: null,
           });
         }
 
-        return finalXdr;
+        return { xdr, review };
       } catch (error) {
         const errorMessage = extractErrorMessage(error);
-        logger.error(
-          "TransactionBuilderStore",
-          "Failed to build swap transaction",
-          error,
-        );
+        // A moved quote or a rejected request is an answer, not a fault.
+        if (!isApiError(error) || ![400, 409].includes(error.status)) {
+          logger.error(
+            "TransactionBuilderStore",
+            "Failed to build swap transaction",
+            error,
+          );
+        }
 
         // Only set error state if this swap build is still current.
         // Prevents stale swap error from overwriting newer transaction state.
@@ -403,10 +414,11 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             error: errorMessage,
             isBuilding: false,
             transactionXDR: null,
+            swapReview: null,
           });
         }
 
-        return null;
+        throw error;
       }
     },
 

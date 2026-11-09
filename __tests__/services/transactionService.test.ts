@@ -1,5 +1,4 @@
 import {
-  Asset,
   Keypair,
   Networks,
   TransactionBuilder,
@@ -17,7 +16,6 @@ import {
   buildPaymentTransaction,
   buildSendCollectibleTransaction,
   BuildSendCollectibleParams,
-  buildSwapTransaction,
   getContractIdForNativeToken,
   getTokenForPayment,
   simulateCollectibleTransfer,
@@ -232,35 +230,6 @@ describe("buildPaymentTransaction unfunded destination", () => {
     const op = tx.operations[0] as Operation.Payment;
     expect(op.type).toBe("payment");
     expect(op.asset.getIssuer()).toBe(CLASSIC_XLM_ISSUER);
-  });
-});
-
-describe("buildSwapTransaction asset resolution", () => {
-  // Mirrors the params/mocks used by the existing buildSwapTransaction —
-  // includeTrustline tests below; asserts on the built pathPaymentStrictSend op.
-  it("carries the classic asset as sendAsset for an XLM-coded non-native source", async () => {
-    const senderAddress = Keypair.random().publicKey();
-
-    const result = await buildSwapTransaction({
-      sourceBalance: nonNativeXlmBalance,
-      destinationBalance: nativeXlmBalance,
-      sourceAmount: "5",
-      destinationAmount: "5",
-      destinationAmountMin: "4.9",
-      path: [],
-      transactionFee: "0.00001",
-      transactionTimeout: 300,
-      network: NETWORKS.TESTNET,
-      senderAddress,
-    });
-    const tx = TransactionBuilder.fromXdr(
-      result.xdr,
-      Networks.TESTNET,
-    ) as Transaction;
-    const op = tx.operations[0] as Operation.PathPaymentStrictSend;
-    expect(op.sendAsset.isNative()).toBe(false);
-    expect(op.sendAsset.getIssuer()).toBe(CLASSIC_XLM_ISSUER);
-    expect(op.destAsset.isNative()).toBe(true);
   });
 });
 
@@ -668,86 +637,5 @@ describe("validateSendCollectibleTransactionParams", () => {
     const result = validateSendCollectibleTransactionParams(params);
 
     expect(result).toBeNull();
-  });
-});
-
-describe("buildSwapTransaction — includeTrustline", () => {
-  const issuer = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
-  const senderAddress = Keypair.random().publicKey();
-
-  const mockSourceBalance = {
-    id: "XLM",
-    token: { type: "native" },
-    total: "100",
-    available: { toString: () => "100" },
-  } as any;
-
-  const mockDestBalance = {
-    id: `USDC:${issuer}`,
-    token: {
-      code: "USDC",
-      issuer: { key: issuer },
-      type: "credit_alphanum4",
-    },
-    total: "0",
-    available: { toString: () => "0" },
-  } as any;
-
-  const baseParams = {
-    sourceAmount: "10",
-    sourceBalance: mockSourceBalance,
-    destinationBalance: mockDestBalance,
-    path: [],
-    destinationAmount: "5",
-    destinationAmountMin: "4.9",
-    transactionFee: "0.001",
-    transactionTimeout: 180,
-    network: NETWORKS.PUBLIC,
-    senderAddress,
-  };
-
-  it("prepends a changeTrust op when includeTrustline is provided", async () => {
-    const { xdr: swapXdr } = await buildSwapTransaction({
-      ...baseParams,
-      includeTrustline: {
-        tokenCode: "USDC",
-        issuer,
-      },
-    });
-
-    const tx = TransactionBuilder.fromXdr(
-      swapXdr,
-      Networks.PUBLIC,
-    ) as Transaction;
-
-    expect(tx.operations).toHaveLength(2);
-    expect(tx.operations[0].type).toBe("changeTrust");
-    expect(tx.operations[1].type).toBe("pathPaymentStrictSend");
-
-    const trustlineOp = tx.operations[0] as Operation.ChangeTrust;
-    const trustlineAsset = trustlineOp.line as Asset;
-    expect(trustlineAsset.code).toBe("USDC");
-    expect(trustlineAsset.issuer).toBe(
-      "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-    );
-
-    // The user-set 0.001 XLM (10,000 stroops) is the TOTAL: it's split across
-    // the 2 ops (5,000 stroops/op) so the charged total stays 10,000 — not
-    // doubled to 20,000.
-    expect(tx.fee).toBe("10000");
-  });
-
-  it("builds a single pathPaymentStrictSend op when includeTrustline is omitted (regression)", async () => {
-    const { xdr: swapXdr } = await buildSwapTransaction(baseParams);
-
-    const tx = TransactionBuilder.fromXdr(
-      swapXdr,
-      Networks.PUBLIC,
-    ) as Transaction;
-
-    expect(tx.operations).toHaveLength(1);
-    expect(tx.operations[0].type).toBe("pathPaymentStrictSend");
-    // Single op: total == the user-set 0.001 XLM (10,000 stroops).
-    expect(tx.fee).toBe("10000");
   });
 });

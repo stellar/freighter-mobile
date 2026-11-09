@@ -23,6 +23,7 @@ import {
   computeDestinationFiat,
   recordTokenId,
   shouldShowXlmReservePreflight,
+  SwapSetupAnswerError,
 } from "components/screens/SwapScreen/helpers";
 import {
   SWAP_TOAST_IDS,
@@ -650,11 +651,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         }
       } catch (error) {
         if (shouldPresent) setIsOpeningReviewSheet(false);
-        logger.error(
-          "SwapAmountScreen",
-          "Failed to setup swap transaction:",
-          error,
-        );
+        if (!(error instanceof SwapSetupAnswerError)) {
+          logger.error(
+            "SwapAmountScreen",
+            "Failed to setup swap transaction:",
+            error,
+          );
+        }
 
         const errorMessage =
           error instanceof Error
