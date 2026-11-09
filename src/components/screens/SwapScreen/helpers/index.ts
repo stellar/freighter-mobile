@@ -31,3 +31,4 @@ export {
   swapQuoteErrorReason,
 } from "./selectSwapRoute";
 export { decodeSwapTx, type DecodedSwapTx } from "./decodeSwapTx";
+export { withTokenDecimals } from "./tokenDecimals";

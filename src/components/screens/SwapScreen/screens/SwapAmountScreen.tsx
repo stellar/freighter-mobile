@@ -398,6 +398,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceTokenId,
     setSourceToken,
     setDestinationToken,
+    publicKey: account?.publicKey ?? "",
+    network,
   });
 
   // Scroll the amount screen back to the top whenever the selected source or

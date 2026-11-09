@@ -157,6 +157,19 @@ describe("descriptorFromSearchRecord", () => {
     });
   });
 
+  it("refuses a Soroban record whose decimals are unknown", () => {
+    expect(() =>
+      descriptorFromSearchRecord({
+        tokenCode: "TKN",
+        issuer: "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL",
+        domain: "",
+        hasTrustline: false,
+        isNative: false,
+        tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      }),
+    ).toThrow(/decimals/);
+  });
+
   it("defaults decimals to 7 when not provided", () => {
     const record = {
       tokenCode: "USDC",

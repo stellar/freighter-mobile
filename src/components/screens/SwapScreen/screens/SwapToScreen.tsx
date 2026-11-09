@@ -15,6 +15,7 @@ import {
   getItemKey,
   isHeldToken,
   recordTokenId,
+  withTokenDecimals,
 } from "components/screens/SwapScreen/helpers";
 import {
   useSwapToEmptyStates,
@@ -37,6 +38,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useToast } from "providers/ToastProvider";
 import React, { useRef } from "react";
 import {
   InteractionManager,
@@ -64,6 +66,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { getClipboardText } = useClipboard();
+  const { showToast } = useToast();
   const { selectionType } = route.params;
   const {
     setSourceToken,
@@ -187,7 +190,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   // Non-held tokens only appear in destination mode (popularTokens / non-held
   // search results). The source picker lists held tokens only, so this handler
   // is always destination-mode.
-  const handleRecordPress = (
+  const selectRecord = (
     record: FormattedSearchTokenRecord,
     source: SwapSelectionSource.POPULAR | SwapSelectionSource.SEARCH,
   ) => {
@@ -206,6 +209,22 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       setDestinationToken(descriptor);
     });
   };
+
+  const handleRecordPress = (
+    record: FormattedSearchTokenRecord,
+    source: SwapSelectionSource.POPULAR | SwapSelectionSource.SEARCH,
+  ) =>
+    withTokenDecimals(
+      record,
+      { publicKey: account?.publicKey ?? "", network },
+      (resolved) => selectRecord(resolved, source),
+      () =>
+        showToast({
+          variant: "error",
+          title: t("swapScreen.errors.tokenDetailsUnavailable"),
+          toastId: "swap-token-details-unavailable",
+        }),
+    );
 
   return (
     <BaseLayout insets={{ top: false, bottom: false }}>

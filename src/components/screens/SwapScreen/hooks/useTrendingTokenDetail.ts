@@ -2,12 +2,15 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import {
   descriptorFromBalance,
   descriptorFromSearchRecord,
+  withTokenDecimals,
 } from "components/screens/SwapScreen/helpers";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { AnalyticsEvent, SwapSelectionSource } from "config/analyticsConfig";
+import { NETWORKS } from "config/constants";
 import { FormattedSearchTokenRecord } from "config/types";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
+import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, Keyboard } from "react-native";
 import { analytics } from "services/analytics";
@@ -19,6 +22,8 @@ interface UseTrendingTokenDetailParams {
   sourceTokenId: string;
   setSourceToken: (id: string, symbol: string) => void;
   setDestinationToken: (descriptor: DestinationTokenDescriptor | null) => void;
+  publicKey: string;
+  network: NETWORKS;
 }
 
 /**
@@ -40,8 +45,11 @@ export const useTrendingTokenDetail = ({
   sourceTokenId,
   setSourceToken,
   setDestinationToken,
+  publicKey,
+  network,
 }: UseTrendingTokenDetailParams) => {
   const { t } = useAppTranslation();
+  const { showToast } = useToast();
 
   const trendingListRef = useRef<FlatList<FormattedSearchTokenRecord>>(null);
   const trendingDetailSheetRef = useRef<BottomSheetModal>(null);
@@ -102,26 +110,49 @@ export const useTrendingTokenDetail = ({
       const heldMatch = balanceItems.find(
         (b) => b.id === `${record.tokenCode}:${record.issuer}`,
       );
-      const descriptor = heldMatch
-        ? descriptorFromBalance(heldMatch)
-        : descriptorFromSearchRecord(record);
-      analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
-        asset_code: record.tokenCode,
-        asset_issuer: descriptor.issuer ?? "",
-        requires_trustline: descriptor.requiresTrustline,
-        source: SwapSelectionSource.TRENDING,
-      });
-      // If the new destination equals the current source, clear source so
-      // the user doesn't end up with the same token on both sides.
-      if (sourceTokenId && sourceTokenId === descriptor.id) {
-        setSourceToken("", "");
+      const select = (descriptor: DestinationTokenDescriptor) => {
+        analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
+          asset_code: record.tokenCode,
+          asset_issuer: descriptor.issuer ?? "",
+          requires_trustline: descriptor.requiresTrustline,
+          source: SwapSelectionSource.TRENDING,
+        });
+        // If the new destination equals the current source, clear source so
+        // the user doesn't end up with the same token on both sides.
+        if (sourceTokenId && sourceTokenId === descriptor.id) {
+          setSourceToken("", "");
+        }
+        setDestinationToken(descriptor);
+        // The amount screen scrolls itself to the top when the selected token
+        // changes (see SwapAmountScreen), so the Sell/Receive cards are visible.
+        trendingDetailSheetRef.current?.dismiss();
+      };
+      if (heldMatch) {
+        select(descriptorFromBalance(heldMatch));
+        return;
       }
-      setDestinationToken(descriptor);
-      // The amount screen scrolls itself to the top when the selected token
-      // changes (see SwapAmountScreen), so the Sell/Receive cards are visible.
-      trendingDetailSheetRef.current?.dismiss();
+      withTokenDecimals(
+        record,
+        { publicKey, network },
+        (resolved) => select(descriptorFromSearchRecord(resolved)),
+        () =>
+          showToast({
+            variant: "error",
+            title: t("swapScreen.errors.tokenDetailsUnavailable"),
+            toastId: "swap-token-details-unavailable",
+          }),
+      );
     },
-    [balanceItems, sourceTokenId, setSourceToken, setDestinationToken],
+    [
+      balanceItems,
+      sourceTokenId,
+      setSourceToken,
+      setDestinationToken,
+      publicKey,
+      network,
+      showToast,
+      t,
+    ],
   );
 
   // Detail sheet "Swap to {code}" CTA.

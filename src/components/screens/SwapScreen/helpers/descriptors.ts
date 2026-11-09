@@ -95,6 +95,15 @@ export const descriptorFromSearchRecord = (
     };
   }
 
+  if (
+    record.tokenType === TokenTypeWithCustomToken.CUSTOM_TOKEN &&
+    record.decimals === undefined
+  ) {
+    throw new Error(
+      `descriptorFromSearchRecord: Soroban token ${record.issuer} has unknown decimals`,
+    );
+  }
+
   const tokenType =
     record.tokenType ??
     (record.tokenCode.length <= 4

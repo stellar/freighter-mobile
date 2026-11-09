@@ -40,6 +40,21 @@ jest.mock("hooks/useGetActiveAccount", () => () => ({
   },
 }));
 
+const mockShowToast = jest.fn();
+jest.mock("providers/ToastProvider", () => ({
+  ...jest.requireActual("providers/ToastProvider"),
+  useToast: () => ({ showToast: mockShowToast }),
+}));
+
+const mockGetTokenDetails = jest.fn();
+jest.mock("services/backend", () => ({
+  getTokenDetails: (...args: unknown[]) => mockGetTokenDetails(...args),
+}));
+
+jest.mock("config/logger", () => ({
+  logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn() },
+}));
+
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: jest.fn(() => ({ network: "testnet" })),
 }));
@@ -277,6 +292,47 @@ describe("SwapToScreen", () => {
         publicKey: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
       }),
     );
+  });
+
+  it("refuses a Soroban token whose decimals can't be read, with an error", async () => {
+    mockGetTokenDetails.mockResolvedValue(null);
+    (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
+      ...defaultLookupResult,
+      verifiedSearchMatches: [
+        {
+          tokenCode: "TKN",
+          issuer: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+          domain: "",
+          hasTrustline: false,
+          isNative: false,
+          tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        },
+      ],
+      searchTerm: "tkn",
+    });
+
+    const { getByText } = renderWithProviders(
+      <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+    );
+    fireEvent.press(getByText("TKN"));
+    await new Promise((r) => {
+      setImmediate(r);
+    });
+
+    expect(mockGetTokenDetails).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractId: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+        publicKey: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+      }),
+    );
+    expect(mockShowToast).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: "error" }),
+    );
+    expect(analytics.track).not.toHaveBeenCalledWith(
+      AnalyticsEvent.SWAP_DESTINATION_SELECTED,
+      expect.anything(),
+    );
+    expect(mockGoBack).not.toHaveBeenCalled();
   });
 
   it("shows no match, not a Soroban notice, for a contract ID nothing resolves", () => {
