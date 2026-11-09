@@ -53,6 +53,7 @@ const decode = (
   toAsset = USDC,
   fromAsset = "XLM",
   minOut = "0",
+  fromDecimals = 7,
 ) =>
   decodeSwapTx({
     transactionXdr,
@@ -61,7 +62,63 @@ const decode = (
     fromAsset,
     toAsset,
     minOut,
+    fromDecimals,
   });
+
+const TOKEN = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+const SWAP_CONTRACT =
+  "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
+
+const authCall = (
+  contract: string,
+  fn: string,
+  args: xdr.ScVal[],
+  subInvocations: xdr.SorobanAuthorizedInvocation[] = [],
+) =>
+  new xdr.SorobanAuthorizedInvocation({
+    function:
+      xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+        new xdr.InvokeContractArgs({
+          contractAddress: new Address(contract).toScAddress(),
+          functionName: fn,
+          args,
+        }),
+      ),
+    subInvocations,
+  });
+
+const transferOf = (contract: string, amount: bigint, from = ACCOUNT) =>
+  authCall(contract, "transfer", [
+    new Address(from).toScVal(),
+    new Address(SWAP_CONTRACT).toScVal(),
+    nativeToScVal(amount, { type: "i128" }),
+  ]);
+
+const trustOf = (contract: string) =>
+  authCall(contract, "trust", [new Address(ACCOUNT).toScVal()]);
+
+const sorobanSwapTx = (subInvocations: xdr.SorobanAuthorizedInvocation[]) =>
+  new TransactionBuilder(new Account(ACCOUNT, "1"), {
+    fee: "100",
+    networkPassphrase: Networks.PUBLIC,
+  })
+    .addOperation(
+      Operation.invokeContractFunction({
+        contract: SWAP_CONTRACT,
+        function: "swap",
+        args: [],
+        auth: [
+          new xdr.SorobanAuthorizationEntry({
+            credentials:
+              xdr.SorobanCredentials.sorobanCredentialsSourceAccount(),
+            rootInvocation: authCall(SWAP_CONTRACT, "swap", [], subInvocations),
+          }),
+        ],
+      }),
+    )
+    .setTimeout(180)
+    .build()
+    .toXDR();
 
 describe("decodeSwapTx", () => {
   describe("classic path payment", () => {
@@ -380,15 +437,53 @@ describe("decodeSwapTx", () => {
     expect(() => decode(input, account)).toThrow(SwapTxMismatchError);
   });
 
-  it("refuses a contract token until the picker allows them", () => {
-    const tx = classicTx({ ops: [pathPayment()] });
+  describe("contract tokens", () => {
+    it("reads the amount sold at the sold token's own decimals", () => {
+      const txXdr = sorobanSwapTx([
+        transferOf(TOKEN, BigInt("1234500000000000000")),
+      ]);
 
-    expect(() =>
-      decode(
-        tx.toXDR(),
-        ACCOUNT,
-        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
-      ),
-    ).toThrow(/unsupported asset/);
+      expect(decode(txXdr, ACCOUNT, USDC, TOKEN, "0", 18)).toEqual({
+        sendAmount: "1.2345",
+        minReceived: undefined,
+        fee: "0.00001",
+        addsTrustline: false,
+      });
+    });
+
+    it("decodes a swap into a contract token", () => {
+      const txXdr = sorobanSwapTx([transferOf(TOKEN, BigInt(10000000))]);
+
+      expect(decode(txXdr, ACCOUNT, TOKEN, TOKEN)).toMatchObject({
+        sendAmount: "1",
+        addsTrustline: false,
+      });
+    });
+
+    it("refuses a transfer of the sold asset when the account sells a contract token", () => {
+      const xlm = Asset.native().contractId(Networks.PUBLIC);
+      const txXdr = sorobanSwapTx([transferOf(xlm, BigInt(10000000))]);
+
+      expect(() => decode(txXdr, ACCOUNT, USDC, TOKEN, "0", 18)).toThrow(
+        /transfer/,
+      );
+    });
+
+    it("refuses a trust() on a contract token bought, which opens no trustline", () => {
+      const txXdr = sorobanSwapTx([
+        transferOf(Asset.native().contractId(Networks.PUBLIC), BigInt(1)),
+        trustOf(TOKEN),
+      ]);
+
+      expect(() => decode(txXdr, ACCOUNT, TOKEN)).toThrow(/trustline/);
+    });
+
+    it("refuses a classic path payment for a contract token", () => {
+      const tx = classicTx({ ops: [pathPayment()] });
+
+      expect(() => decode(tx.toXDR(), ACCOUNT, TOKEN)).toThrow(
+        /does not match/,
+      );
+    });
   });
 });

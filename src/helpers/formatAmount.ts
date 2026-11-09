@@ -841,6 +841,10 @@ export const hasDecimals = (
   typeof balance.decimals === "number" &&
   balance.decimals >= 0;
 
+/** A balance's decimals: its own for a Soroban token, 7 otherwise. */
+export const getTokenDecimals = (balance: Balance | PricedBalance): number =>
+  hasDecimals(balance) ? balance.decimals : DEFAULT_DECIMALS;
+
 /**
  * A balance's total in whole token units — the amount the user sees. Prices
  * are per whole token, so fiat math must use this rather than `total`, which

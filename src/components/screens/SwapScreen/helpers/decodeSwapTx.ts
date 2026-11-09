@@ -3,6 +3,7 @@ import {
   Asset,
   FeeBumpTransaction,
   Operation,
+  StrKey,
   Transaction,
   TransactionBuilder,
   scValToNative,
@@ -25,12 +26,10 @@ export interface DecodedSwapTx {
   addsTrustline: boolean;
 }
 
-// Classic assets and their contracts both use 7 decimals. Soroban-only
-// tokens are refused below until the picker allows them (C3).
-const CLASSIC_DECIMALS = 7;
+const XLM_DECIMALS = 7;
 
-const fromUnits = (value: bigint | string) =>
-  new BigNumber(value.toString()).shiftedBy(-CLASSIC_DECIMALS).toFixed();
+const fromUnits = (value: bigint | string, decimals: number) =>
+  new BigNumber(value.toString()).shiftedBy(-decimals).toFixed();
 
 // The SDK's default changeTrust limit (Int64 max stroops). Anything lower
 // edits an existing trustline rather than just opening one.
@@ -46,13 +45,25 @@ export class SwapTxMismatchError extends Error {
 
 const mismatch = (what: string) => new SwapTxMismatchError(what);
 
-const toClassicAsset = (wire: string): Asset => {
-  if (isNativeAssetId(wire)) return Asset.native();
-  const [code, issuer, ...rest] = wire.split(":");
-  if (!code || !issuer || rest.length) {
-    throw mismatch(`unsupported asset ${wire}`);
+/** A wire asset: `classic` is null for a Soroban-only token. */
+interface SwapToken {
+  classic: Asset | null;
+  contract: string;
+}
+
+const toSwapToken = (wire: string, networkPassphrase: string): SwapToken => {
+  if (StrKey.isValidContract(wire)) return { classic: null, contract: wire };
+  let classic: Asset;
+  if (isNativeAssetId(wire)) {
+    classic = Asset.native();
+  } else {
+    const [code, issuer, ...rest] = wire.split(":");
+    if (!code || !issuer || rest.length) {
+      throw mismatch(`unsupported asset ${wire}`);
+    }
+    classic = new Asset(code, issuer);
   }
-  return new Asset(code, issuer);
+  return { classic, contract: classic.contractId(networkPassphrase) };
 };
 
 const decodeClassic = (
@@ -86,7 +97,7 @@ const decodeClassic = (
   return {
     sendAmount: new BigNumber(payment.sendAmount).toFixed(),
     minReceived: new BigNumber(payment.destMin).toFixed(),
-    fee: fromUnits(tx.fee),
+    fee: fromUnits(tx.fee, XLM_DECIMALS),
     addsTrustline: !!changeTrust,
   };
 };
@@ -107,21 +118,22 @@ const contractCalls = (
  * what the signature authorizes and every source must use it: the amount sold
  * is the sold token's transfers out of the account, and a trust() on the
  * bought token is the trustline. The call itself is source-specific and the
- * backend checks it, so a new source needs no client release.
+ * backend checks it, so a new source needs no client release. Only a classic
+ * asset has a trustline, so a trust() on a Soroban-only token is refused.
  */
 const decodeSoroban = (
   tx: Transaction,
   account: string,
-  from: Asset,
-  to: Asset,
-  networkPassphrase: string,
+  from: SwapToken,
+  to: SwapToken,
+  fromDecimals: number,
 ): DecodedSwapTx => {
   const op = tx.operations[0] as Operation.InvokeHostFunction;
   if (op.func.type !== "hostFunctionTypeInvokeContract") {
     throw mismatch("host function");
   }
-  const fromContract = from.contractId(networkPassphrase);
-  const toContract = to.contractId(networkPassphrase);
+  const fromContract = from.contract;
+  const toContract = to.contract;
 
   let sent = BigInt(0);
   let addsTrustline = false;
@@ -143,7 +155,9 @@ const decodeSoroban = (
         }
         sent += amount;
       } else if (name === "trust") {
-        if (contract !== toContract) throw mismatch("trustline");
+        if (contract !== toContract || !to.classic) {
+          throw mismatch("trustline");
+        }
         addsTrustline = true;
       }
     });
@@ -152,9 +166,9 @@ const decodeSoroban = (
   }
 
   return {
-    sendAmount: fromUnits(sent),
+    sendAmount: fromUnits(sent, fromDecimals),
     minReceived: undefined,
-    fee: fromUnits(tx.fee),
+    fee: fromUnits(tx.fee, XLM_DECIMALS),
     addsTrustline,
   };
 };
@@ -166,15 +180,18 @@ const decode = ({
   fromAsset,
   toAsset,
   minOut,
+  fromDecimals,
 }: {
   transactionXdr: string;
   networkPassphrase: string;
   account: string;
-  /** Wire form: `XLM` or `CODE:ISSUER` */
+  /** Wire form: `XLM`, `CODE:ISSUER` or a `C…` contract ID */
   fromAsset: string;
   toAsset: string;
   /** The `minOut` sent to `/swap/tx`; a classic destMin must meet it */
   minOut: string;
+  /** The sold token's decimals: the unit of its authorized transfers */
+  fromDecimals: number;
 }): DecodedSwapTx => {
   const parsed = TransactionBuilder.fromXdr(transactionXdr, networkPassphrase);
   if (parsed instanceof FeeBumpTransaction) {
@@ -186,15 +203,18 @@ const decode = ({
   ) {
     throw mismatch("source account");
   }
-  const from = toClassicAsset(fromAsset);
-  const to = toClassicAsset(toAsset);
+  const from = toSwapToken(fromAsset, networkPassphrase);
+  const to = toSwapToken(toAsset, networkPassphrase);
   if (
     parsed.operations.length === 1 &&
     parsed.operations[0].type === "invokeHostFunction"
   ) {
-    return decodeSoroban(parsed, account, from, to, networkPassphrase);
+    return decodeSoroban(parsed, account, from, to, fromDecimals);
   }
-  const decoded = decodeClassic(parsed, account, from, to);
+  if (!from.classic || !to.classic) {
+    throw mismatch("operations");
+  }
+  const decoded = decodeClassic(parsed, account, from.classic, to.classic);
   const wantMin = new BigNumber(minOut);
   if (
     !wantMin.isFinite() ||
