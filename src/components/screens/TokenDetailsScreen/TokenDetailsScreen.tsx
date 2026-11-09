@@ -334,13 +334,9 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     });
   };
 
-  // Classic Stellar assets = native (XLM) + credit_alphanum4/12. Soroban
-  // custom tokens (CUSTOM_TOKEN) and liquidity-pool shares aren't supported
-  // by the swap flow yet, so the Swap CTA is gated on this.
-  const isClassicAsset =
-    getTokenType(tokenId) === TokenTypeWithCustomToken.NATIVE ||
-    getTokenType(tokenId) === TokenTypeWithCustomToken.CREDIT_ALPHANUM4 ||
-    getTokenType(tokenId) === TokenTypeWithCustomToken.CREDIT_ALPHANUM12;
+  // Liquidity-pool shares can't be swapped.
+  const isSwappable =
+    getTokenType(tokenId) !== TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES;
 
   const handleSendPress = () => {
     saveSelectedTokenId(tokenId);
@@ -450,7 +446,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       </View>
       <View className="mt-7">
         <View className="flex-row gap-3">
-          {swapEnabled && isClassicAsset && (
+          {swapEnabled && isSwappable && (
             <View className="flex-1">
               <Button secondary xl isFullWidth onPress={handleSwapPress}>
                 {t("tokenDetailsScreen.swap")}

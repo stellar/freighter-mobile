@@ -6,6 +6,7 @@ import { NETWORKS } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { useBalancesStore } from "ducks/balances";
 import { usePriceHistoryStore } from "ducks/priceHistory";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { SectionList } from "react-native";
@@ -189,6 +190,32 @@ describe("TokenDetailsScreen", () => {
         headerTitle: "Stellar Lumens (XLM)",
       }),
     );
+  });
+
+  it.each([
+    ["XLM", "native", true],
+    [
+      "a Soroban token",
+      "TKN:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      true,
+    ],
+    [
+      "a liquidity pool share",
+      "4ac86c65b9f7b175ae0493da0d36cc5bc88b72677ca69fce8fe374233983d8e7:lp",
+      false,
+    ],
+  ])("offers Swap for %s: %s", (_, tokenId, shown) => {
+    useRemoteConfigStore.setState({ swap_enabled: true });
+    const route = {
+      ...mockRoute,
+      params: { tokenId, tokenSymbol: "TKN" },
+    } as unknown as TokenDetailsScreenProps["route"];
+
+    const screen = renderWithProviders(
+      <TokenDetailsScreen navigation={mockNavigation} route={route} />,
+    );
+
+    expect(!!screen.queryByText("tokenDetailsScreen.swap")).toBe(shown);
   });
 
   it("draws no divider under the Swap and Send buttons", () => {
