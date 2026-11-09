@@ -444,6 +444,45 @@ describe("SwapAmountScreen", () => {
     expect(mockSetDestinationToken).toHaveBeenCalledWith(null);
   });
 
+  it("sets Max for a Soroban source at the token's own decimals", () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    const sorobanSource = {
+      id: `TKN:${contractId}`,
+      tokenCode: "TKN",
+      tokenType: "custom_token",
+      contractId,
+      symbol: "TKN",
+      name: "Token",
+      decimals: 18,
+      token: { code: "TKN", issuer: { key: contractId }, type: "custom_token" },
+      total: new BigNumber("1.234567891234567891"),
+      available: new BigNumber("1.234567891234567891"),
+    };
+    (useBalancesList as jest.Mock).mockImplementation(() => ({
+      balanceItems: [...mockBalances, sorobanSource],
+      scanResults: {},
+      isLoading: false,
+      error: null,
+      noBalances: false,
+      isRefreshing: false,
+      isFunded: true,
+      handleRefresh: jest.fn(),
+    }));
+    setSwapStoreState({ sourceTokenId: sorobanSource.id });
+
+    const { getByTestId } = renderWithProviders(
+      <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+    );
+    act(() => {
+      fireEvent.press(getByTestId("percentage-100"));
+    });
+
+    expect(mockSetSourceAmount).toHaveBeenLastCalledWith(
+      "1.234567891234567891",
+    );
+  });
+
   describe("default destination (USDC) seeding", () => {
     // The auth store defaults to PUBLIC in tests, so the seeded default is
     // mainnet USDC (Circle issuer).

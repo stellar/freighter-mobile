@@ -67,7 +67,7 @@ import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
-import { formatFiatAmount } from "helpers/formatAmount";
+import { formatFiatAmount, getTokenDecimals } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem, useBalancesList } from "hooks/useBalancesList";
@@ -490,6 +490,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const handlePercentagePress = useCallback(
     (percentage: number) => {
       if (!spendableAmount) return;
+      const decimals = sourceBalance
+        ? getTokenDecimals(sourceBalance)
+        : DEFAULT_DECIMALS;
 
       const targetAmount =
         percentage === 100
@@ -524,12 +527,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           const finalFiat = finalToken.multipliedBy(tokenPrice).toFixed(2);
 
           updateFiatDisplay(finalFiat);
-          setTokenAmount(finalToken.toFixed(DEFAULT_DECIMALS));
+          setTokenAmount(finalToken.toFixed(decimals));
           return;
         }
       }
 
-      setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
+      setTokenAmount(targetAmount.toFixed(decimals));
     },
     [
       spendableAmount,
