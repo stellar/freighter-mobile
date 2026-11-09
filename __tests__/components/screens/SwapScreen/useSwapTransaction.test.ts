@@ -439,6 +439,37 @@ describe("useSwapTransaction", () => {
         "0.9900000",
       );
     });
+
+    it("rounds the minOut to a contract token's own decimals and sends its contract ID", async () => {
+      const token = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      mockSwapSettings = {
+        ...DEFAULT_SWAP_SETTINGS,
+        swapSlippage: 1 as unknown as string,
+      };
+      const params = {
+        ...baseParams,
+        destinationTokenInput: {
+          tokenCode: "TKN",
+          contractId: token,
+          decimals: 18,
+          token: { code: "TKN", type: "custom_token", issuer: { key: token } },
+        } as never,
+        pathResult: {
+          ...(baseParams.pathResult as object),
+          route: { ...QUOTED_ROUTE, toAmount: "1.000000000000000001" },
+        } as never,
+      };
+      const { result } = renderHook(() => useSwapTransaction(params));
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(mockBuildSwapTransaction.mock.calls[0][0].request).toMatchObject({
+        toAsset: token,
+        minOut: "0.990000000000000000",
+      });
+    });
   });
 
   describe("setupSwapTransaction — superseded while running", () => {

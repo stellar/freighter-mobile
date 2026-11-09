@@ -1,8 +1,17 @@
 import BigNumber from "bignumber.js";
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
-import { PricedBalance, SwapQuotes, SwapRoute } from "config/types";
-import { swapQuoteKey, useSwapStore } from "ducks/swap";
+import {
+  PricedBalance,
+  SwapQuotes,
+  SwapRoute,
+  TokenTypeWithCustomToken,
+} from "config/types";
+import {
+  descriptorAsPathBalance,
+  swapQuoteKey,
+  useSwapStore,
+} from "ducks/swap";
 import { fetchSwapQuotes } from "services/backend";
 
 jest.mock("services/backend", () => ({
@@ -115,6 +124,65 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
       fromAsset: "XLM",
       toAsset: USDC,
       amount: "10",
+    });
+  });
+
+  describe("contract tokens", () => {
+    const TOKEN = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    const heldToken = {
+      id: `TKN:${TOKEN}`,
+      tokenCode: "TKN",
+      contractId: TOKEN,
+      decimals: 18,
+      token: { code: "TKN", issuer: { key: TOKEN }, type: "custom_token" },
+      total: new BigNumber("5"),
+      available: new BigNumber("5"),
+    } as unknown as PricedBalance;
+
+    it("quotes a held contract token by its contract ID", async () => {
+      mockFetchSwapQuotes.mockResolvedValue({ routes: [], unavailable: [] });
+
+      await useSwapStore.getState().findSwapPath({
+        ...inputs("1.000000000000000001"),
+        sourceBalance: heldToken,
+        slippage: 1,
+      });
+
+      expect(mockFetchSwapQuotes).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromAsset: TOKEN,
+          toAsset: USDC,
+          amount: "1.000000000000000001",
+        }),
+      );
+    });
+
+    it("quotes into a contract token picked from search, at its decimals", async () => {
+      mockFetchSwapQuotes.mockResolvedValue({
+        routes: [{ ...lifiRoute, toAmount: "4.123456789012345678" }],
+        unavailable: [],
+      });
+      const destinationBalance = descriptorAsPathBalance({
+        id: `TKN:${TOKEN}`,
+        tokenCode: "TKN",
+        issuer: TOKEN,
+        decimals: 18,
+        tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        requiresTrustline: false,
+      });
+
+      await useSwapStore.getState().findSwapPath({
+        ...inputs(),
+        destinationBalance,
+        slippage: 1,
+      });
+
+      expect(mockFetchSwapQuotes).toHaveBeenCalledWith(
+        expect.objectContaining({ fromAsset: "XLM", toAsset: TOKEN }),
+      );
+      expect(useSwapStore.getState().pathResult?.destinationAmountMin).toBe(
+        "4.082222221122222221",
+      );
     });
   });
 

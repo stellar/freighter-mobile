@@ -18,8 +18,10 @@ import {
   TokenTypeWithCustomToken,
 } from "config/types";
 import { useDebugStore } from "ducks/debug";
-import { formatBigNumberForDisplay } from "helpers/formatAmount";
-import { isContractId } from "helpers/soroban";
+import {
+  formatBigNumberForDisplay,
+  getTokenDecimals,
+} from "helpers/formatAmount";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { t } from "i18next";
 import { fetchSwapQuotes } from "services/backend";
@@ -91,26 +93,27 @@ const initialState = {
   buildError: null,
 };
 
-export const computeDestMinWithSlippage = (
-  destinationAmount: string,
-  slippage: number,
-): string => {
-  const mult = 1 - slippage / 100;
-  return new BigNumber(destinationAmount).times(new BigNumber(mult)).toFixed(7);
-};
-
 /**
  * The minOut sent to `/swap/tx`: exact decimal arithmetic, rounded down to
- * 7 dp. LI.FI's min_amount_out is truncated, so rounding up here can exceed
- * it by a stroop and turn every build into a 409.
+ * the bought token's decimals, which the backend refuses to exceed. LI.FI's
+ * min_amount_out is truncated, so rounding up here can exceed it by one unit
+ * and turn every build into a 409.
  */
-export const swapMinOut = (toAmount: string, slippage: number): string =>
+export const swapMinOut = (
+  toAmount: string,
+  slippage: number,
+  decimals = DEFAULT_DECIMALS,
+): string =>
   new BigNumber(toAmount)
     .times(new BigNumber(100).minus(slippage))
     .div(100)
-    .toFixed(7, BigNumber.ROUND_DOWN);
+    .toFixed(decimals, BigNumber.ROUND_DOWN);
 
+/** `XLM`, `CODE:ISSUER`, or the contract ID of a Soroban token. */
 export const toSwapWireAsset = (balance: PricedBalance): string => {
+  if ("contractId" in balance && balance.contractId) {
+    return balance.contractId;
+  }
   const token = getTokenForPayment(balance);
   return token.isNative()
     ? NATIVE_TOKEN_CODE
@@ -204,8 +207,7 @@ export const useSwapStore = create<SwapState>((set) => ({
   },
 
   findSwapPath: async (params) => {
-    const { sourceBalance, destinationBalance, sourceAmount, slippage } =
-      params;
+    const { destinationBalance, sourceAmount, slippage } = params;
 
     quoteRequestId += 1;
     const requestId = quoteRequestId;
@@ -223,23 +225,6 @@ export const useSwapStore = create<SwapState>((set) => ({
 
       if (forceSwapPathFailure) {
         throw new Error(t("debug.debugMessages.swapPathFailure"));
-      }
-
-      // Custom/Soroban tokens cannot be swapped via Horizon's classic DEX
-      const isSourceCustom =
-        "contractId" in sourceBalance ||
-        ("id" in sourceBalance && isContractId(sourceBalance.id ?? ""));
-      const isDestCustom =
-        "contractId" in destinationBalance ||
-        ("id" in destinationBalance &&
-          isContractId(destinationBalance.id ?? ""));
-
-      if (isSourceCustom || isDestCustom) {
-        set({
-          isLoadingPath: false,
-          pathError: t("swapScreen.errors.customTokenSwapNotSupported"),
-        });
-        return;
       }
 
       const request = sendQuoteRequest(params);
@@ -269,9 +254,10 @@ export const useSwapStore = create<SwapState>((set) => ({
       const pathResult: SwapPathResult = {
         sourceAmount,
         destinationAmount: route.toAmount,
-        destinationAmountMin: computeDestMinWithSlippage(
+        destinationAmountMin: swapMinOut(
           route.toAmount,
           slippage,
+          getTokenDecimals(destinationBalance),
         ),
         route,
         conversionRate: new BigNumber(route.toAmount)
@@ -327,8 +313,9 @@ export const useSwapStore = create<SwapState>((set) => ({
 /**
  * Shim that lets a `DestinationTokenDescriptor` flow through the
  * path-finding / transaction-building pipelines where they accept a
- * `PricedBalance`. The pipelines only read `token` (code/issuer/type)
- * off the value; the `as unknown as PricedBalance` cast is safe here
+ * `PricedBalance`. The pipelines only read `token` (code/issuer/type),
+ * and a Soroban token's `contractId` and `decimals`, off the value; the
+ * `as unknown as PricedBalance` cast is safe here
  * because of that read-shape contract. Don't treat the shim as a real
  * holding anywhere else.
  *
@@ -362,5 +349,9 @@ export const descriptorAsPathBalance = (
       issuer: { key: descriptor.issuer },
       type: descriptor.tokenType,
     },
+    ...(descriptor.tokenType === TokenTypeWithCustomToken.CUSTOM_TOKEN && {
+      contractId: descriptor.issuer,
+      decimals: descriptor.decimals,
+    }),
   } as unknown as HeldBalanceItem;
 };

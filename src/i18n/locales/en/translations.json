@@ -719,7 +719,6 @@
       "noPathFound": "No path found between these tokens",
       "pathFindFailed": "Couldn't fetch swap path. Please try again.",
       "swapsUnavailable": "Swaps are temporarily unavailable",
-      "customTokenSwapNotSupported": "Swapping custom tokens is not supported yet",
       "quoteExpired": "Quote has expired, please try again to get a new quote",
       "swapTransactionMismatch": "The swap transaction didn't match your request. Please try again."
     },
