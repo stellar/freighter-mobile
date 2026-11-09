@@ -31,13 +31,32 @@ const flush = () =>
 describe("withTokenDecimals", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("applies a record whose decimals are known without a lookup", () => {
+  it("applies a classic record without a lookup", () => {
+    const classic = {
+      ...soroban,
+      issuer: ACCOUNT,
+      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+    };
     const apply = jest.fn();
 
-    withTokenDecimals({ ...soroban, decimals: 9 }, ctx, apply, jest.fn());
+    withTokenDecimals(classic, ctx, apply, jest.fn());
 
-    expect(apply).toHaveBeenCalledWith({ ...soroban, decimals: 9 });
+    expect(apply).toHaveBeenCalledWith(classic);
     expect(getTokenDetails).not.toHaveBeenCalled();
+  });
+
+  it("uses the contract's decimals, not stellar.expert's, for a token the account doesn't hold", async () => {
+    (getTokenDetails as jest.Mock).mockResolvedValue({
+      name: "Token",
+      symbol: "TKN",
+      decimals: 7,
+    });
+    const apply = jest.fn();
+
+    withTokenDecimals({ ...soroban, decimals: 18 }, ctx, apply, jest.fn());
+    await flush();
+
+    expect(apply).toHaveBeenCalledWith({ ...soroban, decimals: 7 });
   });
 
   it("reads a contract token's decimals through /token-details", async () => {

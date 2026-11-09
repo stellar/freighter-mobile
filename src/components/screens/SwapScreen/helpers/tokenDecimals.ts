@@ -7,10 +7,11 @@ import {
 import { getTokenDetails } from "services/backend";
 
 /**
- * Calls `apply` with the record once its decimals are known: a Soroban token
- * listed without them (stellar.expert can omit them) reads them through
- * /token-details. If they stay unknown the token is refused: amounts and
- * minOut can't be scaled without them.
+ * Calls `apply` with the record once its decimals are known. A Soroban token
+ * the account doesn't hold reads them through /token-details, never from
+ * stellar.expert, whose value comes from the issuer's toml. If they stay
+ * unknown the token is refused: amounts and minOut can't be scaled without
+ * them.
  */
 export const withTokenDecimals = (
   record: FormattedSearchTokenRecord,
@@ -20,7 +21,7 @@ export const withTokenDecimals = (
 ): void => {
   if (
     record.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN ||
-    record.decimals !== undefined
+    (record.hasTrustline && record.decimals !== undefined)
   ) {
     apply(record);
     return;
