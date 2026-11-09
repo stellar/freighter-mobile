@@ -23,6 +23,7 @@ import {
   buildSourceBalanceRight,
   computeDestinationFiat,
   recordTokenId,
+  selectSwapRoute,
   shouldShowXlmReservePreflight,
   SwapSetupAnswerError,
 } from "components/screens/SwapScreen/helpers";
@@ -78,6 +79,7 @@ import {
   hasDecimals,
 } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
+import { computeTotalFeeXlm } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem, useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -163,6 +165,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceAmount,
     destinationAmount,
     pathResult,
+    swapQuotes,
     isLoadingPath,
     pathError,
     setSourceToken,
@@ -912,11 +915,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     spendableAmount,
     availableLabel: t("common.available"),
   });
-  const networkFeeText = formatTokenForDisplay(swapFee, NATIVE_TOKEN_CODE);
+  const resourceFee =
+    isQuoteCurrent && swapQuotes
+      ? selectSwapRoute(swapQuotes)?.resourceFee
+      : undefined;
+  const totalFee = computeTotalFeeXlm(swapFee, resourceFee ?? null, swapFee);
+  const networkFeeText = formatTokenForDisplay(totalFee, NATIVE_TOKEN_CODE);
   const xlmPrice = balanceItems.find((b) =>
     isNativeAssetId(b.id),
   )?.currentPrice;
-  const networkFeeFiat = xlmPrice?.times(swapFee);
+  const networkFeeFiat = xlmPrice?.times(totalFee);
   // A fee under a cent would read "$0.00", so it shows in XLM instead.
   const networkFeeFiatText =
     networkFeeFiat?.isFinite() && networkFeeFiat.gte(0.01)
@@ -1135,6 +1143,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           <SwapDetailsBottomSheet
             networkFee={networkFeeText}
             networkFeeFiat={networkFeeFiatText}
+            showSorobanFeeNote={!!resourceFee}
             rate={isQuoteCurrent ? stableConversionRate : ""}
             routeView={isQuoteCurrent ? swapRouteView : null}
             onClose={() => swapDetailsBottomSheetModalRef.current?.dismiss()}

@@ -337,6 +337,8 @@ export interface SwapRoute {
   toAmount: string;
   paths: SwapRoutePath[];
   fees: SwapFee[];
+  /** LI.FI only: the Soroban resource fee in XLM. /swap/tx adds the inclusion fee. */
+  resourceFee?: string;
 }
 
 export interface SwapUnavailable {

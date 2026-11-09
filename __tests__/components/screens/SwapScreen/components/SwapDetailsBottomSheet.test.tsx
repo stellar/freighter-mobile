@@ -138,6 +138,24 @@ describe("SwapDetailsBottomSheet", () => {
     expect(queryByTestId("swap-route-path-0-pools")).toBeNull();
   });
 
+  it("shows Send's Soroban fee note only when asked", () => {
+    const note = /For Soroban transactions, we run a quick simulation first/;
+    const soroban = renderWithProviders(
+      <SwapDetailsBottomSheet
+        networkFee="0.0858559 XLM"
+        rate=""
+        routeView={null}
+        showSorobanFeeNote
+        onClose={jest.fn()}
+      />,
+    );
+    expect(soroban.getByText(note)).toBeTruthy();
+    soroban.unmount();
+
+    const classic = renderSheet(null);
+    expect(classic.queryByText(note)).toBeNull();
+  });
+
   it("hides the Route row without a route", () => {
     const { getByTestId, queryByTestId } = renderSheet(null);
 

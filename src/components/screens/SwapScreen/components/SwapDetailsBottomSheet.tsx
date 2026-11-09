@@ -16,6 +16,8 @@ export interface SwapDetailsBottomSheetProps {
   /** e.g. "$0.22"; omitted when it would round to $0.00 or there's no price. */
   networkFeeFiat?: string;
   rate: string;
+  /** Send's Soroban fee note, for a route whose fee includes a resource fee. */
+  showSorobanFeeNote?: boolean;
   /** Null hides the Route row. */
   routeView: SwapRouteView | null;
   onClose: () => void;
@@ -26,6 +28,7 @@ export const SwapDetailsBottomSheet: React.FC<SwapDetailsBottomSheetProps> = ({
   networkFee,
   networkFeeFiat,
   rate,
+  showSorobanFeeNote = false,
   routeView,
   onClose,
 }) => {
@@ -112,6 +115,13 @@ export const SwapDetailsBottomSheet: React.FC<SwapDetailsBottomSheetProps> = ({
           },
         ]}
       />
+      {showSorobanFeeNote && (
+        <View className="mt-[8px]">
+          <Text sm secondary>
+            {t("feeBreakdown.descriptionSoroban")}
+          </Text>
+        </View>
+      )}
       <List
         variant="secondary"
         className="mt-[12px]"

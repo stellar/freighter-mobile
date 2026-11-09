@@ -2141,6 +2141,80 @@ describe("SwapAmountScreen", () => {
         (sheet) => sheet.customContent?.type === SwapDetailsBottomSheet,
       );
 
+    const USDC_ID =
+      "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH";
+    const FTT_ID =
+      "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH";
+    const feeRoute = (resourceFee?: string) => ({
+      source: resourceFee ? "lifi" : "classic",
+      fromAmount: "1",
+      toAmount: "2",
+      paths: [
+        {
+          share: "1",
+          hops: [{ venue: "stellar-dex", from: USDC_ID, to: FTT_ID }],
+        },
+      ],
+      fees: [],
+      ...(resourceFee ? { resourceFee } : {}),
+    });
+    const renderWithRoute = (
+      route: ReturnType<typeof feeRoute>,
+      quoteKey = "quote-key",
+    ) => {
+      setSwapStoreState({
+        pathResult: { destinationAmount: "2", quoteKey, route },
+        swapQuotes: { routes: [route], unavailable: [] },
+      } as Partial<SwapStoreState>);
+      const rendered = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      const detailsSheet = rendered
+        .UNSAFE_getAllByType(BottomSheet)
+        .find(
+          (sheet) => sheet.props.customContent?.type === SwapDetailsBottomSheet,
+        );
+      return {
+        ...rendered,
+        detailsProps: detailsSheet?.props.customContent
+          .props as SwapDetailsBottomSheetProps,
+      };
+    };
+
+    // swapFee is mocked as "100" and XLM at $0.50.
+    it("shows the inclusion fee plus a LI.FI route's resource fee", () => {
+      const { getByTestId, detailsProps } = renderWithRoute(
+        feeRoute("0.0858459"),
+      );
+
+      expect(detailsProps.networkFee).toBe("100.0858459 XLM");
+      expect(detailsProps.showSorobanFeeNote).toBe(true);
+      expect(getByTestId("swap-see-details")).toHaveTextContent(
+        /^\$50\.04 network fee/,
+      );
+    });
+
+    it("shows the inclusion fee alone on a classic route", () => {
+      const { getByTestId, detailsProps } = renderWithRoute(feeRoute());
+
+      expect(detailsProps.networkFee).toBe("100.00 XLM");
+      expect(detailsProps.showSorobanFeeNote).toBe(false);
+      expect(getByTestId("swap-see-details")).toHaveTextContent(
+        /^\$50\.00 network fee/,
+      );
+    });
+
+    it("ignores a stale quote's resource fee", () => {
+      const { queryByTestId, detailsProps } = renderWithRoute(
+        feeRoute("0.0858459"),
+        "older-key",
+      );
+
+      expect(queryByTestId("swap-see-details")).toBeNull();
+      expect(detailsProps.networkFee).toBe("100.00 XLM");
+      expect(detailsProps.showSorobanFeeNote).toBe(false);
+    });
+
     it("hides the fee line until there is a quote", () => {
       setSwapStoreState({ pathResult: null });
       const { queryByTestId } = renderWithProviders(
