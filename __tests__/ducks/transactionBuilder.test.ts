@@ -761,7 +761,15 @@ describe("transactionBuilder Duck", () => {
     });
 
     it("refuses a transaction that pays someone else", async () => {
-      (backend.buildSwapTx as jest.Mock).mockResolvedValue({
+      (backend.buildSwapTx as jest.Mock).mockResolvedValueOnce({
+        xdr: backendXdr(),
+        addsTrustline: true,
+      });
+      await act(async () => {
+        await store.getState().buildSwapTransaction(swapParams);
+      });
+      expect(store.getState().transactionXDR).not.toBeNull();
+      (backend.buildSwapTx as jest.Mock).mockResolvedValueOnce({
         xdr: backendXdr(Keypair.random().publicKey()),
         addsTrustline: true,
       });
@@ -774,6 +782,7 @@ describe("transactionBuilder Duck", () => {
 
       expect(store.getState().transactionXDR).toBeNull();
       expect(store.getState().swapReview).toBeNull();
+      expect(store.getState().error).toMatch(/does not match/);
       expect(logger.error).toHaveBeenCalled();
     });
 

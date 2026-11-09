@@ -75,13 +75,15 @@ jest.mock("@stellar/stellar-sdk", () => {
   };
 });
 
+const DEFAULT_SWAP_SETTINGS = {
+  swapFee: "100",
+  swapTimeout: "30",
+  swapSlippage: "0.5",
+};
+let mockSwapSettings = DEFAULT_SWAP_SETTINGS;
 jest.mock("ducks/swapSettings", () => ({
   useSwapSettingsStore: Object.assign(() => ({}), {
-    getState: () => ({
-      swapFee: "100",
-      swapTimeout: "30",
-      swapSlippage: "0.5",
-    }),
+    getState: () => mockSwapSettings,
   }),
 }));
 
@@ -192,6 +194,7 @@ describe("useSwapTransaction", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetBuilderState.mockReturnValue({ error: "Submit error from store" });
+    mockSwapSettings = DEFAULT_SWAP_SETTINGS;
     mockBuildSwapTransaction.mockResolvedValue({ xdr: "xdr", review: {} });
     mockPricesByNetwork = {};
     act(() => {
@@ -405,6 +408,31 @@ describe("useSwapTransaction", () => {
       });
 
       expect(mockBuildSwapTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setupSwapTransaction — minOut", () => {
+    it("rounds the minOut down, so it never exceeds LI.FI's truncated minimum", async () => {
+      mockSwapSettings = {
+        ...DEFAULT_SWAP_SETTINGS,
+        swapSlippage: 1 as unknown as string,
+      };
+      const params = {
+        ...baseParams,
+        pathResult: {
+          ...(baseParams.pathResult as object),
+          route: { ...QUOTED_ROUTE, toAmount: "1.0000001" },
+        } as never,
+      };
+      const { result } = renderHook(() => useSwapTransaction(params));
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(mockBuildSwapTransaction.mock.calls[0][0].request.minOut).toBe(
+        "0.9900000",
+      );
     });
   });
 

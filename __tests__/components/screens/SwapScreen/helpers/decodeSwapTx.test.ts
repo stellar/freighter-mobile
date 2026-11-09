@@ -6,6 +6,7 @@ import {
   Networks,
   Operation,
   TransactionBuilder,
+  nativeToScVal,
   xdr,
 } from "@stellar/stellar-sdk";
 import lifi from "__tests__/components/screens/SwapScreen/helpers/fixtures/lifiSwapTx.json";
@@ -51,6 +52,7 @@ const decode = (
   account = ACCOUNT,
   toAsset = USDC,
   fromAsset = "XLM",
+  minOut = "0",
 ) =>
   decodeSwapTx({
     transactionXdr,
@@ -58,6 +60,7 @@ const decode = (
     account,
     fromAsset,
     toAsset,
+    minOut,
   });
 
 describe("decodeSwapTx", () => {
@@ -87,6 +90,17 @@ describe("decodeSwapTx", () => {
       });
     });
 
+    it("refuses a minimum below the minOut the client asked for", () => {
+      const tx = classicTx({ ops: [pathPayment()] });
+
+      expect(() =>
+        decode(tx.toXDR(), ACCOUNT, USDC, "XLM", "17.1941799"),
+      ).toThrow(/minimum/);
+      expect(
+        decode(tx.toXDR(), ACCOUNT, USDC, "XLM", "17.1941798").minReceived,
+      ).toBe("17.1941798");
+    });
+
     it("refuses a payment to another account", () => {
       const tx = classicTx({ ops: [pathPayment({ destination: OTHER })] });
 
@@ -99,6 +113,20 @@ describe("decodeSwapTx", () => {
       expect(() => decode(tx.toXDR(), ACCOUNT, EURC)).toThrow(/path payment/);
     });
 
+    it("refuses a changeTrust that sets a limit instead of opening the default one", () => {
+      const tx = classicTx({
+        ops: [
+          Operation.changeTrust({
+            asset: new Asset("USDC", USDC_ISSUER),
+            limit: "1000",
+          }),
+          pathPayment(),
+        ],
+      });
+
+      expect(() => decode(tx.toXDR())).toThrow(/trustline/);
+    });
+
     it("refuses a changeTrust for another asset", () => {
       const [code, issuer] = EURC.split(":");
       const tx = classicTx({
@@ -109,6 +137,55 @@ describe("decodeSwapTx", () => {
       });
 
       expect(() => decode(tx.toXDR())).toThrow(/trustline/);
+    });
+
+    it.each([
+      [
+        "an extra payment",
+        () => [
+          Operation.payment({
+            destination: OTHER,
+            asset: Asset.native(),
+            amount: "1",
+          }),
+          pathPayment(),
+        ],
+      ],
+      [
+        "an extra setOptions",
+        () => [pathPayment(), Operation.setOptions({ homeDomain: "x.com" })],
+      ],
+      [
+        "more than two operations",
+        () => [
+          Operation.changeTrust({ asset: new Asset("USDC", USDC_ISSUER) }),
+          pathPayment(),
+          pathPayment(),
+        ],
+      ],
+      ["no operations", () => []],
+    ])("refuses %s", (_, ops) => {
+      const tx = new TransactionBuilder(new Account(ACCOUNT, "1"), {
+        fee: "100",
+        networkPassphrase: Networks.PUBLIC,
+      }).setTimeout(180);
+      ops().forEach((op) => tx.addOperation(op));
+
+      expect(() => decode(tx.build().toXDR())).toThrow(/does not match/);
+    });
+
+    it("refuses an operation with another source account", () => {
+      const tx = classicTx({
+        ops: [
+          Operation.changeTrust({
+            asset: new Asset("USDC", USDC_ISSUER),
+            source: OTHER,
+          }),
+          pathPayment(),
+        ],
+      });
+
+      expect(() => decode(tx.toXDR())).toThrow(/source account/);
     });
 
     it("refuses another account's transaction", () => {
@@ -130,14 +207,44 @@ describe("decodeSwapTx", () => {
     });
   });
 
+  describe("any Soroban source", () => {
+    it("decodes a swap through another contract and function from its authorization tree", () => {
+      const { xdr: txXdr, account } = lifi.xlmUsdc100k;
+      const { auth } = TransactionBuilder.fromXdr(txXdr, Networks.PUBLIC)
+        .operations[0] as Operation.InvokeHostFunction;
+      const tx = new TransactionBuilder(new Account(account, "1"), {
+        fee: "100",
+        networkPassphrase: Networks.PUBLIC,
+      })
+        .addOperation(
+          Operation.invokeContractFunction({
+            contract:
+              "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE",
+            function: "exchange",
+            args: [nativeToScVal(1), nativeToScVal(2), nativeToScVal(3)],
+            auth,
+          }),
+        )
+        .setTimeout(180)
+        .build();
+
+      expect(decode(tx.toXDR(), account, USDC, "XLM", "18191.30443")).toEqual({
+        sendAmount: "100000",
+        minReceived: undefined,
+        fee: "0.00001",
+        addsTrustline: false,
+      });
+    });
+  });
+
   describe("LI.FI swap call", () => {
-    it("reads the amount sold from the authorization tree and the minimum from the call", () => {
+    it("reads the amount sold from the authorization tree", () => {
       const { xdr: txXdr, account } = lifi.xlmUsdc100k;
 
       // 100,000 XLM: a 250 XLM LI.FI fee plus 99,750 XLM into the aggregator.
       expect(decode(txXdr, account)).toEqual({
         sendAmount: "100000",
-        minReceived: "18191.30443",
+        minReceived: undefined,
         fee: "0.0829393",
         addsTrustline: false,
       });
@@ -148,9 +255,25 @@ describe("decodeSwapTx", () => {
 
       expect(decode(txXdr, account)).toMatchObject({
         sendAmount: "10",
-        minReceived: "1.8340983",
         addsTrustline: true,
       });
+    });
+
+    it("refuses the swap call alongside another operation", () => {
+      const { xdr: txXdr, account } = lifi.xlmUsdc100k;
+      const env = xdr.TransactionEnvelope.fromXDR(txXdr, "base64");
+      if (env.type !== "envelopeTypeTx") throw new Error("fixture");
+      const [swapOp] = env.v1.tx.operations;
+      const extra = Operation.payment({
+        destination: OTHER,
+        asset: Asset.native(),
+        amount: "1",
+      });
+      Object.assign(env.v1.tx, { operations: [swapOp, extra] });
+
+      expect(() => decode(env.toXDR("base64"), account)).toThrow(
+        /does not match/,
+      );
     });
 
     it("refuses a swap for another account", () => {
@@ -183,10 +306,47 @@ describe("decodeSwapTx", () => {
       expect(() => decode(env.toXDR("base64"), account)).toThrow(/transfer/);
     });
 
-    it("refuses a swap into a different asset", () => {
+    const withFeeTransfer = (txXdr: string, stroops: bigint) => {
+      const env = xdr.TransactionEnvelope.fromXDR(txXdr, "base64");
+      const { body } =
+        env.type === "envelopeTypeTx"
+          ? env.v1.tx.operations[0]
+          : { body: null };
+      if (body?.type !== "invokeHostFunction") throw new Error("fixture");
+      const [feeTransfer] =
+        body.invokeHostFunctionOp.auth[0].rootInvocation.subInvocations;
+      if (
+        feeTransfer.function.type !== "sorobanAuthorizedFunctionTypeContractFn"
+      ) {
+        throw new Error("fixture");
+      }
+      Object.assign(feeTransfer.function.contractFn.args, {
+        2: nativeToScVal(stroops, { type: "i128" }),
+      });
+      return env.toXDR("base64");
+    };
+
+    it("refuses a negative authorized transfer, which would lower the amount shown", () => {
       const { xdr: txXdr, account } = lifi.xlmUsdc100k;
 
-      expect(() => decode(txXdr, account, EURC)).toThrow(/swap call/);
+      expect(() => decode(withFeeTransfer(txXdr, BigInt(-1)), account)).toThrow(
+        /transfer/,
+      );
+    });
+
+    it("accepts a zero fee transfer, as the backend does", () => {
+      const { xdr: txXdr, account } = lifi.xlmUsdc100k;
+
+      // 99,750 XLM into the aggregator and no fee.
+      expect(
+        decode(withFeeTransfer(txXdr, BigInt(0)), account).sendAmount,
+      ).toBe("99750");
+    });
+
+    it("refuses a trustline for an asset other than the one bought", () => {
+      const { xdr: txXdr, account } = lifi.xlmUsdcWithTrust;
+
+      expect(() => decode(txXdr, account, EURC)).toThrow(/trustline/);
     });
   });
 

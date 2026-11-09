@@ -30,8 +30,8 @@ import { useHistoryStore } from "ducks/history";
 import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import {
-  computeDestMinWithSlippage,
   SwapPathResult,
+  swapMinOut,
   toSwapWireAsset,
   useSwapStore,
 } from "ducks/swap";
@@ -196,7 +196,7 @@ export const useSwapTransaction = ({
           amount: new BigNumber(sourceAmount).toFixed(),
           // Slippage isn't in the quote key; the settings sheet can change it
           // after quoting.
-          minOut: computeDestMinWithSlippage(route.toAmount, freshSwapSlippage),
+          minOut: swapMinOut(route.toAmount, freshSwapSlippage),
           slippage: new BigNumber(freshSwapSlippage).toFixed(),
           timeout: freshSwapTimeout,
           fee: new BigNumber(freshSwapFee).toFixed(),

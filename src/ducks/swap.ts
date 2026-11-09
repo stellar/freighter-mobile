@@ -99,6 +99,17 @@ export const computeDestMinWithSlippage = (
   return new BigNumber(destinationAmount).times(new BigNumber(mult)).toFixed(7);
 };
 
+/**
+ * The minOut sent to `/swap/tx`: exact decimal arithmetic, rounded down to
+ * 7 dp. LI.FI's min_amount_out is truncated, so rounding up here can exceed
+ * it by a stroop and turn every build into a 409.
+ */
+export const swapMinOut = (toAmount: string, slippage: number): string =>
+  new BigNumber(toAmount)
+    .times(new BigNumber(100).minus(slippage))
+    .div(100)
+    .toFixed(7, BigNumber.ROUND_DOWN);
+
 export const toSwapWireAsset = (balance: PricedBalance): string => {
   const token = getTokenForPayment(balance);
   return token.isNative()
