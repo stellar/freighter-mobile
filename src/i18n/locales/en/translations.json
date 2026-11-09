@@ -723,7 +723,6 @@
       "swapTransactionMismatch": "The swap transaction didn't match your request. Please try again."
     },
     "stellarExpertDown": "Token discovery is temporarily unavailable. You can still swap between tokens you already hold.",
-    "sorobanEmptyState": "Soroban contract tokens aren't supported for swaps yet. Try searching for a Classic token instead.",
     "noResults": "No tokens match {{term}}",
     "yourTokenSection": "Your token",
     "yourTokensSection": "Your tokens",

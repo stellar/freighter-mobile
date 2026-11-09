@@ -312,7 +312,6 @@ type SwapTokenLookupReturn = {
   popularTokens: TrendingFixture[];
   trendingTokens: TrendingFixture[];
   searchResults: TrendingFixture[];
-  hadSorobanMatches: boolean;
   stellarExpertDown: boolean;
   status: string;
   isTrendingLoading: boolean;
@@ -326,7 +325,6 @@ const mockUseSwapTokenLookup = jest.fn<SwapTokenLookupReturn, []>(() => ({
   popularTokens: [],
   trendingTokens: [],
   searchResults: [],
-  hadSorobanMatches: false,
   stellarExpertDown: false,
   status: "idle",
   isTrendingLoading: false,
@@ -1382,7 +1380,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: trendingFixture,
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: false,
@@ -1500,7 +1497,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: trendingFixture,
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: true,
         status: "error",
         isTrendingLoading: false,
@@ -1520,7 +1516,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: [],
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: false,
@@ -1543,7 +1538,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: trendingFixture,
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: false,
@@ -1576,7 +1570,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: [],
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: true,
@@ -2060,7 +2053,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: trendingFixture,
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: false,

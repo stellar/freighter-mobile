@@ -45,13 +45,34 @@ describe("computeTrendingIntersection", () => {
     expect(codes).toEqual(["AQUA", "USDC"]);
   });
 
-  it("drops Soroban contract records", () => {
-    const top = buildTopTokensResp([`USDC-${USDC_ISSUER}-1`, SOROBAN_CONTRACT]);
-    const verified = buildVerified([["USDC", USDC_ISSUER]]);
+  it("keeps a verified Soroban contract record, keyed by its contract ID", () => {
+    const top = {
+      _embedded: {
+        records: [
+          { asset: SOROBAN_CONTRACT, domain: "", code: "TKN", decimals: 18 },
+          { asset: `USDC-${USDC_ISSUER}-1`, domain: "" },
+        ],
+      },
+    } as unknown as SearchTokenResponse;
+    const verified = [
+      { contract: SOROBAN_CONTRACT, name: "", code: "TKN", domain: "" },
+    ] as TokenListReponseItem[];
 
-    const result = computeTrendingIntersection(top, verified, noTrustline);
-    expect(result).toHaveLength(1);
-    expect(result[0].tokenCode).toBe("USDC");
+    const result = computeTrendingIntersection(
+      top,
+      verified,
+      (code, issuer) => code === "TKN" && issuer === SOROBAN_CONTRACT,
+    );
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        tokenCode: "TKN",
+        issuer: SOROBAN_CONTRACT,
+        tokenType: "custom_token",
+        decimals: 18,
+        hasTrustline: true,
+      }),
+    ]);
   });
 
   it("dedupes by canonical CODE:ISSUER", () => {

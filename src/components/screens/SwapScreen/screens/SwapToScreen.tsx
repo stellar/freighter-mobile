@@ -84,7 +84,6 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     heldSearchMatches,
     verifiedSearchMatches,
     unverifiedSearchMatches,
-    hadSorobanMatches,
     stellarExpertDown,
     status,
     searchTerm,
@@ -115,16 +114,13 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     selectionType,
   });
 
-  const { isSearching, showSorobanEmpty, showNoResults } = useSwapToEmptyStates(
-    {
-      searchTerm,
-      status,
-      heldSearchMatches,
-      verifiedSearchMatches,
-      unverifiedSearchMatches,
-      hadSorobanMatches,
-    },
-  );
+  const { isSearching, showNoResults } = useSwapToEmptyStates({
+    searchTerm,
+    status,
+    heldSearchMatches,
+    verifiedSearchMatches,
+    unverifiedSearchMatches,
+  });
 
   // Dismiss the picker, then apply the store writes after the slide
   // completes. Doing the writes synchronously re-renders the revealed amount
@@ -264,14 +260,6 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         </View>
       )}
 
-      {showSorobanEmpty && (
-        <View className="bg-background-tertiary rounded-[12px] px-8 py-6 items-center mt-4">
-          <Text sm secondary medium textAlign="center">
-            {t("swapScreen.sorobanEmptyState")}
-          </Text>
-        </View>
-      )}
-
       {showNoResults && (
         <View className="py-8">
           <Text sm secondary>
@@ -280,7 +268,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         </View>
       )}
 
-      {!isSearching && !showSorobanEmpty && !showNoResults && (
+      {!isSearching && !showNoResults && (
         <SectionList
           sections={sections}
           keyExtractor={getItemKey}

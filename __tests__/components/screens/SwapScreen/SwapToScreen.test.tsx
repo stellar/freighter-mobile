@@ -102,7 +102,6 @@ const defaultLookupResult = {
   heldSearchMatches: [],
   verifiedSearchMatches: [],
   unverifiedSearchMatches: [],
-  hadSorobanMatches: false,
   stellarExpertDown: false,
   status: HookStatus.SUCCESS,
   isTrendingLoading: false,
@@ -268,22 +267,20 @@ describe("SwapToScreen", () => {
     expect(queryByText("Unverified")).toBeNull();
   });
 
-  it("renders the Soroban empty-state when hadSorobanMatches=true and all search buckets are empty", () => {
+  it("shows no match, not a Soroban notice, for a contract ID nothing resolves", () => {
+    const contractId =
+      "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL";
     (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
       ...defaultLookupResult,
-      yourTokens: [],
-      popularTokens: [],
-      hadSorobanMatches: true,
-      searchTerm: "soroswap",
+      searchTerm: contractId,
     });
 
-    const { getByText } = renderWithProviders(
-      <SwapToScreen {...mockNavProps} />,
+    const { getByText, queryByText } = renderWithProviders(
+      <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
     );
 
-    expect(
-      getByText(/Soroban contract tokens aren't supported for swaps yet/),
-    ).toBeTruthy();
+    expect(getByText(new RegExp(`No tokens match ${contractId}`))).toBeTruthy();
+    expect(queryByText(/Soroban contract tokens aren't supported/)).toBeNull();
   });
 
   it("renders the stellar.expert-down notice when stellarExpertDown=true", () => {
@@ -336,12 +333,11 @@ describe("SwapToScreen", () => {
     expect(queryByText("Popular tokens")).toBeNull();
   });
 
-  it("renders the 'No tokens match' message for a search with zero classic results and no Soroban matches", () => {
+  it("renders the 'No tokens match' message for a search with no results", () => {
     (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
       ...defaultLookupResult,
       yourTokens: [],
       popularTokens: [],
-      hadSorobanMatches: false,
       searchTerm: "zloto",
     });
 
@@ -357,7 +353,6 @@ describe("SwapToScreen", () => {
       ...defaultLookupResult,
       yourTokens: [],
       popularTokens: [],
-      hadSorobanMatches: false,
       status: HookStatus.LOADING,
       searchTerm: "usd",
     });
@@ -368,8 +363,6 @@ describe("SwapToScreen", () => {
 
     // Spinner must be visible
     expect(getByTestId("search-loading-spinner")).toBeTruthy();
-    // Neither the Soroban message nor the no-results message should appear
-    expect(queryByText(/Soroban contract tokens aren't supported/)).toBeNull();
     expect(queryByText(/No tokens match/i)).toBeNull();
     // The Results section header must not appear while still loading
     expect(queryByText("Results")).toBeNull();
