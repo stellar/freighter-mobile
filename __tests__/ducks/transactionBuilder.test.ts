@@ -762,15 +762,20 @@ describe("transactionBuilder Duck", () => {
               new stellarXdr.SorobanAuthorizationEntry({
                 credentials:
                   stellarXdr.SorobanCredentials.sorobanCredentialsSourceAccount(),
-                rootInvocation: call(swapContract, "swap", [], [
-                  call(token, "transfer", [
-                    new Address(SWAP_ACCOUNT).toScVal(),
-                    new Address(swapContract).toScVal(),
-                    nativeToScVal(BigInt("1500000000000000000"), {
-                      type: "i128",
-                    }),
-                  ]),
-                ]),
+                rootInvocation: call(
+                  swapContract,
+                  "swap",
+                  [],
+                  [
+                    call(token, "transfer", [
+                      new Address(SWAP_ACCOUNT).toScVal(),
+                      new Address(swapContract).toScVal(),
+                      nativeToScVal(BigInt("1500000000000000000"), {
+                        type: "i128",
+                      }),
+                    ]),
+                  ],
+                ),
               }),
             ],
           }),
