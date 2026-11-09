@@ -6,7 +6,7 @@ import {
   SENSITIVE_STORAGE_KEYS,
 } from "config/constants";
 import { HashKey } from "config/types";
-import { getHashKey, getWipeGeneration } from "services/storage/helpers";
+import { getHashKey, getHashKeyGeneration } from "services/storage/helpers";
 import { secureDataStorage } from "services/storage/storageFactory";
 
 /**
@@ -145,11 +145,16 @@ const resetHashKeyRefreshAttemptThrottle = (): void => {
  *   on every 5s auth tick.
  *
  * Takes the caller-validated HashKey snapshot to run the guards and throttle
- * (every caller has just loaded it for the expiry checks), then re-reads the
- * stored key and the temporary store once at write time for the TOCTOU check
- * below — the re-anchor requires the exact validated key and a live session.
+ * (every caller has just loaded it for the expiry checks) and the hash-key
+ * generation the caller captured BEFORE that load, then re-reads the stored
+ * key and the temporary store once at write time for the TOCTOU check below —
+ * the re-anchor requires the exact validated key, a live session, and no
+ * wipe or credential-verified write having begun since the caller's load.
  */
-const refreshHashKeyExpiration = async (hashKey: HashKey): Promise<void> => {
+const refreshHashKeyExpiration = async (
+  hashKey: HashKey,
+  hashKeyGenerationAtLoad: number,
+): Promise<void> => {
   if (isHashKeyExpired(hashKey)) {
     return;
   }
@@ -185,10 +190,7 @@ const refreshHashKeyExpiration = async (hashKey: HashKey): Promise<void> => {
   // re-stamp, and never push out the deadline of an orphan key (no temp
   // store), which must hard-expire and get cleaned up instead. Checking the
   // store here rather than only at the call site keeps the orphan invariant
-  // with the helper for any future caller. The wipe-generation check below
-  // covers the read-to-write gap itself, so within the JS thread no
-  // interleaving with clearTemporaryData can resurrect wiped material.
-  const wipeGenerationAtRead = getWipeGeneration();
+  // with the helper for any future caller.
   const [currentHashKey, temporaryStore] = await Promise.all([
     getHashKey(),
     secureDataStorage.getItem(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
@@ -205,13 +207,19 @@ const refreshHashKeyExpiration = async (hashKey: HashKey): Promise<void> => {
   }
 
   // The re-read above only proves the key survived up to the point those
-  // reads resolved — a clearTemporaryData wipe starting while they were in
-  // flight could still have its removes land after the write below. The
-  // wipe bumps its generation synchronously at entry, so this check (no
-  // await between it and the write) refuses that interleaving: a wipe that
-  // instead starts after the write is dispatched has its removes land last
-  // and wins. Either ordering ends with no resurrected key.
-  if (getWipeGeneration() !== wipeGenerationAtRead) {
+  // reads resolved. A clearTemporaryData wipe or a credential-verified
+  // setHashKey that began anywhere after the caller loaded the key — even
+  // before this helper was entered — can still have its removes/write land
+  // after the write below, and a stale re-read would not show it. Both bump
+  // the generation synchronously at entry, so comparing against the value the
+  // caller captured before its load (no await between here and the write)
+  // refuses every such interleaving. A mutation that starts after the write
+  // is dispatched is outside this check and relies on native ordering: the
+  // iOS keychain bridge is a serial queue, but Android runs set in a mutex'd
+  // coroutine and reset synchronously, so a remove can land before a write
+  // dispatched earlier. That residual is accepted and shared with signIn's
+  // fast-path read-modify-write.
+  if (getHashKeyGeneration() !== hashKeyGenerationAtLoad) {
     return;
   }
 

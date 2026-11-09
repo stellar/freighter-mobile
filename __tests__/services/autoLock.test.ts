@@ -16,7 +16,7 @@ import {
   refreshHashKeyExpiration,
   resetHashKeyRefreshAttemptThrottle,
 } from "services/autoLock";
-import { getHashKey, getWipeGeneration } from "services/storage/helpers";
+import { getHashKey, getHashKeyGeneration } from "services/storage/helpers";
 import { secureDataStorage } from "services/storage/storageFactory";
 
 jest.mock("services/storage/storageFactory", () => ({
@@ -34,7 +34,7 @@ jest.mock("services/storage/storageFactory", () => ({
 
 jest.mock("services/storage/helpers", () => ({
   getHashKey: jest.fn(),
-  getWipeGeneration: jest.fn(() => 0),
+  getHashKeyGeneration: jest.fn(() => 0),
 }));
 
 describe("autoLock service", () => {
@@ -202,6 +202,10 @@ describe("autoLock service", () => {
       expiresAt: Date.now() + 3_600_000,
     };
 
+    // What getAuthStatus captured before loading the key; the mocked
+    // getHashKeyGeneration also returns 0, so storage reads as unmoved.
+    const GENERATION_AT_LOAD = 0;
+
     beforeEach(() => {
       // The write-time re-read also requires a session to still exist (a
       // present temporary store); arm it for the write-expecting tests —
@@ -217,7 +221,7 @@ describe("autoLock service", () => {
       (getHashKey as jest.Mock).mockResolvedValue(staleValidKey);
       (secureDataStorage.getItem as jest.Mock).mockResolvedValue(null);
 
-      await refreshHashKeyExpiration(staleValidKey);
+      await refreshHashKeyExpiration(staleValidKey, GENERATION_AT_LOAD);
 
       expect(secureDataStorage.getItem).toHaveBeenCalledWith(
         SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
@@ -231,7 +235,7 @@ describe("autoLock service", () => {
       (getHashKey as jest.Mock).mockResolvedValue(staleValidKey);
 
       const before = Date.now();
-      await refreshHashKeyExpiration(staleValidKey);
+      await refreshHashKeyExpiration(staleValidKey, GENERATION_AT_LOAD);
 
       expect(secureDataStorage.setItem).toHaveBeenCalledTimes(1);
       const [key, value] = (secureDataStorage.setItem as jest.Mock).mock
@@ -249,29 +253,38 @@ describe("autoLock service", () => {
     });
 
     it("skips the write while generatedAt is within the throttle window", async () => {
-      await refreshHashKeyExpiration({
-        ...staleValidKey,
-        generatedAt: Date.now() - 60_000, // freshly anchored
-      });
+      await refreshHashKeyExpiration(
+        {
+          ...staleValidKey,
+          generatedAt: Date.now() - 60_000, // freshly anchored
+        },
+        GENERATION_AT_LOAD,
+      );
 
       expect(secureDataStorage.setItem).not.toHaveBeenCalled();
     });
 
     it("never resurrects an expired key", async () => {
-      await refreshHashKeyExpiration({
-        ...staleValidKey,
-        expiresAt: Date.now() - 1000,
-      });
+      await refreshHashKeyExpiration(
+        {
+          ...staleValidKey,
+          expiresAt: Date.now() - 1000,
+        },
+        GENERATION_AT_LOAD,
+      );
 
       expect(secureDataStorage.setItem).not.toHaveBeenCalled();
     });
 
     it("never refreshes a rolled-back-clock key (future generatedAt)", async () => {
-      await refreshHashKeyExpiration({
-        ...staleValidKey,
-        generatedAt: Date.now() + 60_000,
-        expiresAt: Date.now() + 3_600_000,
-      });
+      await refreshHashKeyExpiration(
+        {
+          ...staleValidKey,
+          generatedAt: Date.now() + 60_000,
+          expiresAt: Date.now() + 3_600_000,
+        },
+        GENERATION_AT_LOAD,
+      );
 
       expect(secureDataStorage.setItem).not.toHaveBeenCalled();
     });
@@ -284,7 +297,7 @@ describe("autoLock service", () => {
       // store, the `!hashKey && !temporaryStore` guard would never fire.
       (getHashKey as jest.Mock).mockResolvedValue(null);
 
-      await refreshHashKeyExpiration(staleValidKey);
+      await refreshHashKeyExpiration(staleValidKey, GENERATION_AT_LOAD);
 
       expect(secureDataStorage.setItem).not.toHaveBeenCalled();
     });
@@ -298,7 +311,7 @@ describe("autoLock service", () => {
         expiresAt: Date.now() + HASH_KEY_EXPIRATION_MS,
       });
 
-      await refreshHashKeyExpiration(staleValidKey);
+      await refreshHashKeyExpiration(staleValidKey, GENERATION_AT_LOAD);
 
       expect(secureDataStorage.setItem).not.toHaveBeenCalled();
     });
@@ -306,7 +319,7 @@ describe("autoLock service", () => {
     it("writes exactly once when the stored key is identical to the snapshot", async () => {
       (getHashKey as jest.Mock).mockResolvedValue({ ...staleValidKey });
 
-      await refreshHashKeyExpiration(staleValidKey);
+      await refreshHashKeyExpiration(staleValidKey, GENERATION_AT_LOAD);
 
       expect(secureDataStorage.setItem).toHaveBeenCalledTimes(1);
       expect(secureDataStorage.setItem).toHaveBeenCalledWith(
@@ -321,17 +334,17 @@ describe("autoLock service", () => {
       // 5s auth tick. The attempt throttle bounds that to one try per window.
       (getHashKey as jest.Mock).mockResolvedValue(staleValidKey);
 
-      await refreshHashKeyExpiration(staleValidKey);
+      await refreshHashKeyExpiration(staleValidKey, GENERATION_AT_LOAD);
       expect(secureDataStorage.setItem).toHaveBeenCalledTimes(1);
 
       // Same stale snapshot (as if the write had failed and generatedAt never
       // moved): the attempt throttle suppresses the retry.
-      await refreshHashKeyExpiration(staleValidKey);
+      await refreshHashKeyExpiration(staleValidKey, GENERATION_AT_LOAD);
       expect(secureDataStorage.setItem).toHaveBeenCalledTimes(1);
 
       // Once the attempt window elapses, the retry is allowed again.
       resetHashKeyRefreshAttemptThrottle();
-      await refreshHashKeyExpiration(staleValidKey);
+      await refreshHashKeyExpiration(staleValidKey, GENERATION_AT_LOAD);
       expect(secureDataStorage.setItem).toHaveBeenCalledTimes(2);
     });
 
@@ -354,7 +367,7 @@ describe("autoLock service", () => {
           expiresAt: T0 + 3_600_000,
         };
         (getHashKey as jest.Mock).mockResolvedValue(preRollbackKey);
-        await refreshHashKeyExpiration(preRollbackKey);
+        await refreshHashKeyExpiration(preRollbackKey, GENERATION_AT_LOAD);
         // Attempt marker is now stamped at T0.
         expect(secureDataStorage.setItem).toHaveBeenCalledTimes(1);
 
@@ -372,25 +385,30 @@ describe("autoLock service", () => {
         };
         (getHashKey as jest.Mock).mockResolvedValue(reAuthedKey);
 
-        await refreshHashKeyExpiration(reAuthedKey);
+        await refreshHashKeyExpiration(reAuthedKey, GENERATION_AT_LOAD);
         expect(secureDataStorage.setItem).toHaveBeenCalledTimes(2);
       } finally {
         dateSpy.mockRestore();
       }
     });
 
-    it("refuses the write when a wipe starts between the re-read and the write", async () => {
-      // Storage still holds a matching key and a live temp store, but a
-      // clearTemporaryData wipe BEGAN while the re-read was in flight (its
-      // removes may land after our write would). The generation check —
-      // captured before the re-read, compared synchronously before the
-      // write — must refuse rather than race the wipe.
+    it("refuses the write when the key was mutated after the caller loaded it", async () => {
+      // Storage still reads back the exact validated key and a live temp
+      // store — but the hash-key generation moved since the caller captured
+      // it before its load. That covers a clearTemporaryData wipe or a
+      // credential-verified setHashKey that began anywhere between the
+      // caller's load and this write, including before this helper was even
+      // entered (its removes/write may still be in flight behind the stale
+      // re-read). Compared synchronously before the write, so the mutation's
+      // result is what ends up on disk.
       (getHashKey as jest.Mock).mockResolvedValue(staleValidKey);
-      (getWipeGeneration as jest.Mock)
-        .mockReturnValueOnce(0)
-        .mockReturnValue(1);
+      // Once: `beforeEach` only clears calls, so a sticky value would leak
+      // the refusal into the following tests.
+      (getHashKeyGeneration as jest.Mock).mockReturnValueOnce(
+        GENERATION_AT_LOAD + 1,
+      );
 
-      await refreshHashKeyExpiration(staleValidKey);
+      await refreshHashKeyExpiration(staleValidKey, GENERATION_AT_LOAD);
 
       expect(secureDataStorage.setItem).not.toHaveBeenCalled();
     });
@@ -399,7 +417,7 @@ describe("autoLock service", () => {
       const { generatedAt, ...legacyKey } = staleValidKey;
       (getHashKey as jest.Mock).mockResolvedValue(legacyKey);
 
-      await refreshHashKeyExpiration(legacyKey);
+      await refreshHashKeyExpiration(legacyKey, GENERATION_AT_LOAD);
 
       expect(secureDataStorage.setItem).toHaveBeenCalledTimes(1);
       const [, value] = (secureDataStorage.setItem as jest.Mock).mock

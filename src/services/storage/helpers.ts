@@ -5,21 +5,38 @@ import {
   secureDataStorage,
 } from "services/storage/storageFactory";
 
-// Monotonic counter bumped at the START of every clearTemporaryData wipe.
-// Lets an in-flight opportunistic writer (the hash-key re-anchor in
-// services/autoLock) detect that a wipe began after it validated storage and
-// refuse its write, instead of racing the wipe's removes and re-creating
-// just-wiped key material. JS is single-threaded, so a bump is visible to any
-// check that runs after the wipe starts; a write dispatched before the bump
-// has its removes land after it, so either ordering ends with the key absent.
-let wipeGeneration = 0;
+// Monotonic counter bumped synchronously at the START of every mutation of
+// the stored hash key that the opportunistic re-anchor (services/autoLock)
+// must yield to: a clearTemporaryData wipe or a credential-verified write via
+// setHashKey. Lets a re-anchor in flight detect that storage moved after its
+// caller loaded the key and refuse its write, instead of racing the mutation
+// and re-creating just-wiped material or writing the old key back under a
+// temporary store already re-encrypted with a new one. JS is single-threaded,
+// so a bump is visible to any check that runs after the mutation starts. A
+// re-anchor write dispatched before the bump is outside this check and relies
+// on native keychain ordering (serial on iOS, not guaranteed on Android).
+let hashKeyGeneration = 0;
 
 /**
- * Current wipe generation — see wipeGeneration above. Capture before an
- * optimistic read-validate-write sequence and compare (synchronously, with no
- * await in between) right before the write.
+ * Current hash-key generation — see hashKeyGeneration above. Capture BEFORE
+ * loading the key for an optimistic read-validate-write sequence and compare
+ * (synchronously, with no await in between) right before the write.
  */
-const getWipeGeneration = (): number => wipeGeneration;
+const getHashKeyGeneration = (): number => hashKeyGeneration;
+
+/**
+ * Persists a credential-verified hash key (sign-in, sign-up, import). Every
+ * such write must come through here so the generation bump above happens
+ * before the write is dispatched; the re-anchor is the only writer that may
+ * bypass it, because it is the one checking the generation.
+ */
+const setHashKey = async (hashKey: HashKey): Promise<void> => {
+  hashKeyGeneration += 1;
+  await secureDataStorage.setItem(
+    SENSITIVE_STORAGE_KEYS.HASH_KEY,
+    JSON.stringify(hashKey),
+  );
+};
 
 /**
  * Clears the hash key, temporary store, and derived key cache from secure storage.
@@ -31,7 +48,7 @@ const getWipeGeneration = (): number => wipeGeneration;
  * the logout-wipe path alongside clearAllWebViewData.
  */
 const clearTemporaryData = async (): Promise<void> => {
-  wipeGeneration += 1;
+  hashKeyGeneration += 1;
   await Promise.all([
     secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY),
     secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
@@ -74,5 +91,6 @@ export {
   clearTemporaryData,
   clearNonSensitiveData,
   getHashKey,
-  getWipeGeneration,
+  getHashKeyGeneration,
+  setHashKey,
 };

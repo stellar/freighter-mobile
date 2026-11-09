@@ -73,6 +73,8 @@ import {
   clearNonSensitiveData,
   clearTemporaryData,
   getHashKey,
+  getHashKeyGeneration,
+  setHashKey,
 } from "services/storage/helpers";
 import {
   biometricDataStorage,
@@ -506,6 +508,9 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     // Check if any accounts exist at all
     const hasAccount = (await getAllAccounts()).length > 0;
 
+    // Captured before the load so the re-anchor below can tell whether a
+    // wipe or credential-verified re-key began at any point after it.
+    const hashKeyGenerationAtLoad = getHashKeyGeneration();
     const [hashKey, temporaryStore] = await Promise.all([
       getHashKey(),
       secureDataStorage.getItem(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
@@ -631,7 +636,7 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     // its deadline pushed out forever by each tick.
     if (hashKey && temporaryStore && AppState.currentState === "active") {
       try {
-        await refreshHashKeyExpiration(hashKey);
+        await refreshHashKeyExpiration(hashKey, hashKeyGenerationAtLoad);
       } catch (error) {
         // The re-anchor is opportunistic: a failed keychain write must not
         // demote an authenticated session (the outer catch returns
@@ -1036,10 +1041,7 @@ const createTemporaryStore = async (input: {
     if (shouldRefreshHashKey) {
       hashKeyObj = await generateHashKey(password);
       // Persist the new hash key for future decryptions
-      await secureDataStorage.setItem(
-        SENSITIVE_STORAGE_KEYS.HASH_KEY,
-        JSON.stringify(hashKeyObj),
-      );
+      await setHashKey(hashKeyObj);
     } else {
       const retrievedHashKey = await getHashKey();
 
@@ -1604,14 +1606,11 @@ const signIn = async ({
       // this call): it falls through to the full rebuild below, which mints a
       // fresh key instead of re-stamping stale material.
       const refreshNow = Date.now();
-      await secureDataStorage.setItem(
-        SENSITIVE_STORAGE_KEYS.HASH_KEY,
-        JSON.stringify({
-          ...existingHashKey,
-          expiresAt: refreshNow + HASH_KEY_EXPIRATION_MS,
-          generatedAt: refreshNow,
-        }),
-      );
+      await setHashKey({
+        ...existingHashKey,
+        expiresAt: refreshNow + HASH_KEY_EXPIRATION_MS,
+        generatedAt: refreshNow,
+      });
     } else {
       // Hash key or temp store missing — rebuild session.
       await createTemporaryStore({

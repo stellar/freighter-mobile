@@ -47,7 +47,8 @@ import {
   clearNonSensitiveData,
   clearTemporaryData,
   getHashKey,
-  getWipeGeneration,
+  getHashKeyGeneration,
+  setHashKey,
 } from "services/storage/helpers";
 // Import mocked modules
 import { rnBiometrics } from "services/storage/secureStorage";
@@ -143,12 +144,24 @@ jest.mock("services/stellar", () => ({
   getAccount: jest.fn(),
 }));
 
-jest.mock("services/storage/helpers", () => ({
-  clearNonSensitiveData: jest.fn(),
-  clearTemporaryData: jest.fn(),
-  getHashKey: jest.fn(),
-  getWipeGeneration: jest.fn(() => 0),
-}));
+jest.mock("services/storage/helpers", () => {
+  const { secureDataStorage: mockedSecureStorage } = jest.requireMock<
+    typeof import("services/storage/storageFactory")
+  >("services/storage/storageFactory");
+  const { SENSITIVE_STORAGE_KEYS: keys } =
+    jest.requireActual<typeof import("config/constants")>("config/constants");
+  return {
+    clearNonSensitiveData: jest.fn(),
+    clearTemporaryData: jest.fn(),
+    getHashKey: jest.fn(),
+    getHashKeyGeneration: jest.fn(() => 0),
+    // Delegates to the mocked secure storage so assertions on HASH_KEY
+    // writes see credential-verified writes and re-anchors alike.
+    setHashKey: jest.fn((hashKey: unknown) =>
+      mockedSecureStorage.setItem(keys.HASH_KEY, JSON.stringify(hashKey)),
+    ),
+  };
+});
 
 jest.mock("config/logger", () => ({
   logger: {
@@ -1951,7 +1964,7 @@ describe("auth duck", () => {
 
           (getHashKey as jest.Mock).mockResolvedValue(hashKey);
 
-          (secureDataStorage.remove as jest.Mock).mockRejectedValue(
+          (secureDataStorage.remove as jest.Mock).mockRejectedValueOnce(
             new Error("keychain unavailable"),
           );
 
@@ -2073,7 +2086,7 @@ describe("auth duck", () => {
           autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
         });
 
-        (secureDataStorage.setItem as jest.Mock).mockRejectedValue(
+        (secureDataStorage.setItem as jest.Mock).mockRejectedValueOnce(
           new Error("Failed to store item in keychain"),
         );
 
@@ -2114,6 +2127,10 @@ describe("auth duck", () => {
           expect(status).toBe(AUTH_STATUS.AUTHENTICATED);
         });
 
+        // The write must have SUCCEEDED, not been swallowed by the
+        // re-anchor's catch — the call list below alone can't tell the two
+        // apart.
+        expect(logger.error).not.toHaveBeenCalled();
         // Timestamp is consumed...
         expect(secureDataStorage.remove).toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
@@ -2330,7 +2347,7 @@ describe("auth duck", () => {
         );
       });
 
-      it("should not re-anchor when a wipe begins during the write-time re-read", async () => {
+      it("should not re-anchor when a wipe or credential-verified re-key begins during the check", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 
@@ -2340,24 +2357,29 @@ describe("auth duck", () => {
           backgroundedAt: null,
           autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
         });
-        // Key and temp store both read back healthy — but a
-        // clearTemporaryData wipe started while the re-read was in flight
-        // (generation moved), so its removes may land after the re-anchor's
-        // write. The generation check must refuse the write.
+        // Key and temp store both read back healthy — but the hash-key
+        // generation moved between getAuthStatus loading the key and the
+        // re-anchor's write (a clearTemporaryData wipe or a signIn rebuild
+        // began meanwhile, with its removes/write possibly still in flight).
+        // The generation check must refuse the write.
         (getHashKey as jest.Mock).mockResolvedValue({
           hashKey: "mock-hash-key",
           salt: "mock-salt",
           generatedAt: Date.now() - (HASH_KEY_REFRESH_THROTTLE_MS + 60000),
           expiresAt: Date.now() + ONE_HOUR_MS,
         });
-        (getWipeGeneration as jest.Mock)
+        (getHashKeyGeneration as jest.Mock)
           .mockReturnValueOnce(0)
-          .mockReturnValue(1);
+          .mockReturnValueOnce(1);
 
         await act(async () => {
           await result.current.getAuthStatus();
         });
 
+        // Both reads consumed: the capture before the load and the helper's
+        // write-time check. An earlier early-return would leave the queued 1
+        // for the next test's capture and pass this one vacuously.
+        expect(getHashKeyGeneration).toHaveBeenCalledTimes(2);
         expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
           expect.any(String),
@@ -2560,6 +2582,14 @@ describe("auth duck", () => {
     });
 
     describe("softLock", () => {
+      afterEach(() => {
+        // jest.clearAllMocks keeps implementations; drop the sticky
+
+        // keychain-outage rejection installed by the test below.
+
+        (secureDataStorage.setItem as jest.Mock).mockReset();
+      });
+
       it("should set LOCKED with isSoftLocked and persist the status without touching navigation", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
 
@@ -2689,6 +2719,9 @@ describe("auth duck", () => {
           salt: "mock-salt",
           expiresAt: Date.now() + 3600000,
         });
+        // Sticky on purpose: getAuthStatus's own swallowed LOCKED write,
+        // then softLock's attempt and retry, must all fail. The describe's
+        // afterEach resets it so the outage can't leak into later tests.
         (secureDataStorage.setItem as jest.Mock).mockRejectedValue(
           new Error("Failed to store item in keychain"),
         );
@@ -2840,7 +2873,16 @@ describe("auth duck", () => {
           SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
         );
 
-        // Verify TTL was refreshed on the existing hash key (no re-encryption)
+        // Verify TTL was refreshed on the existing hash key (no re-encryption),
+        // through the generation-bumping writer so an in-flight re-anchor yields.
+        expect(setHashKey).toHaveBeenCalledWith(
+          expect.objectContaining({
+            hashKey: "old-mock-hash-key",
+            salt: "old-mock-salt",
+            expiresAt: expect.any(Number),
+            generatedAt: expect.any(Number),
+          }),
+        );
         expect(secureDataStorage.setItem).toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
           expect.stringContaining('"expiresAt":'),
@@ -2972,6 +3014,11 @@ describe("auth duck", () => {
           hashKeyWrites.forEach(([, value]) => {
             expect(value).not.toContain("stale-mock-hash-key");
           });
+          // The fresh key went through the generation-bumping writer, so a
+          // re-anchor in flight during the rebuild yields to it.
+          expect(setHashKey).toHaveBeenCalledWith(
+            expect.not.objectContaining({ hashKey: "stale-mock-hash-key" }),
+          );
         },
       );
     });
