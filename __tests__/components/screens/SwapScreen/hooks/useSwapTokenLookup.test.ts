@@ -886,7 +886,7 @@ describe("useSwapTokenLookup — active search", () => {
 
   it("keeps the search-unavailable notice when a contract lookup fails", async () => {
     (stellarExpert.searchToken as jest.Mock).mockResolvedValue(null);
-    mockHandleContractLookup.mockResolvedValue(null);
+    mockHandleContractLookup.mockRejectedValue(new Error("timeout"));
 
     const { result } = renderHook(() =>
       useSwapTokenLookup({
@@ -996,6 +996,38 @@ describe("useSwapTokenLookup — active search", () => {
     );
     expect(result.current.stellarExpertDown).toBe(true);
     expect(result.current.status).toBe("success");
+  });
+
+  it("clears the unavailable notice when a later contract lookup answers, even with no token", async () => {
+    mockHandleContractLookup.mockRejectedValueOnce(new Error("timeout"));
+    mockHandleContractLookup.mockResolvedValueOnce(null);
+    const OTHER_CONTRACT =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({
+        network: NETWORKS.PUBLIC,
+        balanceItems: [],
+        publicKey: ACCOUNT,
+      }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+    act(() => {
+      result.current.handleSearch(SOROBAN_CONTRACT);
+    });
+    await settleDebounce();
+    expect(result.current.stellarExpertDown).toBe(true);
+
+    act(() => {
+      result.current.handleSearch(OTHER_CONTRACT);
+    });
+    await settleDebounce();
+
+    expect(result.current.stellarExpertDown).toBe(false);
+    expect(result.current.verifiedSearchMatches).toEqual([]);
+    expect(result.current.unverifiedSearchMatches).toEqual([]);
   });
 
   it("matches a held Soroban token by name, with its decimals", async () => {

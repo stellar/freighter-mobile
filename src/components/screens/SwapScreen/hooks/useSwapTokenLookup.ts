@@ -519,7 +519,7 @@ export const useSwapTokenLookup = ({
           return null;
         });
         if (signal.aborted || latestRequestRef.current !== requestId) return;
-        if (lookupFailed) setStellarExpertDown(true);
+        setStellarExpertDown(lookupFailed);
         formatted = found
           ? [
               {
