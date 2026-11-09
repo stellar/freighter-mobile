@@ -346,62 +346,6 @@ describe("tokenIcons store", () => {
     });
   });
 
-  describe("cacheIconIfMissing", () => {
-    const token: NonNativeToken = {
-      code: "TKN",
-      issuer: {
-        key: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
-      },
-      type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
-    };
-    const key = `TKN:${token.issuer.key}`;
-
-    it("keeps an icon already cached, such as one from the asset lists", () => {
-      useTokenIconsStore.setState({
-        icons: { [key]: { imageUrl: "list.png", network: NETWORKS.PUBLIC } },
-      });
-
-      useTokenIconsStore.getState().cacheIconIfMissing({
-        token,
-        network: NETWORKS.PUBLIC,
-        imageUrl: "toml.png",
-      });
-
-      expect(useTokenIconsStore.getState().icons[key].imageUrl).toBe(
-        "list.png",
-      );
-      expect(mockGetIconUrl).not.toHaveBeenCalled();
-    });
-
-    it("caches the issuer's stellar.toml image it was given", () => {
-      useTokenIconsStore.getState().cacheIconIfMissing({
-        token,
-        network: NETWORKS.PUBLIC,
-        imageUrl: "toml.png",
-      });
-
-      expect(useTokenIconsStore.getState().icons[key].imageUrl).toBe(
-        "toml.png",
-      );
-      expect(mockGetIconUrl).not.toHaveBeenCalled();
-    });
-
-    it("looks the icon up when it was given none", async () => {
-      mockGetIconUrl.mockResolvedValue("looked-up.png");
-
-      useTokenIconsStore.getState().cacheIconIfMissing({
-        token,
-        network: NETWORKS.PUBLIC,
-      });
-      await Promise.resolve();
-
-      expect(mockGetIconUrl).toHaveBeenCalledWith({
-        asset: { code: "TKN", issuer: token.issuer.key },
-        network: NETWORKS.PUBLIC,
-      });
-    });
-  });
-
   describe("cacheTokenIcons", () => {
     it("should add new icons to the store", () => {
       const newIcons = {

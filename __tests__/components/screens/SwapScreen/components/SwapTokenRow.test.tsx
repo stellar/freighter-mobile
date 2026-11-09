@@ -3,7 +3,6 @@ import { BigNumber } from "bignumber.js";
 import { SwapTokenRow } from "components/screens/SwapScreen/components/SwapTokenRow";
 import { NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
-import { useTokenIconsStore } from "ducks/tokenIcons";
 import { classNameOf, hostParentOf } from "helpers/testUtils";
 import React from "react";
 import { StyleSheet } from "react-native";
@@ -245,30 +244,6 @@ describe("SwapTokenRow", () => {
       expect(getByText("Stellar Lumens")).toBeTruthy();
       expect(queryByText("stellar.org")).toBeNull();
       expect(queryByText("Some other name")).toBeNull();
-    });
-  });
-
-  it("caches a listed token's icon so the token looks the same across the wallet", () => {
-    const cacheIconIfMissing = jest.fn();
-    useTokenIconsStore.setState({ cacheIconIfMissing });
-
-    render(
-      <SwapTokenRow
-        variant="non-held"
-        record={{ ...mockSearchRecord, iconUrl: "aqua.png" }}
-        network={NETWORKS.PUBLIC}
-        onPress={jest.fn()}
-      />,
-    );
-
-    expect(cacheIconIfMissing).toHaveBeenCalledWith({
-      token: {
-        code: "AQUA",
-        issuer: { key: "GBN..." },
-        type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-      },
-      network: NETWORKS.PUBLIC,
-      imageUrl: "aqua.png",
     });
   });
 

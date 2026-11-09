@@ -78,16 +78,6 @@ interface TokenIconsState {
     network: NETWORKS;
   }) => Promise<Icon>;
   /**
-   * Caches a token's icon unless one is cached already (the asset lists'
-   * icons are cached up front): `imageUrl` when given, else the result of
-   * fetchIconUrl.
-   */
-  cacheIconIfMissing: (params: {
-    token: NonNativeToken;
-    network: NETWORKS;
-    imageUrl?: string;
-  }) => void;
-  /**
    * Fetches icons for all tokens in a balance map
    * @param {Object} params - Function parameters
    * @param {BalanceMap} params.balances - Map of balances to fetch icons for
@@ -476,17 +466,6 @@ export const useTokenIconsStore = create<TokenIconsState>()(
             isValid: false,
           };
         }
-      },
-      cacheIconIfMissing: ({ token, network, imageUrl }) => {
-        const cacheKey = getTokenIdentifier(token);
-        if (get().icons[cacheKey]) return;
-        if (imageUrl) {
-          get().cacheTokenIcons({
-            icons: { [cacheKey]: { imageUrl, network } },
-          });
-          return;
-        }
-        get().fetchIconUrl({ token, network });
       },
       fetchBalancesIcons: async ({ balances, network }) => {
         // Process all balances in parallel using Promise.all
