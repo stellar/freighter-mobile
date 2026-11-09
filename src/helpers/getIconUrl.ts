@@ -1,4 +1,3 @@
-import { StrKey } from "@stellar/stellar-sdk";
 import { logos } from "assets/logos";
 import {
   CIRCLE_USDC_CONTRACT,
@@ -11,7 +10,7 @@ import { getIconUrlFromIssuer } from "helpers/getIconUrlFromIssuer";
 import { getIconUrlFromTokensLists } from "helpers/getIconUrlFromTokensLists";
 
 export const getIconUrl = async ({
-  asset: assetParam,
+  asset,
   network,
 }: {
   asset: {
@@ -21,13 +20,6 @@ export const getIconUrl = async ({
   };
   network: NETWORKS;
 }): Promise<string> => {
-  // Icon-store keys put a Soroban token's contract ID in the issuer slot.
-  const asset =
-    assetParam.issuer &&
-    !assetParam.contractId &&
-    StrKey.isValidContract(assetParam.issuer)
-      ? { code: assetParam.code, contractId: assetParam.issuer }
-      : assetParam;
   // Special case: Circle USDC on mainnet - use local bundled icon
   if (
     network === NETWORKS.PUBLIC &&
