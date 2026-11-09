@@ -1,0 +1,167 @@
+import { StrKey } from "@stellar/stellar-sdk";
+import BigNumber from "bignumber.js";
+import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
+import { NATIVE_TOKEN_CODE } from "config/constants";
+import {
+  DiscoverProtocol,
+  SwapRoute,
+  Token,
+  TokenTypeWithCustomToken,
+} from "config/types";
+import { isNativeAssetId } from "helpers/assetIdentity";
+import { truncateAddress } from "helpers/stellar";
+import type { HeldBalanceItem } from "hooks/useBalancesList";
+
+/** A path row shows this many venue icons, then "+N". */
+export const MAX_PATH_VENUE_ICONS = 3;
+
+export interface SwapRouteToken {
+  assetId: string;
+  code: string;
+  token: Token;
+  iconUrl?: string;
+}
+
+export interface SwapRouteVenue {
+  name: string;
+  /** Undefined for a venue /protocols doesn't list: it gets a generic icon. */
+  iconUrl?: string;
+}
+
+export interface SwapRoutePathView {
+  /** "32%"; null on a single-path route. */
+  share: string | null;
+  /** One per hop, in order. */
+  hopVenues: SwapRouteVenue[];
+  /** Null when the hops carry no pool (classic): Horizon doesn't name one. */
+  poolCount: number | null;
+  /** hopVenues.length + 1 tokens: hopVenues[i] trades tokens[i] for tokens[i + 1]. */
+  tokens: SwapRouteToken[];
+}
+
+export interface SwapRouteView {
+  from: SwapRouteToken;
+  to: SwapRouteToken;
+  paths: SwapRoutePathView[];
+  /** The distinct venues across all paths, in first-seen order. */
+  providers: SwapRouteVenue[];
+}
+
+export const formatRouteShare = (share: string): string | null => {
+  const fraction = new BigNumber(share);
+  if (!fraction.isFinite() || fraction.lte(0)) return null;
+  const percent = fraction.times(100).integerValue(BigNumber.ROUND_HALF_UP);
+  return percent.isZero() ? "<1%" : `${percent.toFixed()}%`;
+};
+
+const venueKey = (name: string) => name.trim().toLowerCase();
+
+interface ResolveContext {
+  balanceItems: HeldBalanceItem[];
+  destination?: DestinationTokenDescriptor | null;
+}
+
+const resolveToken = (
+  assetId: string,
+  { balanceItems, destination }: ResolveContext,
+): SwapRouteToken => {
+  if (isNativeAssetId(assetId)) {
+    return {
+      assetId,
+      code: NATIVE_TOKEN_CODE,
+      token: { type: "native", code: "XLM" },
+    };
+  }
+
+  if (StrKey.isValidContract(assetId)) {
+    const held = balanceItems.find(
+      (b) => "contractId" in b && b.contractId === assetId,
+    );
+    const isDestination = destination?.issuer === assetId;
+    const code =
+      held?.tokenCode ??
+      (isDestination ? destination.tokenCode : undefined) ??
+      truncateAddress(assetId);
+    return {
+      assetId,
+      code,
+      token: {
+        type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        code,
+        issuer: { key: assetId },
+      },
+      iconUrl: isDestination ? destination.iconUrl : undefined,
+    };
+  }
+
+  const [code, issuer = ""] = assetId.split(":");
+  return {
+    assetId,
+    code,
+    token: {
+      type:
+        code.length > 4
+          ? TokenTypeWithCustomToken.CREDIT_ALPHANUM12
+          : TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      code,
+      issuer: { key: issuer },
+    },
+    iconUrl: destination?.id === assetId ? destination.iconUrl : undefined,
+  };
+};
+
+/**
+ * Display model for the Route sheet, from the route the swap uses. Null when
+ * there is nothing to show, which hides the Route row.
+ */
+export const buildSwapRouteView = ({
+  route,
+  protocols,
+  balanceItems,
+  destination,
+}: {
+  route: SwapRoute | null | undefined;
+  protocols: DiscoverProtocol[];
+  balanceItems: HeldBalanceItem[];
+  destination?: DestinationTokenDescriptor | null;
+}): SwapRouteView | null => {
+  const paths = (route?.paths ?? []).filter((p) => p.hops.length > 0);
+  if (paths.length === 0) return null;
+
+  const iconByVenue = new Map(
+    protocols.map((p) => [venueKey(p.name), p.iconUrl]),
+  );
+  const toVenue = (name: string): SwapRouteVenue => ({
+    name,
+    iconUrl: iconByVenue.get(venueKey(name)),
+  });
+  const context = { balanceItems, destination };
+  const isSplit = paths.length > 1;
+
+  const pathViews = paths.map((path) => ({
+    share: isSplit ? formatRouteShare(path.share) : null,
+    hopVenues: path.hops.map((hop) => toVenue(hop.venue)),
+    poolCount: path.hops.some((hop) => hop.pool) ? path.hops.length : null,
+    tokens: [
+      resolveToken(path.hops[0].from, context),
+      ...path.hops.map((hop) => resolveToken(hop.to, context)),
+    ],
+  }));
+
+  const providers = new Map<string, SwapRouteVenue>();
+  pathViews.forEach((p) =>
+    p.hopVenues.forEach((venue) => {
+      if (!providers.has(venueKey(venue.name))) {
+        providers.set(venueKey(venue.name), venue);
+      }
+    }),
+  );
+
+  const firstPath = pathViews[0];
+  return {
+    from: firstPath.tokens[0],
+    to: firstPath.tokens[firstPath.tokens.length - 1],
+    paths: pathViews,
+    providers: [...providers.values()],
+  };
+};
