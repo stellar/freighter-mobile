@@ -454,8 +454,9 @@ describe("SwapAmountScreen", () => {
       name: "Token",
       decimals: 18,
       token: { code: "TKN", issuer: { key: contractId }, type: "custom_token" },
-      total: new BigNumber("1.234567891234567891"),
-      available: new BigNumber("1.234567891234567891"),
+      // Soroban balances hold the token's smallest unit.
+      total: new BigNumber("1234567891234567891"),
+      available: new BigNumber("1234567891234567891"),
     };
     (useBalancesList as jest.Mock).mockImplementation(() => ({
       balanceItems: [...mockBalances, sorobanSource],

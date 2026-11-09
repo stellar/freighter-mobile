@@ -203,6 +203,27 @@ describe("useSwapAmountError", () => {
     });
   });
 
+  it("checks a Soroban source's spendable balance in its own units", () => {
+    const sorobanSource = {
+      id: "TKN:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      tokenCode: "TKN",
+      decimals: 18,
+      total: new BigNumber("5000000000000000000"),
+    } as never;
+
+    renderHook(() =>
+      useSwapAmountError({
+        ...baseProps,
+        sourceBalance: sorobanSource,
+        sourceAmount: "1.5",
+      }),
+    );
+
+    expect(mockIsAmountSpendable).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: "1500000000000000000" }),
+    );
+  });
+
   describe("path-error toast lifecycle", () => {
     it("does NOT fire path-error toast when amount is empty / 0", () => {
       renderHook(() =>

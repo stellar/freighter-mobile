@@ -20,6 +20,7 @@ import {
   getTokenForPayment,
   simulateCollectibleTransfer,
   validateSendCollectibleTransactionParams,
+  validateSwapTransactionParams,
 } from "services/transactionService";
 
 // Hoisted so it can be reconfigured per test (e.g. to simulate an unfunded
@@ -637,5 +638,29 @@ describe("validateSendCollectibleTransactionParams", () => {
     const result = validateSendCollectibleTransactionParams(params);
 
     expect(result).toBeNull();
+  });
+});
+
+describe("validateSwapTransactionParams", () => {
+  // A Soroban balance's total is in the token's smallest unit.
+  const sorobanSource = {
+    id: "TKN:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+    decimals: 18,
+    total: new BigNumber("5000000000000000000"),
+  } as unknown as PricedBalance;
+  const params = (sourceAmount: string) => ({
+    sourceBalance: sorobanSource,
+    destinationBalance: { id: "XLM" } as unknown as PricedBalance,
+    sourceAmount,
+    destinationAmount: "1",
+    fee: "0.00001",
+    timeout: 180,
+  });
+
+  it("checks a Soroban source's balance in whole tokens", () => {
+    expect(validateSwapTransactionParams(params("6"))).toBe(
+      "transaction.errors.insufficientBalanceForSwap",
+    );
+    expect(validateSwapTransactionParams(params("5"))).toBeNull();
   });
 });

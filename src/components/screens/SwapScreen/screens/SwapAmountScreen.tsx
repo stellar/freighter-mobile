@@ -67,7 +67,11 @@ import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
-import { formatFiatAmount, getTokenDecimals } from "helpers/formatAmount";
+import {
+  formatFiatAmount,
+  getTokenDecimals,
+  hasDecimals,
+} from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem, useBalancesList } from "hooks/useBalancesList";
@@ -173,11 +177,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const spendableAmount = useMemo(() => {
     if (!sourceBalance || !account) return null;
 
-    const baseSpendable = calculateSpendableAmount({
+    const rawSpendable = calculateSpendableAmount({
       balance: sourceBalance,
       subentryCount: account.subentryCount || 0,
       transactionFee: swapFee,
     });
+    // A Soroban balance is in the token's smallest unit.
+    const baseSpendable = hasDecimals(sourceBalance)
+      ? rawSpendable.shiftedBy(-sourceBalance.decimals)
+      : rawSpendable;
 
     // Swapping XLM → a new token locks BASE_RESERVE (0.5 XLM) for the new
     // trustline, so that XLM isn't actually spendable. Reserve it up-front
