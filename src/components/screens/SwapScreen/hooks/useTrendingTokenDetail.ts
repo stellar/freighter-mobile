@@ -109,7 +109,9 @@ export const useTrendingTokenDetail = ({
         tokenIssuer: record.issuer ?? "",
       });
       const heldMatch = balanceItems.find(
-        (b) => b.id === `${record.tokenCode}:${record.issuer}`,
+        (b) =>
+          b.id === `${record.tokenCode}:${record.issuer}` ||
+          ("contractId" in b && b.contractId === record.issuer),
       );
       const select = (descriptor: DestinationTokenDescriptor) => {
         analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {

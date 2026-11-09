@@ -941,6 +941,33 @@ describe("useSwapTokenLookup — active search", () => {
     expect(listed).toEqual(["FOO"]);
   });
 
+  it("knows a held Soroban token by its contract ID when stellar.expert's code differs", async () => {
+    (stellarExpert.searchToken as jest.Mock).mockResolvedValue({
+      _embedded: {
+        records: [{ asset: SOROBAN_CONTRACT, domain: "", code: "ABC" }],
+      },
+      _links: {},
+    });
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({
+        network: NETWORKS.TESTNET,
+        balanceItems: [heldSoroban],
+      }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+    act(() => {
+      result.current.handleSearch("abc");
+    });
+    await settleDebounce();
+
+    expect(result.current.verifiedSearchMatches).toEqual([
+      expect.objectContaining({ tokenCode: "ABC", hasTrustline: true }),
+    ]);
+  });
+
   it("matches a held Soroban token by name, with its decimals", async () => {
     (stellarExpert.searchToken as jest.Mock).mockResolvedValue({
       _embedded: { records: [] },

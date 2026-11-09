@@ -395,6 +395,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
               const heldMatch = balanceItems.find(
                 (b) =>
                   b.id === recordTokenId(record) ||
+                  ("contractId" in b && b.contractId === record.issuer) ||
                   (record.isNative && isNativeAssetId(b.id)),
               );
 

@@ -417,6 +417,67 @@ describe("SwapToScreen", () => {
     });
   });
 
+  it("treats a held Soroban token listed under another code as held, so it can't be swapped into itself", async () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    const heldSoroban = {
+      id: `SYM:${contractId}`,
+      tokenCode: "SYM",
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      contractId,
+      decimals: 7,
+      total: new BigNumber("10000000"),
+      token: {
+        code: "SYM",
+        issuer: { key: contractId },
+        type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      },
+    };
+    (useBalancesList as jest.Mock).mockReturnValue({
+      balanceItems: [heldSoroban],
+    });
+    const setSourceTokenSpy = jest.fn();
+    const setDestinationTokenSpy = jest.fn();
+    (useSwapStore as unknown as jest.Mock).mockReturnValue({
+      setSourceToken: setSourceTokenSpy,
+      setDestinationToken: setDestinationTokenSpy,
+      sourceTokenId: heldSoroban.id,
+      destinationToken: null,
+    });
+    mockGetTokenDetails.mockResolvedValue({
+      name: "Token",
+      symbol: "SYM",
+      decimals: 7,
+    });
+    (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
+      ...defaultLookupResult,
+      verifiedSearchMatches: [
+        {
+          tokenCode: "ABC",
+          issuer: contractId,
+          domain: "",
+          hasTrustline: true,
+          isNative: false,
+          tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        },
+      ],
+      searchTerm: "abc",
+    });
+
+    const { getByTestId } = renderWithProviders(
+      <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+    );
+    fireEvent.press(getByTestId(/token-option-/));
+    await new Promise((r) => {
+      setImmediate(r);
+    });
+
+    expect(setSourceTokenSpy).toHaveBeenCalledWith("", "");
+    expect(setDestinationTokenSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ id: heldSoroban.id }),
+    );
+  });
+
   it("shows no match, not a Soroban notice, for a contract ID nothing resolves", () => {
     const contractId =
       "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL";

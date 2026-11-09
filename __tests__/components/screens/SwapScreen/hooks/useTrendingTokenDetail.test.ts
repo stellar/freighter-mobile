@@ -113,4 +113,39 @@ describe("useTrendingTokenDetail", () => {
 
     expect(setDestinationToken).not.toHaveBeenCalled();
   });
+
+  it("picks the held balance for a trending token listed under another code", () => {
+    mockGetTokenDetails.mockClear();
+    mockSwapState = { sourceTokenId: "XLM", destinationToken: null };
+    const held = {
+      id: `SYM:${CONTRACT}`,
+      tokenCode: "SYM",
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      contractId: CONTRACT,
+      decimals: 7,
+    } as never;
+    const setDestinationToken = jest.fn();
+    const { result } = renderHook(() =>
+      useTrendingTokenDetail({
+        balanceItems: [held],
+        sourceTokenId: "XLM",
+        setSourceToken: jest.fn(),
+        setDestinationToken,
+        publicKey: ACCOUNT,
+        network: NETWORKS.PUBLIC,
+      }),
+    );
+
+    act(() => {
+      result.current.openTrendingDetail(record, 0);
+    });
+    act(() => {
+      result.current.confirmTrendingSelection();
+    });
+
+    expect(mockGetTokenDetails).not.toHaveBeenCalled();
+    expect(setDestinationToken).toHaveBeenCalledWith(
+      expect.objectContaining({ id: `SYM:${CONTRACT}` }),
+    );
+  });
 });

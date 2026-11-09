@@ -12,4 +12,10 @@ describe("canonicalId", () => {
   it("preserves case (Stellar identifiers are case-sensitive)", () => {
     expect(canonicalId("Usdc", "ga5z")).toBe("Usdc:ga5z");
   });
+
+  it("keys a Soroban token by its contract ID alone", () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    expect(canonicalId("ABC", contractId)).toBe(canonicalId("SYM", contractId));
+  });
 });
