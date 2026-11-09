@@ -25,6 +25,14 @@ jest.mock("components/ContextMenuButton", () => ({
   default: () => null,
 }));
 
+const mockMenuProps = jest.fn();
+jest.mock("components/screens/SwapScreen/components/TokenContextMenu", () => ({
+  TokenContextMenu: (props: unknown) => {
+    mockMenuProps(props);
+    return null;
+  },
+}));
+
 jest.mock("helpers/soroban", () => ({
   getNativeContractDetails: () => ({ contract: "CNATIVE..." }),
   formatTokenForDisplay: (amount: string) => amount,
@@ -162,6 +170,53 @@ describe("SwapTokenRow", () => {
       );
       expect(getByText("aqua.network")).toBeTruthy();
       expect(queryByText("Aquarius")).toBeNull();
+    });
+
+    it.each(["non-held", "trending"] as const)(
+      "shows a Soroban token's shortened contract ID, not its domain (%s)",
+      (variant) => {
+        const { getByText, queryByText } = render(
+          <SwapTokenRow
+            variant={variant}
+            record={{
+              ...mockSearchRecord,
+              tokenCode: "USDC",
+              issuer:
+                "CBI7RTCTPXRUHZ3XTHC6JPGYEHMJBU2O6Z4GX3IOMHZJTFHJIESNIHRV",
+              tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+              domain: "circle.com",
+              name: "USD Coin",
+            }}
+            network={NETWORKS.PUBLIC}
+            onPress={jest.fn()}
+          />,
+        );
+        expect(getByText("CBI7…IHRV")).toBeTruthy();
+        expect(queryByText("circle.com")).toBeNull();
+      },
+    );
+
+    it("gives the context menu a Soroban token's contract ID", () => {
+      const contractId =
+        "CBI7RTCTPXRUHZ3XTHC6JPGYEHMJBU2O6Z4GX3IOMHZJTFHJIESNIHRV";
+      render(
+        <SwapTokenRow
+          variant="non-held"
+          record={{
+            ...mockSearchRecord,
+            tokenCode: "TKN",
+            issuer: contractId,
+            tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+          }}
+          network={NETWORKS.PUBLIC}
+          onPress={jest.fn()}
+        />,
+      );
+      expect(mockMenuProps).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          token: expect.objectContaining({ contractId }),
+        }),
+      );
     });
 
     it("special-cases native XLM with 'Stellar Lumens' regardless of domain/name", () => {

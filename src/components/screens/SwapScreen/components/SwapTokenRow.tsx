@@ -107,13 +107,20 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
 
   // Derive display values from the appropriate data source
   const tokenCode = variant === "held" ? balance?.tokenCode : record?.tokenCode;
-  // Native XLM renders the canonical "Stellar Lumens" name. For all other
-  // tokens, record.domain is always a string ("" when stellar.expert returns
-  // no home_domain), so the truthy check correctly skips empty domains to
-  // fall through to name → tokenCode.
+  const isSorobanRecord =
+    record?.tokenType === TokenTypeWithCustomToken.CUSTOM_TOKEN;
+  // Native XLM renders the canonical "Stellar Lumens" name. A Soroban token
+  // shows its shortened contract ID rather than a domain or name it chose, so
+  // a lookalike still looks different. For classic tokens, record.domain is
+  // always a string ("" when stellar.expert returns no home_domain), so the
+  // truthy check correctly skips empty domains to fall through to name →
+  // tokenCode.
   const nonHeldSubtitle = (() => {
     if (variant === "held") return undefined;
     if (record?.isNative) return "Stellar Lumens";
+    if (isSorobanRecord && record?.issuer) {
+      return `${record.issuer.slice(0, 4)}…${record.issuer.slice(-4)}`;
+    }
     return record?.domain || record?.name || record?.tokenCode;
   })();
   const iconUrl = variant !== "held" ? record?.iconUrl : undefined;
@@ -144,6 +151,7 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
           tokenCode: record?.tokenCode,
           issuer: record?.issuer,
           tokenType: record?.tokenType,
+          contractId: isSorobanRecord ? record?.issuer : undefined,
         }
       : undefined;
 
