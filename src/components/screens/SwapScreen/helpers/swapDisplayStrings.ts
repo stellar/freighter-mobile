@@ -7,6 +7,7 @@ import {
   formatFiatAmount,
   formatFiatInputDisplay,
   formatTokenForDisplay,
+  hasDecimals,
 } from "helpers/formatAmount";
 
 /**
@@ -150,9 +151,15 @@ export const buildSourceBalanceRight = ({
   availableLabel: string;
 }): string => {
   if (!sourceBalance) return "";
+  // spendableAmount is in whole tokens; formatBalanceAmount scales a Soroban
+  // balance's amount from raw units.
+  const rawSpendable =
+    spendableAmount && hasDecimals(sourceBalance)
+      ? spendableAmount.shiftedBy(sourceBalance.decimals)
+      : spendableAmount;
   return `${formatBalanceAmount(
     sourceBalance,
     sourceBalance.tokenCode ?? sourceTokenSymbol,
-    spendableAmount ?? undefined,
+    rawSpendable ?? undefined,
   )} ${availableLabel}`;
 };
