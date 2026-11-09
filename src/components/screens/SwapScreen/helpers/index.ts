@@ -28,3 +28,4 @@ export {
   swapQuoteErrorReason,
   swapRouteIntermediateAssets,
 } from "./selectSwapRoute";
+export { decodeSwapTx, type DecodedSwapTx } from "./decodeSwapTx";
