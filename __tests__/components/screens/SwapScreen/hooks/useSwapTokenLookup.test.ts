@@ -872,6 +872,7 @@ describe("useSwapTokenLookup — active search", () => {
       NETWORKS.PUBLIC,
       ACCOUNT,
       expect.anything(),
+      true,
     );
     expect(result.current.verifiedSearchMatches).toEqual([
       expect.objectContaining({
@@ -966,6 +967,35 @@ describe("useSwapTokenLookup — active search", () => {
     expect(result.current.verifiedSearchMatches).toEqual([
       expect.objectContaining({ tokenCode: "ABC", hasTrustline: true }),
     ]);
+  });
+
+  it("shows the unavailable notice when a contract lookup fails, not a missing token", async () => {
+    mockHandleContractLookup.mockRejectedValue(new Error("timeout"));
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({
+        network: NETWORKS.PUBLIC,
+        balanceItems: [],
+        publicKey: ACCOUNT,
+      }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+    act(() => {
+      result.current.handleSearch(SOROBAN_CONTRACT);
+    });
+    await settleDebounce();
+
+    expect(mockHandleContractLookup).toHaveBeenCalledWith(
+      SOROBAN_CONTRACT,
+      NETWORKS.PUBLIC,
+      ACCOUNT,
+      expect.anything(),
+      true,
+    );
+    expect(result.current.stellarExpertDown).toBe(true);
+    expect(result.current.status).toBe("success");
   });
 
   it("matches a held Soroban token by name, with its decimals", async () => {

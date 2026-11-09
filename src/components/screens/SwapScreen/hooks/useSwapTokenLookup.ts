@@ -507,13 +507,19 @@ export const useSwapTokenLookup = ({
       //    anything else is searched on stellar.expert.
       let formatted: FormattedSearchTokenRecord[];
       if (isContractId(term)) {
+        let lookupFailed = false;
         const found = await handleContractLookup(
           term,
           network,
           publicKey,
           signal,
-        ).catch(() => null);
+          true,
+        ).catch(() => {
+          lookupFailed = true;
+          return null;
+        });
         if (signal.aborted || latestRequestRef.current !== requestId) return;
+        if (lookupFailed) setStellarExpertDown(true);
         formatted = found
           ? [
               {

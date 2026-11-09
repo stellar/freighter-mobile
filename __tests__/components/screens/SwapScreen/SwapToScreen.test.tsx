@@ -494,6 +494,23 @@ describe("SwapToScreen", () => {
     expect(queryByText(/Soroban contract tokens aren't supported/)).toBeNull();
   });
 
+  it("shows only the unavailable notice, not 'No tokens match', when search is down", () => {
+    (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
+      ...defaultLookupResult,
+      stellarExpertDown: true,
+      searchTerm: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+    });
+
+    const { getByText, queryByText } = renderWithProviders(
+      <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+    );
+
+    expect(
+      getByText(/Token discovery is temporarily unavailable/),
+    ).toBeTruthy();
+    expect(queryByText(/No tokens match/)).toBeNull();
+  });
+
   it("renders the stellar.expert-down notice when stellarExpertDown=true", () => {
     (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
       ...defaultLookupResult,

@@ -309,7 +309,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         </View>
       )}
 
-      {showNoResults && (
+      {showNoResults && !stellarExpertDown && (
         <View className="py-8">
           <Text sm secondary>
             {t("swapScreen.noResults", { term: searchTerm })}
