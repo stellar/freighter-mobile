@@ -380,8 +380,11 @@ export const parseDisplayNumber = (
       .replace(new RegExp(`\\${groupingSeparator}`, "g"), "")
       .replace(new RegExp(`\\${decimalSeparator}`), ".");
 
-    const result = parseFloat(normalized);
-    return result.toString();
+    // parseFloat drops digits past ~15 significant figures, which an
+    // 18-decimal token amount has; it stays the fallback for input
+    // BigNumber can't read, such as trailing garbage.
+    const exact = new BigNumber(normalized);
+    return exact.isNaN() ? parseFloat(normalized).toString() : exact.toString();
   } catch (error) {
     // Fallback: try to handle both comma and dot as decimal separators
     const normalized = input

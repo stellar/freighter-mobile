@@ -231,3 +231,21 @@ describe("SET_DISPLAY_AMOUNT_FROM_TEXT — paste sanitization", () => {
     );
   });
 });
+
+describe("SET_DISPLAY_AMOUNT_FROM_TEXT — 18-decimal token", () => {
+  beforeEach(() => {
+    jest
+      .spyOn(ReactNativeLocalize, "getNumberFormatSettings")
+      .mockReturnValue({ decimalSeparator: ".", groupingSeparator: "," });
+  });
+
+  it("keeps every digit the user typed", () => {
+    const reducer = createTokenFiatConverterReducer(new BigNumber(0), 18);
+    const result = reducer(initialState, {
+      type: TokenFiatConverterActionType.SET_DISPLAY_AMOUNT_FROM_TEXT,
+      payload: { text: "1234.123456789012345678" },
+    });
+
+    expect(result.tokenAmount).toBe("1234.123456789012345678");
+  });
+});
