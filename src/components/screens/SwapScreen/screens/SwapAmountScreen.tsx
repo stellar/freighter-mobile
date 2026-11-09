@@ -180,13 +180,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       destinationTokenDescriptor,
     });
 
-  const swapRouteView = useSwapRouteView(balanceItems);
-  const { stableConversionRate } = useStableConversionRate({
-    pathResult,
-    sourceTokenSymbol,
-    destinationTokenSymbol: destinationTokenDescriptor?.tokenCode ?? "",
-  });
-
   const spendableAmount = useMemo(() => {
     if (!sourceBalance || !account) return null;
 
@@ -295,6 +288,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       account?.publicKey,
     ],
   );
+
+  // The store keeps the last quote until the debounced re-quote replaces it.
+  const isQuoteCurrent =
+    !!pathResult && pathResult.quoteKey === currentQuoteKey;
+  const swapRouteView = useSwapRouteView(balanceItems);
+  const { stableConversionRate } = useStableConversionRate({
+    pathResult: isQuoteCurrent ? pathResult : null,
+    sourceTokenSymbol,
+    destinationTokenSymbol: destinationTokenDescriptor?.tokenCode ?? "",
+  });
 
   useSwapPathFinding({
     sourceBalance,
@@ -998,7 +1001,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         placeholderActive={!destinationTokenDescriptor}
       />
 
-      {pathResult && destinationTokenDescriptor && (
+      {isQuoteCurrent && destinationTokenDescriptor && (
         <TouchableOpacity
           className="flex-row items-center justify-center gap-[6px] mt-[16px]"
           onPress={() => {
@@ -1132,8 +1135,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           <SwapDetailsBottomSheet
             networkFee={networkFeeText}
             networkFeeFiat={networkFeeFiatText}
-            rate={stableConversionRate}
-            routeView={swapRouteView}
+            rate={isQuoteCurrent ? stableConversionRate : ""}
+            routeView={isQuoteCurrent ? swapRouteView : null}
             onClose={() => swapDetailsBottomSheetModalRef.current?.dismiss()}
           />
         }

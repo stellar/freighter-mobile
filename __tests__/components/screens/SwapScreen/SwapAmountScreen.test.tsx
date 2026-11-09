@@ -2150,6 +2150,54 @@ describe("SwapAmountScreen", () => {
       expect(queryByTestId("swap-see-details")).toBeNull();
     });
 
+    it("shows nothing from a quote for earlier inputs", () => {
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      setSwapStoreState({
+        pathResult: {
+          destinationAmount: "2",
+          quoteKey: "older-key",
+          conversionRate: "2",
+        },
+        swapQuotes: {
+          routes: [
+            {
+              source: "classic",
+              fromAmount: "1",
+              toAmount: "2",
+              paths: [
+                {
+                  share: "1",
+                  hops: [
+                    {
+                      venue: "stellar-dex",
+                      from: "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+                      to: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+                    },
+                  ],
+                },
+              ],
+              fees: [],
+            },
+          ],
+          unavailable: [],
+        },
+      } as Partial<SwapStoreState>);
+      const { queryByTestId, UNSAFE_getAllByType } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(queryByTestId("swap-see-details")).toBeNull();
+      // The latest render's props, after the rate hook's effect has run.
+      const detailsSheet = UNSAFE_getAllByType(BottomSheet).find(
+        (sheet) => sheet.props.customContent?.type === SwapDetailsBottomSheet,
+      );
+      const { routeView, rate } = detailsSheet?.props.customContent
+        .props as SwapDetailsBottomSheetProps;
+      expect(routeView).toBeNull();
+      expect(rate).toBe("");
+    });
+
     it("opens Details with the quote's route", async () => {
       // eslint-disable-next-line no-underscore-dangle
       globalThis.__mockSheetRefs = [];
