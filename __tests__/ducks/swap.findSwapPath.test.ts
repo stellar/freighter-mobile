@@ -12,6 +12,7 @@ import {
   swapQuoteKey,
   useSwapStore,
 } from "ducks/swap";
+import en from "i18n/locales/en/translations.json";
 import { fetchSwapQuotes } from "services/backend";
 
 jest.mock("services/backend", () => ({
@@ -223,6 +224,33 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(state.pathResult).toBeNull();
     expect(state.pathError).toBe("swapScreen.errors.noPathFound");
     expect(state.swapQuotes).toEqual(quotes);
+  });
+
+  it("shows no quote available for a Soroban pair no source can quote", async () => {
+    mockFetchSwapQuotes.mockResolvedValue({
+      routes: [],
+      unavailable: [
+        { source: "classic", reason: "unsupported" },
+        { source: "lifi", reason: "no_route" },
+      ],
+    });
+
+    await useSwapStore.getState().findSwapPath({
+      ...inputs(),
+      destinationBalance: descriptorAsPathBalance({
+        id: "TKN:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+        tokenCode: "TKN",
+        issuer: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+        decimals: 7,
+        tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        requiresTrustline: false,
+      }),
+      slippage: 1,
+    });
+
+    const key = useSwapStore.getState().pathError ?? "";
+    expect(key).toBe("swapScreen.errors.noPathFound");
+    expect(en.swapScreen.errors.noPathFound).toBe("No quote available");
   });
 
   it("treats a 400 as bad input (no path), not as an outage", async () => {

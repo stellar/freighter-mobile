@@ -716,7 +716,7 @@
       "swapTransactionFailed": "Swap transaction failed",
       "insufficientBalance": "Insufficient balance. Maximum spendable: {{amount}} {{symbol}}",
       "insufficientXlmForFees": "Insufficient XLM for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
-      "noPathFound": "No path found between these tokens",
+      "noPathFound": "No quote available",
       "pathFindFailed": "Couldn't fetch swap path. Please try again.",
       "swapsUnavailable": "Swaps are temporarily unavailable",
       "quoteExpired": "Quote has expired, please try again to get a new quote",
