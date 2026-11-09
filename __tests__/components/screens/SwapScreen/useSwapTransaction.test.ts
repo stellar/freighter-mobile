@@ -676,6 +676,64 @@ describe("useSwapTransaction", () => {
     });
   });
 
+  describe("swap.completed entry source", () => {
+    it("keeps the entry source when the store is reset mid-submission", async () => {
+      // SwapAmountScreen's unmount cleanup calls resetSwap(), so navigating
+      // away while the transaction is in flight used to drop `source` from
+      // swap.completed. The tag must be captured at submit time, like every
+      // other payload field.
+      act(() => {
+        useSwapStore.getState().setEntrySource("token_details");
+      });
+
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      let resolveSubmit!: (outcome: ReturnType<typeof submitOk>) => void;
+      mockSubmitTransaction.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSubmit = resolve;
+          }),
+      );
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      let swapPromise!: Promise<void>;
+      act(() => {
+        swapPromise = result.current.executeSwap();
+      });
+
+      // The user navigates away: the screen unmounts and resets the store
+      // while the submission is still in flight.
+      act(() => {
+        useSwapStore.getState().resetSwap();
+      });
+
+      await act(async () => {
+        resolveSubmit(submitOk());
+        await swapPromise;
+      });
+
+      expect(mockTrackSwapSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({ source: "token_details" }),
+      );
+    });
+
+    it("omits source when the swap was not entered from the detail view", async () => {
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(submitOk());
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrackSwapSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({ source: undefined }),
+      );
+    });
+  });
+
   describe("SWAP_QUOTE_EXPIRED analytics", () => {
     it("fires SWAP_QUOTE_EXPIRED with the result code, AND also swap.failed with failure_category slippage, when the submit is rejected with op_under_dest_min", async () => {
       // The store no longer carries the failure classification — the hook

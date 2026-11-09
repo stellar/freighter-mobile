@@ -1,12 +1,11 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { Button } from "components/sds/Button";
+import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useLoginDataStore } from "ducks/loginData";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import { useSecureClipboard } from "hooks/useSecureClipboard";
 import React from "react";
 import { View } from "react-native";
@@ -21,7 +20,6 @@ const YourRecoveryPhraseScreen: React.FC<YourRecoveryPhraseScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
   const { mnemonicPhrase } = useLoginDataStore();
   const { copyToClipboard } = useSecureClipboard();
   const handleCopyToClipboard = () => {
@@ -50,19 +48,18 @@ const YourRecoveryPhraseScreen: React.FC<YourRecoveryPhraseScreenProps> = ({
 
         <View className="mb-4">
           <Button
-            secondary
+            tertiary
             onPress={handleCopyToClipboard}
             testID="copy-to-clipboard-button"
-            icon={
-              <Icon.Copy01 size={20} color={themeColors.foreground.primary} />
-            }
+            icon={<Icon.Copy01 size={20} />}
+            iconPosition={IconPosition.LEFT}
           >
             {t("yourRecoveryPhrase.copyButton")}
           </Button>
         </View>
 
         <Button
-          tertiary
+          secondary
           onPress={() => navigation.popToTop()}
           testID="done-button"
         >

@@ -1,6 +1,6 @@
 {
   "name": "freighter-mobile",
-  "version": "1.23.27",
+  "version": "1.29.30",
   "license": "Apache-2.0",
   "scripts": {
     "android": "yarn android-dev",
@@ -19,8 +19,8 @@
     "ios-dev": "yarn ios-dev-sim",
     "ios-prod": "yarn ios-prod-sim",
     "ios-device": "yarn ios-dev-device",
-    "ios-dev-sim": "react-native run-ios --scheme=freighter-mobile-dev --simulator=\"$(./scripts/get-ios-simulator)\"",
-    "ios-prod-sim": "react-native run-ios --scheme=freighter-mobile --simulator=\"$(./scripts/get-ios-simulator)\"",
+    "ios-dev-sim": "react-native run-ios --scheme=freighter-mobile-dev --udid=\"$(./scripts/get-ios-simulator)\" && ./scripts/allow-ios-simulator-paste",
+    "ios-prod-sim": "react-native run-ios --scheme=freighter-mobile --udid=\"$(./scripts/get-ios-simulator)\" && ./scripts/allow-ios-simulator-paste",
     "ios-dev-device": "react-native run-ios --scheme=freighter-mobile-dev --device",
     "ios-prod-device": "react-native run-ios --scheme=freighter-mobile --device",
     "lint": "eslint ./src ./__tests__ --fix",
@@ -48,7 +48,7 @@
     "c-install": "yarn gradle-clean && yarn node-clean && yarn install",
     "reset-env": "sh ./scripts/reset-env",
     "r-install": "yarn reset-env && yarn rebuild freighter-mobile",
-    "generate-splashscreen": "yarn react-native-bootsplash generate splashscreen/freighter-logo.png --platforms=android,ios --background=161616 --logo-width=206 --assets-output=assets/bootsplash --flavor=main",
+    "generate-splashscreen": "yarn react-native-bootsplash generate splashscreen/varial-splash-logo.png --platforms=android,ios --background=ffffff --logo-width=128 --assets-output=assets/bootsplash --flavor=main && node ./scripts/finalize-splashscreen.js",
     "set-app-version": "node ./scripts/set-app-version"
   },
   "lint-staged": {
@@ -86,8 +86,8 @@
     "@shopify/react-native-skia": "2.2.21",
     "@stablelib/base64": "2.0.1",
     "@stablelib/utf8": "2.0.1",
-    "@stellar/stellar-sdk": "17.0.1",
-    "@stellar/typescript-wallet-sdk-km": "5.0.0",
+    "@stellar/stellar-sdk": "17.4.0",
+    "@stellar/typescript-wallet-sdk-km": "6.0.0",
     "@tradle/react-native-http": "2.0.0",
     "@walletconnect/core": "2.23.1",
     "@walletconnect/react-native-compat": "2.23.1",
@@ -194,6 +194,7 @@
     "eslint-plugin-react-native": "5.0.0",
     "eslint-plugin-simple-import-sort": "12.1.1",
     "eslint-plugin-translations": "file:./src/eslint-plugin-translations",
+    "glob": "10.4.5",
     "globals": "15.15.0",
     "husky": "9.1.7",
     "jest": "30.2.0",
@@ -204,6 +205,7 @@
     "react-native-svg-transformer": "1.5.0",
     "react-test-renderer": "19.1.0",
     "rn-nodeify": "10.3.0",
+    "sharp": "0.32.6",
     "typescript": "5.8.3"
   },
   "engines": {

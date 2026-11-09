@@ -32,7 +32,7 @@ export const DappRequestButtons: React.FC<DappRequestButtonsProps> = ({
       <View className="flex-row justify-between gap-3">
         <View className="flex-1">
           <Button
-            secondary
+            tertiary
             xl
             isFullWidth
             onPress={onCancelRequest}
@@ -45,7 +45,7 @@ export const DappRequestButtons: React.FC<DappRequestButtonsProps> = ({
         <View className="flex-1">
           <Button
             biometric
-            tertiary
+            secondary
             xl
             isFullWidth
             onPress={() => onConfirm()}
@@ -65,7 +65,7 @@ export const DappRequestButtons: React.FC<DappRequestButtonsProps> = ({
       <View className="flex-row justify-between gap-3">
         <View className="flex-1">
           <Button
-            secondary
+            tertiary
             xl
             isFullWidth
             onPress={onCancelRequest}
@@ -77,7 +77,7 @@ export const DappRequestButtons: React.FC<DappRequestButtonsProps> = ({
         <View className="flex-1">
           <Button
             biometric
-            tertiary
+            secondary
             xl
             isFullWidth
             onPress={() => onConfirm()}
@@ -97,7 +97,7 @@ export const DappRequestButtons: React.FC<DappRequestButtonsProps> = ({
     <View className="flex-col gap-3">
       <View className="w-full">
         <Button
-          tertiary={isSuspicious}
+          secondary={isSuspicious}
           destructive={isMalicious}
           xl
           isFullWidth

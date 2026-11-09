@@ -46,7 +46,6 @@ jest.mock("hooks/useGetActiveAccount", () => ({
 }));
 
 const mockHideCollectible = jest.fn();
-const mockUnhideCollectible = jest.fn();
 
 jest.mock("ducks/collectibles", () => ({
   useCollectiblesStore: () => ({
@@ -65,7 +64,6 @@ jest.mock("ducks/collectibles", () => ({
       isHidden: false,
     })),
     hideCollectible: mockHideCollectible,
-    unhideCollectible: mockUnhideCollectible,
     isLoading: false,
   }),
 }));
@@ -106,7 +104,6 @@ describe("useCollectibleDetailsHeader", () => {
       refreshMetadata: "arrow.clockwise",
       viewOnStellarExpert: "link",
       hideCollectible: "eye.slash",
-      showCollectible: "eye",
     });
   });
 
@@ -131,7 +128,6 @@ describe("useCollectibleDetailsHeader", () => {
       handleViewOnStellarExpert: expect.any(Function),
       handleSaveToPhotos: expect.any(Function),
       handleHideCollectible: expect.any(Function),
-      handleShowCollectible: expect.any(Function),
     });
   });
 
@@ -198,7 +194,6 @@ describe("useCollectibleDetailsHeader", () => {
         viewOnStellarExpert: "link",
         saveToPhotos: "square.and.arrow.down",
         hideCollectible: "eye.slash",
-        showCollectible: "eye",
       },
       android: {
         refreshMetadata: "refresh",
@@ -206,7 +201,6 @@ describe("useCollectibleDetailsHeader", () => {
         viewOnStellarExpert: "link",
         saveToPhotos: "place_item",
         hideCollectible: "visibility_off",
-        showCollectible: "visibility",
       },
     });
   });
@@ -230,28 +224,9 @@ describe("useCollectibleDetailsHeader", () => {
     });
     expect(mockGoBack).toHaveBeenCalled();
     expect(mockShowToast).toHaveBeenCalledWith({
-      title: "collectibleDetails.hideSuccess",
+      title: "hiddenCollectibles.hidden",
       variant: "success",
       toastId: "hide-collectible-success",
     });
-  });
-
-  it("should handle show collectible", async () => {
-    mockUnhideCollectible.mockResolvedValue(undefined);
-    mockPopToTop.mockClear();
-
-    const { result } = renderHook(() =>
-      useCollectibleDetailsHeader(defaultParams),
-    );
-
-    await result.current.handleShowCollectible();
-
-    expect(mockUnhideCollectible).toHaveBeenCalledWith({
-      publicKey: "test-public-key",
-      network: "testnet",
-      contractId: "test-collection-address",
-      tokenId: "test-token-id",
-    });
-    expect(mockPopToTop).toHaveBeenCalled();
   });
 });

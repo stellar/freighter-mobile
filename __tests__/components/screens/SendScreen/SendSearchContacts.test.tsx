@@ -7,7 +7,10 @@ import {
   userEvent,
   waitFor,
 } from "@testing-library/react-native";
+import { MUXED_CONTRACT_ID_0 } from "__tests__/support/muxedContractFixtures";
 import { SendSearchContacts } from "components/screens/SendScreen";
+import Icon from "components/sds/Icon";
+import { getThemeColors } from "config/colors";
 import {
   RootStackParamList,
   SEND_PAYMENT_ROUTES,
@@ -19,6 +22,7 @@ import * as sendDuck from "ducks/sendRecipient";
 import * as transactionSettingsDuck from "ducks/transactionSettings";
 import { isFederationAddress } from "helpers/stellar";
 import { renderWithProviders } from "helpers/testUtils";
+import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { ReactNode } from "react";
 import { View } from "react-native";
 
@@ -258,6 +262,27 @@ describe("SendSearchContacts", () => {
     });
   });
 
+  // Home's scan button, in the back arrow's color (Home's own stays gray
+  // for now).
+  it("puts Home's scan button in the header, colored like the back arrow", async () => {
+    renderWithProviders(
+      <NavigationContainer>
+        <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+      </NavigationContainer>,
+    );
+
+    await waitFor(() => {
+      expect(useRightHeaderButton).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          icon: Icon.ScanCircle,
+          iconSize: 24,
+          iconColor: getThemeColors("light").text.primary,
+          accessibilityLabel: "homeScanner.title",
+        }),
+      );
+    });
+  });
+
   it.skip("navigates to transaction token screen when a contact is pressed", async () => {
     renderWithProviders(
       <SendSearchContacts navigation={mockNavigation} route={mockRoute} />,
@@ -393,6 +418,34 @@ describe("SendSearchContacts", () => {
           ...unfundedStoreOverrides,
           destinationAddress:
             "CAZXRTOKNUQ2JQQF3NCRU7GYMDJNZ2NMQN6IGN4FCT5DWPODMPVEXSND",
+        }),
+      );
+      jest
+        .spyOn(transactionSettingsDuck, "useTransactionSettingsStore")
+        .mockReturnValue(
+          getTransactionSettingsStoreMock({ selectedTokenId: "XLM" }),
+        );
+
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText("Enter address")).toBeTruthy();
+      });
+      expect(screen.queryByText(unfundedTitle)).toBeNull();
+    });
+
+    it("hides the unfunded notice when the destination is a muxed contract (W...) address", async () => {
+      // A W is a C plus a mux id: the same Soroban `transfer`, the same
+      // contract-storage balance, so there is no classic account to be
+      // unfunded.
+      jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
+        getSendStoreMock({
+          ...unfundedStoreOverrides,
+          destinationAddress: MUXED_CONTRACT_ID_0,
         }),
       );
       jest

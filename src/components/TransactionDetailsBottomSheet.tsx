@@ -11,7 +11,6 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { logger } from "config/logger";
-import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useCollectiblesStore } from "ducks/collectibles";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -22,6 +21,7 @@ import {
   formatFiatAmount,
   stroopToXlm,
 } from "helpers/formatAmount";
+import { isMuxedContract } from "helpers/muxedContract";
 import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -50,7 +50,9 @@ type TransactionDetailsBottomSheetProps = {
  * A bottom sheet displaying transaction details, including amount, recipient,
  * status, fee, and other transaction metadata.
  *
- * Uses data from Zustand stores to show real transaction information.
+ * Uses data from Zustand stores to show real transaction information. The memo
+ * line is hidden for muxed recipients (M and W addresses), which carry their
+ * mux id in the address, even when a memo is still stored.
  */
 const TransactionDetailsBottomSheet: React.FC<
   TransactionDetailsBottomSheetProps
@@ -104,14 +106,15 @@ const TransactionDetailsBottomSheet: React.FC<
     network,
   );
 
-  // Check if recipient is M address
+  // Check if recipient is an M or W address
   const isRecipientMuxed = Boolean(
-    recipientAddress && isMuxedAccount(recipientAddress),
+    recipientAddress &&
+      (isMuxedAccount(recipientAddress) || isMuxedContract(recipientAddress)),
   );
 
-  // Hide memo for M addresses (memo is encoded in the address)
+  // Hide memo for M and W addresses (the mux id is encoded in the address)
   let memo = "";
-  // Only extract memo from transaction or use stored memo if recipient is not an M address
+  // Only extract memo from transaction or use stored memo if recipient is not an M or W address
   if (!isRecipientMuxed) {
     if ("memo" in transaction && transaction.memo.value) {
       memo = String(transaction.memo.value);
@@ -226,7 +229,7 @@ const TransactionDetailsBottomSheet: React.FC<
         </View>
       </View>
 
-      <View className="bg-background-secondary rounded-[16px] p-[24px] gap-[12px]">
+      <View className="bg-background-tertiary rounded-[16px] p-[24px] gap-[12px]">
         {type === SendType.Token && transactionAmount && (
           <View className="flex-row items-center">
             {selectedBalance && <TokenIcon token={selectedBalance} size="lg" />}
@@ -269,7 +272,7 @@ const TransactionDetailsBottomSheet: React.FC<
         )}
 
         <View>
-          <View className="w-[40px] h-[40px] rounded-full bg-tertiary justify-center items-center">
+          <View className="w-[40px] h-[40px] rounded-full justify-center items-center">
             <Icon.ChevronDownDouble
               size={20}
               color={themeColors.foreground.primary}
@@ -299,7 +302,7 @@ const TransactionDetailsBottomSheet: React.FC<
                 />
               ),
               titleComponent: (
-                <Text md secondary color={THEME.colors.text.secondary}>
+                <Text md secondary>
                   {t("transactionDetailsBottomSheet.status")}
                 </Text>
               ),
@@ -309,7 +312,7 @@ const TransactionDetailsBottomSheet: React.FC<
                 </Text>
               ),
             },
-            // Hide memo line for M addresses (memo is encoded in the address)
+            // Hide memo line for M and W addresses (the mux id is encoded in the address)
             !isRecipientMuxed
               ? {
                   icon: (
@@ -319,7 +322,7 @@ const TransactionDetailsBottomSheet: React.FC<
                     />
                   ),
                   titleComponent: (
-                    <Text md secondary color={THEME.colors.text.secondary}>
+                    <Text md secondary>
                       {t("transactionAmountScreen.details.memo")}
                     </Text>
                   ),
@@ -335,13 +338,17 @@ const TransactionDetailsBottomSheet: React.FC<
                 <Icon.Route size={16} color={themeColors.foreground.primary} />
               ),
               titleComponent: (
-                <Text md secondary color={THEME.colors.text.secondary}>
+                <Text md secondary>
                   {t("transactionAmountScreen.details.fee")}
                 </Text>
               ),
               trailingContent: (
                 <View className="flex-row items-center gap-[4px]">
-                  <StellarLogo width={16} height={16} />
+                  <StellarLogo
+                    width={16}
+                    height={16}
+                    color={themeColors.text.primary}
+                  />
                   <Text md medium>
                     {formatTokenForDisplay(actualFee, NATIVE_TOKEN_CODE)}
                   </Text>
@@ -356,7 +363,7 @@ const TransactionDetailsBottomSheet: React.FC<
                 />
               ),
               titleComponent: (
-                <Text md secondary color={THEME.colors.text.secondary}>
+                <Text md secondary>
                   {t("transactionAmountScreen.details.xdr")}
                 </Text>
               ),
@@ -384,15 +391,10 @@ const TransactionDetailsBottomSheet: React.FC<
 
       {transactionHash && (
         <Button
-          tertiary
+          secondary
           xl
           onPress={handleViewOnExplorer}
-          icon={
-            <Icon.LinkExternal01
-              size={16}
-              color={themeColors.foreground.primary}
-            />
-          }
+          icon={<Icon.LinkExternal01 size={16} />}
           iconPosition={IconPosition.RIGHT}
         >
           {t("transactionDetailsBottomSheet.viewOnExpert")}

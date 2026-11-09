@@ -4,6 +4,9 @@ const getSrcDirs = require("./config/getSrcDirs");
 module.exports = {
   preset: "react-native",
   testTimeout: 30000, // 30 seconds timeout for all tests
+  // Global so every suite can render a Skia-backed component (e.g. Shimmer)
+  // without an opt-in per test file; see jest/skiaTestEnvironment.js.
+  testEnvironment: "<rootDir>/jest/skiaTestEnvironment.js",
   setupFiles: ["./jest.setup.js", "@shopify/react-native-skia/jestSetup.js"],
   moduleNameMapper: {
     ...getSrcDirs(__dirname, "jest"),
@@ -25,6 +28,13 @@ module.exports = {
       "tailwindcss",
       "react-native-css-interop",
       "react-native-reanimated",
+      // 2.28.0 ships a packaging defect: a handful of files under
+      // `lib/commonjs` (e.g. `handlers/gestures/nativeGesture`,
+      // `handlers/NativeViewGestureHandler`) are raw `.ts` where a `.js` is
+      // expected, and the package's `react-native` field points the entry at
+      // `src/index.ts` anyway. Metro is fine with both; Jest needs babel to
+      // strip the TypeScript, which only happens inside this allow-list.
+      "react-native-gesture-handler",
       "@gorhom/bottom-sheet",
       "react-native-worklets",
       "react-native-keyboard-controller",
@@ -55,6 +65,12 @@ module.exports = {
   // collide via Haste and break the whole suite.
   modulePathIgnorePatterns: ["<rootDir>/.claude/"],
   testPathIgnorePatterns: ["/node_modules/", "<rootDir>/.claude/"],
+  // Only files that name themselves as suites. The default treats every file
+  // under `__tests__/` as one, which forced an ignore rule for the shared
+  // helpers in `__tests__/support/` — and that rule would then have silently
+  // swallowed any real test placed there, reporting nothing rather than
+  // failing.
+  testMatch: ["**/*.(test|spec).[jt]s?(x)"],
   coveragePathIgnorePatterns: ["/node_modules/", "/jest"],
   transform: {
     "^.+\\.(js|jsx|ts|tsx|mjs)$": "babel-jest",

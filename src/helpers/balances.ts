@@ -193,6 +193,26 @@ export const getTokenIdentifier = (
  * const tokenIds = getTokenIdentifiersFromBalances(balances);
  * // tokenIds might be ["XLM", "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"]
  */
+/**
+ * Drops the hidden tokens from a balances map. Returns the same map instance
+ * when nothing is hidden, so memoized consumers don't re-render for nothing.
+ *
+ * @param balances - A map keyed by balance identifier
+ * @param hiddenTokenIds - The identifiers to leave out
+ */
+export const omitHiddenBalances = <T>(
+  balances: Record<string, T>,
+  hiddenTokenIds: string[] | undefined,
+): Record<string, T> => {
+  if (!hiddenTokenIds?.length) {
+    return balances;
+  }
+
+  return Object.fromEntries(
+    Object.entries(balances).filter(([id]) => !hiddenTokenIds.includes(id)),
+  );
+};
+
 export const getTokenIdentifiersFromBalances = (
   balances: Record<string, Balance>,
 ): TokenIdentifier[] => {

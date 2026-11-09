@@ -4,13 +4,14 @@ import { hash, xdr } from "@stellar/stellar-sdk";
 import { AnalyticsEvent, isScreenViewEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { syncSentryEnablement } from "config/sentryConfig";
+import { DEFAULT_COLOR_SCHEME } from "config/theme";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useNetworkStore } from "ducks/networkInfo";
 import { isE2ETest } from "helpers/isEnv";
 import { throttle, memoize } from "lodash";
-import { Platform } from "react-native";
+import { Appearance, Platform } from "react-native";
 import { getBundleId } from "react-native-device-info";
 import {
   AMPLITUDE_API_KEY,
@@ -303,6 +304,11 @@ export const buildCommonContext = (): Record<string, unknown> => {
     schema_version: SCHEMA_VERSION,
     surface: getSurface(),
     network: network.toUpperCase(), // Stellar network (TESTNET, PUBLIC, FUTURENET)
+    // Event property, not an Identify trait: devices set to "automatic" flip
+    // theme at sunset, so a profile property would thrash. Resolved exactly as
+    // the theme hooks resolve it (useColorScheme reads this same source), so
+    // it reports the scheme on screen. Matches the extension's color_scheme.
+    color_scheme: Appearance.getColorScheme() ?? DEFAULT_COLOR_SCHEME,
   };
 
   if (activePublicKey) {
@@ -426,14 +432,40 @@ const getThrottledDispatcher = memoize((_throttleKey: string) =>
  * partitioning the throttle per screen_name is safe and keeps distinct screens
  * from clobbering one another while still deduping same-screen re-emits.
  */
+/**
+ * Events that never go through the throttle.
+ *
+ * It buckets by event name with `{ leading: false }`, so within its window the
+ * earlier payload is DROPPED, not queued. Each chart event is one per
+ * occurrence, and the hook settles ranges 250ms apart against a 500ms window,
+ * so that bucket loses real observations. Keying by identity props does not
+ * fix it: `token_chart.loaded` carries no per-token property at all, and
+ * adding one would change a frozen cross-platform payload.
+ *
+ * Every chart event is already deduped at its source, so the throttle
+ * protects nothing here — and bypassing keeps these counts comparable with
+ * the extension, which does not throttle at all.
+ */
+const UNTHROTTLED_EVENTS: ReadonlySet<AnalyticsEventName> = new Set([
+  AnalyticsEvent.TOKEN_CHART_LOADED,
+  AnalyticsEvent.TOKEN_CHART_VIEWED,
+  AnalyticsEvent.TOKEN_CHART_RANGE_CHANGED,
+  AnalyticsEvent.TOKEN_CHART_BRUSHED,
+]);
+
 const getThrottleKey = (
   event: AnalyticsEventName,
   props?: AnalyticsProps,
-): string =>
-  event === AnalyticsEvent.SCREEN_VIEWED &&
-  typeof props?.screen_name === "string"
-    ? `${event}:${props.screen_name}`
-    : event;
+): string => {
+  if (
+    event === AnalyticsEvent.SCREEN_VIEWED &&
+    typeof props?.screen_name === "string"
+  ) {
+    return `${event}:${props.screen_name}`;
+  }
+
+  return event;
+};
 
 /**
  * Main event tracking function.
@@ -457,7 +489,10 @@ export const track = (
     return;
   }
 
-  if (ANALYTICS_CONFIG.THROTTLE_DUPLICATE_EVENTS) {
+  if (
+    ANALYTICS_CONFIG.THROTTLE_DUPLICATE_EVENTS &&
+    !UNTHROTTLED_EVENTS.has(event)
+  ) {
     // Get a dispatcher throttled for this event's bucket (screen-aware for
     // screen.viewed; per event name otherwise).
     const throttledDispatch = getThrottledDispatcher(

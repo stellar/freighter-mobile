@@ -17,6 +17,9 @@ import type {
   TransactionErrorEvent,
 } from "services/analytics/types";
 
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
 /**
  * Flattens an `AssetIdentity` under the given property prefix (e.g. `asset_`
  * -> `asset_code`/`asset_issuer`/`asset_type`, `from_` ->
@@ -262,6 +265,9 @@ export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
   track(AnalyticsEvent.SWAP_SUCCESS, {
     from_asset_code: data.sourceToken,
     to_asset_code: data.destToken,
+    // Entry tag (design §7.5): swaps entered from the token detail view carry
+    // source: "token_details"; other entries keep the historical shape.
+    ...(data.source ? { source: data.source } : {}),
     ...(volume
       ? {
           ...assetIdentityProps("from_", volume.identity),

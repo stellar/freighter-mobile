@@ -165,6 +165,8 @@ export const TokensCollectiblesInline: React.FC<
                 showSpendableAmount={showSpendableAmount}
                 feeContext={feeContext}
                 balanceRowTestIDPrefix={balanceRowTestIDPrefix}
+                // The collectibles section's header follows the last row.
+                showLastRowDivider={false}
               />
             )}
           </>

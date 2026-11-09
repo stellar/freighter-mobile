@@ -65,7 +65,7 @@ const ProtocolDetailsBottomSheet: React.FC<ProtocolDetailsBottomSheetProps> =
                 {protocol.name}
               </Text>
             </View>
-            <Button tertiary lg onPress={handleOpen}>
+            <Button secondary lg onPress={handleOpen}>
               {t("discovery.open")}
             </Button>
           </View>
@@ -113,7 +113,6 @@ const ProtocolDetailsBottomSheet: React.FC<ProtocolDetailsBottomSheetProps> =
       <BottomSheet
         modalRef={modalRef}
         customContent={content}
-        handleCloseModal={handleClose}
         enableDynamicSizing
       />
     );

@@ -1,269 +1,342 @@
-import { RouteProp } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { fireEvent, render } from "@testing-library/react-native";
-import { RecoveryPhraseScreen } from "components/screens/RecoveryPhraseScreen";
+import { act, fireEvent } from "@testing-library/react-native";
 import {
-  AUTH_STACK_ROUTES,
-  AuthStackParamList,
-  RootStackParamList,
-} from "config/routes";
+  COPIED_FADED_OPACITY,
+  COPIED_FADE_IN_MS,
+  COPIED_FADE_OUT_MS,
+  COPIED_FEEDBACK_DURATION_MS,
+  REVEAL_FADE_MS,
+  REVEAL_SETTLE_MS,
+  REVEAL_SLIDE_MS,
+  REVEAL_TRANSITION_MS,
+  RecoveryPhraseScreen,
+} from "components/screens/RecoveryPhraseScreen";
+import { AnalyticsEvent } from "config/analyticsConfig";
+import { getThemeColors } from "config/colors";
+import { BiometricsSource } from "config/constants";
+import { useLoginDataStore } from "ducks/loginData";
+import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import StellarHDWallet from "stellar-hd-wallet";
+import { Animated, NativeModules, StyleSheet } from "react-native";
+import { getAnimatedStyle } from "react-native-reanimated";
+import { analytics } from "services/analytics";
 
-// Mock the RecoveryPhraseSkipBottomSheet component
-jest.mock(
-  "components/screens/RecoveryPhraseSkipBottomSheet",
-  () =>
-    function MockRecoveryPhraseSkipBottomSheet() {
-      return null;
-    },
-);
+/** How long Jest's native animation mock runs any animation. */
+const MOCK_NATIVE_ANIMATION_MS = 16;
+
+const PHRASE =
+  "gloom student label strategy tattoo promote brand mushroom problem divert carbon erode";
+const WORDS = PHRASE.split(" ");
+
+jest.mock("@react-native-community/blur", () => ({ BlurView: "BlurView" }));
+
+const mockGenerateMnemonic = jest.fn<string, [unknown?]>(() => PHRASE);
+jest.mock("stellar-hd-wallet", () => ({
+  generateMnemonic: (options?: unknown) => mockGenerateMnemonic(options),
+}));
 
 const mockCopyToClipboard = jest.fn();
 jest.mock("hooks/useSecureClipboard", () => ({
-  useSecureClipboard: () => ({
-    copyToClipboard: mockCopyToClipboard,
-    getClipboardText: jest.fn(),
-    clearClipboard: jest.fn(),
-  }),
+  useSecureClipboard: () => ({ copyToClipboard: mockCopyToClipboard }),
 }));
 
-jest.mock("providers/ToastProvider", () => ({
-  useToast: () => ({ showToast: jest.fn() }),
+const mockFinishWalletSetup = jest.fn();
+jest.mock("hooks/useFinishWalletSetup", () => ({
+  useFinishWalletSetup: () => mockFinishWalletSetup,
 }));
 
-// Mock the useBiometrics hook
-jest.mock("hooks/useBiometrics", () => ({
-  useBiometrics: () => ({
-    biometryType: null,
-    setIsBiometricsEnabled: jest.fn(),
-    isBiometricsEnabled: false,
-    enableBiometrics: jest.fn(() => Promise.resolve(true)),
-    disableBiometrics: jest.fn(() => Promise.resolve(true)),
-    checkBiometrics: jest.fn(() => Promise.resolve(null)),
-    handleEnableBiometrics: jest.fn(() => Promise.resolve(true)),
-    handleDisableBiometrics: jest.fn(() => Promise.resolve(true)),
-    verifyBiometrics: jest.fn(() => Promise.resolve(true)),
-    getButtonIcon: jest.fn(() => null),
-    getButtonText: jest.fn(() => ""),
-    getButtonColor: jest.fn(() => "#000000"),
-  }),
-}));
-
-jest.mock("stellar-hd-wallet", () => ({
-  generateMnemonic: jest.fn(
-    () =>
-      "test phrase one two three four five six seven eight nine ten eleven twelve",
-  ),
-}));
-
-jest.mock("hooks/useAppTranslation", () => () => ({
-  t: (key: string) => {
-    const translations: Record<string, string> = {
-      "recoveryPhraseScreen.title": "Recovery Phrase",
-      "recoveryPhraseScreen.warning":
-        "Write down these words in order and store them in a safe place",
-      "recoveryPhraseScreen.defaultActionButtonText": "Continue",
-      "recoveryPhraseScreen.footerNoteText": "Keep your recovery phrase safe",
-      "recoveryPhraseScreen.copyButtonText": "Copy",
-      "onboarding.skip": "Skip",
-      "onboarding.continue": "Continue",
-      "onboarding.doThisLaterButtonText": "Do this later",
-    };
-    return translations[key] || key;
-  },
-}));
-
-const mockSignUp = jest.fn();
 jest.mock("ducks/auth", () => ({
-  useAuthenticationStore: jest.fn(() => ({
-    signUp: mockSignUp,
-    error: null,
-    isLoading: false,
-    setSignInMethod: jest.fn(),
-  })),
-  getLoginType: jest.fn((biometryType) => {
-    if (!biometryType) return "password";
-    if (biometryType === "FaceID" || biometryType === "Face") return "face";
-    if (biometryType === "TouchID" || biometryType === "Fingerprint")
-      return "fingerprint";
-    return "password";
-  }),
+  useAuthenticationStore: (
+    selector: (state: { isLoading: boolean }) => unknown,
+  ) => selector({ isLoading: false }),
 }));
 
-const mockSetMnemonicPhrase = jest.fn();
-const mockSetPassword = jest.fn();
-jest.mock("ducks/loginData", () => ({
-  useLoginDataStore: jest.fn(() => ({
-    password: "test-password",
-    mnemonicPhrase: null,
-    setMnemonicPhrase: mockSetMnemonicPhrase,
-    setPassword: mockSetPassword,
-    clearLoginData: jest.fn(),
-  })),
+let mockIsReducedMotion = false;
+jest.mock("react-native-reanimated", () => ({
+  __esModule: true,
+  ...jest.requireActual<object>("react-native-reanimated"),
+  useReducedMotion: () => mockIsReducedMotion,
 }));
 
-const mockNavigation = {
-  navigate: jest.fn(),
+const renderScreen = () =>
+  renderWithProviders(
+    <RecoveryPhraseScreen navigation={{} as never} route={{} as never} />,
+  );
+
+/** Reveals the phrase and lets the transition finish. */
+const renderRevealed = () => {
+  const screen = renderScreen();
+  fireEvent.press(screen.getByTestId("reveal-recovery-phrase-button"));
+  act(() => {
+    jest.advanceTimersByTime(REVEAL_TRANSITION_MS);
+  });
+  return screen;
 };
-
-const mockRoute = {
-  params: {
-    password: "test-password",
-  },
-};
-
-type RecoveryPhraseScreenNavigationProp = NativeStackNavigationProp<
-  AuthStackParamList & RootStackParamList,
-  typeof AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN
->;
-
-type RecoveryPhraseScreenRouteProp = RouteProp<
-  AuthStackParamList,
-  typeof AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN
->;
 
 describe("RecoveryPhraseScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    mockIsReducedMotion = false;
+    useLoginDataStore.setState({ password: "password1", mnemonicPhrase: null });
   });
+  afterEach(() => jest.useRealTimers());
 
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  it("renders correctly", () => {
-    const { getByText, queryByText } = render(
-      <RecoveryPhraseScreen
-        navigation={
-          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
-        }
-        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
-      />,
-    );
+  it("keeps the phrase off the screen until the user reveals it", () => {
+    const { getByText, queryByText } = renderScreen();
 
     expect(getByText("Recovery Phrase")).toBeTruthy();
-    expect(
-      getByText(
-        "Write down these words in order and store them in a safe place",
-      ),
-    ).toBeTruthy();
-    expect(getByText("Continue")).toBeTruthy();
-    expect(getByText("Copy")).toBeTruthy();
-
-    expect(
-      getByText(
-        "test phrase one two three four five six seven eight nine ten eleven twelve",
-      ),
-    ).toBeTruthy();
-
-    expect(queryByText("Error message")).toBeNull();
+    expect(getByText("I understand. Reveal my phrase")).toBeTruthy();
+    WORDS.forEach((word) => expect(queryByText(word)).toBeNull());
   });
 
-  it("handles clipboard copy when copy button is pressed", () => {
-    const { getByText } = render(
-      <RecoveryPhraseScreen
-        navigation={
-          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
-        }
-        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
-      />,
-    );
+  it("reveals the phrase and counts the view", () => {
+    const { getByText } = renderRevealed();
 
-    fireEvent.press(getByText("Copy"));
-
-    expect(mockCopyToClipboard).toHaveBeenCalledWith(
-      "test phrase one two three four five six seven eight nine ten eleven twelve",
+    expect(getByText("You saved it, right?")).toBeTruthy();
+    WORDS.forEach((word) => expect(getByText(word)).toBeTruthy());
+    expect(analytics.track).toHaveBeenCalledWith(
+      AnalyticsEvent.VIEWED_RECOVERY_PHRASE,
     );
   });
 
-  it("should not call signUp if there is no recovery phrase", () => {
-    (StellarHDWallet.generateMnemonic as jest.Mock).mockReturnValueOnce("");
+  it("generates one phrase and keeps it in memory for the flow", () => {
+    renderScreen();
 
-    const { getByText } = render(
-      <RecoveryPhraseScreen
-        navigation={
-          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
-        }
-        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
-      />,
-    );
-
-    const skipButton = getByText("Do this later");
-    fireEvent.press(skipButton);
-
-    expect(mockNavigation.navigate).not.toHaveBeenCalled();
+    expect(mockGenerateMnemonic).toHaveBeenCalledTimes(1);
+    expect(useLoginDataStore.getState().mnemonicPhrase).toBe(PHRASE);
   });
 
-  it("navigates to validate recovery phrase screen when continue is pressed", () => {
-    const mockNavigate = jest.fn();
-    const { getByText } = render(
-      <RecoveryPhraseScreen
-        navigation={{ navigate: mockNavigate } as never}
-        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
-      />,
+  it("shows the same phrase when the user comes back to it", () => {
+    const stored =
+      "abandon ability able about above absent absorb abstract absurd abuse access accident";
+    useLoginDataStore.setState({ mnemonicPhrase: stored });
+
+    const { getByText } = renderRevealed();
+
+    expect(getByText("accident")).toBeTruthy();
+    expect(mockGenerateMnemonic).not.toHaveBeenCalled();
+  });
+
+  it("warns in amber that the wallet can't be recovered without it", () => {
+    const { getByText } = renderRevealed();
+    const warning = getByText(
+      "Make sure you've saved it.\nYou can't recover your wallet without it.",
     );
 
-    fireEvent.press(getByText("Continue"));
-
-    jest.runAllTimers();
-
-    expect(mockNavigate).toHaveBeenCalledWith(
-      AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN,
+    expect(StyleSheet.flatten(warning.props.style).color).toBe(
+      getThemeColors("light").amber[11],
     );
   });
 
-  it("disables the continue and skip buttons when loading", () => {
-    jest
-      .requireMock("ducks/auth")
-      .useAuthenticationStore.mockImplementation(() => ({
-        signUp: mockSignUp,
-        error: null,
-        isLoading: true,
-      }));
+  it("finishes creating the wallet from Next", () => {
+    const { getByTestId } = renderRevealed();
 
-    const { getByTestId } = render(
-      <RecoveryPhraseScreen
-        navigation={
-          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
-        }
-        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
-      />,
+    fireEvent.press(getByTestId("default-action-button"));
+
+    expect(mockFinishWalletSetup).toHaveBeenCalledWith(
+      BiometricsSource.ONBOARDING,
     );
-
-    const continueButton = getByTestId("continue-button");
-    const skipButton = getByTestId("skip-button");
-    expect(continueButton).toBeTruthy();
-    expect(continueButton.props.accessibilityState.disabled).toBeTruthy();
-    expect(skipButton).toBeTruthy();
-    expect(skipButton.props.accessibilityState.disabled).toBeTruthy();
   });
 
-  it("renders error message when there is an error", () => {
-    jest
-      .requireMock("ducks/auth")
-      .useAuthenticationStore.mockImplementation(() => ({
-        signUp: mockSignUp,
-        error: "Test error message",
-        isLoading: false,
-      }));
+  // Revealing, the button slides down to where Next sits, and then the rest
+  // fades: title, phrase, Tap to copy, warning and the button's label.
+  describe("the reveal transition", () => {
+    it("ignores taps until the screen settles", () => {
+      const { getByTestId } = renderScreen();
 
-    const { getByText, queryByText } = render(
-      <RecoveryPhraseScreen
-        navigation={
-          mockNavigation as unknown as RecoveryPhraseScreenNavigationProp
-        }
-        route={mockRoute as unknown as RecoveryPhraseScreenRouteProp}
-      />,
-    );
+      fireEvent.press(getByTestId("reveal-recovery-phrase-button"));
+      fireEvent.press(getByTestId("copy-recovery-phrase-button"));
+      fireEvent.press(getByTestId("default-action-button"));
+      expect(mockCopyToClipboard).not.toHaveBeenCalled();
+      expect(mockFinishWalletSetup).not.toHaveBeenCalled();
 
-    expect(getByText("Test error message")).toBeTruthy();
+      act(() => {
+        jest.advanceTimersByTime(REVEAL_TRANSITION_MS);
+      });
+      fireEvent.press(getByTestId("copy-recovery-phrase-button"));
+      fireEvent.press(getByTestId("default-action-button"));
 
-    expect(
-      queryByText(
-        "test phrase one two three four five six seven eight nine ten eleven twelve",
-      ),
-    ).toBeNull();
+      expect(mockCopyToClipboard).toHaveBeenCalledTimes(1);
+      expect(mockFinishWalletSetup).toHaveBeenCalledTimes(1);
+    });
+
+    it("changes the button's label mid-slide, before the rest fades in", () => {
+      const { getByTestId } = renderScreen();
+      const opacityOf = (testID: string) =>
+        getAnimatedStyle(getByTestId(testID)).opacity;
+
+      fireEvent.press(getByTestId("reveal-recovery-phrase-button"));
+      act(() => {
+        jest.advanceTimersByTime(REVEAL_SLIDE_MS);
+      });
+
+      expect(opacityOf("recovery-phrase-next-layer")).toBe(1);
+      expect(opacityOf("recovery-phrase-words-layer")).toBe(0);
+    });
+
+    it("keeps the hidden state under the new one until the fade is over", () => {
+      const { getByTestId, getByText, queryByTestId, queryByText } =
+        renderScreen();
+
+      fireEvent.press(getByTestId("reveal-recovery-phrase-button"));
+
+      expect(getByText("Recovery Phrase")).toBeTruthy();
+      expect(getByTestId("recovery-phrase-container-frost")).toBeTruthy();
+      expect(getByTestId("reveal-recovery-phrase-button")).toBeTruthy();
+
+      act(() => {
+        jest.advanceTimersByTime(REVEAL_TRANSITION_MS);
+      });
+
+      expect(queryByText("Recovery Phrase")).toBeNull();
+      expect(queryByTestId("recovery-phrase-container-frost")).toBeNull();
+      expect(queryByTestId("reveal-recovery-phrase-button")).toBeNull();
+      expect(getByText("You saved it, right?")).toBeTruthy();
+    });
+
+    it("skips the slide under Reduce Motion, so the screen settles once the fade is over", () => {
+      mockIsReducedMotion = true;
+      const { getByTestId } = renderScreen();
+
+      fireEvent.press(getByTestId("reveal-recovery-phrase-button"));
+      fireEvent.press(getByTestId("default-action-button"));
+      expect(mockFinishWalletSetup).not.toHaveBeenCalled();
+
+      act(() => {
+        jest.advanceTimersByTime(REVEAL_FADE_MS + REVEAL_SETTLE_MS);
+      });
+      fireEvent.press(getByTestId("default-action-button"));
+
+      expect(mockFinishWalletSetup).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("copying", () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.restoreAllMocks();
+    });
+
+    it("copies through the secure clipboard and confirms in place", () => {
+      const { getByTestId, getByText, queryByText } = renderRevealed();
+
+      fireEvent.press(getByTestId("copy-recovery-phrase-button"));
+
+      expect(mockCopyToClipboard).toHaveBeenCalledWith(PHRASE, {
+        hideNotification: true,
+      });
+      expect(analytics.trackCopyBackupPhrase).toHaveBeenCalledTimes(1);
+      expect(getByText("Copied")).toBeTruthy();
+
+      act(() => {
+        jest.advanceTimersByTime(
+          COPIED_FEEDBACK_DURATION_MS + COPIED_FADE_OUT_MS + COPIED_FADE_IN_MS,
+        );
+      });
+
+      expect(queryByText("Copied")).toBeNull();
+      expect(getByText("Tap to copy")).toBeTruthy();
+    });
+
+    // TouchableOpacity's press dims the button and fades it back in with
+    // "Copied"; the return to "Tap to copy" mirrors it.
+    it("fades from Copied back to Tap to copy", () => {
+      const timing = jest.spyOn(Animated, "timing").mockImplementation(
+        () =>
+          ({
+            start: (callback?: Animated.EndCallback) =>
+              callback?.({ finished: true }),
+            stop: jest.fn(),
+          }) as unknown as Animated.CompositeAnimation,
+      );
+      const { getByTestId, getByText } = renderRevealed();
+      fireEvent.press(getByTestId("copy-recovery-phrase-button"));
+      timing.mockClear();
+
+      act(() => {
+        jest.advanceTimersByTime(COPIED_FEEDBACK_DURATION_MS);
+      });
+
+      const fades = timing.mock.calls.map(([, config]) => config);
+      expect(fades).toContainEqual(
+        expect.objectContaining({
+          toValue: COPIED_FADED_OPACITY,
+          duration: COPIED_FADE_OUT_MS,
+        }),
+      );
+      expect(fades).toContainEqual(
+        expect.objectContaining({ toValue: 1, duration: COPIED_FADE_IN_MS }),
+      );
+      expect(getByText("Tap to copy")).toBeTruthy();
+    });
+
+    // Jest's native animation mock ends each animation a frame after it
+    // starts, whatever its duration, so a fade cut short shows only as a stop
+    // sent to the native side. Going a frame at a time lets the screen
+    // update while the fade back in still runs, as it does on a device.
+    it("lets Tap to copy fade all the way back in", () => {
+      const { startAnimatingNode, stopAnimation } =
+        NativeModules.NativeAnimatedModule as {
+          startAnimatingNode: jest.Mock<
+            void,
+            [id: number, node: number, config: { toValue?: number }]
+          >;
+          stopAnimation: jest.Mock<void, [id: number]>;
+        };
+      const { getByTestId } = renderRevealed();
+      fireEvent.press(getByTestId("copy-recovery-phrase-button"));
+      startAnimatingNode.mockClear();
+
+      act(() => {
+        jest.advanceTimersByTime(COPIED_FEEDBACK_DURATION_MS);
+      });
+      act(() => {
+        jest.advanceTimersByTime(MOCK_NATIVE_ANIMATION_MS);
+      });
+      act(() => {
+        jest.advanceTimersByTime(COPIED_FADE_IN_MS);
+      });
+
+      const starts = startAnimatingNode.mock.calls;
+      const fadeOut = starts.find(
+        ([, , config]) => config.toValue === COPIED_FADED_OPACITY,
+      );
+      const fadeBackIn = starts.find(
+        ([, node, config]) => node === fadeOut?.[1] && config.toValue === 1,
+      );
+      expect(fadeBackIn).toBeDefined();
+      expect(stopAnimation).not.toHaveBeenCalledWith(fadeBackIn?.[0]);
+    });
+
+    it("ignores taps, without a highlight, while Copied shows", () => {
+      const { getByTestId } = renderRevealed();
+
+      fireEvent.press(getByTestId("copy-recovery-phrase-button"));
+      fireEvent.press(getByTestId("copy-recovery-phrase-button"));
+
+      expect(mockCopyToClipboard).toHaveBeenCalledTimes(1);
+      expect(
+        getByTestId("copy-recovery-phrase-button").props.accessibilityState,
+      ).toMatchObject({ disabled: true });
+    });
+
+    it("leaves no timer behind when the screen goes away mid-feedback", () => {
+      // The press animations keep timers of their own, so this follows the
+      // feedback timer itself rather than counting every timer.
+      const setTimeoutSpy = jest.spyOn(global, "setTimeout");
+      const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+      const { getByTestId, unmount } = renderRevealed();
+
+      fireEvent.press(getByTestId("copy-recovery-phrase-button"));
+      const feedbackCall = setTimeoutSpy.mock.calls.findIndex(
+        ([, delay]) => delay === COPIED_FEEDBACK_DURATION_MS,
+      );
+      const feedbackTimer = setTimeoutSpy.mock.results[feedbackCall]?.value;
+      unmount();
+
+      expect(feedbackTimer).toBeDefined();
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(feedbackTimer);
+    });
   });
 });

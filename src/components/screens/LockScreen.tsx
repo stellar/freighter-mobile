@@ -1,6 +1,8 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import ForgotPasswordWarningModal from "components/screens/ForgotPasswordWarningModal";
-import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
+import BottomSheet from "components/BottomSheet";
+import ForgotPasswordBottomSheet from "components/screens/ForgotPasswordBottomSheet";
+import LockScreenTemplate from "components/templates/LockScreenTemplate";
 import {
   ERROR_TOAST_DURATION,
   LoginType,
@@ -8,15 +10,24 @@ import {
 } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
-import { useAuthenticationStore, getActiveAccountPublicKey } from "ducks/auth";
+import { useAuthenticationStore } from "ducks/auth";
 import { usePreferencesStore } from "ducks/preferences";
+import { waitForKeyboardDismiss } from "helpers/keyboard";
 import {
   isPrivacyShieldVisible,
   onPrivacyShieldHidden,
 } from "helpers/privacyShield";
 import useAppTranslation from "hooks/useAppTranslation";
+import useBackHandler from "hooks/useBackHandler";
+import { useBiometrics } from "hooks/useBiometrics";
 import { useToast } from "providers/ToastProvider";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { AppState } from "react-native";
 
 type LockScreenProps = NativeStackScreenProps<
@@ -34,16 +45,24 @@ interface LockScreenContentProps {
    * because it simply unmounts when the unlock flips the auth status.
    */
   onUnlocked?: () => void;
+  /**
+   * Whether to focus the password field on mount. Defaults to true, and is
+   * ignored when biometrics are enabled: they unlock first, so a keyboard
+   * would only rise under the prompt.
+   */
+  autoFocus?: boolean;
 }
 
 /**
  * Lock UI shared by the LockScreen route (hard lock / cold start) and the
  * soft-lock overlay (in-process auto-lock with the navigation tree preserved
- * underneath). Handles password unlock, the biometric auto-prompt, and the
- * forgot-password flow.
+ * underneath). Handles password unlock, the biometric prompt (automatic, and
+ * again from the button beside the password field), and the forgot-password
+ * flow.
  */
 export const LockScreenContent: React.FC<LockScreenContentProps> = ({
   onUnlocked,
+  autoFocus,
 }) => {
   const {
     signIn,
@@ -56,11 +75,21 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
     verifyActionWithBiometrics,
   } = useAuthenticationStore();
   const { isBiometricsEnabled } = usePreferencesStore();
+  // Settles the sign-in method from the device's biometry on mount, as the
+  // biometric unlock button did before it. Without it, "Use password instead"
+  // chosen on another screen would leave this one without biometrics.
+  useBiometrics();
   const { t } = useAppTranslation();
   const { showToast } = useToast();
-  const [publicKey, setPublicKey] = useState<string | null>(null);
-  const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] =
+  const forgotPasswordSheetRef = useRef<BottomSheetModal>(null);
+  const [isForgotPasswordSheetOpen, setIsForgotPasswordSheetOpen] =
     useState(false);
+
+  // signInMethod stays PASSWORD until the device's biometry has been checked
+  const biometricLoginType =
+    isBiometricsEnabled && signInMethod !== LoginType.PASSWORD
+      ? signInMethod
+      : null;
 
   // Only the invalid-password message belongs inline under the password field.
   // Every other store error is surfaced app-wide by AuthErrorToastListener, so
@@ -100,15 +129,6 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
     return undefined;
   }, [authStatus, onUnlocked]);
 
-  useEffect(() => {
-    const fetchActiveAccountPublicKey = async () => {
-      const retrievedPublicKey = await getActiveAccountPublicKey();
-      setPublicKey(retrievedPublicKey);
-    };
-
-    fetchActiveAccountPublicKey();
-  }, []);
-
   // Clear any stale error on mount, but skip if there was already an error
   // present when this screen was first rendered (e.g. a failed account load
   // after sign-in) so AuthErrorToastListener can surface it first.
@@ -133,16 +153,16 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
   );
 
   /**
-   * Prompts for biometrics and unlocks the wallet with the stored password,
-   * so users with biometrics enabled don't need to tap the unlock button.
+   * Prompts for biometrics and unlocks the wallet with the stored password.
+   * The biometrics button calls this directly, so it prompts however many
+   * times the user has already been asked.
    */
-  const attemptBiometricUnlock = useCallback(() => {
-    if (isSigningIn || isForgotPasswordModalVisible) return;
-    // The guards below must run before the auto-prompt flag is set: the
+  const promptBiometricUnlock = useCallback(() => {
+    if (isSigningIn || isForgotPasswordSheetOpen) return;
+    // The guards above must run before the auto-prompt flag is set: the
     // sign-in method resolves asynchronously after mount (PASSWORD until
     // biometrics availability is checked), and we still want to prompt then.
-    if (!isBiometricsEnabled || signInMethod === LoginType.PASSWORD) return;
-    if (hasAutoPromptedRef.current) return;
+    if (!biometricLoginType) return;
 
     hasAutoPromptedRef.current = true;
     let didAttemptUnlock = false;
@@ -177,15 +197,24 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
     });
   }, [
     isSigningIn,
-    isForgotPasswordModalVisible,
-    isBiometricsEnabled,
-    signInMethod,
+    isForgotPasswordSheetOpen,
+    biometricLoginType,
     verifyActionWithBiometrics,
     handleUnlock,
     clearError,
     showToast,
     t,
   ]);
+
+  /**
+   * The automatic prompt, so users with biometrics enabled don't need to tap
+   * anything. It asks at most once per arrival on this screen.
+   */
+  const attemptBiometricUnlock = useCallback(() => {
+    if (hasAutoPromptedRef.current) return;
+
+    promptBiometricUnlock();
+  }, [promptBiometricUnlock]);
 
   /**
    * Requests the biometric prompt, but holds it while the native privacy
@@ -252,43 +281,87 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
   }, [requestBiometricPrompt]);
 
   const handleForgotPassword = useCallback(() => {
-    setIsForgotPasswordModalVisible(true);
+    setIsForgotPasswordSheetOpen(true);
+    // Wait for the keyboard's hide animation before presenting the sheet so
+    // it opens at its final height instead of jumping down.
+    waitForKeyboardDismiss().then(() => {
+      forgotPasswordSheetRef.current?.present();
+    });
   }, []);
 
-  const cancelForgotPassword = useCallback(() => {
-    setIsForgotPasswordModalVisible(false);
+  const closeForgotPassword = useCallback(() => {
+    forgotPasswordSheetRef.current?.dismiss();
   }, []);
 
   const confirmForgotPassword = useCallback(() => {
-    setIsForgotPasswordModalVisible(false);
+    forgotPasswordSheetRef.current?.dismiss();
     logout(true);
   }, [logout]);
 
+  // Follows the sheet however it closes (its button, a swipe or the backdrop),
+  // so no biometric prompt pops up over the reset warning while it is open.
+  // onDismiss covers a close that cuts the opening animation short (e.g. a
+  // double-tap landing on the backdrop): gorhom never reports that one through
+  // onChange, and biometrics would stay blocked.
+  const forgotPasswordSheetModalProps = useMemo(
+    () => ({
+      onChange: (index: number) => setIsForgotPasswordSheetOpen(index >= 0),
+      onDismiss: () => setIsForgotPasswordSheetOpen(false),
+    }),
+    [],
+  );
+
+  // The bottom sheet doesn't close on Android's Back the way the modal it
+  // replaced did. Left to the navigator, Back from the lock screen route would
+  // send the app to the background with the warning still open. Registered
+  // after the soft-lock overlay's own Back handler, so it runs first there.
+  useBackHandler(() => {
+    forgotPasswordSheetRef.current?.dismiss();
+
+    return true;
+  }, isForgotPasswordSheetOpen);
+
   return (
     <>
-      <InputPasswordTemplate
-        publicKey={publicKey}
+      <LockScreenTemplate
         error={inlineError}
-        isLoading={isSigningIn}
-        handleContinue={handleUnlock}
-        handleLogout={handleForgotPassword}
-        testID="lock-screen"
-        continueButtonTestID="unlock-button"
-        forgotPasswordButtonTestID="forgot-password-button"
+        isUnlocking={isSigningIn}
+        autoFocus={isBiometricsEnabled ? false : (autoFocus ?? true)}
+        biometricLoginType={biometricLoginType}
+        onUnlock={handleUnlock}
+        onBiometricUnlock={promptBiometricUnlock}
+        onForgotPassword={handleForgotPassword}
       />
-      <ForgotPasswordWarningModal
-        visible={isForgotPasswordModalVisible}
-        onCancel={cancelForgotPassword}
-        onConfirm={confirmForgotPassword}
+      <BottomSheet
+        modalRef={forgotPasswordSheetRef}
+        bottomSheetModalProps={forgotPasswordSheetModalProps}
+        customContent={
+          <ForgotPasswordBottomSheet
+            onClose={closeForgotPassword}
+            onConfirm={confirmForgotPassword}
+          />
+        }
       />
     </>
   );
 };
 
-export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
+export const LockScreen: React.FC<LockScreenProps> = ({
+  navigation,
+  route,
+}) => {
   const handleUnlocked = useCallback(() => {
     navigation.replace(ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK);
   }, [navigation]);
 
-  return <LockScreenContent onUnlocked={handleUnlocked} />;
+  // Every navigation to this screen asks for the field to be focused. The one
+  // arrival that doesn't is the app launching into it, as the navigator's
+  // initial route: it mounts under the launch splash, where focusing the field
+  // would bring the keyboard up on the thread drawing the animation.
+  return (
+    <LockScreenContent
+      onUnlocked={handleUnlocked}
+      autoFocus={route.params?.autoFocus ?? false}
+    />
+  );
 };

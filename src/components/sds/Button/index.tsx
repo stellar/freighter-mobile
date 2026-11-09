@@ -1,8 +1,9 @@
-import { BUTTON_THEME } from "components/sds/Button/theme";
+import { BUTTON_THEME, ButtonColors } from "components/sds/Button/theme";
 import { Text, TextSize } from "components/sds/Typography";
 import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import { useBiometrics } from "hooks/useBiometrics";
+import useButtonColors from "hooks/useButtonColors";
 import React, { useCallback, useMemo } from "react";
 import { TouchableOpacity, ActivityIndicator } from "react-native";
 import styled from "styled-components/native";
@@ -52,11 +53,12 @@ export enum IconPosition {
 }
 
 interface StyledButtonProps {
-  variant: ButtonVariant;
   size: ButtonSize;
   isFullWidth: boolean;
   disabled: boolean;
   squared?: boolean;
+  $backgroundColor: string;
+  $borderColor?: string;
 }
 
 const getButtonHeight = (size: ButtonSize) => px(BUTTON_THEME.height[size]);
@@ -74,26 +76,11 @@ const getBorderRadius = (size: ButtonSize, squared = false) => {
   return px(100);
 };
 
-const getBackgroundColor = (variant: ButtonVariant, disabled: boolean) => {
-  if (disabled) {
-    return BUTTON_THEME.colors.disabled.background;
-  }
-  return BUTTON_THEME.colors[variant].background;
-};
-
-const getBorderColor = (variant: ButtonVariant, disabled: boolean) => {
-  if (disabled) {
-    return BUTTON_THEME.colors.disabled.border;
-  }
-  return BUTTON_THEME.colors[variant].border;
-};
-
-const getTextColor = (variant: ButtonVariant, disabled: boolean) => {
-  if (disabled) {
-    return BUTTON_THEME.colors.disabled.text;
-  }
-  return BUTTON_THEME.colors[variant].text;
-};
+const getVariantColors = (
+  colors: ButtonColors,
+  variant: ButtonVariant,
+  disabled: boolean,
+) => (disabled ? colors.disabled : colors[variant]);
 
 const getFontSize = (size: ButtonSize): TextSize => BUTTON_THEME.fontSize[size];
 
@@ -102,17 +89,17 @@ const StyledButton = styled(TouchableOpacity)<StyledButtonProps>`
   padding: ${({ size }: StyledButtonProps) => getPadding(size)};
   border-radius: ${({ size, squared }: StyledButtonProps) =>
     getBorderRadius(size, squared)};
-  background-color: ${({ variant, disabled }: StyledButtonProps) =>
-    getBackgroundColor(variant, disabled)};
+  background-color: ${({ $backgroundColor }: StyledButtonProps) =>
+    $backgroundColor};
   flex-direction: row;
   align-items: center;
   justify-content: center;
   width: ${({ isFullWidth }: StyledButtonProps) =>
     isFullWidth ? "100%" : "auto"};
-  border-width: ${({ variant, disabled }: StyledButtonProps) =>
-    getBorderColor(variant, disabled) ? px(1) : 0};
-  border-color: ${({ variant, disabled }: StyledButtonProps) =>
-    getBorderColor(variant, disabled) || "transparent"};
+  border-width: ${({ $borderColor }: StyledButtonProps) =>
+    $borderColor ? px(1) : 0};
+  border-color: ${({ $borderColor }: StyledButtonProps) =>
+    $borderColor || "transparent"};
 `;
 
 interface IconContainerProps {
@@ -166,16 +153,23 @@ const getSize = (
  * ```
  *
  * @example
- * With variants:
+ * With variants. Varial buttons are monochrome pills, apart from `primary`,
+ * which carries the brand color.
  * ```tsx
- * // Primary (default)
- * <Button primary>Primary Button</Button>
+ * // secondary - the filled call to action
+ * <Button secondary>Create a new wallet</Button>
  *
- * // Secondary
- * <Button secondary>Secondary Button</Button>
+ * // tertiary - the outlined call to action
+ * <Button tertiary>Import wallet</Button>
  *
- * // Destructive
+ * // destructive - solid red, for an irreversible action
  * <Button destructive>Delete</Button>
+ *
+ * // error - tinted red, for a cautionary action
+ * <Button error>Disconnect all</Button>
+ *
+ * // minimal - bare text, no fill or border
+ * <Button minimal>Forgot password</Button>
  * ```
  *
  * @example
@@ -249,10 +243,10 @@ const getSize = (
  * - error - Error state
  *
  * Size shorthands (alternative to size prop):
- * - sm - Small buttons (32px height)
+ * - sm - Small buttons (36px height)
  * - md - Medium buttons (40px height)
  * - lg - Large buttons (48px height)
- * - xl - Extra Large buttons (50px height, default)
+ * - xl - Extra Large buttons (52px height, default)
  */
 interface ButtonProps extends VariantProps, SizeProps {
   variant?: ButtonVariant;
@@ -285,17 +279,32 @@ const ButtonBase = ({
   testID,
   ...props
 }: Omit<ButtonProps, "biometric">) => {
+  const buttonColors = useButtonColors();
   const disabledState = isLoading || disabled;
   const resolvedVariant = getVariant(
     { variant, ...props },
     ButtonVariants.PRIMARY,
   );
   const resolvedSize = getSize({ size, ...props }, ButtonSizes.EXTRA_LARGE);
+  const variantColors = getVariantColors(
+    buttonColors,
+    resolvedVariant,
+    disabledState,
+  );
 
   const handlePress = useCallback(() => {
     if (!onPress) return;
     onPress();
   }, [onPress]);
+
+  // An icon sitting beside a label in a different color reads as a mistake, so
+  // it takes the label's color. A caller that sets one keeps it, which leaves
+  // room for a deliberate exception such as a status-colored icon.
+  const tintedIcon = React.isValidElement<{ color?: string }>(icon)
+    ? React.cloneElement(icon, {
+        color: icon.props.color ?? variantColors.text,
+      })
+    : icon;
 
   const renderIcon = (position: IconPosition) => {
     if (isLoading && position === IconPosition.RIGHT) {
@@ -304,14 +313,14 @@ const ButtonBase = ({
           <ActivityIndicator
             testID="button-loading-indicator"
             size="small"
-            color={getTextColor(resolvedVariant, disabledState)}
+            color={variantColors.text}
           />
         </IconContainer>
       );
     }
 
     if (icon && iconPosition === position) {
-      return <IconContainer position={position}>{icon}</IconContainer>;
+      return <IconContainer position={position}>{tintedIcon}</IconContainer>;
     }
 
     return null;
@@ -319,8 +328,9 @@ const ButtonBase = ({
 
   return (
     <StyledButton
-      variant={resolvedVariant}
       size={resolvedSize}
+      $backgroundColor={variantColors.background}
+      $borderColor={variantColors.border}
       isFullWidth={isFullWidth}
       disabled={disabledState}
       squared={squared}
@@ -331,8 +341,15 @@ const ButtonBase = ({
       <Text
         size={getFontSize(resolvedSize)}
         weight="semiBold"
-        color={getTextColor(resolvedVariant, disabledState)}
+        color={variantColors.text}
         isVerticallyCentered
+        // A label wide enough to fill the button would otherwise keep its full
+        // width and drive the icon past the edge, taking the pair off center
+        // with it. Shrinking it keeps label and icon together and centered; the
+        // single line is what isVerticallyCentered's fixed height already
+        // allows, so the overflow ellipsizes rather than being clipped.
+        numberOfLines={1}
+        style={{ flexShrink: 1 }}
       >
         {children}
       </Text>

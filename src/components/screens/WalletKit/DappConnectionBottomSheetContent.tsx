@@ -174,7 +174,7 @@ const DappConnectionBottomSheetContent: React.FC<
         <View className="flex-row justify-between gap-3">
           <View className="flex-1">
             <Button
-              secondary
+              tertiary
               xl
               isFullWidth
               onPress={handleUserCancel}
@@ -187,7 +187,7 @@ const DappConnectionBottomSheetContent: React.FC<
           <View className="flex-1">
             <Button
               biometric
-              tertiary
+              secondary
               xl
               isFullWidth
               onPress={() => onConnection()}
@@ -207,7 +207,7 @@ const DappConnectionBottomSheetContent: React.FC<
         <View className="flex-row justify-between gap-3">
           <View className="flex-1">
             <Button
-              secondary
+              tertiary
               xl
               isFullWidth
               onPress={handleUserCancel}
@@ -219,7 +219,7 @@ const DappConnectionBottomSheetContent: React.FC<
           <View className="flex-1">
             <Button
               biometric
-              tertiary
+              secondary
               xl
               isFullWidth
               onPress={() => {
@@ -240,7 +240,7 @@ const DappConnectionBottomSheetContent: React.FC<
       <View className="flex-col gap-3">
         <View className="w-full">
           <Button
-            tertiary={isSuspicious}
+            secondary={isSuspicious}
             destructive={isMalicious}
             xl
             isFullWidth

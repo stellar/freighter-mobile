@@ -1,45 +1,86 @@
+import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import { View } from "react-native";
 
+/**
+ * What the sheet explains:
+ * - `"account"`: an `M…` address the token doesn't support.
+ * - `"contract"`: a `W…` address the token doesn't support.
+ * - `"memo"`: a memo the token can't be sent with to this address.
+ * - `"collectibleMemo"`: a memo the collectible can't be sent with to this
+ *   address.
+ * - `"numericMemo"`: a memo that isn't a number, for a token that only takes
+ *   a numeric one.
+ * - `"collectibleNumericMemo"`: a memo that isn't a number, for a collectible
+ *   that only takes a numeric one.
+ */
+export type MuxedAddressWarningVariant =
+  | "account"
+  | "contract"
+  | "memo"
+  | "collectibleMemo"
+  | "numericMemo"
+  | "collectibleNumericMemo";
+
+const DESCRIPTION_KEYS = {
+  account: "transactionAmountScreen.errors.muxedAddressWarning.description",
+  contract: "transactionAmountScreen.errors.muxedContractWarning.description",
+  memo: "transactionAmountScreen.errors.memoNotSupportedWarning.description",
+  collectibleMemo:
+    "transactionAmountScreen.errors.memoNotSupportedWarning.collectibleDescription",
+  numericMemo: "transaction.errors.nonNumericMemoNotSupported",
+  collectibleNumericMemo:
+    "transactionAmountScreen.errors.memoNotSupportedWarning.collectibleNumericDescription",
+} as const;
+
 export interface MuxedAddressWarningBottomSheetProps {
   onCancel?: () => void;
   onClose: () => void;
+  /**
+   * What the sheet explains (see `MuxedAddressWarningVariant`). Defaults to
+   * `"account"`, an `M…` address.
+   */
+  variant?: MuxedAddressWarningVariant;
 }
 
 /**
- * Bottom sheet component for warning about muxed address not being supported.
+ * Bottom sheet that explains why a send is blocked: a muxed address the token
+ * doesn't support, or a memo it can't be sent with.
  * Follows the same structure as SecurityDetailBottomSheet with buttons stacked vertically.
+ *
+ * The `M…` and `W…` variants share the "Muxed address not supported" title,
+ * and the memo variants share "Memo not supported". The description depends on
+ * the variant (see `MuxedAddressWarningVariant`).
  *
  * @example
  * <MuxedAddressWarningBottomSheet
+ *   variant="contract"
  *   onCancel={handleCancel}
  *   onClose={handleClose}
  * />
  */
 export const MuxedAddressWarningBottomSheet: React.FC<
   MuxedAddressWarningBottomSheetProps
-> = ({ onCancel, onClose }) => {
+> = ({ onCancel, onClose, variant = "account" }) => {
   const { t } = useAppTranslation();
+  const isMuxedAddressVariant = variant === "account" || variant === "contract";
 
   return (
-    <View className="flex-1 gap-[16px]">
-      <View className="flex-row justify-between items-center">
-        <View className="h-[40px] w-[40px] items-center justify-center rounded-[8px] bg-red-3 border border-red-6">
-          <Icon.AlertOctagon themeColor="red" />
-        </View>
-        <View className="bg-background-tertiary rounded-full p-2 h-[32px] w-[32px] items-center justify-center">
-          <Icon.XClose onPress={onClose} size={20} themeColor="gray" />
-        </View>
-      </View>
-      <Text xl primary>
-        {t("transactionAmountScreen.errors.muxedAddressWarning.title")}
-      </Text>
+    <View className="flex-1 gap-[24px]">
+      <BottomSheetHeader
+        title={
+          isMuxedAddressVariant
+            ? t("transactionAmountScreen.errors.muxedAddressWarning.title")
+            : t("transactionAmountScreen.errors.memoNotSupported")
+        }
+        onClose={onClose}
+        closeTestID="muxed-address-warning-close-button"
+      />
       <Text md secondary regular>
-        {t("transactionAmountScreen.errors.muxedAddressWarning.description")}
+        {t(DESCRIPTION_KEYS[variant])}
       </Text>
 
       <View className="gap-[12px]">

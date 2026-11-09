@@ -18,10 +18,12 @@ const buildTopTokensResp = (assets: string[]): SearchTokenResponse =>
     },
   }) as unknown as SearchTokenResponse;
 
-const buildVerified = (issuers: string[]): TokenListReponseItem[] =>
-  issuers.map(
-    (issuer) =>
-      ({ issuer, name: "", code: "", domain: "" }) as TokenListReponseItem,
+const buildVerified = (
+  entries: [code: string, issuer: string][],
+): TokenListReponseItem[] =>
+  entries.map(
+    ([code, issuer]) =>
+      ({ issuer, name: "", code, domain: "" }) as TokenListReponseItem,
   );
 
 const noTrustline = () => false;
@@ -33,7 +35,10 @@ describe("computeTrendingIntersection", () => {
       `AQUA-${AQUA_ISSUER}-1`,
       `FOO-${FOO_ISSUER}-1`,
     ]);
-    const verified = buildVerified([USDC_ISSUER, AQUA_ISSUER]);
+    const verified = buildVerified([
+      ["USDC", USDC_ISSUER],
+      ["AQUA", AQUA_ISSUER],
+    ]);
 
     const result = computeTrendingIntersection(top, verified, noTrustline);
     const codes = result.map((r) => r.tokenCode).sort();
@@ -42,7 +47,7 @@ describe("computeTrendingIntersection", () => {
 
   it("drops Soroban contract records", () => {
     const top = buildTopTokensResp([`USDC-${USDC_ISSUER}-1`, SOROBAN_CONTRACT]);
-    const verified = buildVerified([USDC_ISSUER]);
+    const verified = buildVerified([["USDC", USDC_ISSUER]]);
 
     const result = computeTrendingIntersection(top, verified, noTrustline);
     expect(result).toHaveLength(1);
@@ -54,10 +59,22 @@ describe("computeTrendingIntersection", () => {
       `USDC-${USDC_ISSUER}-1`,
       `USDC-${USDC_ISSUER}-1`,
     ]);
-    const verified = buildVerified([USDC_ISSUER]);
+    const verified = buildVerified([["USDC", USDC_ISSUER]]);
 
     const result = computeTrendingIntersection(top, verified, noTrustline);
     expect(result).toHaveLength(1);
+  });
+
+  it("drops a different code from a verified issuer", () => {
+    const top = buildTopTokensResp([
+      `USDC-${USDC_ISSUER}-1`,
+      `USDc-${USDC_ISSUER}-1`,
+      `FOO-${USDC_ISSUER}-1`,
+    ]);
+    const verified = buildVerified([["USDC", USDC_ISSUER]]);
+
+    const result = computeTrendingIntersection(top, verified, noTrustline);
+    expect(result.map((r) => r.tokenCode)).toEqual(["USDC"]);
   });
 
   it("always includes native XLM regardless of verified list contents", () => {
@@ -69,14 +86,14 @@ describe("computeTrendingIntersection", () => {
 
   it("returns empty array when intersection is empty", () => {
     const top = buildTopTokensResp([`FOO-${FOO_ISSUER}-1`]);
-    const verified = buildVerified([USDC_ISSUER]);
+    const verified = buildVerified([["USDC", USDC_ISSUER]]);
     const result = computeTrendingIntersection(top, verified, noTrustline);
     expect(result).toEqual([]);
   });
 
   it("flags hasTrustline=true on records matching the held-set callback", () => {
     const top = buildTopTokensResp([`USDC-${USDC_ISSUER}-1`]);
-    const verified = buildVerified([USDC_ISSUER]);
+    const verified = buildVerified([["USDC", USDC_ISSUER]]);
     const held = (c: string, i: string) => c === "USDC" && i === USDC_ISSUER;
     const result = computeTrendingIntersection(top, verified, held);
     expect(result[0].hasTrustline).toBe(true);

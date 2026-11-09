@@ -15,8 +15,11 @@ interface SegmentedControlProps {
   disabled?: boolean;
 }
 
-// Extra vertical touch area (px) so the compact segments reach ~44pt tall.
-const SEGMENT_HIT_SLOP = 8;
+/**
+ * Extra vertical touch area (px) so compact segments reach ~44pt. Exported so
+ * other compact rows extend their target identically.
+ */
+export const SEGMENT_HIT_SLOP = 8;
 
 /**
  * SegmentedControl Component

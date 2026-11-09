@@ -5,6 +5,7 @@ import {
   CustomTokenStorage,
   FormattedSearchTokenRecord,
 } from "config/types";
+import { useBalancesStore } from "ducks/balances";
 import { useManageTokens } from "hooks/useManageTokens";
 import {
   BuildChangeTrustTxParams,
@@ -134,6 +135,57 @@ describe("useManageTokens", () => {
   });
 
   describe("addToken", () => {
+    it("clears the hidden flag when a previously hidden token is re-added", async () => {
+      const tokenIdentifier = `${mockToken.tokenCode}:${mockToken.issuer}`;
+      const mockUnhideToken = jest.fn().mockResolvedValue(undefined);
+      useBalancesStore.setState({
+        hiddenTokenIds: [tokenIdentifier],
+        unhideToken: mockUnhideToken,
+      });
+
+      const { result } = renderHook(() =>
+        useManageTokens({
+          network: mockNetwork,
+          account: mockAccount,
+          onSuccess: mockOnSuccess,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.addToken(mockToken);
+      });
+
+      expect(mockUnhideToken).toHaveBeenCalledWith({
+        publicKey: mockPublicKey,
+        network: mockNetwork,
+        tokenId: tokenIdentifier,
+      });
+
+      useBalancesStore.setState({ hiddenTokenIds: [] });
+    });
+
+    it("leaves the hidden list alone when the added token was not hidden", async () => {
+      const mockUnhideToken = jest.fn().mockResolvedValue(undefined);
+      useBalancesStore.setState({
+        hiddenTokenIds: [],
+        unhideToken: mockUnhideToken,
+      });
+
+      const { result } = renderHook(() =>
+        useManageTokens({
+          network: mockNetwork,
+          account: mockAccount,
+          onSuccess: mockOnSuccess,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.addToken(mockToken);
+      });
+
+      expect(mockUnhideToken).not.toHaveBeenCalled();
+    });
+
     it("should successfully add an token", async () => {
       const { result } = renderHook(() =>
         useManageTokens({

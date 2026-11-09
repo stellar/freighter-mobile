@@ -46,6 +46,41 @@ const mockGetExperimentClient = getExperimentClient as jest.MockedFunction<
   typeof getExperimentClient
 >;
 
+describe("production defaults", () => {
+  it("ships the price-history kill switch ON, like the extension", () => {
+    // One default on both platforms: the chart is on unless Amplitude turns
+    // it off. Clients do not ship before the backend routes are live, so ON
+    // never reaches users while the endpoints 404.
+    // `__DEV__` is a React Native global; jest defines it as true, and the
+    // production branch is what needs asserting.
+    // eslint-disable-next-line no-underscore-dangle
+    const devGlobal = global as unknown as { __DEV__: boolean };
+    // eslint-disable-next-line no-underscore-dangle
+    const previousDev = devGlobal.__DEV__;
+    // eslint-disable-next-line no-underscore-dangle
+    devGlobal.__DEV__ = false;
+
+    try {
+      jest.isolateModules(() => {
+        jest.doMock("helpers/isEnv", () => ({ isDev: false }));
+        // eslint-disable-next-line @typescript-eslint/no-require-imports, global-require, @typescript-eslint/no-var-requires
+        const { useRemoteConfigStore: store } =
+          jest.requireActual<typeof import("ducks/remoteConfig")>(
+            "ducks/remoteConfig",
+          );
+
+        expect(store.getState().use_token_price_history).toBe(true);
+        // Proves the production branch was read: swap is ON in dev and
+        // follows isAndroid (mocked false) in production.
+        expect(store.getState().swap_enabled).toBe(false);
+      });
+    } finally {
+      // eslint-disable-next-line no-underscore-dangle
+      devGlobal.__DEV__ = previousDev;
+    }
+  });
+});
+
 describe("remoteConfig duck", () => {
   beforeEach(() => {
     act(() => {

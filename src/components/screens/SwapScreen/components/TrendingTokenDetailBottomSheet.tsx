@@ -250,7 +250,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
       </View>
 
       {isTrusted ? (
-        <Button onPress={onSwapTo} tertiary>
+        <Button onPress={onSwapTo} secondary>
           {t("swapScreen.trendingDetail.swapTo", {
             tokenCode: record.tokenCode,
           })}
@@ -258,7 +258,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
       ) : (
         <View className="gap-3">
           <Button
-            tertiary={isSuspicious}
+            secondary={isSuspicious}
             destructive={isMalicious}
             onPress={onCancel}
             isFullWidth

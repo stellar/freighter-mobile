@@ -1,11 +1,8 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import { FloatingTabActionButton } from "components/FloatingTabActionButton";
+import { HeaderHeightContext } from "@react-navigation/elements";
 import { HomeActionButton } from "components/HomeActionButton";
-import {
-  TabType,
-  TokensCollectiblesTabs,
-} from "components/TokensCollectiblesTabs";
+import { TokensCollectiblesTabs } from "components/TokensCollectiblesTabs";
 import {
   WalletConnectE2EHelper,
   WalletConnectE2EHelperTrigger,
@@ -14,12 +11,12 @@ import {
 import { DebugBottomSheet } from "components/analytics/DebugBottomSheet";
 import { DebugTrigger } from "components/debug/DebugTrigger";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { getNavigationHeaderHeight } from "components/layout/CustomNavigationHeader";
 import ConnectedApps from "components/screens/HomeScreen/ConnectedApps";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
-import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
 import Icon from "components/sds/Icon";
-import { Display } from "components/sds/Typography";
-import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
+import { Display, DISPLAY_SIZES } from "components/sds/Typography";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
@@ -40,18 +37,20 @@ import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { getTokenType } from "helpers/balances";
-import { fsValue, pxValue } from "helpers/dimensions";
+import { fsValue } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useFilteredCollectibles } from "hooks/useFilteredCollectibles";
+import { useFloatingTabBarClearance } from "hooks/useFloatingTabBarClearance";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useHomeHeaders } from "hooks/useHomeHeaders";
+import { useScrollUnderHeader } from "hooks/useScrollUnderHeader";
 import { useTotalBalance } from "hooks/useTotalBalance";
 import { useWarmUpAccountsFiatTotals } from "hooks/useWarmUpAccountsFiatTotals";
-import { useWelcomeBanner } from "hooks/useWelcomeBanner";
 import React, {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -63,39 +62,53 @@ import {
   ScrollView,
   RefreshControl,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// Bottom padding reserved at the end of the Home scroll content so the floating
-// "+ Add" pill (its height plus its bottom offset) never covers the last row.
-const FLOATING_ADD_BUTTON_CLEARANCE = 88;
-
-// Line height of the `Display lg` fiat hero (see Typography's DISPLAY_SIZES):
-// the hero's container is fixed to it so swapping between the loading spinner
-// and the total never shifts the layout below.
-const DISPLAY_LG_LINE_HEIGHT = 56;
+// Figma's Display/LG/600, which the fiat hero is set in: Inter SemiBold 48/56
+// (Typography's DISPLAY_SIZES.lg) with -4% letter spacing. React Native takes
+// the spacing in points, so it is a fraction of the font size.
+const DISPLAY_LG_LETTER_SPACING = -0.04;
 
 type HomeScreenProps = BottomTabScreenProps<
   MainTabStackParamList & RootStackParamList,
   typeof MAIN_TAB_ROUTES.TAB_HOME
 >;
 
+/**
+ * The Home tab: the account's fiat total, the Add, Send and Swap tiles, and
+ * the Tokens and Collectibles tabs, each list ending with its inline add
+ * button. Its header floats over it (`useHomeHeaders`), so the content scrolls
+ * up under the header's fade and starts below it, and the content ends above
+ * the floating tab bar. Pull to refresh reloads balances, collectibles,
+ * connected apps and the accounts' totals.
+ */
 export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
   ({ navigation }) => {
     const { account } = useGetActiveAccount();
-    const {
-      network,
-      getAllAccounts,
-      allAccounts,
-      isSwitchingAccount,
-      isLoadingAllAccounts,
-    } = useAuthenticationStore();
+    const { network, getAllAccounts, allAccounts, isLoadingAllAccounts } =
+      useAuthenticationStore();
     const { themeColors } = useColors();
+    // The screen runs under the floating tab bar, so the scroll content ends
+    // this far up for the last item to scroll clear of the pill.
+    const tabBarClearance = useFloatingTabBarClearance();
+    // The header floats over the screen too (useHomeHeaders), so the content
+    // and the refresh spinner start below it. Until the navigator measures
+    // the header it reports a generic height shorter than the bar, so the
+    // bar's own height is the floor; a banner makes the measured one taller.
+    const measuredHeaderHeight = useContext(HeaderHeightContext);
+    const { top: topInset } = useSafeAreaInsets();
+    const headerHeight = Math.max(
+      measuredHeaderHeight ?? 0,
+      getNavigationHeaderHeight(topInset),
+    );
+    const { scrollViewProps, fillStyle, progressViewOffset } =
+      useScrollUnderHeader(headerHeight);
     const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
     const connectedAppsBottomSheetRef = useRef<BottomSheetModal>(null);
     const debugBottomSheetRef = useRef<BottomSheetModal>(null);
     const walletConnectE2EHelperRef = useRef<WalletConnectE2EHelperRef>(null);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState<TabType>(TabType.TOKENS);
 
     const { t } = useAppTranslation();
 
@@ -108,6 +121,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     } = useBalancesStore();
     const fetchCollectibles = useCollectiblesStore((s) => s.fetchCollectibles);
     const isCollectiblesLoading = useCollectiblesStore((s) => s.isLoading);
+    const collectiblesError = useCollectiblesStore((s) => s.error);
     // Same source the grid renders from, so "empty" here means what the user
     // sees on that tab.
     const { visibleCollectibles } = useFilteredCollectibles();
@@ -132,20 +146,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       [balances],
     );
 
-    // The tokens tab decides the Add button style for both tabs, and its pill
-    // appears exactly when funded — so driving both off that one flag keeps
-    // the in-empty-state CTA and the pill exact complements.
-    const showEmptyStateCta = !isFunded;
-
-    // ...but that CTA can only mount inside the collectibles empty state, so a
-    // grid with content has nowhere to host it. Suppressing the pill there too
-    // would leave the tab with no way to add a collectible at all — reachable
-    // for real, since holding one needs no funded account (no trustline, no
-    // reserve). So the pill stands down only when the CTA actually renders.
+    // The collectibles grid carries its own Add Collectible button, funded
+    // or not, wherever it shows no collectibles: in its empty card (Figma
+    // ?node-id=372-11772) and in its error view, which replaces the grid while
+    // a fetch fails, even over collectibles from an earlier fetch. Add
+    // collectible ends a grid with content instead, so the two are never on
+    // screen together. Holding a collectible needs no funded account, so a
+    // grid with content can follow an unfunded tokens tab too.
+    // It also goes while collectibles load, a pull to refresh included: the
+    // grid then shows a spinner that fills the tab, which would push the
+    // button to the bottom of the screen.
     const isCollectiblesGridEmpty = visibleCollectibles.length === 0;
-    const showCollectiblesPill = !(
-      showEmptyStateCta && isCollectiblesGridEmpty
-    );
+    const showAddCollectibleButton =
+      !isCollectiblesLoading && !isCollectiblesGridEmpty && !collectiblesError;
 
     const handleManageAccountsPress = useCallback(() => {
       manageAccountsBottomSheetRef.current?.present();
@@ -162,14 +175,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       onAccountPress: handleManageAccountsPress,
       onConnectedAppsPress: handleConnectedAppsPress,
     });
-
-    const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
-      useWelcomeBanner({
-        account,
-        isFunded,
-        isLoadingBalances,
-        isSwitchingAccount,
-      });
 
     // NOTE: VIEW_HOME analytics event is already tracked by useNavigationAnalytics
     // when the user navigates to this screen. No need for additional tracking here.
@@ -328,11 +333,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         testID="home-screen"
         insets={{ bottom: false, top: false, left: false, right: false }}
       >
-        <WelcomeBannerBottomSheet
-          modalRef={welcomeBannerBottomSheetModalRef}
-          onAddXLM={navigateToBuyXLM}
-          onDismiss={handleWelcomeBannerDismiss}
-        />
         <ManageAccounts
           accounts={allAccounts}
           activeAccount={account}
@@ -347,6 +347,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         <ScrollView
           testID="home-screen-scrollview"
           showsVerticalScrollIndicator={false}
+          {...scrollViewProps}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -354,20 +355,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                 handleRefresh();
               }}
               tintColor={themeColors.secondary}
+              progressViewOffset={progressViewOffset}
             />
           }
           contentContainerStyle={{
-            flexGrow: 1,
-            // Reserve space so the floating add pill never obscures the last
-            // list row when scrolled to the bottom.
-            paddingBottom: pxValue(FLOATING_ADD_BUTTON_CLEARANCE),
+            ...fillStyle,
+            paddingBottom: tabBarClearance,
           }}
         >
           {/* Fixed at the Display lg line height so swapping between the
-              spinner and the total never shifts the layout below. */}
+              spinner and the total never shifts the layout below. Only the
+              header's height pads it above: the bar's own bottom padding is
+              the gap. */}
           <View
-            className="pt-[35px] w-full items-center justify-center"
-            style={{ height: pxValue(35) + fsValue(DISPLAY_LG_LINE_HEIGHT) }}
+            className="w-full px-[16px] items-center justify-center"
+            style={{ height: fsValue(DISPLAY_SIZES.lg.lineHeight) }}
           >
             {(isLoadingBalances || isPricesLoading) && !hasFiatTotal ? (
               // On a cold start the sum of an empty/unpriced map is a
@@ -380,13 +382,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                 color={themeColors.foreground.primary}
               />
             ) : (
-              <Display lg medium>
+              // One line only: the box is fixed to it, so a long total that
+              // wrapped would spill onto the action tiles. It shrinks to fit
+              // instead, down to 60%.
+              <Display
+                lg
+                semiBold
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
+                style={{
+                  letterSpacing:
+                    DISPLAY_LG_LETTER_SPACING *
+                    fsValue(DISPLAY_SIZES.lg.fontSize),
+                }}
+              >
                 {totalLabel}
               </Display>
             )}
           </View>
 
-          <View className="flex-row gap-[12px] w-full px-6 py-6">
+          {/* 24pt from the total above and from the tabs below (Figma
+              662:9780); the tab row pads its own sides. */}
+          <View className="flex-row gap-[12px] w-full px-[16px] mt-[24px] mb-[24px]">
             <HomeActionButton
               Icon={Icon.Plus}
               title={t("home.buy")}
@@ -414,44 +432,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           <TokensCollectiblesTabs
             // Should disable inner scrolling here since the whole Home screen is scrollable
             disableInnerScrolling
-            onTabChange={setActiveTab}
             publicKey={account?.publicKey ?? ""}
             network={network}
             onTokenPress={handleTokenPress}
             onCollectiblePress={handleCollectiblePress}
             balanceRowTestIDPrefix="home-token"
-            showEmptyStateCta={showEmptyStateCta}
             onAddCollectiblePress={handleAddCollectiblePress}
+            // Adding a token creates a trustline, which needs XLM for the
+            // reserve + fee — so its button is only useful once the account is
+            // funded.
+            onAddTokenPress={handleAddTokenPress}
+            showAddTokenButton={isFunded}
+            // Stands down while the grid's empty card or error view carries
+            // its own button, so the two are never both on screen, and while
+            // the collectibles load.
+            showAddCollectibleButton={showAddCollectibleButton}
           />
         </ScrollView>
-
-        <View
-          pointerEvents="box-none"
-          className="absolute left-0 right-0 items-center"
-          style={{ bottom: pxValue(DEFAULT_PADDING) }}
-        >
-          {/* Adding a token creates a trustline, which needs XLM for the
-              reserve + fee — so the pill is only useful once the account is
-              funded. */}
-          {activeTab === TabType.TOKENS && isFunded && (
-            <FloatingTabActionButton
-              label={t("balancesList.addTokenButton")}
-              onPress={handleAddTokenPress}
-              testID="home-add-token-button"
-            />
-          )}
-          {/* Stands down only while the collectibles empty state is carrying
-              the CTA itself, so the two are never both on screen — and the tab
-              is never left without either. */}
-          {activeTab === TabType.COLLECTIBLES && showCollectiblesPill && (
-            <FloatingTabActionButton
-              label={t("collectiblesGrid.addCollectibleButton")}
-              onPress={handleAddCollectiblePress}
-              disabled={isCollectiblesLoading}
-              testID="home-add-collectible-button"
-            />
-          )}
-        </View>
 
         {__DEV__ && (
           <DebugBottomSheet

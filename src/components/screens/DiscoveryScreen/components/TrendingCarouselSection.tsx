@@ -21,7 +21,8 @@ const TrendingCarouselSection: React.FC<TrendingCarouselSectionProps> =
         <SectionTitle
           title={title}
           onPress={onTitlePress}
-          className="mt-3 mb-3"
+          // Flush with the top of the list, right under the nav bar.
+          className="mb-3"
           style={{ paddingLeft: pxValue(DEFAULT_PADDING) }}
         />
         <TrendingCarousel items={items} onItemPress={onItemPress} />

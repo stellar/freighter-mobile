@@ -1,4 +1,4 @@
-import Icon from "components/sds/Icon";
+import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -47,23 +47,15 @@ const CannotRemoveTokenBottomSheet: React.FC<
   const { title, description } = copy;
 
   return (
-    <View className="gap-4">
-      <View className="flex-row justify-between items-center">
-        <View className="size-10 rounded-lg items-center justify-center bg-red-3 border border-red-6">
-          <Icon.MinusCircle themeColor="red" />
-        </View>
-        <Icon.X withBackground themeColor="gray" onPress={onDismiss} />
-      </View>
-      <View>
-        <Text xl testID="bottom-sheet-content-title">
-          {title}
-        </Text>
-        <View className="h-4" />
-        <Text md regular secondary>
-          {description}
-        </Text>
-        <View className="gap-4" />
-      </View>
+    <View className="gap-[24px]">
+      <BottomSheetHeader
+        title={title}
+        onClose={onDismiss}
+        titleTestID="bottom-sheet-content-title"
+      />
+      <Text md regular secondary>
+        {description}
+      </Text>
     </View>
   );
 };

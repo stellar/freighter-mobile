@@ -15,7 +15,7 @@ interface UseAnimatedBarStylesParams {
   isOwnKeyboard: SharedValue<boolean>;
   progress: SharedValue<number>;
   keyboardHeight: SharedValue<number>;
-  tabBarHeight: number;
+  bottomOffset: number;
 }
 
 /**
@@ -28,14 +28,14 @@ const useAnimatedBarStyles = ({
   isOwnKeyboard,
   progress,
   keyboardHeight,
-  tabBarHeight,
+  bottomOffset,
 }: UseAnimatedBarStylesParams) => {
   // When the search bar owns the keyboard, slide up in sync.
   // When a WebView input opens the keyboard, fade out and disable touches.
   const slideStyle = useAnimatedStyle((): ViewStyle => {
     if (isOwnKeyboard.value) {
       const gap = isIOS ? IOS_FOCUSED_MARGIN_BOTTOM * progress.value : 0;
-      const offset = Math.min(0, keyboardHeight.value + tabBarHeight - gap);
+      const offset = Math.min(0, keyboardHeight.value + bottomOffset - gap);
       return {
         transform: [{ translateY: offset }],
         opacity: 1,

@@ -6,6 +6,9 @@ import {
   SWAP_SELECTION_TYPES,
 } from "config/constants";
 
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
 export enum ScreenTransition {
   Fade = "fade",
   SlideFromBottom = "slide_from_bottom",
@@ -57,16 +60,12 @@ export const ROOT_NAVIGATOR_ROUTES = {
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
   COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
   ADD_COLLECTIBLE_SCREEN: "AddCollectibleScreen",
-  HIDDEN_COLLECTIBLES_SCREEN: "HiddenCollectiblesScreen",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
   WELCOME_SCREEN: "WelcomeScreen",
   CHOOSE_PASSWORD_SCREEN: "ChoosePasswordScreen",
-  CONFIRM_PASSWORD_SCREEN: "ConfirmPasswordScreen",
-  RECOVERY_PHRASE_ALERT_SCREEN: "RecoveryPhraseAlertScreen",
   RECOVERY_PHRASE_SCREEN: "RecoveryPhraseScreen",
-  VALIDATE_RECOVERY_PHRASE_SCREEN: "ValidateRecoveryPhraseScreen",
   IMPORT_WALLET_SCREEN: "ImportWalletScreen",
   BIOMETRICS_ENABLE_SCREEN: "BiometricsOnboardingScreen",
 
@@ -147,7 +146,11 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK]: NavigatorScreenParams<ManageTokensStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK]: undefined;
-  [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]:
+    | {
+        autoFocus?: boolean;
+      }
+    | undefined;
   [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN]: {
     source?: QRCodeSource;
@@ -168,7 +171,6 @@ export type RootStackParamList = {
     tokenId: string;
   };
   [ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN]: undefined;
-  [ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN]: undefined;
 };
 
 export type AuthStackParamList = {
@@ -176,17 +178,12 @@ export type AuthStackParamList = {
   [AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN]: {
     isImporting?: boolean;
   };
-  [AUTH_STACK_ROUTES.CONFIRM_PASSWORD_SCREEN]: {
-    isImporting?: boolean;
-  };
-  [AUTH_STACK_ROUTES.RECOVERY_PHRASE_ALERT_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.IMPORT_WALLET_SCREEN]: undefined;
   [AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN]: {
     source: BiometricsSource;
   };
   [AUTH_STACK_ROUTES.LOCK_SCREEN]: undefined;
-  [AUTH_STACK_ROUTES.VALIDATE_RECOVERY_PHRASE_SCREEN]: undefined;
 };
 
 export type MainTabStackParamList = {
@@ -264,5 +261,11 @@ export type SwapStackParamList = {
   [SWAP_ROUTES.SWAP_AMOUNT_SCREEN]: {
     tokenId: string;
     tokenSymbol: string;
+    /**
+     * Analytics entry tag: set to "token_details" when the swap flow is
+     * entered from TokenDetailsScreen so swap.completed carries
+     * `source: "token_details"` (design §7.5). Absent for other entries.
+     */
+    source?: "token_details";
   };
 };

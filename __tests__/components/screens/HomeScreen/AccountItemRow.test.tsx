@@ -57,7 +57,10 @@ describe("AccountItemRow", () => {
 
   it("shows the formatted fiat total when available", () => {
     const { getByText } = renderWithProviders(
-      <AccountItemRow {...defaultProps} fiatTotal={{ label: "$1,149.23", hasError: false }} />,
+      <AccountItemRow
+        {...defaultProps}
+        fiatTotal={{ label: "$1,149.23", hasError: false }}
+      />,
     );
 
     expect(getByText("$1,149.23")).toBeTruthy();
@@ -134,6 +137,29 @@ describe("AccountItemRow", () => {
     );
 
     expect(getByTestId("account-row-0-selected-badge")).toBeTruthy();
+  });
+
+  it("draws the badge check in white, which its filled badge needs", () => {
+    // The badge is a solid navy circle in both schemes, so an inverting token
+    // painted the check black on navy for anyone on a light device.
+    const { getByTestId } = renderWithProviders(
+      <AccountItemRow {...defaultProps} isSelected />,
+    );
+
+    const colorsIn = (node: unknown): unknown[] => {
+      if (Array.isArray(node)) return node.flatMap(colorsIn);
+      if (!node || typeof node !== "object") return [];
+      const el = node as { props?: { color?: unknown }; children?: unknown };
+
+      return [
+        ...(el.props?.color === undefined ? [] : [el.props.color]),
+        ...colorsIn(el.children),
+      ];
+    };
+
+    expect(colorsIn(getByTestId("account-row-0-selected-badge"))).toContain(
+      "#ffffff",
+    );
   });
 
   it("shows the badge on the row being switched to", () => {

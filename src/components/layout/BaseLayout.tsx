@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { ScrollableKeyboardView } from "components/layout/ScrollableKeyboardView";
 import { DEFAULT_PADDING } from "config/constants";
-import { THEME } from "config/theme";
 import { pxValue } from "helpers/dimensions";
 import useKeyboardVisible from "hooks/useKeyboardVisible";
+import useTheme from "hooks/useTheme";
 import React from "react";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
 import styled from "styled-components/native";
@@ -82,11 +82,15 @@ export const BaseLayout = ({
   children,
   useSafeArea = true,
   useKeyboardAvoidingView = false,
-  backgroundColor = THEME.colors.background.default,
+  backgroundColor,
   insets = DEFAULT_INSETS,
   testID,
 }: BaseLayoutProps) => {
+  const theme = useTheme();
   const safeAreaInsets = useSafeAreaInsets();
+  // Resolved here rather than as a default parameter: the fallback comes from a
+  // hook, which cannot be called in a parameter default.
+  const resolvedBackgroundColor = backgroundColor ?? theme.colors.base.primary;
   const isKeyboardVisible = useKeyboardVisible();
   const Container = useSafeArea ? StyledSafeAreaView : StyledView;
 
@@ -99,7 +103,7 @@ export const BaseLayout = ({
         <Container
           testID={testID}
           $insets={safeAreaInsets}
-          $backgroundColor={backgroundColor}
+          $backgroundColor={resolvedBackgroundColor}
           $insetsConfig={mergedInsets}
           $isKeyboardVisible={isKeyboardVisible}
         >
@@ -113,7 +117,7 @@ export const BaseLayout = ({
     <Container
       testID={testID}
       $insets={safeAreaInsets}
-      $backgroundColor={backgroundColor}
+      $backgroundColor={resolvedBackgroundColor}
       $insetsConfig={mergedInsets}
       $isKeyboardVisible={isKeyboardVisible}
     >

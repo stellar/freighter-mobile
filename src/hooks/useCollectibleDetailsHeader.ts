@@ -29,10 +29,9 @@ interface UseCollectibleDetailsHeaderProps {
  * - Setting the header title to the collectible name
  * - Setting up the right header context menu with collectible actions
  * - All menu action handlers (refresh metadata, view on stellar.expert, save to photos, etc.)
- * - Hide/show collectible functionality (conditionally displayed based on collectible's hidden state)
- *
- * The context menu dynamically shows either "Hide collectible" or "Show collectible" option
- * based on whether the collectible is currently hidden or visible.
+ * - Hiding the collectible. This screen only opens from a visible collectible
+ *   on Home, so it never shows a hidden one; unhiding happens from the Hidden
+ *   collectibles sheet on Add collectible.
  *
  * @param {Object} params - Hook parameters
  * @param {string} params.collectionAddress - The collection address of the collectible
@@ -42,7 +41,7 @@ interface UseCollectibleDetailsHeaderProps {
  *
  * @example
  * ```tsx
- * const { handleHideCollectible, handleShowCollectible } = useCollectibleDetailsHeader({
+ * const { handleHideCollectible } = useCollectibleDetailsHeader({
  *   collectionAddress: "collection123",
  *   collectibleName: "My NFT",
  *   tokenId: "token456"
@@ -54,8 +53,7 @@ interface UseCollectibleDetailsHeaderProps {
  * @returns {Function} returns.handleViewOnStellarExpert - Handler to view collectible on stellar.expert
  * @returns {Function} returns.handleSaveToPhotos - Handler to save collectible image to photos
  * @returns {Function} returns.handleRemoveCollectible - Handler to remove collectible from wallet
- * @returns {Function} returns.handleHideCollectible - Handler to hide a visible collectible
- * @returns {Function} returns.handleShowCollectible - Handler to show/unhide a hidden collectible
+ * @returns {Function} returns.handleHideCollectible - Handler to hide the collectible
  */
 export const useCollectibleDetailsHeader = ({
   collectionAddress,
@@ -68,23 +66,11 @@ export const useCollectibleDetailsHeader = ({
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
-  const {
-    fetchCollectibles,
-    removeCollectible,
-    getCollectible,
-    hideCollectible,
-    unhideCollectible,
-  } = useCollectiblesStore();
+  const { fetchCollectibles, removeCollectible, hideCollectible } =
+    useCollectiblesStore();
   const { saveToPhotos } = useDeviceStorage();
   const { open: openInAppBrowser } = useInAppBrowser();
   const { showToast } = useToast();
-
-  // Get the collectible to check if it's hidden
-  const collectible = useMemo(
-    () => getCollectible({ collectionAddress, tokenId }),
-    [getCollectible, collectionAddress, tokenId],
-  );
-  const isHidden = collectible?.isHidden ?? false;
 
   /**
    * Sets the navigation header title to the collectible name.
@@ -185,7 +171,7 @@ export const useCollectibleDetailsHeader = ({
 
         // Show success toast (with toastId to prevent stacking)
         showToast({
-          title: t("collectibleDetails.hideSuccess"),
+          title: t("hiddenCollectibles.hidden"),
           variant: "success",
           toastId: "hide-collectible-success",
         });
@@ -209,41 +195,6 @@ export const useCollectibleDetailsHeader = ({
   ]);
 
   /**
-   * Handles showing (unhiding) the collectible.
-   * Removes the collectible from hidden collectibles storage, updates the store,
-   * and navigates back.
-   */
-  const handleShowCollectible = useCallback(async () => {
-    try {
-      if (account?.publicKey && network) {
-        await unhideCollectible({
-          publicKey: account.publicKey,
-          network,
-          contractId: collectionAddress,
-          tokenId,
-        });
-
-        // Navigate all the way back to the home screen after successful unhide
-        // so users can see the collectible in the collectibles grid right away
-        navigation.popToTop();
-      }
-    } catch (error) {
-      logger.error(
-        "useCollectibleDetailsHeader",
-        "Failed to show collectible:",
-        error,
-      );
-    }
-  }, [
-    unhideCollectible,
-    account?.publicKey,
-    network,
-    collectionAddress,
-    tokenId,
-    navigation,
-  ]);
-
-  /**
    * Platform-specific system icons for the context menu actions.
    */
   const systemIcons = useMemo(
@@ -254,7 +205,6 @@ export const useCollectibleDetailsHeader = ({
           viewOnStellarExpert: "link", // Link/chain icon
           saveToPhotos: "square.and.arrow.down", // Save to photos icon
           hideCollectible: "eye.slash", // Eye slash icon for hiding
-          showCollectible: "eye", // Eye icon for showing
           removeCollectible: "trash", // Trash icon for removal
         },
         android: {
@@ -262,7 +212,6 @@ export const useCollectibleDetailsHeader = ({
           viewOnStellarExpert: "link", // Link icon (Material)
           saveToPhotos: "place_item", // Save to photos icon (Material)
           hideCollectible: "visibility_off", // Visibility off icon (Material)
-          showCollectible: "visibility", // Visibility icon (Material)
           removeCollectible: "delete", // Delete icon (Material)
         },
       }),
@@ -303,15 +252,10 @@ export const useCollectibleDetailsHeader = ({
             },
           ]
         : []),
-      // Show hide/show collectible option based on current state
       {
-        title: isHidden
-          ? t("collectibleDetails.showCollectible")
-          : t("collectibleDetails.hideCollectible"),
-        systemIcon: isHidden
-          ? systemIcons?.showCollectible
-          : systemIcons?.hideCollectible,
-        onPress: isHidden ? handleShowCollectible : handleHideCollectible,
+        title: t("collectibleDetails.hideCollectible"),
+        systemIcon: systemIcons?.hideCollectible,
+        onPress: handleHideCollectible,
       },
       // Only show remove collectible in development mode for
       // testing purposes
@@ -333,9 +277,7 @@ export const useCollectibleDetailsHeader = ({
       handleViewOnStellarExpert,
       handleSaveToPhotos,
       collectibleImage,
-      isHidden,
       handleHideCollectible,
-      handleShowCollectible,
       handleRemoveCollectible,
     ],
   );
@@ -353,6 +295,5 @@ export const useCollectibleDetailsHeader = ({
     handleSaveToPhotos,
     handleRemoveCollectible,
     handleHideCollectible,
-    handleShowCollectible,
   };
 };

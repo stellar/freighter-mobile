@@ -1,0 +1,11 @@
+<resources>
+    <!--
+      The privacy shield's backdrop. Deliberately NOT in colors.xml: that file
+      is rewritten wholesale by `yarn generate-splashscreen`, which would drop
+      this and break the build with no warning.
+
+      It tracks the page colour, like bootsplash_background and app_background,
+      and has a values-night counterpart so the shield follows the device.
+    -->
+    <color name="privacy_shield_background">#ffffff</color>
+</resources>

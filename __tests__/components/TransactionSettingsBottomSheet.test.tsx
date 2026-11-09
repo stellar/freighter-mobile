@@ -1,10 +1,15 @@
 import { fireEvent, waitFor } from "@testing-library/react-native";
+import {
+  BASE_CONTRACT,
+  MUXED_CONTRACT_ID_0,
+} from "__tests__/support/muxedContractFixtures";
 import BigNumber from "bignumber.js";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { TransactionContext, NETWORKS } from "config/constants";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import * as muxedAddressHelpers from "helpers/muxedAddress";
 import { isContractId, isSorobanTransaction } from "helpers/soroban";
 import { isMuxedAccount, isValidStellarAddress } from "helpers/stellar";
 import { renderWithProviders } from "helpers/testUtils";
@@ -194,6 +199,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       isRefreshing: false,
       isFunded: true,
       localOnlyTokenIds: [],
+      hiddenBalanceItems: [],
       handleRefresh: jest.fn(),
     });
     mockIsContractId.mockReturnValue(false);
@@ -488,6 +494,17 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
   });
 
   it("opening the fee details does not persist the fee (preview only)", async () => {
+    // A contract recipient makes this a Soroban transaction, so the info icon
+    // opens the fee breakdown. The sheet validates the recipient with the real
+    // strkey check in helpers/muxedContract, not the mocked `isContractId`, so
+    // the recipient has to be a real C address.
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...mockTransactionSettingsState,
+      recipientAddress: BASE_CONTRACT,
+    });
+    // Still needed: the memo check (getMemoDisabledState) reads this mocked
+    // `isContractId`. Saying yes for the C keeps it on its real path, which
+    // disables the memo with no muxed-support lookup.
     mockIsContractId.mockReturnValue(true);
 
     const { getByText, getByTestId } = renderWithProviders(
@@ -498,6 +515,8 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
         onSettingsChange={mockOnSettingsChange}
       />,
     );
+
+    expect(getByText("transactionSettings.inclusionFeeTitle")).toBeTruthy();
 
     // Pick the High preset, then open the fee details via the info icon.
     fireEvent.press(getByText("transactionSettings.priorityHigh"));
@@ -643,23 +662,26 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     ...overrides,
   });
 
+  const defaultBalancesList = {
+    balanceItems: [],
+    scanResults: {},
+    isLoading: false,
+    error: null,
+    noBalances: true,
+    isRefreshing: false,
+    isFunded: true,
+    localOnlyTokenIds: [],
+    hiddenBalanceItems: [],
+    handleRefresh: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsContractId.mockReturnValue(false);
     mockIsMuxedAccount.mockReturnValue(false);
     mockIsValidStellarAddress.mockReturnValue(true);
     // Don't set a default - let each test set its own value
-    mockUseBalancesListTyped.mockReturnValue({
-      balanceItems: [],
-      scanResults: {},
-      isLoading: false,
-      error: null,
-      noBalances: true,
-      isRefreshing: false,
-      isFunded: true,
-      localOnlyTokenIds: [],
-      handleRefresh: jest.fn(),
-    });
+    mockUseBalancesListTyped.mockReturnValue(defaultBalancesList);
     mockUseAuthenticationStore.mockReturnValue({
       account: {
         publicKey: "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
@@ -770,6 +792,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       isRefreshing: false,
       isFunded: true,
       localOnlyTokenIds: [],
+      hiddenBalanceItems: [],
       handleRefresh: jest.fn(),
     });
 
@@ -845,6 +868,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       isRefreshing: false,
       isFunded: true,
       localOnlyTokenIds: [],
+      hiddenBalanceItems: [],
       handleRefresh: jest.fn(),
     });
 
@@ -1044,6 +1068,223 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
         "transactionSettings.memoPlaceholder",
       );
       expect(memoInput.props.editable).toBe(true);
+    });
+  });
+
+  describe("contract destinations (C and W)", () => {
+    const customTokenContractId =
+      "CBHUX3RSBKAL7MJUOUA3PPW3TA65YRFLCGASJ5TNHY7HDLXCHWZQA6GR";
+    const xlmBalance = {
+      id: "XLM",
+      token: { type: "native", code: "XLM" },
+      tokenCode: "XLM",
+      total: new BigNumber("10"),
+      available: new BigNumber("10"),
+    };
+    const customTokenBalance = {
+      id: `CUSTOM:${customTokenContractId}`,
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      token: {
+        code: "CUSTOM",
+        issuer: { key: customTokenContractId },
+        type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      },
+      contractId: customTokenContractId,
+      name: "Custom Token",
+      symbol: "CUSTOM",
+      decimals: 7,
+      total: new BigNumber("1000"),
+      available: new BigNumber("1000"),
+    };
+
+    // The contract the sheet resolved is only visible through the memo check
+    // it is handed to, so the real check runs behind this spy.
+    let memoStateSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      memoStateSpy = jest.spyOn(muxedAddressHelpers, "getMemoDisabledState");
+    });
+
+    afterEach(() => {
+      memoStateSpy.mockRestore();
+    });
+
+    it("disables memo for a W recipient without a contract lookup", async () => {
+      mockUseBalancesListTyped.mockReturnValue({
+        ...defaultBalancesList,
+        balanceItems: [xlmBalance],
+      } as never);
+      mockUseTransactionSettingsStore.mockReturnValue(
+        createMockState({
+          recipientAddress: MUXED_CONTRACT_ID_0,
+          selectedTokenId: "XLM",
+        }),
+      );
+      const { getByPlaceholderText, getByText } = renderWithProviders(
+        <TransactionSettingsBottomSheet
+          onCancel={mockOnCancel}
+          onConfirm={mockOnConfirm}
+          context={TransactionContext.Send}
+          onSettingsChange={mockOnSettingsChange}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          getByPlaceholderText("transactionSettings.memoPlaceholder").props
+            .editable,
+        ).toBe(false);
+        expect(
+          getByText("transactionSettings.memoInfo.memoDisabledForTransaction"),
+        ).toBeTruthy();
+      });
+      expect(getByText("transactionSettings.inclusionFeeTitle")).toBeTruthy();
+      expect(mockCheckContractSupportsMuxed).not.toHaveBeenCalled();
+    });
+
+    it("keeps a custom token's contract for a W recipient", async () => {
+      mockUseBalancesListTyped.mockReturnValue({
+        ...defaultBalancesList,
+        balanceItems: [customTokenBalance],
+      } as never);
+      mockUseTransactionSettingsStore.mockReturnValue(
+        createMockState({
+          recipientAddress: MUXED_CONTRACT_ID_0,
+          selectedTokenId: customTokenBalance.id,
+        }),
+      );
+      const { getByPlaceholderText } = renderWithProviders(
+        <TransactionSettingsBottomSheet
+          onCancel={mockOnCancel}
+          onConfirm={mockOnConfirm}
+          context={TransactionContext.Send}
+          onSettingsChange={mockOnSettingsChange}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          getByPlaceholderText("transactionSettings.memoPlaceholder").props
+            .editable,
+        ).toBe(false);
+      });
+      expect(memoStateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetAddress: MUXED_CONTRACT_ID_0,
+          contractId: customTokenContractId,
+        }),
+      );
+    });
+
+    it("keeps a collectible's collection for a W recipient", async () => {
+      mockUseBalancesListTyped.mockReturnValue({
+        ...defaultBalancesList,
+        balanceItems: [xlmBalance],
+      } as never);
+      mockUseTransactionSettingsStore.mockReturnValue(
+        createMockState({
+          recipientAddress: MUXED_CONTRACT_ID_0,
+          selectedTokenId: "XLM",
+          selectedCollectibleDetails: {
+            collectionAddress: customTokenContractId,
+            tokenId: "7",
+          },
+        }),
+      );
+      const { getByPlaceholderText } = renderWithProviders(
+        <TransactionSettingsBottomSheet
+          onCancel={mockOnCancel}
+          onConfirm={mockOnConfirm}
+          context={TransactionContext.Send}
+          onSettingsChange={mockOnSettingsChange}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          getByPlaceholderText("transactionSettings.memoPlaceholder").props
+            .editable,
+        ).toBe(false);
+      });
+      expect(memoStateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetAddress: MUXED_CONTRACT_ID_0,
+          contractId: customTokenContractId,
+        }),
+      );
+    });
+
+    it("clears a stored memo for a W recipient", async () => {
+      const mockState = createMockState({
+        recipientAddress: MUXED_CONTRACT_ID_0,
+        selectedTokenId: "XLM",
+        transactionMemo: "Some existing memo",
+      });
+      mockUseTransactionSettingsStore.mockReturnValue(mockState);
+
+      const { getByText } = renderWithProviders(
+        <TransactionSettingsBottomSheet
+          onCancel={mockOnCancel}
+          onConfirm={mockOnConfirm}
+          context={TransactionContext.Send}
+          onSettingsChange={mockOnSettingsChange}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(mockState.saveMemo).toHaveBeenCalledWith("");
+      });
+
+      // Save can't carry the old memo forward either.
+      fireEvent.press(getByText("common.save"));
+      await waitFor(() => {
+        expect(mockOnConfirm).toHaveBeenCalled();
+      });
+      expect(mockState.saveMemo).not.toHaveBeenCalledWith("Some existing memo");
+    });
+
+    it("keeps a C recipient as the contract, with the memo unsupported", async () => {
+      mockUseBalancesListTyped.mockReturnValue({
+        ...defaultBalancesList,
+        balanceItems: [xlmBalance],
+      } as never);
+      mockUseTransactionSettingsStore.mockReturnValue(
+        createMockState({
+          recipientAddress: BASE_CONTRACT,
+          selectedTokenId: "XLM",
+        }),
+      );
+      mockIsContractId.mockImplementation(
+        (address) => address === BASE_CONTRACT,
+      );
+
+      const { getByPlaceholderText, getByText } = renderWithProviders(
+        <TransactionSettingsBottomSheet
+          onCancel={mockOnCancel}
+          onConfirm={mockOnConfirm}
+          context={TransactionContext.Send}
+          onSettingsChange={mockOnSettingsChange}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          getByPlaceholderText("transactionSettings.memoPlaceholder").props
+            .editable,
+        ).toBe(false);
+        expect(
+          getByText(
+            "transactionSettings.memoInfo.memoNotSupportedForOperation",
+          ),
+        ).toBeTruthy();
+      });
+      expect(memoStateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetAddress: BASE_CONTRACT,
+          contractId: BASE_CONTRACT,
+        }),
+      );
+      expect(getByText("transactionSettings.inclusionFeeTitle")).toBeTruthy();
     });
   });
 });

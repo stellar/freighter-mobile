@@ -2,11 +2,8 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
 import FeeBreakdownBottomSheet from "components/FeeBreakdownBottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
-import Icon from "components/sds/Icon";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import React, { useCallback, useRef } from "react";
-import { View } from "react-native";
 
 /**
  * Shared fee info-icon affordance: Soroban opens the breakdown, classic opens a
@@ -25,7 +22,6 @@ export const useFeeDetailsBottomSheet = ({
   feeDetailsSheets: React.ReactNode;
 } => {
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
   const breakdownSheetRef = useRef<BottomSheetModal>(null);
   const infoSheetRef = useRef<BottomSheetModal>(null);
 
@@ -41,7 +37,6 @@ export const useFeeDetailsBottomSheet = ({
     <>
       <BottomSheet
         modalRef={breakdownSheetRef}
-        handleCloseModal={() => breakdownSheetRef.current?.dismiss()}
         customContent={
           <FeeBreakdownBottomSheet
             onClose={() => breakdownSheetRef.current?.dismiss()}
@@ -52,16 +47,10 @@ export const useFeeDetailsBottomSheet = ({
       />
       <BottomSheet
         modalRef={infoSheetRef}
-        handleCloseModal={() => infoSheetRef.current?.dismiss()}
         customContent={
           <InformationBottomSheet
             title={t("transactionSettings.feeInfo.title")}
             onClose={() => infoSheetRef.current?.dismiss()}
-            headerElement={
-              <View className="bg-lilac-3 p-2 rounded-[8px]">
-                <Icon.Route color={themeColors.lilac[9]} size={28} />
-              </View>
-            }
             texts={[
               {
                 key: "description",

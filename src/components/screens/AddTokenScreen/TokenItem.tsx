@@ -1,5 +1,6 @@
 import ManageTokenRightContent from "components/ManageTokenRightContent";
 import { TokenIconWithBadge } from "components/TokenIconWithBadge";
+import UnhideButton from "components/UnhideButton";
 import AddTokenRightContent from "components/screens/AddTokenScreen/AddTokenRightContent";
 import { Text } from "components/sds/Typography";
 import {
@@ -14,14 +15,54 @@ type TokenItemProps = {
   token: FormattedSearchTokenRecord;
   handleAddToken: (token: FormattedSearchTokenRecord) => void;
   handleRemoveToken: (token: FormattedSearchTokenRecord) => void;
+  /** Called from the Unhide button a hidden token's row shows in place of Add */
+  handleUnhideToken?: (token: FormattedSearchTokenRecord) => void;
+  /** Whether this row's unhide is in flight */
+  isUnhiding?: boolean;
 };
 
 const TokenItem: React.FC<TokenItemProps> = ({
   token,
   handleAddToken,
   handleRemoveToken,
+  handleUnhideToken,
+  isUnhiding,
 }) => {
   const { t } = useAppTranslation();
+
+  /**
+   * Picks the trailing control: Unhide for a hidden token, the manage menu
+   * for one the account already holds, and Add otherwise.
+   */
+  const renderRightContent = () => {
+    if (token.isHidden && handleUnhideToken) {
+      return (
+        <UnhideButton
+          onPress={() => handleUnhideToken(token)}
+          isLoading={isUnhiding}
+          testID="unhide-token-button"
+        />
+      );
+    }
+
+    if (token.hasTrustline) {
+      return (
+        <ManageTokenRightContent
+          token={{
+            isNative: token.isNative,
+            id: token.isNative
+              ? token.tokenCode
+              : `${token.tokenCode}:${token.issuer}`,
+          }}
+          handleRemoveToken={() => handleRemoveToken(token)}
+        />
+      );
+    }
+
+    return (
+      <AddTokenRightContent handleAddToken={() => handleAddToken(token)} />
+    );
+  };
 
   let subtitle = "-";
   if (token.isNative) {
@@ -64,19 +105,7 @@ const TokenItem: React.FC<TokenItemProps> = ({
           </Text>
         </View>
       </View>
-      {token.hasTrustline ? (
-        <ManageTokenRightContent
-          token={{
-            isNative: token.isNative,
-            id: token.isNative
-              ? token.tokenCode
-              : `${token.tokenCode}:${token.issuer}`,
-          }}
-          handleRemoveToken={() => handleRemoveToken(token)}
-        />
-      ) : (
-        <AddTokenRightContent handleAddToken={() => handleAddToken(token)} />
-      )}
+      {renderRightContent()}
     </View>
   );
 };

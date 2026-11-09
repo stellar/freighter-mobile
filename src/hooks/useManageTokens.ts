@@ -124,6 +124,25 @@ export const useManageTokens = ({
   const [isAddingToken, setIsAddingToken] = useState(false);
   const [isRemovingToken, setIsRemovingToken] = useState(false);
 
+  /**
+   * Drops a token identifier from the hidden list when it is there. Best
+   * effort: unhideToken logs a storage failure, and callers already finished
+   * the operation this cleans up after.
+   */
+  const clearHiddenFlag = async (tokenIdentifier: string) => {
+    const { hiddenTokenIds, unhideToken } = useBalancesStore.getState();
+
+    if (!account || !hiddenTokenIds?.includes(tokenIdentifier)) {
+      return;
+    }
+
+    await unhideToken({
+      publicKey: account.publicKey,
+      network,
+      tokenId: tokenIdentifier,
+    }).catch(() => undefined);
+  };
+
   if (!account) {
     return {
       addToken: () => Promise.resolve(),
@@ -228,6 +247,12 @@ export const useManageTokens = ({
         asset_code: tokenCode,
         asset_issuer: issuer,
       });
+
+      // A token the user adds on purpose must show up. If it was hidden before
+      // being removed (and the removal-time cleanup failed), clear the flag
+      // now. The add already succeeded, so a failure here is logged by
+      // unhideToken and otherwise ignored.
+      await clearHiddenFlag(`${tokenCode}:${issuer}`);
 
       // Fire onSuccess only on a confirmed success. Delay slightly so the
       // bottom sheet finishes dismissing before any navigation runs.
@@ -378,6 +403,12 @@ export const useManageTokens = ({
         asset_code: tokenCode,
         asset_issuer: tokenIssuer,
       });
+
+      // A removed token should not linger in the hidden list. The removal
+      // already succeeded, so a failure here is logged by unhideToken and
+      // otherwise ignored; addToken clears the flag again on re-add, so a
+      // failed cleanup cannot make the token come back hidden.
+      await clearHiddenFlag(tokenIdentifier);
 
       // Fire onSuccess only on a confirmed success. Delay slightly so the
       // bottom sheet finishes dismissing before any navigation runs.

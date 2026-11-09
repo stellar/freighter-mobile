@@ -1,5 +1,8 @@
 import { ALL_ROUTES_OBJECT } from "config/routes";
 
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
 /**
  * Analytics Event Definitions
  *
@@ -20,9 +23,7 @@ export enum AnalyticsEvent {
   // Screen Navigation Events (Auto-generated from routes)
   VIEW_WELCOME = "welcome",
   VIEW_CHOOSE_PASSWORD = "account_creator",
-  VIEW_RECOVERY_PHRASE_ALERT = "mnemonic_phrase_alert",
   VIEW_RECOVERY_PHRASE = "mnemonic_phrase",
-  VIEW_VALIDATE_RECOVERY_PHRASE = "confirm_mnemonic_phrase",
   VIEW_IMPORT_WALLET = "recover_account",
   VIEW_LOCK_SCREEN = "unlock_account",
   VIEW_HOME = "account",
@@ -92,10 +93,6 @@ export enum AnalyticsEvent {
   // carries reason_code
   CREATE_PASSWORD_FAIL = "onboarding.password_create_failed",
   VIEWED_RECOVERY_PHRASE = "onboarding.recovery_phrase_viewed",
-  CONFIRM_RECOVERY_PHRASE_SUCCESS = "onboarding.recovery_phrase_confirmed",
-  // carries reason_code
-  CONFIRM_RECOVERY_PHRASE_FAIL = "onboarding.recovery_phrase_confirm_failed",
-  ACCOUNT_CREATOR_CONFIRM_MNEMONIC_BACK = "onboarding.recovery_phrase_back_clicked",
   // Fires once from the signUp store action's success path (create-account
   // terminal point) — NOT from the recovery-phrase / biometrics UI screens.
   // The import/recover flow emits account_recovery.completed instead, matching
@@ -236,6 +233,19 @@ export enum AnalyticsEvent {
   // both platforms (e.g. transaction.submitted, dapp_access.blocked).
   BLOCKAID_WARNING_REPORTED = "blockaid.warning_reported",
 
+  // Token price chart (design §7.5) — FROZEN cross-platform wire strings,
+  // identical on the extension from day one. token_chart.loaded is an
+  // OUTCOME event fired when the history fetch resolves (has_data: false on
+  // empty) — deliberately NOT a screen view: screen.viewed (asset_detail)
+  // already covers the detail-view open, and a chart-view event would
+  // duplicate it one-for-one.
+  TOKEN_CHART_LOADED = "token_chart.loaded",
+  /** Per-range VIEW (cache hits included), unlike loaded's per-network-fetch. */
+  TOKEN_CHART_VIEWED = "token_chart.viewed",
+  TOKEN_CHART_RANGE_CHANGED = "token_chart.range_changed",
+  /** Once per drag-to-inspect activation, never per move (§7.5, Phase 3). */
+  TOKEN_CHART_BRUSHED = "token_chart.brushed",
+
   // Onramp
   COINBASE_ONRAMP_OPENED = "onramp.coinbase_opened",
 
@@ -247,6 +257,11 @@ export enum AnalyticsEvent {
   DISCOVER_TAB_CLOSED = "discover.tab_closed",
   DISCOVER_ALL_TABS_CLOSED = "discover.all_tabs_closed",
   DISCOVER_WELCOME_MODAL_VIEWED = "discover.welcome_modal_viewed",
+
+  // Rebrand announcement (existing users only)
+  REBRAND_ANNOUNCEMENT_VIEWED = "rebrand.announcement_viewed",
+  // carries source (close | continue | back)
+  REBRAND_ANNOUNCEMENT_DISMISSED = "rebrand.announcement_dismissed",
 
   // Platform-only events (retained; renamed to the shared grammar)
   QR_SCAN_SUCCESS = "qr_scan.completed",
@@ -355,13 +370,7 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_CHOOSE_PASSWORD]: {
     flow: AnalyticsFlow.ONBOARDING,
   },
-  [AnalyticsEvent.VIEW_RECOVERY_PHRASE_ALERT]: {
-    flow: AnalyticsFlow.ONBOARDING,
-  },
   [AnalyticsEvent.VIEW_RECOVERY_PHRASE]: {
-    flow: AnalyticsFlow.ONBOARDING,
-  },
-  [AnalyticsEvent.VIEW_VALIDATE_RECOVERY_PHRASE]: {
     flow: AnalyticsFlow.ONBOARDING,
   },
   [AnalyticsEvent.VIEW_IMPORT_WALLET]: {
@@ -582,9 +591,7 @@ export const ROUTES_WITHOUT_ANALYTICS = getRoutesWithoutAnalytics();
 export const CUSTOM_ROUTE_MAPPINGS: Record<string, AnalyticsEvent> = {
   // Auth flow overrides (extension uses different names)
   ChoosePasswordScreen: AnalyticsEvent.VIEW_CHOOSE_PASSWORD,
-  RecoveryPhraseAlertScreen: AnalyticsEvent.VIEW_RECOVERY_PHRASE_ALERT,
   RecoveryPhraseScreen: AnalyticsEvent.VIEW_RECOVERY_PHRASE,
-  ValidateRecoveryPhraseScreen: AnalyticsEvent.VIEW_VALIDATE_RECOVERY_PHRASE,
   ImportWalletScreen: AnalyticsEvent.VIEW_IMPORT_WALLET,
   LockScreen: AnalyticsEvent.VIEW_LOCK_SCREEN,
 

@@ -53,7 +53,7 @@ export const ContactRow: React.FC<ContactRowProps> = ({
         <View className="flex-row items-center gap-16px">
           {renderPlusIcon()}
           <View className="flex-col flex-1">
-            <Text>{t("sendPaymentScreen.title")}</Text>
+            <Text>{t("transactionAmountScreen.sendTo")}</Text>
             <Text sm secondary>
               {t("transactionAmountScreen.chooseRecipient")}
             </Text>

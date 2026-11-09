@@ -4,30 +4,24 @@ import { BalanceRow } from "components/BalanceRow";
 import { DefaultListFooter } from "components/DefaultListFooter";
 import { EmptyState } from "components/EmptyState";
 import { FriendbotButton } from "components/FriendbotButton";
+import { TokenRowDivider } from "components/TokenRowStyle";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import {
-  NETWORKS,
-  TransactionContext,
-  UNFUNDED_ACCOUNT_HELP_URL,
-} from "config/constants";
+import { NETWORKS, TransactionContext } from "config/constants";
 import {
   ADD_FUNDS_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
 } from "config/routes";
-import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount } from "helpers/balances";
-import { px } from "helpers/dimensions";
+import { px, pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { ReactNode, useMemo } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
 import styled from "styled-components/native";
@@ -66,6 +60,11 @@ interface BalancesListProps {
   feeContext?: TransactionContext;
   /** Optional prefix for BalanceRow testIDs (e.g. "token-option" -> "token-option-XLM") */
   balanceRowTestIDPrefix?: string;
+  /**
+   * Whether the last row gets a divider too. Home's list ends with one;
+   * Send's picker turns it off, since its collectibles section follows.
+   */
+  showLastRowDivider?: boolean;
 }
 
 /**
@@ -94,10 +93,10 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   showSpendableAmount = false,
   feeContext = TransactionContext.Send,
   balanceRowTestIDPrefix,
+  showLastRowDivider = true,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { open: openInAppBrowser } = useInAppBrowser();
   const { account } = useGetActiveAccount();
   const { transactionFee } = useTransactionSettingsStore();
   const { swapFee } = useSwapSettingsStore();
@@ -190,41 +189,28 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     return (
       <ListWrapper>
         <EmptyState
-          Icon={Icon.Coins01}
           title={t("balancesList.unfundedAccount.title")}
+          description={t("balancesList.unfundedAccount.description")}
           testID="unfunded-account-empty-state"
-          description={
-            <>
-              {t("balancesList.unfundedAccount.messageStart")}{" "}
-              <Text sm medium primary>
-                {t("balancesList.unfundedAccount.messageAmount")}
-              </Text>{" "}
-              {t("balancesList.unfundedAccount.messageEnd")}{" "}
-              <Text
-                sm
-                medium
-                color={themeColors.lilac[11]}
-                accessibilityRole="link"
-                onPress={() => {
-                  openInAppBrowser(UNFUNDED_ACCOUNT_HELP_URL);
-                }}
-              >
-                {t("balancesList.unfundedAccount.learnMore")}
-              </Text>
-            </>
-          }
+          // Figma has the card 16pt from the screen's edges and 8pt under the
+          // tab row. Home's tokens contents pad 24pt at the sides and 9pt on
+          // top (TokensCollectiblesTabs), so the card reaches 8pt past the
+          // sides and 1pt above. Only Home shows it: Send's picker lists no
+          // tokens section for an account without balances.
+          style={{ marginHorizontal: -pxValue(8), marginTop: -pxValue(1) }}
         >
           {/* Only show fund account button if navigation is available and not test network */}
           {!disableNavigation && !isTestNetwork && (
             <Button
-              tertiary
-              xl
+              secondary
+              lg
               onPress={() =>
                 navigation?.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
                   screen: ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN,
                   params: { isUnfunded: true },
                 })
               }
+              testID="unfunded-account-add-xlm-button"
             >
               {t("balancesList.unfundedAccount.fundAccountButton")}
             </Button>
@@ -239,32 +225,46 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     );
   }
 
+  // A balance row and the divider under it, for both the plain list and the
+  // FlatList below. The last row's divider is optional.
+  const renderRow = (item: BalanceItemWithSpendable, index: number) => (
+    <>
+      <BalanceRow
+        balance={item}
+        scanResult={
+          item.id ? scanResults[item.id.replace(":", "-")] : undefined
+        }
+        onPress={
+          onTokenPress && item.id ? () => onTokenPress(item.id!) : undefined
+        }
+        rightContent={renderRightContent ? renderRightContent(item) : undefined}
+        spendableAmount={item.spendableAmount}
+        testID={
+          balanceRowTestIDPrefix && item.tokenCode
+            ? `${balanceRowTestIDPrefix}-${item.tokenCode}`
+            : undefined
+        }
+      />
+      {(showLastRowDivider || index < balanceItems.length - 1) && (
+        <TokenRowDivider />
+      )}
+    </>
+  );
+
   // If scrolling is disabled, render items directly without FlatList
   if (disableInnerScrolling) {
     return (
-      <ListWrapper>
-        {balanceItems.map((item) => (
-          <BalanceRow
-            key={item.id || `balance-${Math.random()}`}
-            balance={item}
-            scanResult={
-              item.id ? scanResults[item.id.replace(":", "-")] : undefined
-            }
-            onPress={
-              onTokenPress && item.id ? () => onTokenPress(item.id!) : undefined
-            }
-            rightContent={
-              renderRightContent ? renderRightContent(item) : undefined
-            }
-            spendableAmount={item.spendableAmount}
-            testID={
-              balanceRowTestIDPrefix && item.tokenCode
-                ? `${balanceRowTestIDPrefix}-${item.tokenCode}`
-                : undefined
-            }
-          />
+      // A plain View, not ListWrapper's flex: 1: the rows are as tall as they
+      // are, so whatever follows the list (Home's inline Add token button)
+      // sits under the last row instead of at the bottom of the screen. The
+      // loading, error and empty views keep flex: 1 and fill the screen.
+      <View>
+        {balanceItems.map((item, index) => (
+          <React.Fragment key={item.id || `balance-${Math.random()}`}>
+            {renderRow(item, index)}
+          </React.Fragment>
         ))}
-      </ListWrapper>
+      </View>
     );
   }
 
@@ -275,32 +275,13 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         showsVerticalScrollIndicator={false}
         ListFooterComponent={DefaultListFooter}
         data={balanceItems}
-        renderItem={({ item }) => (
-          <BalanceRow
-            balance={item}
-            scanResult={
-              item.id ? scanResults[item.id.replace(":", "-")] : undefined
-            }
-            onPress={
-              onTokenPress && item.id ? () => onTokenPress(item.id!) : undefined
-            }
-            rightContent={
-              renderRightContent ? renderRightContent(item) : undefined
-            }
-            spendableAmount={item.spendableAmount}
-            testID={
-              balanceRowTestIDPrefix && item.tokenCode
-                ? `${balanceRowTestIDPrefix}-${item.tokenCode}`
-                : undefined
-            }
-          />
-        )}
+        renderItem={({ item, index }) => renderRow(item, index)}
         keyExtractor={(item) => item.id || `balance-${Math.random()}`}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor={THEME.colors.secondary}
+            tintColor={themeColors.gray[12]}
           />
         }
       />

@@ -59,6 +59,21 @@ interface RemoveTokenSheetContentProps {
 }
 
 /**
+ * Reports whether a token can be removed from the balances list.
+ *
+ * Removable: classic trustlines, XLM, and contract tokens the user added
+ * locally that the backend doesn't report. Not removable: contract tokens
+ * the backend reports (only hideable).
+ */
+export const isTokenRemovable = (
+  selectedToken: HeldBalanceItem | null,
+  localOnlyTokenIds: string[],
+): boolean =>
+  !selectedToken ||
+  selectedToken.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN ||
+  localOnlyTokenIds.includes(getSelectedTokenIssuer(selectedToken));
+
+/**
  * Reports which body the removal sheet shows for a balance row.
  *
  * The sheet either offers the removal confirmation or explains why the wallet
@@ -89,10 +104,7 @@ export const getRemoveTokenSheetVariant = (
   // the backend reports on its own would come straight back on the next poll;
   // that case is hide-only. Classic trustlines are unaffected — removing those
   // is a real changeTrust operation.
-  if (
-    selectedToken.tokenType === TokenTypeWithCustomToken.CUSTOM_TOKEN &&
-    !localOnlyTokenIds.includes(getSelectedTokenIssuer(selectedToken))
-  ) {
+  if (!isTokenRemovable(selectedToken, localOnlyTokenIds)) {
     return RemoveTokenSheetVariant.cannotRemoveNotLocallyAdded;
   }
 

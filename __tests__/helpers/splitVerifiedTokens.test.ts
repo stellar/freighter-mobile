@@ -27,7 +27,7 @@ describe("splitVerifiedTokens", () => {
   });
 
   describe("token categorization", () => {
-    it("categorizes tokens as verified when issuer matches verified list", async () => {
+    it("categorizes tokens as verified when code and issuer match verified list", async () => {
       const verifiedTokens = [
         {
           code: "USDC",
@@ -75,6 +75,44 @@ describe("splitVerifiedTokens", () => {
       expect(result.verified[0].tokenCode).toBe("USDC");
       expect(result.unverified).toHaveLength(1);
       expect(result.unverified[0].tokenCode).toBe("UNKNOWN");
+    });
+
+    it("does not verify a different code from a verified issuer", async () => {
+      mockGetVerifiedTokens.mockResolvedValue([
+        {
+          code: "USDE",
+          issuer: "GABC123",
+          contract: "C123",
+          domain: "example.com",
+          icon: "icon.png",
+          decimals: 7,
+        },
+      ]);
+
+      const tokens: FormattedSearchTokenRecord[] = [
+        {
+          tokenCode: "USDE",
+          issuer: "GABC123",
+          domain: "example.com",
+          hasTrustline: false,
+          isNative: false,
+        },
+        {
+          tokenCode: "USDe", // codes are case-sensitive
+          issuer: "GABC123",
+          domain: "example.com",
+          hasTrustline: false,
+          isNative: false,
+        },
+      ];
+
+      const result = await splitVerifiedTokens({
+        tokens,
+        network: NETWORKS.PUBLIC,
+      });
+
+      expect(result.verified.map((t) => t.tokenCode)).toEqual(["USDE"]);
+      expect(result.unverified.map((t) => t.tokenCode)).toEqual(["USDe"]);
     });
 
     it("categorizes tokens as verified when issuer matches (case insensitive)", async () => {
@@ -342,9 +380,16 @@ describe("splitVerifiedTokens", () => {
           isNative: false,
         },
         {
-          tokenCode: "OTHER",
-          issuer: "native-issuer-456", // matches native issuer
+          tokenCode: NATIVE_TOKEN_CODE,
+          issuer: "native-issuer-456", // matches native code and issuer
           domain: "example2.com",
+          hasTrustline: false,
+          isNative: false,
+        },
+        {
+          tokenCode: "OTHER",
+          issuer: "native-issuer-456", // native issuer, different code
+          domain: "example3.com",
           hasTrustline: false,
           isNative: false,
         },
@@ -355,8 +400,11 @@ describe("splitVerifiedTokens", () => {
         network: NETWORKS.PUBLIC,
       });
 
-      expect(result.verified).toHaveLength(2);
-      expect(result.unverified).toHaveLength(0);
+      expect(result.verified.map((t) => t.tokenCode)).toEqual([
+        "SOME",
+        NATIVE_TOKEN_CODE,
+      ]);
+      expect(result.unverified.map((t) => t.tokenCode)).toEqual(["OTHER"]);
     });
   });
 

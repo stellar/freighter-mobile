@@ -1,4 +1,5 @@
 import { getThemeColors } from "config/colors";
+import { DEFAULT_COLOR_SCHEME } from "config/theme";
 import { useMemo } from "react";
 import { useColorScheme } from "react-native";
 
@@ -21,7 +22,7 @@ const useColors = (): UseColorsResponse => {
   const colorScheme = useColorScheme();
 
   const themeColors = useMemo(
-    () => getThemeColors(colorScheme ?? "dark"),
+    () => getThemeColors(colorScheme ?? DEFAULT_COLOR_SCHEME),
     [colorScheme],
   );
 

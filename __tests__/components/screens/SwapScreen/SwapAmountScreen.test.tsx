@@ -20,12 +20,12 @@ import { View } from "react-native";
 import { analytics } from "services/analytics";
 
 import { mockBalances } from "../../../../__mocks__/balances";
-import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
 import { mockUseColors } from "../../../../__mocks__/use-colors";
 
 const MockView = View;
 const mockSetSourceToken = jest.fn();
 const mockSetDestinationToken = jest.fn();
+const mockSetEntrySource = jest.fn();
 const mockSetSourceAmount = jest.fn();
 const mockSetSourceAmountDisplay = jest.fn();
 const mockResetSwap = jest.fn();
@@ -35,7 +35,6 @@ const mockSaveSwapFee = jest.fn();
 const mockExecuteSwap = jest.fn().mockResolvedValue(undefined);
 const mockSetupSwapTransaction = jest.fn().mockResolvedValue(undefined);
 
-mockGestureHandler();
 mockUseColors();
 
 // Stub the BottomSheet wrapper so tests can press CTAs that present sheets
@@ -112,6 +111,7 @@ type SwapStoreState = {
   pathError: string | null;
   setSourceToken: jest.Mock;
   setDestinationToken: jest.Mock;
+  setEntrySource: jest.Mock;
   setSourceAmount: jest.Mock;
   setSourceAmountDisplay: jest.Mock;
   resetSwap: jest.Mock;
@@ -137,6 +137,7 @@ const makeDefaultSwapState = (): SwapStoreState => ({
   pathError: null,
   setSourceToken: mockSetSourceToken,
   setDestinationToken: mockSetDestinationToken,
+  setEntrySource: mockSetEntrySource,
   setSourceAmount: mockSetSourceAmount,
   setSourceAmountDisplay: mockSetSourceAmountDisplay,
   resetSwap: mockResetSwap,
@@ -241,6 +242,7 @@ jest.mock("ducks/balances", () => ({
       balances: mockRawBalances,
       fetchedPublicKey: mockFetchedPublicKey,
       fetchedNetwork: mockFetchedNetwork,
+      hiddenTokenIds: [],
     };
     return selector ? selector(state) : state;
   },

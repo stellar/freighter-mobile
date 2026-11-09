@@ -15,6 +15,12 @@ import {
   trackDiscoverWelcomeModalViewed,
 } from "services/analytics/discover";
 import {
+  trackTokenChartLoaded,
+  trackTokenChartViewed,
+  trackTokenChartRangeChanged,
+  trackTokenChartBrushed,
+} from "services/analytics/tokenChart";
+import {
   trackSignedTransaction,
   trackInternalSignedTransaction,
   trackInternalSignedTransactionRejected,
@@ -107,6 +113,12 @@ export interface AnalyticsInstance {
   // History analytics
   readonly trackHistoryOpenItem: typeof trackHistoryOpenItem;
 
+  // Token price chart analytics
+  readonly trackTokenChartLoaded: typeof trackTokenChartLoaded;
+  readonly trackTokenChartViewed: typeof trackTokenChartViewed;
+  readonly trackTokenChartRangeChanged: typeof trackTokenChartRangeChanged;
+  readonly trackTokenChartBrushed: typeof trackTokenChartBrushed;
+
   // Discover analytics
   readonly trackDiscoverProtocolOpened: typeof trackDiscoverProtocolOpened;
   readonly trackDiscoverProtocolDetailsViewed: typeof trackDiscoverProtocolDetailsViewed;
@@ -175,6 +187,10 @@ export const analytics: AnalyticsInstance = {
   trackGrantAccessFail,
   trackGrantAccessBlocked,
   trackHistoryOpenItem,
+  trackTokenChartLoaded,
+  trackTokenChartViewed,
+  trackTokenChartRangeChanged,
+  trackTokenChartBrushed,
   trackDiscoverProtocolOpened,
   trackDiscoverProtocolDetailsViewed,
   trackDiscoverProtocolOpenedFromDetails,

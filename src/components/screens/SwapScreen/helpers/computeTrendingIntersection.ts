@@ -9,6 +9,10 @@ import { NATIVE_TOKEN_CODE } from "config/constants";
 import { FormattedSearchTokenRecord, SearchTokenResponse } from "config/types";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { getTokenType } from "helpers/balances";
+import {
+  buildVerifiedTokenIds,
+  isTokenInVerifiedIds,
+} from "helpers/verifiedTokenIds";
 import { TokenListReponseItem } from "services/verified-token-lists/types";
 
 /**
@@ -22,7 +26,7 @@ import { TokenListReponseItem } from "services/verified-token-lists/types";
  *      malformed asset strings).
  *   3. Format each surviving record (sets hasTrustline via the callback).
  *   4. Dedupe by canonical CODE:ISSUER, preserving stellar.expert's order.
- *   5. Intersect with verified issuers (native XLM is always considered
+ *   5. Intersect with verified code:issuer pairs (native XLM is always considered
  *      verified).
  */
 export const computeTrendingIntersection = (
@@ -30,11 +34,7 @@ export const computeTrendingIntersection = (
   verifiedTokens: TokenListReponseItem[],
   hasExistingTrustline: (tokenCode: string, issuer: string) => boolean,
 ): FormattedSearchTokenRecord[] => {
-  const verifiedIds = new Set<string>();
-  verifiedTokens.forEach((vt) => {
-    if (vt.issuer) verifiedIds.add(vt.issuer.toLowerCase());
-    if (vt.contract) verifiedIds.add(vt.contract.toLowerCase());
-  });
+  const verifiedIds = buildVerifiedTokenIds(verifiedTokens);
 
   const records = topTokensResp._embedded?.records ?? [];
 
@@ -64,10 +64,8 @@ export const computeTrendingIntersection = (
     return true;
   });
 
-  // Intersect with verified issuers + always allow the native record.
-  return deduped.filter((t) => {
-    if (t.isNative) return true;
-    const issuer = t.issuer?.toLowerCase();
-    return !!issuer && verifiedIds.has(issuer);
-  });
+  // Intersect with verified code:issuer pairs + always allow the native record.
+  return deduped.filter(
+    (t) => t.isNative || isTokenInVerifiedIds(verifiedIds, t),
+  );
 };

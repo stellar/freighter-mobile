@@ -4,7 +4,6 @@ import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AddFundsScreen from "components/screens/AddFundsScreen";
 import ScanReceiveScreen from "components/screens/ScanReceiveScreen";
-import Icon from "components/sds/Icon";
 import {
   ADD_FUNDS_ROUTES,
   AddFundsStackParamList,
@@ -34,7 +33,7 @@ export const AddFundsStackNavigator = () => {
         component={AddFundsScreen}
         options={{
           headerTitle: t("addFundsScreen.title"),
-          headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
+          headerLeft: () => <CustomHeaderButton variant="close" />,
         }}
       />
       <AddFundsStack.Screen

@@ -150,7 +150,7 @@ const RemoveTokenBottomSheetContent: React.FC<
       <View className="w-full mt-6 flex-row justify-between gap-3">
         <View className="flex-1">
           <Button
-            secondary
+            tertiary
             xl
             isFullWidth
             onPress={onCancel}
@@ -162,7 +162,7 @@ const RemoveTokenBottomSheetContent: React.FC<
         <View className="flex-1">
           <Button
             biometric
-            tertiary
+            secondary
             xl
             isFullWidth
             onPress={onRemoveToken}

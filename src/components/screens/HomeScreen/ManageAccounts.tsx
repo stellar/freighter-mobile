@@ -19,7 +19,6 @@ import { useClipboard } from "hooks/useClipboard";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useState } from "react";
-import { useWindowDimensions } from "react-native";
 import { analytics } from "services/analytics";
 
 interface ManageAccountsProps {
@@ -30,7 +29,6 @@ interface ManageAccountsProps {
   isLoadingAccounts?: boolean;
 }
 
-const MAX_SHEET_HEIGHT_RATIO = 0.83;
 const ACCOUNT_SWITCH_DISMISS_DELAY_MS = 500;
 
 /**
@@ -251,7 +249,6 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     bottomSheetRef.current?.dismiss();
   }, [bottomSheetRef]);
 
-  const { height: windowHeight } = useWindowDimensions();
   const isSwitchInProgress =
     isSwitchingAccount || switchingToPublicKey !== null;
 
@@ -280,14 +277,10 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
       {/* Scrollable mode (same recipe as the history details sheet): the
           pinned header/footer live inside the sheet's content tree, so the
           whole sheet slides in as one unit, and dynamic sizing measures the
-          content before animating. The footer owns the safe-area padding;
-          without a footer the wrapper's inset padding takes over. */}
+          content before animating. */}
       <BottomSheet
         modalRef={bottomSheetRef}
-        handleCloseModal={handleCloseModal}
         scrollable
-        useInsetsBottomPadding={!showAddWallet}
-        maxDynamicContentSize={windowHeight * MAX_SHEET_HEIGHT_RATIO}
         analyticsEvent={AnalyticsEvent.VIEW_MANAGE_WALLETS}
         bottomSheetModalProps={{ onChange: handleSheetPresent }}
         scrollViewHeaderComponent={renderSheetHeader}
