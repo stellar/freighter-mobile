@@ -413,6 +413,7 @@ const PII_FIELDS_LOWER = [
   "recovery_phrase",
   "mnemonicPhrase",
   "mnemonic_phrase",
+  "mnemonics",
 ].map((f) => f.toLowerCase());
 
 /**

@@ -17,7 +17,10 @@ import {
 } from "react-native-permissions";
 import { analytics } from "services/analytics";
 import { initAnalytics } from "services/analytics/core";
-import { reconcileAnalyticsUserId } from "services/analytics/reconcileUserId";
+import {
+  reconcileAnalyticsUserId,
+  resetAnalyticsUserIdReconciliation,
+} from "services/analytics/reconcileUserId";
 
 interface UseAnalyticsPermissionsParams {
   previousState?: AppStateStatus | "none";
@@ -316,6 +319,15 @@ export const useAnalyticsPermissions = ({
         if (isAttSupported()) {
           syncTrackingPermission();
         }
+
+        // Until the server confirms the analytics id (before the wallet's
+        // first link), each foreground asks again. A no-op once confirmed.
+        if (
+          useAuthenticationStore.getState().authStatus ===
+          AUTH_STATUS.AUTHENTICATED
+        ) {
+          reconcileAnalyticsUserId();
+        }
       }
 
       appStateRef.current = nextAppState;
@@ -340,17 +352,20 @@ export const useAnalyticsPermissions = ({
 
   // Reconcile the analytics/Sentry identity when the session unlocks. The
   // initialize effect above runs once on mount, which on a cold start happens
-  // while the wallet is still locked — the seed-derived auth id is only
-  // derivable from an unlocked session. This host (RootNavigator) stays mounted
+  // while the wallet is still locked. This host (RootNavigator) stays mounted
   // across the lock→unlock transition, so nothing else re-runs identification.
-  // Once auth transitions to AUTHENTICATED the auth id becomes available;
-  // reconcile so existing users migrate from their random id to the stable auth
-  // id (and it reaches Sentry in-session). reconcileAnalyticsUserId is a no-op
-  // once already migrated and never throws into this fire-and-forget caller.
+  // On AUTHENTICATED, reconcile so the id moves onto the server's canonical id
+  // (#69) and reaches Sentry in-session. Any other status resets the
+  // once-per-session guard, so the next unlock (possibly of a replaced wallet)
+  // asks again, and adopts the cached canonical id without settling the
+  // session, so events sent while locked carry it. reconcileAnalyticsUserId
+  // never throws into this fire-and-forget caller.
   useEffect(() => {
     if (authStatus === AUTH_STATUS.AUTHENTICATED) {
-      // Fire-and-forget: reconcileAnalyticsUserId never throws into callers.
       reconcileAnalyticsUserId();
+    } else {
+      resetAnalyticsUserIdReconciliation();
+      reconcileAnalyticsUserId({ settle: false });
     }
   }, [authStatus]);
 

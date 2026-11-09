@@ -477,6 +477,8 @@
       "failedToLogout": "Failed to logout",
       "noActiveAccount": "No active account",
       "noKeyPairFound": "No key pair found",
+      "noRecoveryPhrase": "No recovery phrase to derive from",
+      "unknownRecoveryPhrase": "Unknown recovery phrase",
       "failedToSignUp": "Failed to sign up",
       "failedToSignIn": "Failed to sign in",
       "failedToImportWallet": "Failed to import wallet",

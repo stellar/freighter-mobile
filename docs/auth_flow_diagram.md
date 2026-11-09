@@ -33,9 +33,34 @@ The temporary store is the heart of the security system. It contains:
 ```typescript
 interface TemporaryStore {
   privateKeys: { [accountId: string]: string }; // Private keys by account ID
-  mnemonicPhrase: string; // Master seed phrase
+  mnemonics: { [sourceId: string]: string }; // Every held seed phrase by source id
 }
 ```
+
+A wallet holds a set of **secret sources**: every seed phrase and every
+standalone imported secret key, recorded as `{ id, type, label, createdAt }` in
+plain storage (`STORAGE_KEYS.SECRET_SOURCES`) beside the account list, with one
+pinned source id (`STORAGE_KEYS.PINNED_SOURCE_ID`) next to it. A source id is a
+derived public key (`deriveAuthKeypair(mnemonic).userId` for a phrase,
+`deriveSourceIdentity(seed32).sourceId` for a secret key) that is not linkable
+to a G address. The temporary store holds every phrase's mnemonic keyed by that
+id; a secret-key-only wallet holds an empty map. Callers that still assume a
+single phrase resolve the pinned source's, or the first held one
+(`getDefaultMnemonic`).
+
+A full sign-in rebuilds that map from scratch, so it reads every phrase source
+the derived accounts are rooted in (`loadOtherPhraseSources`). For each source
+it tries the accounts' keystores in list order until one yields the phrase,
+derives the phrase to confirm its id, and holds it under the id it derives. A
+source whose keystores all fail is logged and left out until the next unlock.
+The LOCKED fast path keeps the existing map and opens none of them.
+
+A wallet from before secret sources existed has accounts with no `sourceId`.
+Sign-in attributes them while the password is in hand
+(`attributePendingAccounts`): the wallet phrase becomes "Seed Phrase 1" and is
+pinned if nothing is, each derived account's index is marked, and each
+secret-key import becomes its own "Secret Key N". The pass is idempotent and
+retries anything it could not attribute on the next unlock.
 
 This store is encrypted using a hash key derived from the user's password and
 stored securely. It has a configurable expiration time
@@ -131,7 +156,7 @@ const createTemporaryStore = async (input) => {
   const temporaryStoreObj = {
     ...existingStore,
     privateKeys: { ...existing, [accountId]: privateKey },
-    mnemonicPhrase,
+    mnemonics: { ...existingStore.mnemonics, [phraseSourceId]: mnemonicPhrase },
   };
 
   // 3. Encrypt and store

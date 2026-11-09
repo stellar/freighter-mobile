@@ -443,6 +443,8 @@
       "failedToLogout": "Falha ao sair",
       "noActiveAccount": "Nenhuma conta ativa",
       "noKeyPairFound": "Nenhum par de chaves encontrado",
+      "noRecoveryPhrase": "Nenhuma frase de recuperação para derivar",
+      "unknownRecoveryPhrase": "Frase de recuperação desconhecida",
       "failedToSignUp": "Falha ao criar conta",
       "failedToSignIn": "Falha ao entrar",
       "failedToImportWallet": "Falha ao importar carteira",

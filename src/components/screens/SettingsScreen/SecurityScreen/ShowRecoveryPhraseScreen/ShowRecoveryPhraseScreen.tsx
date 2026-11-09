@@ -8,7 +8,7 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { LoginType } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
-import { useAuthenticationStore } from "ducks/auth";
+import { getActiveMnemonicPhrase, useAuthenticationStore } from "ducks/auth";
 import { useLoginDataStore } from "ducks/loginData";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -29,10 +29,6 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: FOCUS_RING_WIDTH },
 });
 
-interface KeyExtra {
-  mnemonicPhrase: string;
-}
-
 const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
   navigation,
 }) => {
@@ -46,14 +42,17 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
 
   const showRecoveryPhraseAction = async (password: string) => {
     try {
-      const key = await getKeyFromKeyManager(password ?? localPassword);
-      const keyExtra = key.extra as KeyExtra;
+      // Verifies the password against the active keystore, then shows the
+      // phrase the session holds. The active keystore itself may carry none:
+      // a secret-key import is stamped with no phrase.
+      await getKeyFromKeyManager(password ?? localPassword);
+      const mnemonicPhrase = await getActiveMnemonicPhrase();
 
-      if (keyExtra?.mnemonicPhrase) {
-        setMnemonicPhrase(keyExtra.mnemonicPhrase);
+      if (mnemonicPhrase) {
+        setMnemonicPhrase(mnemonicPhrase);
         navigation.navigate(SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN);
       } else {
-        throw new Error(t("authStore.error.noKeyPairFound"));
+        throw new Error(t("authStore.error.noRecoveryPhrase"));
       }
     } catch (err) {
       if (err instanceof Error) {
