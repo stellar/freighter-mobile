@@ -16,6 +16,7 @@ import {
   PricedBalance,
   TokenTypeWithCustomToken,
 } from "config/types";
+import { useTokenIconsStore } from "ducks/tokenIcons";
 import { pxValue } from "helpers/dimensions";
 import {
   formatBalanceAmount,
@@ -23,7 +24,7 @@ import {
   formatPercentageAmount,
 } from "helpers/formatAmount";
 import useColors from "hooks/useColors";
-import React from "react";
+import React, { useEffect } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 /**
@@ -140,6 +141,30 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
     code: record?.tokenCode ?? "",
     issuer: { key: record?.issuer ?? "" },
   };
+
+  // The row's icon is the cached one (asset lists first), else the issuer's
+  // stellar.toml image stellar.expert found. Caching that first hit gives
+  // the token the same icon everywhere once it is picked.
+  const recordIconToken =
+    variant !== "held" && record && !record.isNative && record.issuer
+      ? (token as NonNativeToken)
+      : undefined;
+  const recordIconUrl = record?.iconUrl;
+  useEffect(() => {
+    if (!recordIconToken) return;
+    useTokenIconsStore.getState().cacheIconIfMissing({
+      token: recordIconToken,
+      network,
+      imageUrl: recordIconUrl,
+    });
+    // Keyed on the token's identity, not the object rebuilt each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    recordIconToken?.code,
+    recordIconToken?.issuer.key,
+    recordIconUrl,
+    network,
+  ]);
 
   // Build a minimal TokenReference for TokenContextMenu
   const tokenRef =

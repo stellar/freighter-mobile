@@ -66,4 +66,21 @@ describe("getIconUrl", () => {
     expect(result).toEqual("");
     expect(issuerModule.getIconUrlFromIssuer).not.toHaveBeenCalled();
   });
+
+  it("reads a contract token's issuer field as its contract ID", async () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    jest
+      .spyOn(tokenListModule, "getIconUrlFromTokensLists")
+      .mockResolvedValue(undefined);
+    jest.spyOn(issuerModule, "getIconUrlFromIssuer").mockResolvedValue("");
+
+    await getIconUrl({ asset: { code: "TKN", issuer: contractId }, network });
+
+    expect(tokenListModule.getIconUrlFromTokensLists).toHaveBeenCalledWith({
+      asset: { code: "TKN", contractId },
+      network,
+    });
+    expect(issuerModule.getIconUrlFromIssuer).not.toHaveBeenCalled();
+  });
 });
