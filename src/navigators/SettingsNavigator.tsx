@@ -5,7 +5,10 @@ import ChangeNetworkScreen from "components/screens/ChangeNetworkScreen";
 import NetworkSettingsScreen from "components/screens/ChangeNetworkScreen/NetworkSettingsScreen";
 import SettingsScreen from "components/screens/SettingsScreen";
 import AboutScreen from "components/screens/SettingsScreen/AboutScreen";
+import AccountsRecoveryScreen from "components/screens/SettingsScreen/AccountsRecoveryScreen";
+import EditAccountScreen from "components/screens/SettingsScreen/EditAccountScreen";
 import PreferencesScreen from "components/screens/SettingsScreen/PreferencesScreen";
+import RevealSecretScreen from "components/screens/SettingsScreen/RevealSecretScreen";
 import SecurityScreen from "components/screens/SettingsScreen/SecurityScreen";
 import AutoLockTimerScreen from "components/screens/SettingsScreen/SecurityScreen/AutoLockTimerScreen";
 import BiometricsSettingsScreen from "components/screens/SettingsScreen/SecurityScreen/BiometricsSettingsScreen";
@@ -47,6 +50,24 @@ export const SettingsStackNavigator = () => {
         name={SETTINGS_ROUTES.SETTINGS_SCREEN}
         component={SettingsScreen}
         options={getScreenBottomNavigateOptions(t("settings.title"))}
+      />
+      <SettingsStack.Screen
+        name={SETTINGS_ROUTES.ACCOUNTS_RECOVERY_SCREEN}
+        component={AccountsRecoveryScreen}
+        options={{
+          headerTitle: t("accountsRecoveryScreen.title"),
+        }}
+      />
+      <SettingsStack.Screen
+        name={SETTINGS_ROUTES.EDIT_ACCOUNT_SCREEN}
+        component={EditAccountScreen}
+        options={{
+          headerTitle: t("editAccountScreen.title"),
+        }}
+      />
+      <SettingsStack.Screen
+        name={SETTINGS_ROUTES.REVEAL_SECRET_SCREEN}
+        component={RevealSecretScreen}
       />
       <SettingsStack.Screen
         name={SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN}
