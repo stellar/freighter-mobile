@@ -17,7 +17,8 @@ import {
 
 interface AccountItemRowProps {
   account: Account;
-  handleSelectAccount: (publicKey: string) => Promise<void>;
+  /** Absent, the row is a plain listing rather than a button. */
+  handleSelectAccount?: (publicKey: string) => Promise<void>;
   isSelected: boolean;
   isAccountSwitching: boolean;
   isSwitchingToThisAccount: boolean;
@@ -83,8 +84,9 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
     .join(", ");
 
   const handleSelectAccountPress = useCallback(() => {
-    handleSelectAccount(account.publicKey);
+    handleSelectAccount?.(account.publicKey);
   }, [account.publicKey, handleSelectAccount]);
+  const isSelectable = !!handleSelectAccount;
 
   const renderFiatTotal = () => {
     if (isTotalLoading) {
@@ -112,16 +114,17 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
     >
       <TouchableOpacity
         className="flex-row items-center gap-[16px]"
-        onPress={handleSelectAccountPress}
-        disabled={isAccountSwitching}
+        onPress={isSelectable ? handleSelectAccountPress : undefined}
+        disabled={isAccountSwitching || !isSelectable}
         delayPressIn={DEFAULT_PRESS_DELAY}
         testID={testID ? `${testID}-select` : undefined}
-        accessibilityRole="button"
+        accessibilityRole={isSelectable ? "button" : undefined}
         accessibilityLabel={rowAccessibilityLabel}
-        accessibilityState={{
-          selected: showSelectedBadge,
-          disabled: isAccountSwitching,
-        }}
+        accessibilityState={
+          isSelectable
+            ? { selected: showSelectedBadge, disabled: isAccountSwitching }
+            : { selected: showSelectedBadge }
+        }
       >
         <View>
           <Avatar size="lg" publicAddress={account.publicKey} />
