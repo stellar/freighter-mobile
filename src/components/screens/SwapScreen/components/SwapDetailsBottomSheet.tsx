@@ -69,8 +69,8 @@ export const SwapDetailsBottomSheet: React.FC<SwapDetailsBottomSheetProps> = ({
               </Text>
               <SwapVenueIconStack
                 venues={routeView.providers}
-                size={20}
-                spacing={-8}
+                size={16}
+                spacing={-4}
                 ringColor={themeColors.background.tertiary}
               />
               <Icon.ChevronRight
