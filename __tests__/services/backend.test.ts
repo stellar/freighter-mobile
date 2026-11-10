@@ -790,8 +790,8 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     mockV2Post.mockResolvedValue(response);
   });
 
-  it("hits the v2 client with a network query param and native id when useV2 is true", async () => {
-    await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true });
+  it("hits the v2 client with a network query param and native id", async () => {
+    await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC });
 
     // Native "XLM" is sent to v2 as "native"; the network goes via `{ params }`
     // (the JWT interceptor folds it into the signed path via getUri). The body
@@ -809,26 +809,10 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     const result = await fetchTokenPrices({
       tokens,
       network: NETWORKS.TESTNET,
-      useV2: true,
     });
 
     expect(mockV2Post).not.toHaveBeenCalled();
     expect(mockV1Post).not.toHaveBeenCalled();
-    expect(result.XLM).toEqual({
-      currentPrice: null,
-      percentagePriceChange24h: null,
-    });
-  });
-
-  it("gates testnet on the v1 fallback too (rollback can't reintroduce testnet fiat)", async () => {
-    const result = await fetchTokenPrices({
-      tokens,
-      network: NETWORKS.TESTNET,
-      useV2: false,
-    });
-
-    expect(mockV1Post).not.toHaveBeenCalled();
-    expect(mockV2Post).not.toHaveBeenCalled();
     expect(result.XLM).toEqual({
       currentPrice: null,
       percentagePriceChange24h: null,
@@ -847,7 +831,6 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     const result = await fetchTokenPrices({
       tokens,
       network: NETWORKS.PUBLIC,
-      useV2: true,
     });
 
     expect(result.XLM?.currentPrice?.toString()).toBe("0.5");
@@ -868,7 +851,6 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     const result = await fetchTokenPrices({
       tokens: [bare],
       network: NETWORKS.PUBLIC,
-      useV2: true,
     });
 
     expect(mockV2Post).toHaveBeenCalledWith(
@@ -892,7 +874,6 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     const result = await fetchTokenPrices({
       tokens: [bareSac],
       network: NETWORKS.PUBLIC,
-      useV2: true,
     });
 
     expect(mockV2Post).toHaveBeenCalledWith(
@@ -921,7 +902,6 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     const result = await fetchTokenPrices({
       tokens: [sacId],
       network: NETWORKS.PUBLIC,
-      useV2: true,
     });
 
     expect(mockV2Post).toHaveBeenCalledWith(
@@ -932,19 +912,10 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     expect(result[sacId]?.currentPrice?.toString()).toBe("0.5");
   });
 
-  it("hits the v1 client with the 'XLM' native id and no network param when useV2 is false", async () => {
-    await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: false });
-
-    // v1 is not native-translated — it still receives "XLM".
-    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
-    expect(mockV2Post).not.toHaveBeenCalled();
-  });
-
   it("short-circuits on unsupported networks (Futurenet) without any request", async () => {
     const result = await fetchTokenPrices({
       tokens,
       network: NETWORKS.FUTURENET,
-      useV2: true,
     });
 
     expect(mockV1Post).not.toHaveBeenCalled();
@@ -956,12 +927,9 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     });
   });
 
-  // Phase 1 item 5 (token price graphs design §4.1): the old single
-  // LP+custom-token exclusion predicate is SPLIT, not moved. LP shares stay
-  // filtered unconditionally on both paths (never priceable; an LP id fails
-  // parsing at the batch endpoint), while the custom-token half applies only
-  // on the legacy v1 rollback path — the Go backend prices SEP-41 contract
-  // tokens, so v2 requests include them (header prices ship with the chart).
+  // LP shares are filtered (never priceable; an LP id fails parsing at the
+  // batch endpoint). The Go backend prices SEP-41 contract tokens, so the
+  // request includes them (header prices ship with the chart).
   const CUSTOM_TOKEN_ID =
     "SOLVBTC:CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";
   const LP_ID =
@@ -971,7 +939,6 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     await fetchTokenPrices({
       tokens: [...tokens, CUSTOM_TOKEN_ID],
       network: NETWORKS.PUBLIC,
-      useV2: true,
     });
 
     expect(mockV2Post).toHaveBeenCalledWith(
@@ -979,31 +946,6 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
       { tokens: [...v2Tokens, CUSTOM_TOKEN_ID] },
       { params: { network: "PUBLIC" } },
     );
-  });
-
-  it("still filters custom tokens on the legacy v1 rollback path", async () => {
-    await fetchTokenPrices({
-      tokens: [...tokens, CUSTOM_TOKEN_ID],
-      network: NETWORKS.PUBLIC,
-      useV2: false,
-    });
-
-    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
-  });
-
-  it("short-circuits on the legacy path when only custom tokens remain", async () => {
-    const result = await fetchTokenPrices({
-      tokens: [CUSTOM_TOKEN_ID],
-      network: NETWORKS.PUBLIC,
-      useV2: false,
-    });
-
-    expect(mockV1Post).not.toHaveBeenCalled();
-    expect(mockV2Post).not.toHaveBeenCalled();
-    expect(result[CUSTOM_TOKEN_ID]).toEqual({
-      currentPrice: null,
-      percentagePriceChange24h: null,
-    });
   });
 
   // A contract token's symbol may contain a colon; contract-ness is read from
@@ -1015,7 +957,6 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     await fetchTokenPrices({
       tokens: [...tokens, COLON_SYMBOL_TOKEN_ID],
       network: NETWORKS.PUBLIC,
-      useV2: true,
     });
 
     expect(mockV2Post).toHaveBeenCalledWith(
@@ -1025,21 +966,10 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     );
   });
 
-  it("filters a contract token whose symbol has a colon on the legacy path", async () => {
-    await fetchTokenPrices({
-      tokens: [...tokens, `A:B:${CUSTOM_TOKEN_ID.split(":")[1]}`],
-      network: NETWORKS.PUBLIC,
-      useV2: false,
-    });
-
-    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
-  });
-
-  it("filters LP shares unconditionally on the v2 path", async () => {
+  it("filters LP shares unconditionally", async () => {
     await fetchTokenPrices({
       tokens: [...tokens, LP_ID],
       network: NETWORKS.PUBLIC,
-      useV2: true,
     });
 
     expect(mockV2Post).toHaveBeenCalledWith(
@@ -1047,16 +977,6 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
       { tokens: v2Tokens },
       { params: { network: "PUBLIC" } },
     );
-  });
-
-  it("filters LP shares unconditionally on the legacy path", async () => {
-    await fetchTokenPrices({
-      tokens: [...tokens, LP_ID],
-      network: NETWORKS.PUBLIC,
-      useV2: false,
-    });
-
-    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
   });
 
   it("logs an error to Sentry and rethrows on a backend failure", async () => {
@@ -1068,7 +988,7 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     mockV2Post.mockRejectedValueOnce(backendError);
 
     await expect(
-      fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true }),
+      fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC }),
     ).rejects.toEqual(backendError);
 
     expect(logger.error).toHaveBeenCalledWith(
@@ -1092,7 +1012,6 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
       fetchTokenPrices({
         tokens,
         network: NETWORKS.PUBLIC,
-        useV2: true,
         signal: new AbortController().signal,
       }),
     ).rejects.toEqual(canceledError);
@@ -1115,7 +1034,6 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
       fetchTokenPrices({
         tokens,
         network: NETWORKS.PUBLIC,
-        useV2: true,
         signal: new AbortController().signal,
       }),
     ).rejects.toEqual(networkError);
@@ -1136,7 +1054,7 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     mockV2Post.mockRejectedValueOnce(networkError);
 
     await expect(
-      fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true }),
+      fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC }),
     ).rejects.toEqual(networkError);
 
     expect(logger.warn).toHaveBeenCalledWith(
