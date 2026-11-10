@@ -1,3 +1,4 @@
+import { logos } from "assets/logos";
 import BigNumber from "bignumber.js";
 import {
   buildSwapRouteView,
@@ -145,12 +146,23 @@ describe("buildSwapRouteView", () => {
 
   it("leaves an unlisted venue without an icon URL, for the generic icon", () => {
     const view = build(
+      route([{ share: "1", hops: [hop("Unknown DEX", "XLM", USDC)] }]),
+    );
+
+    expect(view?.providers).toEqual([
+      { name: "Unknown DEX", iconUrl: undefined },
+    ]);
+  });
+
+  it("names the classic stellar-dex venue and gives it the Stellar logo", () => {
+    const view = build(
       route([{ share: "1", hops: [hop("stellar-dex", "XLM", USDC)] }]),
     );
 
     expect(view?.providers).toEqual([
-      { name: "stellar-dex", iconUrl: undefined },
+      { name: "Stellar DEX", iconSource: logos.stellar },
     ]);
+    expect(view?.paths[0].hopVenues).toEqual(view?.providers);
   });
 
   it("classic stand-in: one path with no share and no pool count", () => {

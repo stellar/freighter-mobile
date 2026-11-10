@@ -34,7 +34,7 @@ export const SwapVenueIcon: React.FC<SwapVenueIconProps> = ({
     backgroundColor: themeColors.background.secondary,
   };
 
-  if (!venue.iconUrl || failed) {
+  if ((!venue.iconUrl && !venue.iconSource) || failed) {
     return (
       <View style={containerStyle} testID="swap-venue-icon-generic">
         <Icon.CoinsSwap01
@@ -47,7 +47,7 @@ export const SwapVenueIcon: React.FC<SwapVenueIconProps> = ({
 
   return (
     <View style={containerStyle} testID="swap-venue-icon">
-      {venue.iconUrl.toLowerCase().endsWith(".svg") ? (
+      {!venue.iconSource && venue.iconUrl?.toLowerCase().endsWith(".svg") ? (
         <SvgUri
           uri={venue.iconUrl}
           width={dimension}
@@ -56,7 +56,7 @@ export const SwapVenueIcon: React.FC<SwapVenueIconProps> = ({
         />
       ) : (
         <Image
-          source={{ uri: venue.iconUrl }}
+          source={venue.iconSource ?? { uri: venue.iconUrl }}
           style={{ width: dimension, height: dimension }}
           onError={() => setFailed(true)}
         />

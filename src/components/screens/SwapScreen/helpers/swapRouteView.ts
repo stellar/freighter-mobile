@@ -1,4 +1,5 @@
 import { StrKey } from "@stellar/stellar-sdk";
+import { logos } from "assets/logos";
 import BigNumber from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { NATIVE_TOKEN_CODE } from "config/constants";
@@ -11,6 +12,7 @@ import {
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { truncateAddress } from "helpers/stellar";
 import type { HeldBalanceItem } from "hooks/useBalancesList";
+import type { ImageSourcePropType } from "react-native";
 
 /** A path row shows this many venue icons, then "+N". */
 export const MAX_PATH_VENUE_ICONS = 3;
@@ -26,6 +28,8 @@ export interface SwapRouteVenue {
   name: string;
   /** Undefined for a venue /protocols doesn't list: it gets a generic icon. */
   iconUrl?: string;
+  /** A bundled logo; takes precedence over iconUrl. */
+  iconSource?: ImageSourcePropType;
 }
 
 export interface SwapRoutePathView {
@@ -53,6 +57,8 @@ export const formatRouteShare = (share: string): string | null => {
   const percent = fraction.times(100).integerValue(BigNumber.ROUND_HALF_UP);
   return percent.isZero() ? "<1%" : `${percent.toFixed()}%`;
 };
+
+const STELLAR_DEX_VENUE = "stellar-dex";
 
 const venueKey = (name: string) => name.trim().toLowerCase();
 
@@ -131,10 +137,13 @@ export const buildSwapRouteView = ({
   const iconByVenue = new Map(
     protocols.map((p) => [venueKey(p.name), p.iconUrl]),
   );
-  const toVenue = (name: string): SwapRouteVenue => ({
-    name,
-    iconUrl: iconByVenue.get(venueKey(name)),
-  });
+  const toVenue = (name: string): SwapRouteVenue => {
+    // Not in /protocols: listing it there would show it in Discovery.
+    if (venueKey(name) === STELLAR_DEX_VENUE) {
+      return { name: "Stellar DEX", iconSource: logos.stellar };
+    }
+    return { name, iconUrl: iconByVenue.get(venueKey(name)) };
+  };
   const context = { balanceItems, destination };
   const isSplit = paths.length > 1;
 
