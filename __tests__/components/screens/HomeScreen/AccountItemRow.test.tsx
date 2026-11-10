@@ -212,4 +212,16 @@ describe("AccountItemRow", () => {
       "my account 1",
     );
   });
+
+  it("is a plain listing, not a button, without a select handler", () => {
+    const { handleSelectAccount, ...listingProps } = defaultProps;
+    const { getByTestId } = renderWithProviders(
+      <AccountItemRow {...listingProps} />,
+    );
+
+    const row = getByTestId("account-row-0-select");
+    expect(row.props.accessibilityRole).toBeUndefined();
+    fireEvent.press(row);
+    expect(handleSelectAccount).not.toHaveBeenCalled();
+  });
 });

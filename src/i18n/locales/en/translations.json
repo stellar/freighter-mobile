@@ -511,7 +511,10 @@
       "sessionExpiredTitle": "Session expired",
       "sessionExpiredMessage": "Your session is no longer valid. Please sign in again.",
       "disableBiometricsFailedTitle": "Couldn't disable biometrics",
-      "disableBiometricsFailedMessage": "We couldn't verify your identity. Please try again."
+      "disableBiometricsFailedMessage": "We couldn't verify your identity. Please try again.",
+      "pendingRecoveryPhraseMissing": "The new recovery phrase is no longer available. Start again.",
+      "recoveryPhraseAlreadyHeld": "This recovery phrase is already in your wallet",
+      "failedToAddRecoveryPhrase": "Failed to add the recovery phrase. Please try again."
     },
     "account": "Account {{number}}",
     "faceId": {
@@ -900,13 +903,31 @@
     "checkMemoRequirements": "Check the destination account memo requirements and include it in the transaction."
   },
   "addAnotherWalletScreen": {
-    "title": "Add wallet",
+    "title": "Add account",
+    "subtitle": "Choose how to add a wallet.",
     "actions": {
-      "createNewWallet": "Create a new wallet",
-      "createNewWalletDescription": "Create a wallet from your seed phrase",
-      "importSecretKey": "Import a Stellar secret key",
-      "importSecretKeyDescription": "Add a wallet using a secret key"
+      "createNewWallet": "Create new wallet",
+      "createNewWalletDescription": "Using an existing or new recovery phrase",
+      "importSecretKey": "Import Secret Key",
+      "importSecretKeyDescription": "Import a wallet using its secret key."
     }
+  },
+  "createWalletScreen": {
+    "title": "Create new wallet",
+    "subtitle": "Create with a new or existing recovery phrase",
+    "addAccount": "Add account",
+    "addAccountTo": "Add account to {{label}}",
+    "newRecoveryPhrase": "New recovery phrase",
+    "newRecoveryPhraseDescription": "Create a wallet with a new recovery phrase",
+    "setAccountName": "Set account name",
+    "create": "Create",
+    "next": "Next"
+  },
+  "backupRecoveryPhraseScreen": {
+    "title": "Back Up Your New Recovery Phrase",
+    "description": "Your recovery phrase is the only way to restore your new wallet.",
+    "descriptionEmphasis": "Keep it safe.",
+    "create": "Create"
   },
   "verifyPasswordScreen": {
     "title": "Verify Password",

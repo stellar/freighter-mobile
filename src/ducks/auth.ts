@@ -44,6 +44,10 @@ import { usePreferencesStore } from "ducks/preferences";
 import { usePricesStore } from "ducks/prices";
 import { useRecentProtocolsStore } from "ducks/recentProtocols";
 import { useWalletKitStore } from "ducks/walletKit";
+import {
+  getNextDefaultAccountName,
+  normalizeAccountName,
+} from "helpers/accountName";
 import { clearAllWebViewData } from "helpers/browser";
 import {
   deriveKeyFromPassword,
@@ -186,6 +190,7 @@ interface ImportWalletParams {
  * @property {boolean} [shouldRefreshHashKey] - Whether to refresh the hash key (optional)
  * @property {boolean} [shouldSetActiveAccount] - Whether to set this account as active (optional)
  * @property {number} [accountNumber] - The account number for derivation (optional)
+ * @property {string} [accountName] - The name the user chose (optional)
  */
 interface StoreAccountParams {
   /**
@@ -216,6 +221,11 @@ interface StoreAccountParams {
   shouldRefreshHashKey?: boolean;
   shouldSetActiveAccount?: boolean;
   accountNumber?: number;
+  /**
+   * The name the user chose. Absent or blank, `accountNumber`'s name, else
+   * the next default name not already in use.
+   */
+  accountName?: string;
 }
 
 /**
@@ -364,9 +374,23 @@ interface AuthActions {
   /**
    * Adds an account at its phrase's lowest unused derivation index. `sourceId`
    * names the phrase; absent, the active account's phrase is used, else the
-   * pinned source, else the first held.
+   * pinned source, else the first held. `accountName` names it; absent or
+   * blank, the next default name.
    */
-  createAccount: (password: string, sourceId?: string) => Promise<void>;
+  createAccount: (
+    password: string,
+    sourceId?: string,
+    accountName?: string,
+  ) => Promise<void>;
+  /**
+   * Stores the phrase `generatePendingRecoveryPhrase` is holding as a new
+   * phrase source and adds its first account, which becomes active.
+   */
+  addRecoveryPhraseSource: (
+    password: string,
+    pendingPhraseId: string,
+    accountName?: string,
+  ) => Promise<void>;
   selectAccount: (publicKey: string) => Promise<void>;
   selectNetwork: (network: NETWORKS) => Promise<void>;
   initializeNetwork: () => Promise<void>;
@@ -1162,6 +1186,7 @@ const storeAccount = async ({
   password,
   keyPair,
   accountNumber,
+  accountName: requestedAccountName,
   shouldRefreshHashKey = true,
   shouldSetActiveAccount = true,
   importedFromSecretKey = false,
@@ -1215,9 +1240,16 @@ const storeAccount = async ({
   const accountList = accountListRaw
     ? (JSON.parse(accountListRaw) as Account[])
     : [];
-  const accountName = t("authStore.account", {
-    number: accountNumber ?? accountList.length + 1,
-  });
+  const formatAccountName = (number: number) =>
+    t("authStore.account", { number });
+  const accountName =
+    normalizeAccountName(requestedAccountName) ??
+    (accountNumber !== undefined
+      ? formatAccountName(accountNumber)
+      : getNextDefaultAccountName(
+          accountList.map(({ name }) => name),
+          formatAccountName,
+        ));
 
   // Listed before it is made active. An active id with no list entry makes
   // signIn recreate the account without knowing its source, so a write that
@@ -1269,6 +1301,67 @@ const deriveKeyPair = (params: DeriveKeypairParams) => {
   };
 };
 
+/*
+  A phrase generated for a new source in this wallet, held until the user has
+  seen it and confirmed with their password. Module state rather than store
+  state, so it never shows up in a store snapshot or a selector, and the
+  screens never pass it back: `addRecoveryPhraseSource` reads it from here.
+  Cleared once stored, when the flow is left, and on lock, log out or wipe.
+
+  Each generation gets an id the screens carry instead of the phrase. The
+  backup screen keeps the phrase it showed while the held one can be
+  replaced underneath it (a second generation, e.g. from a double tap), so
+  confirming must name the generation the user saw.
+*/
+let pendingRecoveryPhrase: { mnemonicPhrase: string; id: string } | null = null;
+let pendingRecoveryPhraseCount = 0;
+
+/**
+ * Generates the phrase for a new source in an existing wallet and holds it
+ * until `addRecoveryPhraseSource` stores it. Nothing is persisted. A second
+ * call replaces the held phrase, so backing out and starting over never
+ * stores the abandoned one.
+ *
+ * @returns The id of this generation, for the screens to pass along
+ */
+export const generatePendingRecoveryPhrase = (): string => {
+  pendingRecoveryPhraseCount += 1;
+  pendingRecoveryPhrase = {
+    mnemonicPhrase: StellarHDWallet.generateMnemonic({ entropyBits: 128 }),
+    // Unique within the process, which is all it has to be: the phrase never
+    // outlives it.
+    id: `pending-phrase-${pendingRecoveryPhraseCount}`,
+  };
+  return pendingRecoveryPhrase.id;
+};
+
+/**
+ * The held phrase, if it's still the one generation `pendingPhraseId` made.
+ *
+ * @param {string} pendingPhraseId - The id `generatePendingRecoveryPhrase` returned
+ */
+export const getPendingRecoveryPhrase = (
+  pendingPhraseId: string,
+): string | null =>
+  pendingPhraseId && pendingRecoveryPhrase?.id === pendingPhraseId
+    ? pendingRecoveryPhrase.mnemonicPhrase
+    : null;
+
+/**
+ * Drops the held phrase without storing it. With an id, only if it's still
+ * that generation, so a screen going away can't drop a newer one.
+ *
+ * @param {string} [pendingPhraseId] - Limits the clear to that generation (optional)
+ */
+export const clearPendingRecoveryPhrase = (pendingPhraseId?: string): void => {
+  if (
+    pendingPhraseId === undefined ||
+    pendingRecoveryPhrase?.id === pendingPhraseId
+  ) {
+    pendingRecoveryPhrase = null;
+  }
+};
+
 /**
  * Clears all data from the key manager, temporary store (sensitive),
  * and non-sensitive data
@@ -1278,6 +1371,7 @@ const deriveKeyPair = (params: DeriveKeypairParams) => {
 const clearAllData = async (): Promise<void> => {
   clearDerivedKeyCache();
   clearCachedWalletSources();
+  clearPendingRecoveryPhrase();
 
   const allKeys = await keyManager.loadAllKeyIds();
 
@@ -2614,12 +2708,14 @@ const hasAccountInAccountList = (
  * @param {string} password - The user's password, verified against the active keystore first
  * @param {AuthStatus} authStatus - Current auth status, gating the session read
  * @param {string} [requestedSourceId] - The phrase source to derive from (optional)
+ * @param {string} [accountName] - The new account's name; absent or blank, the next default name (optional)
  * @returns {Promise<void>}
  */
 const createAccount = async (
   password: string,
   authStatus: AuthStatus,
   requestedSourceId?: string,
+  accountName?: string,
 ): Promise<void> => {
   // Verifies the password before anything is derived: the new keystore is
   // encrypted with it, so a wrong one must fail here, not produce a keystore
@@ -2713,8 +2809,76 @@ const createAccount = async (
     derivationIndex,
     password,
     keyPair,
+    accountName,
     shouldRefreshHashKey: false,
   });
+};
+
+/**
+ * Stores the held phrase as a new phrase source and derives its first
+ * account, at index 0, which becomes active. The wallet it joins may hold any
+ * mix of sources, or no phrase at all (a secret-key wallet), so the password
+ * is checked against the active keystore, as an import checks it.
+ *
+ * Unlike sign-up, this adds to a live wallet: it never clears data, and the
+ * new phrase joins the phrases the session already holds.
+ *
+ * @param {string} password - The user's password, verified against the active keystore first
+ * @param {AuthStatus} authStatus - Current auth status, gating the session read
+ * @param {string} pendingPhraseId - The generation the user backed up; refused if another replaced it
+ * @param {string} [accountName] - The new account's name; absent or blank, the next default name (optional)
+ * @returns {Promise<void>}
+ */
+const addRecoveryPhraseSource = async (
+  password: string,
+  authStatus: AuthStatus,
+  pendingPhraseId: string,
+  accountName?: string,
+): Promise<void> => {
+  // A replaced generation reads as missing: the held phrase isn't the one
+  // the user saw.
+  const mnemonicPhrase = getPendingRecoveryPhrase(pendingPhraseId);
+  if (!mnemonicPhrase) {
+    throw new Error(t("authStore.error.pendingRecoveryPhraseMissing"));
+  }
+
+  // The new keystore is encrypted with the password, so a wrong one must
+  // fail here, not produce a keystore the wallet can never open.
+  await getKeyFromKeyManager(password);
+
+  const temporaryStore = await getTemporaryStore(authStatus);
+  if (!temporaryStore) {
+    throw new Error(t("authStore.error.temporaryStoreNotFound"));
+  }
+
+  const sourceId = await getPhraseSourceId(mnemonicPhrase);
+  const keyPair = deriveKeyPair({ mnemonicPhrase });
+
+  // A generated phrase colliding is not a real case, but these checks are
+  // what keep two sources or two accounts from sharing an id or an address.
+  if ((await getSecretSources())[sourceId]) {
+    throw new Error(t("authStore.error.recoveryPhraseAlreadyHeld"));
+  }
+  if (hasAccountInAccountList(await getAllAccounts(), keyPair)) {
+    throw new Error(t("authStore.error.accountAlreadyExists"));
+  }
+
+  await storeAccount({
+    mnemonicPhrase,
+    phraseSourceId: sourceId,
+    sourceId,
+    derivationIndex: 0,
+    password,
+    keyPair,
+    accountName,
+    shouldRefreshHashKey: false,
+  });
+  await addSecretSource({
+    id: sourceId,
+    type: SecretSourceType.PHRASE,
+  });
+
+  clearPendingRecoveryPhrase();
 };
 
 /**
@@ -2832,6 +2996,8 @@ export const getUserFacingError = (
     t("authStore.error.noActiveAccount"),
     t("authStore.error.noRecoveryPhrase"),
     t("authStore.error.unknownRecoveryPhrase"),
+    t("authStore.error.pendingRecoveryPhraseMissing"),
+    t("authStore.error.recoveryPhraseAlreadyHeld"),
     t("authStore.error.authenticationExpired"),
     t("authStore.error.failedToReEncryptData"),
     t("authStore.error.failedToDecryptData"),
@@ -2931,6 +3097,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
    */
   logout: (shouldWipeAllData = false) => {
     set((state) => ({ ...state, isLoading: true, error: null }));
+    clearPendingRecoveryPhrase();
 
     // We'll use setTimeout to handle the async operations
     // This avoids the issue with void return expectations from zustand
@@ -3061,6 +3228,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
    */
   softLock: async (options?: { suppressBiometricPrompt?: boolean }) => {
     Keyboard.dismiss();
+    // A phrase not yet confirmed doesn't outlive the session that made it.
+    clearPendingRecoveryPhrase();
 
     // Atomic update: RootNavigator must never see LOCKED && !isSoftLocked
     // (it would unmount the preserved tree). Clear account so the decrypted
@@ -3855,11 +4024,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     }
   },
 
-  createAccount: async (password: string, sourceId?: string) => {
+  createAccount: async (
+    password: string,
+    sourceId?: string,
+    accountName?: string,
+  ) => {
     set({ isCreatingAccount: true, error: null });
 
     try {
-      await createAccount(password, get().authStatus, sourceId);
+      await createAccount(password, get().authStatus, sourceId, accountName);
 
       // The new account becomes active: drop the previous account's data so
       // nothing (e.g. priced balances) carries over into its first render.
@@ -3890,6 +4063,52 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         error: getUserFacingError(
           error,
           "authStore.error.failedToCreateAccount",
+        ),
+        isCreatingAccount: false,
+      });
+      throw error;
+    }
+  },
+
+  addRecoveryPhraseSource: async (
+    password: string,
+    pendingPhraseId: string,
+    accountName?: string,
+  ) => {
+    set({ isCreatingAccount: true, error: null });
+
+    try {
+      await addRecoveryPhraseSource(
+        password,
+        get().authStatus,
+        pendingPhraseId,
+        accountName,
+      );
+
+      // The new account becomes active, as on createAccount.
+      clearAccountData({ keepAccountsFiatTotals: true });
+
+      await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
+
+      analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT, {
+        number_of_accounts: get().allAccounts.length,
+        source: "new_phrase",
+      });
+
+      // The new phrase is a source of its own.
+      get().linkSources();
+
+      set({ isCreatingAccount: false, error: null });
+    } catch (error) {
+      logger.error(
+        "useAuthenticationStore.addRecoveryPhraseSource",
+        "Failed to add recovery phrase",
+        error,
+      );
+      set({
+        error: getUserFacingError(
+          error,
+          "authStore.error.failedToAddRecoveryPhrase",
         ),
         isCreatingAccount: false,
       });

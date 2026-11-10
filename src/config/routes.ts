@@ -102,6 +102,8 @@ export const SETTINGS_ROUTES = {
 
 export const MANAGE_WALLETS_ROUTES = {
   ADD_ANOTHER_WALLET_SCREEN: "AddAnotherWalletScreen",
+  CREATE_WALLET_SCREEN: "CreateWalletScreen",
+  BACKUP_RECOVERY_PHRASE_SCREEN: "BackupRecoveryPhraseScreen",
   VERIFY_PASSWORD_SCREEN: "VerifyPasswordScreen",
   IMPORT_SECRET_KEY_SCREEN: "ImportSecretKeyScreen",
 } as const;
@@ -230,9 +232,24 @@ export type SettingsStackParamList = {
   [SETTINGS_ROUTES.REVEAL_SECRET_SCREEN]: RevealSecretParams;
 };
 
+/**
+ * What the password step creates once it's confirmed: an account under an
+ * existing phrase, or the first account of the phrase the backup step showed.
+ * The new phrase itself never travels in params; the auth store holds it.
+ */
+export type CreateWalletTarget =
+  | { kind: "existingPhrase"; sourceId: string; accountName: string }
+  | { kind: "newPhrase"; pendingPhraseId: string; accountName: string };
+
 export type ManageWalletsStackParamList = {
   [MANAGE_WALLETS_ROUTES.ADD_ANOTHER_WALLET_SCREEN]: undefined;
-  [MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN]: undefined;
+  [MANAGE_WALLETS_ROUTES.CREATE_WALLET_SCREEN]: undefined;
+  [MANAGE_WALLETS_ROUTES.BACKUP_RECOVERY_PHRASE_SCREEN]: {
+    /** Names the held phrase's generation; the phrase itself stays out of params. */
+    pendingPhraseId: string;
+    accountName: string;
+  };
+  [MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN]: CreateWalletTarget;
   [MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN]: undefined;
 };
 
