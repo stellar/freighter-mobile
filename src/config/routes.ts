@@ -95,6 +95,9 @@ export const SETTINGS_ROUTES = {
   YOUR_RECOVERY_PHRASE_SCREEN: "YourRecoveryPhraseScreen",
   BIOMETRICS_SETTINGS_SCREEN: "BiometricsSettingsScreen",
   AUTO_LOCK_TIMER_SCREEN: "AutoLockTimerScreen",
+  ACCOUNTS_RECOVERY_SCREEN: "AccountsRecoveryScreen",
+  EDIT_ACCOUNT_SCREEN: "EditAccountScreen",
+  REVEAL_SECRET_SCREEN: "RevealSecretScreen",
 } as const;
 
 export const MANAGE_WALLETS_ROUTES = {
@@ -196,6 +199,15 @@ export type ManageTokensStackParamList = {
   [MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN]: undefined;
 };
 
+/**
+ * What the reveal screen shows: one account's secret key (`accountId` is
+ * `Account.id`), or a recovery phrase (`sourceId` names the phrase source;
+ * without one, the wallet's default phrase).
+ */
+export type RevealSecretParams =
+  | { kind: "secretKey"; accountId: string }
+  | { kind: "recoveryPhrase"; sourceId?: string };
+
 export type SettingsStackParamList = {
   [SETTINGS_ROUTES.SETTINGS_SCREEN]: undefined;
   [SETTINGS_ROUTES.PREFERENCES_SCREEN]: undefined;
@@ -210,6 +222,12 @@ export type SettingsStackParamList = {
   [SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN]: undefined;
   [SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN]: undefined;
   [SETTINGS_ROUTES.AUTO_LOCK_TIMER_SCREEN]: undefined;
+  [SETTINGS_ROUTES.ACCOUNTS_RECOVERY_SCREEN]: undefined;
+  [SETTINGS_ROUTES.EDIT_ACCOUNT_SCREEN]: {
+    /** `Account.id`: two accounts can share a public key. */
+    accountId: string;
+  };
+  [SETTINGS_ROUTES.REVEAL_SECRET_SCREEN]: RevealSecretParams;
 };
 
 export type ManageWalletsStackParamList = {

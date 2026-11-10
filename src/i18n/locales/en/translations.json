@@ -87,7 +87,9 @@
     "deleteAccount": "Delete account",
     "deleteAccountDisclaimer": "Accounts on the Stellar network are immutable and cannot be deleted. However you can remove any account from your Varial App at any time using the 'Delete account' option. Verify your recovery phrase works before you do this.",
     "deleteAccountConfirmTitle": "Are you sure?",
-    "deleteAccountConfirmMessage": "Make sure you have your recovery phrase in a safe place. You will not be able to recover your wallet without it."
+    "deleteAccountConfirmMessage": "Make sure you have your recovery phrase in a safe place. You will not be able to recover your wallet without it.",
+    "accountsRecovery": "Accounts & recovery",
+    "manageYourAccounts": "Manage your accounts"
   },
   "preferences": {
     "usageDataSharing": {
@@ -479,6 +481,7 @@
       "noKeyPairFound": "No key pair found",
       "noRecoveryPhrase": "No recovery phrase to derive from",
       "unknownRecoveryPhrase": "Unknown recovery phrase",
+      "recoveryPhraseNotFound": "Recovery phrase not found",
       "failedToSignUp": "Failed to sign up",
       "failedToSignIn": "Failed to sign in",
       "failedToImportWallet": "Failed to import wallet",
@@ -594,7 +597,6 @@
     "alreadyInWallet": "This collectible is already in your wallet",
     "showHidden": "Show hidden"
   },
-
   "collectibles": {
     "errors": {
       "collectionNotFound": "Collection not found for the given address.",
@@ -1389,5 +1391,42 @@
     "title": "Cannot run on this device",
     "description": "This device is rooted or jailbroken, which prevents the app from protecting your wallet keys.",
     "disclaimer": "The app is disabled on compromised systems. Install and use it on a device with standard security intact."
+  },
+  "accountsRecoveryScreen": {
+    "title": "Accounts & recovery",
+    "recoveryPhraseLabel": "Recovery phrase {{number}}",
+    "secretKeyLabel": "Secret key {{number}}",
+    "otherAccounts": "Other accounts",
+    "editAccount": "Edit {{name}}"
+  },
+  "editAccountScreen": {
+    "title": "Edit account",
+    "accountName": "Account name",
+    "secretKey": "Secret key",
+    "unlockToReveal": "Unlock to reveal",
+    "viewOnExplorer": "View on block explorer"
+  },
+  "revealSecretScreen": {
+    "consentBannerBody": "Anyone with it can take control of your wallet.",
+    "consentSubtitle": "Keep it secure. You'll need it to restore your wallet.",
+    "tapToCopy": "Tap to copy",
+    "recoveryPhrase": {
+      "title": "Show recovery phrase",
+      "revealedTitle": "Your recovery phrase",
+      "bannerTitle": "Never share your recovery phrase",
+      "revealedBannerBody": "Anyone with it can take control of your wallet.",
+      "heading": "Your recovery phrase controls this wallet",
+      "acknowledgement": "I understand that sharing my recovery phrase could result in <strong>permanent loss of funds</strong>.",
+      "action": "Reveal recovery phrase"
+    },
+    "secretKey": {
+      "title": "Show secret key",
+      "revealedTitle": "Your secret key",
+      "bannerTitle": "Never share your secret key",
+      "revealedBannerBody": "Anyone with this key can access your account and funds. Keep it private and store it securely.",
+      "heading": "Your secret key controls this wallet",
+      "acknowledgement": "I understand that sharing my secret key could result in <strong>permanent loss of funds</strong>.",
+      "action": "Reveal secret key"
+    }
   }
 }
