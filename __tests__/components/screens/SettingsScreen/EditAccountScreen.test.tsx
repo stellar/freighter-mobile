@@ -15,10 +15,29 @@ jest.mock("hooks/useInAppBrowser", () => ({
   useInAppBrowser: () => ({ open: mockOpenInAppBrowser }),
 }));
 
-jest.mock("components/screens/HomeScreen/RenameAccountModal", () => {
+const mockPresent = jest.fn();
+jest.mock("components/BottomSheet", () => {
+  const { useImperativeHandle } = jest.requireActual("react");
+  return ({
+    modalRef,
+    customContent,
+  }: {
+    modalRef: React.Ref<unknown>;
+    customContent: React.ReactNode;
+  }) => {
+    useImperativeHandle(modalRef, () => ({
+      present: mockPresent,
+      dismiss: jest.fn(),
+    }));
+    return customContent;
+  };
+});
+
+jest.mock("components/screens/HomeScreen/RenameAccountForm", () => {
   const { Text } = jest.requireActual("react-native");
-  return ({ modalVisible }: { modalVisible: boolean }) =>
-    modalVisible ? <Text testID="rename-modal">rename</Text> : null;
+  return ({ isBottomSheetInput }: { isBottomSheetInput?: boolean }) => (
+    <Text testID="rename-form">{String(isBottomSheetInput)}</Text>
+  );
 });
 
 jest.mock("services/auth/secretSources", () => ({
@@ -114,7 +133,9 @@ describe("EditAccountScreen", () => {
     expect(screen.getByText("Account 1")).toBeTruthy();
     fireEvent.press(screen.getByTestId("edit-account-name"));
 
-    expect(screen.getByTestId("rename-modal")).toBeTruthy();
+    expect(mockPresent).toHaveBeenCalledTimes(1);
+    // The form sits in a bottom sheet, so its field uses the sheet's input.
+    expect(screen.getByTestId("rename-form").props.children).toBe("true");
   });
 
   it("links the account on stellar.expert for the current network", () => {

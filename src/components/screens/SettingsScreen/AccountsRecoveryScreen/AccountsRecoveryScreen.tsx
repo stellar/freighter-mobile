@@ -139,7 +139,9 @@ const AccountsRecoveryScreen: React.FC<AccountsRecoveryScreenProps> = ({
   const fetchAccountsFiatTotals = useAccountsFiatTotalsStore(
     (state) => state.fetchAccountsFiatTotals,
   );
-  const [sources, setSources] = useState<SecretSource[]>([]);
+  // Null until the first read, so the list isn't drawn ungrouped and then
+  // regrouped once the sources arrive.
+  const [sources, setSources] = useState<SecretSource[] | null>(null);
 
   // Refetched on focus so a rename on Edit account shows on return.
   useFocusEffect(
@@ -153,6 +155,8 @@ const AccountsRecoveryScreen: React.FC<AccountsRecoveryScreenProps> = ({
             "Failed to read secret sources",
             error,
           );
+          // Still list the accounts, under the trailing group.
+          setSources((current) => current ?? []);
         });
     }, [getAllAccounts]),
   );
@@ -177,7 +181,10 @@ const AccountsRecoveryScreen: React.FC<AccountsRecoveryScreenProps> = ({
   );
 
   const groups = useMemo(
-    () => groupAccountsBySource({ accounts: allAccounts, sources, t }),
+    () =>
+      sources
+        ? groupAccountsBySource({ accounts: allAccounts, sources, t })
+        : [],
     [allAccounts, sources, t],
   );
 

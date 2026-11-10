@@ -1,7 +1,9 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BottomSheet from "components/BottomSheet";
 import { List, ListItemProps } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
-import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
+import RenameAccountForm from "components/screens/HomeScreen/RenameAccountForm";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -20,7 +22,7 @@ import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { analytics } from "services/analytics";
 import { getSecretSources } from "services/auth/secretSources";
@@ -48,7 +50,7 @@ const EditAccountScreen: React.FC<EditAccountScreenProps> = ({
   const { allAccounts, network, renameAccount, isRenamingAccount } =
     useAuthenticationStore();
   const [phraseSource, setPhraseSource] = useState<SecretSource | null>(null);
-  const [isRenameVisible, setIsRenameVisible] = useState(false);
+  const renameSheetRef = useRef<BottomSheetModal>(null);
 
   const account = allAccounts.find(({ id }) => id === accountId) ?? null;
   const sourceId = account?.sourceId;
@@ -88,7 +90,7 @@ const EditAccountScreen: React.FC<EditAccountScreenProps> = ({
 
       analytics.trackViewPublicKeyAccountRenamed();
       await renameAccount({ accountName, publicKey: account.publicKey });
-      setIsRenameVisible(false);
+      renameSheetRef.current?.dismiss();
     },
     [account, renameAccount],
   );
@@ -111,7 +113,7 @@ const EditAccountScreen: React.FC<EditAccountScreenProps> = ({
     {
       title: t("editAccountScreen.accountName"),
       titleColor: themeColors.text.primary,
-      onPress: () => setIsRenameVisible(true),
+      onPress: () => renameSheetRef.current?.present(),
       trailingContent: (
         <View className="flex-row items-center gap-2 shrink">
           <View className="shrink">
@@ -190,12 +192,20 @@ const EditAccountScreen: React.FC<EditAccountScreenProps> = ({
         </View>
       </ScrollView>
 
-      <RenameAccountModal
-        modalVisible={isRenameVisible}
-        setModalVisible={setIsRenameVisible}
-        handleRenameAccount={handleRename}
-        account={account}
-        isRenamingAccount={isRenamingAccount}
+      <BottomSheet
+        modalRef={renameSheetRef}
+        // A rename in flight can't be dismissed, like its Cancel button.
+        shouldCloseOnPressBackdrop={!isRenamingAccount}
+        enablePanDownToClose={!isRenamingAccount}
+        customContent={
+          <RenameAccountForm
+            account={account}
+            isRenamingAccount={isRenamingAccount}
+            onCancel={() => renameSheetRef.current?.dismiss()}
+            onSave={handleRename}
+            isBottomSheetInput
+          />
+        }
       />
     </BaseLayout>
   );

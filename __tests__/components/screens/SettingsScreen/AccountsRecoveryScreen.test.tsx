@@ -4,6 +4,7 @@ import { SETTINGS_ROUTES } from "config/routes";
 import { Account } from "config/types";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { getSecretSources } from "services/auth/secretSources";
 
 jest.mock("@react-navigation/native", () => {
   const { useEffect } = jest.requireActual("react");
@@ -92,6 +93,31 @@ describe("AccountsRecoveryScreen", () => {
     expect(within(phraseGroup).getByText("Account 2")).toBeTruthy();
     expect(within(keyGroup).getByText("Secret key 1")).toBeTruthy();
     expect(within(keyGroup).getByText("Imported")).toBeTruthy();
+  });
+
+  it("lists nothing until the sources are read, so rows never regroup", async () => {
+    let resolveSources: (value: object) => void = () => {};
+    (getSecretSources as jest.Mock).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSources = resolve;
+      }),
+    );
+    const screen = renderScreen();
+
+    expect(screen.queryAllByTestId("accounts-recovery-row")).toHaveLength(0);
+
+    resolveSources({
+      "phrase-1": {
+        id: "phrase-1",
+        type: "phrase",
+        label: "Seed Phrase 1",
+        createdAt: 1,
+      },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Recovery phrase 1")).toBeTruthy(),
+    );
   });
 
   it("shows totals and marks the active account", async () => {
