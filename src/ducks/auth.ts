@@ -1407,7 +1407,6 @@ export function clearAccountData(
   // Clear prices data
   usePricesStore.setState({
     pricesByNetwork: {},
-    sourceByNetwork: {},
     isLoading: false,
     error: null,
     lastUpdated: null,

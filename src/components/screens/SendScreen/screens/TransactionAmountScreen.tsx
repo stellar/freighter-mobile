@@ -48,7 +48,6 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useDebugStore } from "ducks/debug";
 import { useHistoryStore } from "ducks/history";
-import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -1022,7 +1021,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         snapshotHandle = startConfirmationPriceSnapshot({
           canonicalIds: [sourceCanonicalId],
           network,
-          useV2: useRemoteConfigStore.getState().use_token_prices_v2,
           cachedDisplayPrices: {
             [sourceCanonicalId]: {
               currentPrice: selectedBalance.currentPrice ?? null,

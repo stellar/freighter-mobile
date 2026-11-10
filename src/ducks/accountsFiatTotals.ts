@@ -245,7 +245,6 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
 
         fetchGeneration += 1;
         const thisGeneration = fetchGeneration;
-        const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
         const useBalancesV2 = useRemoteConfigStore.getState().use_balances_v2;
 
         // The prices store skips identifiers it already holds, so without an
@@ -340,7 +339,6 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
                 .fetchPricesForTokenIds({
                   tokens: tokensToPrice,
                   network,
-                  useV2,
                   forceRefresh: shouldRefreshPrices,
                 });
 

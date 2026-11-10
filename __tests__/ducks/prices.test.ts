@@ -91,19 +91,13 @@ describe("prices duck", () => {
     balances: mockBalances,
     publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
     network: NETWORKS.TESTNET,
-    useV2: true,
   };
 
-  // Convenience: seed a network's cache as if it were fetched under `useV2`.
-  const seedNetwork = (
-    network: NETWORKS,
-    prices: TokenPricesMap,
-    useV2 = true,
-  ) =>
+  // Convenience: seed a network's cache.
+  const seedNetwork = (network: NETWORKS, prices: TokenPricesMap) =>
     act(() => {
       usePricesStore.setState({
         pricesByNetwork: { [network]: prices },
-        sourceByNetwork: { [network]: useV2 },
       });
     });
 
@@ -111,7 +105,6 @@ describe("prices duck", () => {
     act(() => {
       usePricesStore.setState({
         pricesByNetwork: {},
-        sourceByNetwork: {},
         isLoading: false,
         error: null,
         lastUpdated: null,
@@ -130,7 +123,6 @@ describe("prices duck", () => {
       const { result } = renderHook(() => usePricesStore());
 
       expect(result.current.pricesByNetwork).toEqual({});
-      expect(result.current.sourceByNetwork).toEqual({});
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
       expect(result.current.lastUpdated).toBeNull();
@@ -148,12 +140,10 @@ describe("prices duck", () => {
       expect(mockFetchTokenPrices).toHaveBeenCalledWith({
         tokens: mockTokenIdentifiers,
         network: NETWORKS.TESTNET,
-        useV2: true,
       });
       expect(result.current.pricesByNetwork[NETWORKS.TESTNET]).toEqual(
         mockPrices,
       );
-      expect(result.current.sourceByNetwork[NETWORKS.TESTNET]).toBe(true);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
       expect(typeof result.current.lastUpdated).toBe("number");
@@ -163,7 +153,7 @@ describe("prices duck", () => {
       const { result } = renderHook(() => usePricesStore());
 
       // All held tokens are already cached for this network/endpoint...
-      seedNetwork(NETWORKS.TESTNET, mockPrices, true);
+      seedNetwork(NETWORKS.TESTNET, mockPrices);
 
       await act(async () => {
         await result.current.fetchPricesForBalances(mockParams); // TESTNET
@@ -174,7 +164,6 @@ describe("prices duck", () => {
       expect(mockFetchTokenPrices).toHaveBeenCalledWith({
         tokens: mockTokenIdentifiers,
         network: NETWORKS.TESTNET,
-        useV2: true,
       });
     });
 
@@ -244,7 +233,7 @@ describe("prices duck", () => {
       it("preserves already-cached prices for the network on failure", async () => {
         const { result } = renderHook(() => usePricesStore());
         // Same network + same endpoint as the failing fetch, so nothing clears.
-        seedNetwork(NETWORKS.TESTNET, mockPrices, true);
+        seedNetwork(NETWORKS.TESTNET, mockPrices);
         // Only XLM is held now, so the fetch tries to load XLM and fails.
         mockGetTokenIdentifiersFromBalances.mockReturnValueOnce(["NEW:GXYZ"]);
         mockFetchTokenPrices.mockRejectedValueOnce(new Error("Network error"));
@@ -277,14 +266,12 @@ describe("prices duck", () => {
         await result.current.fetchPricesForTokenIds({
           tokens: trendingIds,
           network: NETWORKS.PUBLIC,
-          useV2: true,
         });
       });
 
       expect(mockFetchTokenPrices).toHaveBeenCalledWith({
         tokens: ["yXLM:GYXLM"],
         network: NETWORKS.PUBLIC,
-        useV2: true,
       });
     });
 
@@ -305,7 +292,6 @@ describe("prices duck", () => {
         await result.current.fetchPricesForTokenIds({
           tokens: trendingIds,
           network: NETWORKS.PUBLIC,
-          useV2: true,
         });
       });
 
@@ -331,14 +317,12 @@ describe("prices duck", () => {
         await result.current.fetchPricesForTokenIds({
           tokens: trendingIds,
           network: NETWORKS.TESTNET,
-          useV2: true,
         });
       });
 
       expect(mockFetchTokenPrices).toHaveBeenCalledWith({
         tokens: trendingIds,
         network: NETWORKS.TESTNET,
-        useV2: true,
       });
     });
 
@@ -359,7 +343,6 @@ describe("prices duck", () => {
         await result.current.fetchPricesForTokenIds({
           tokens: trendingIds,
           network: NETWORKS.PUBLIC,
-          useV2: true,
           forceRefresh: true,
         });
       });
@@ -367,87 +350,7 @@ describe("prices duck", () => {
       expect(mockFetchTokenPrices).toHaveBeenCalledWith({
         tokens: trendingIds,
         network: NETWORKS.PUBLIC,
-        useV2: true,
       });
-    });
-
-    it("refetches cached tokens from v1 when the rollback flag flips", async () => {
-      const { result } = renderHook(() => usePricesStore());
-      // Cache populated by v2 on PUBLIC.
-      seedNetwork(
-        NETWORKS.PUBLIC,
-        {
-          "AQUA:GBNAQUA": {
-            currentPrice: new BigNumber("0.003"),
-            percentagePriceChange24h: new BigNumber("1.2"),
-          },
-          "yXLM:GYXLM": {
-            currentPrice: new BigNumber("0.4"),
-            percentagePriceChange24h: new BigNumber("0.5"),
-          },
-        },
-        true,
-      );
-
-      // Rolled back to v1 → caller passes useV2: false.
-      await act(async () => {
-        await result.current.fetchPricesForTokenIds({
-          tokens: trendingIds,
-          network: NETWORKS.PUBLIC,
-          useV2: false,
-        });
-      });
-
-      // The endpoint changed, so all ids are refetched (cache was dropped).
-      expect(mockFetchTokenPrices).toHaveBeenCalledWith({
-        tokens: trendingIds,
-        network: NETWORKS.PUBLIC,
-        useV2: false,
-      });
-      expect(result.current.sourceByNetwork[NETWORKS.PUBLIC]).toBe(false);
-    });
-
-    it("discards an in-flight response when the endpoint flips mid-fetch", async () => {
-      const { result } = renderHook(() => usePricesStore());
-      seedNetwork(NETWORKS.PUBLIC, {}, true);
-
-      let resolveFetch: (value: TokenPricesMap) => void = () => {};
-      mockFetchTokenPrices.mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveFetch = resolve;
-        }),
-      );
-
-      let pending: Promise<boolean> = Promise.resolve(true);
-      act(() => {
-        pending = result.current.fetchPricesForTokenIds({
-          tokens: trendingIds,
-          network: NETWORKS.PUBLIC,
-          useV2: true,
-        });
-      });
-
-      // A rollback to v1 lands before the v2 fetch resolves.
-      act(() => {
-        usePricesStore.setState({
-          sourceByNetwork: { [NETWORKS.PUBLIC]: false },
-        });
-      });
-
-      await act(async () => {
-        resolveFetch({
-          "AQUA:GBNAQUA": {
-            currentPrice: new BigNumber("1"),
-            percentagePriceChange24h: new BigNumber("0"),
-          },
-        });
-        await pending;
-      });
-
-      // The stale v2 response must not be merged into the v1-flipped cache.
-      expect(
-        result.current.pricesByNetwork[NETWORKS.PUBLIC]["AQUA:GBNAQUA"],
-      ).toBeUndefined();
     });
   });
 

@@ -2402,7 +2402,6 @@ describe("auth duck", () => {
       // Verify setState was called with correct reset values
       expect(usePricesStore.setState).toHaveBeenCalledWith({
         pricesByNetwork: {},
-        sourceByNetwork: {},
         isLoading: false,
         error: null,
         lastUpdated: null,
@@ -2519,7 +2518,6 @@ describe("auth duck", () => {
       const pricesCall = (usePricesStore.setState as jest.Mock).mock
         .calls[0]?.[0];
       expect(pricesCall?.pricesByNetwork).toEqual({});
-      expect(pricesCall?.sourceByNetwork).toEqual({});
       expect(pricesCall?.lastUpdated).toBeNull();
     });
 

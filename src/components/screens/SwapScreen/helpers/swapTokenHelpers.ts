@@ -23,7 +23,7 @@ import { getTokenIdentifier, getTokenPriceFromBalance } from "helpers/balances";
  * Use this everywhere on the swap surface that needs to interop with the
  * balance-side identifiers from `getTokenIdentifier`. Building the id
  * manually as `${tokenCode}:${issuer}` produces "XLM:" for native, which
- * the freighter-backend /token-prices endpoint rejects with HTTP 400 and
+ * the /token-prices endpoint cannot price and
  * never matches the balance-side "XLM" key in the prices map.
  */
 export const recordTokenId = (
