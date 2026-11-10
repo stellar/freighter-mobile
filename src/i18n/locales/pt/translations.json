@@ -477,7 +477,10 @@
       "sessionExpiredTitle": "Sessão expirada",
       "sessionExpiredMessage": "Sua sessão não é mais válida. Por favor, entre novamente.",
       "disableBiometricsFailedTitle": "Não foi possível desativar a biometria",
-      "disableBiometricsFailedMessage": "Não conseguimos verificar sua identidade. Por favor, tente novamente."
+      "disableBiometricsFailedMessage": "Não conseguimos verificar sua identidade. Por favor, tente novamente.",
+      "pendingRecoveryPhraseMissing": "A nova frase de recuperação não está mais disponível. Comece novamente.",
+      "recoveryPhraseAlreadyHeld": "Esta frase de recuperação já está na sua carteira",
+      "failedToAddRecoveryPhrase": "Falha ao adicionar a frase de recuperação. Por favor, tente novamente."
     },
     "account": "Conta {{number}}",
     "faceId": {
@@ -866,13 +869,31 @@
     "checkMemoRequirements": "Verifique os requisitos de memo da conta de destino e inclua-o na transação."
   },
   "addAnotherWalletScreen": {
-    "title": "Adicionar carteira",
+    "title": "Adicionar conta",
+    "subtitle": "Escolha como adicionar uma carteira.",
     "actions": {
-      "createNewWallet": "Criar uma nova carteira",
-      "createNewWalletDescription": "Criar uma carteira a partir da sua frase de recuperação",
-      "importSecretKey": "Importar uma chave secreta Stellar",
-      "importSecretKeyDescription": "Adicionar uma carteira usando uma chave secreta"
+      "createNewWallet": "Criar nova carteira",
+      "createNewWalletDescription": "Usando uma frase de recuperação existente ou nova",
+      "importSecretKey": "Importar chave secreta",
+      "importSecretKeyDescription": "Importe uma carteira usando a chave secreta dela."
     }
+  },
+  "createWalletScreen": {
+    "title": "Criar nova carteira",
+    "subtitle": "Crie com uma frase de recuperação nova ou existente",
+    "addAccount": "Adicionar conta",
+    "addAccountTo": "Adicionar conta a {{label}}",
+    "newRecoveryPhrase": "Nova frase de recuperação",
+    "newRecoveryPhraseDescription": "Crie uma carteira com uma nova frase de recuperação",
+    "setAccountName": "Definir nome da conta",
+    "create": "Criar",
+    "next": "Próximo"
+  },
+  "backupRecoveryPhraseScreen": {
+    "title": "Faça backup da sua nova frase de recuperação",
+    "description": "Sua frase de recuperação é a única forma de restaurar sua nova carteira.",
+    "descriptionEmphasis": "Guarde-a em segurança.",
+    "create": "Criar"
   },
   "verifyPasswordScreen": {
     "title": "Verificar Senha",
