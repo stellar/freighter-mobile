@@ -18,7 +18,7 @@ import React, { useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 const RouteTokenLabel: React.FC<{ token: SwapRouteToken }> = ({ token }) => (
-  <View className="flex-row items-center gap-[8px]">
+  <View className="flex-row items-center gap-[4px]">
     <TokenIcon token={token.token} iconUrl={token.iconUrl} size="md" />
     <Text lg semiBold>
       {token.code}
@@ -42,7 +42,7 @@ const PathSteps: React.FC<{ path: SwapRoutePathView; testID: string }> = ({
         return (
           // eslint-disable-next-line react/no-array-index-key
           <View key={`${token.assetId}-${index}`}>
-            <View className="flex-row items-center gap-[8px]">
+            <View className="flex-row items-center gap-[4px]">
               <TokenIcon
                 token={token.token}
                 iconUrl={token.iconUrl}
@@ -53,15 +53,19 @@ const PathSteps: React.FC<{ path: SwapRoutePathView; testID: string }> = ({
               </Text>
             </View>
             {venue && (
-              <View className="flex-row items-center py-[8px]">
-                <View className="w-[32px] items-center self-stretch">
+              <View className="flex-row items-center min-h-[32px] my-[8px]">
+                <View className="ml-[10px] w-[5px] items-center justify-center self-stretch">
                   <View
                     className="w-[1px] flex-1"
                     style={{ backgroundColor: themeColors.border.primary }}
                   />
+                  <View
+                    className="absolute w-[5px] h-[5px] rounded-full"
+                    style={{ backgroundColor: themeColors.border.primary }}
+                  />
                 </View>
-                <View className="flex-row items-center gap-[6px] ml-[8px]">
-                  <SwapVenueIcon venue={venue} size={20} />
+                <View className="flex-row items-center gap-[4px] ml-[4px]">
+                  <SwapVenueIcon venue={venue} size={24} />
                   <Text sm secondary>
                     {venue.name}
                   </Text>
@@ -91,7 +95,7 @@ const PathRow: React.FC<{
     <View className="border-t border-border-primary">
       <TouchableOpacity
         onPress={onToggle}
-        className="flex-row items-center px-[16px] py-[16px] gap-[12px]"
+        className="flex-row items-center px-[16px] py-[16px] gap-[16px]"
         accessibilityState={{ expanded: isExpanded }}
         testID={`swap-route-path-${index}`}
       >
@@ -103,7 +107,7 @@ const PathRow: React.FC<{
           </View>
         )}
         <View className="flex-row items-center gap-[8px] flex-1">
-          <SwapVenueIconStack venues={visibleVenues} size={28} spacing={4} />
+          <SwapVenueIconStack venues={visibleVenues} size={32} spacing={4} />
           {overflow > 0 && <Text sm secondary>{`+${overflow}`}</Text>}
         </View>
         {path.poolCount !== null && (
@@ -195,7 +199,7 @@ export const SwapRouteContent: React.FC<SwapRouteContentProps> = ({
               className="flex-row items-center gap-[6px] rounded-full bg-background-tertiary pl-[4px] pr-[10px] py-[4px]"
               testID="swap-route-provider"
             >
-              <SwapVenueIcon venue={venue} size={20} />
+              <SwapVenueIcon venue={venue} size={24} />
               <Text sm medium>
                 {venue.name}
               </Text>
