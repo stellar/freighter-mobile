@@ -1,8 +1,8 @@
-import { fireEvent } from "@testing-library/react-native";
+import { fireEvent, within } from "@testing-library/react-native";
 import ManageAccountBottomSheet, {
   ManageAccountSheetHeader,
 } from "components/screens/HomeScreen/ManageAccountBottomSheet";
-import { Account } from "config/types";
+import { Account, SecretSource, SecretSourceType } from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -10,11 +10,42 @@ import React from "react";
 describe("ManageAccountBottomSheet", () => {
   const PK_1 = "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM";
   const PK_2 = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+  const PK_3 = "GBJ5JHXZJLI4QGZQ3OHQ6CN7TQHZMTPVKTPY6MZ2BQOXLK3QMSFZPRFY";
+
+  const phrase: SecretSource = {
+    id: "phrase-1",
+    type: SecretSourceType.PHRASE,
+    label: "Seed Phrase 1",
+    createdAt: 1,
+  };
+  const key: SecretSource = {
+    id: "key-1",
+    type: SecretSourceType.SECRET_KEY,
+    label: "Secret Key 1",
+    createdAt: 2,
+  };
 
   const mockAccounts: Account[] = [
-    { id: "account-1", name: "my account 1", publicKey: PK_1 },
-    { id: "account-2", name: "my account 2", publicKey: PK_2 },
+    {
+      id: "account-1",
+      name: "my account 1",
+      publicKey: PK_1,
+      sourceId: phrase.id,
+    },
+    {
+      id: "account-2",
+      name: "my account 2",
+      publicKey: PK_2,
+      sourceId: phrase.id,
+    },
   ];
+  const importedAccount: Account = {
+    id: "account-3",
+    name: "imported",
+    publicKey: PK_3,
+    sourceId: key.id,
+    importedFromSecretKey: true,
+  };
 
   const mockActiveAccount: ActiveAccount = {
     publicKey: PK_1,
@@ -25,11 +56,9 @@ describe("ManageAccountBottomSheet", () => {
   };
 
   const defaultProps = {
-    onPressMyQRCode: jest.fn(),
     onPressCopyAddress: jest.fn(),
-    onPressViewOnExplorer: jest.fn(),
-    onPressRenameAccount: jest.fn(),
     accounts: mockAccounts,
+    sources: [phrase],
     activeAccount: mockActiveAccount,
     handleSelectAccount: jest.fn().mockResolvedValue(undefined),
     isAccountSwitching: false,
@@ -39,6 +68,12 @@ describe("ManageAccountBottomSheet", () => {
       [PK_2]: { label: "$872.48", hasError: false },
     },
     isLoadingFiatTotals: false,
+  };
+
+  const groupedProps = {
+    ...defaultProps,
+    accounts: [...mockAccounts, importedAccount],
+    sources: [key, phrase],
   };
 
   beforeEach(() => {
@@ -66,19 +101,19 @@ describe("ManageAccountBottomSheet", () => {
     expect(getByText("$872.48")).toBeTruthy();
   });
 
-  it.each([
-    ["manage-accounts-qr-button", "onPressMyQRCode"],
-    ["manage-accounts-copy-button", "onPressCopyAddress"],
-    ["manage-accounts-explorer-button", "onPressViewOnExplorer"],
-    ["manage-accounts-rename-button", "onPressRenameAccount"],
-  ] as const)("pressing %s calls %s", (testID, handlerName) => {
-    const { getByTestId } = renderWithProviders(
+  it("copies the active address from the header, its only action", () => {
+    const { getByTestId, queryByTestId } = renderWithProviders(
       <ManageAccountBottomSheet {...defaultProps} />,
     );
 
-    fireEvent.press(getByTestId(testID));
+    fireEvent.press(getByTestId("manage-accounts-copy-button"));
 
-    expect(defaultProps[handlerName]).toHaveBeenCalledTimes(1);
+    expect(defaultProps.onPressCopyAddress).toHaveBeenCalledTimes(1);
+    // QR is reached from Home's scan button; rename and the explorer link
+    // live on Edit account.
+    expect(queryByTestId("manage-accounts-qr-button")).toBeNull();
+    expect(queryByTestId("manage-accounts-explorer-button")).toBeNull();
+    expect(queryByTestId("manage-accounts-rename-button")).toBeNull();
   });
 
   it("selects an account from the list", () => {
@@ -113,12 +148,57 @@ describe("ManageAccountBottomSheet", () => {
     expect(getByTestId("manage-accounts-active-avatar")).toBeTruthy();
   });
 
-  it("renders the rows wrapper once there are accounts", () => {
-    const { getByTestId } = renderWithProviders(
+  it("holds the list back until the sources are read", () => {
+    const { queryByTestId } = renderWithProviders(
+      <ManageAccountBottomSheet {...groupedProps} sources={null} />,
+    );
+
+    expect(queryByTestId("manage-accounts-list")).toBeNull();
+  });
+
+  it("lists a single source flat, with no group header", () => {
+    const { getByTestId, queryAllByTestId } = renderWithProviders(
       <ManageAccountBottomSheet {...defaultProps} />,
     );
 
     expect(getByTestId("manage-accounts-list")).toBeTruthy();
+    expect(queryAllByTestId("manage-accounts-group")).toHaveLength(0);
+  });
+
+  it("groups wallets under their phrase, then their key", () => {
+    const { getAllByTestId } = renderWithProviders(
+      <ManageAccountBottomSheet {...groupedProps} />,
+    );
+
+    const [phraseGroup, keyGroup] = getAllByTestId("manage-accounts-group");
+    expect(within(phraseGroup).getByText("Recovery phrase 1")).toBeTruthy();
+    expect(within(phraseGroup).getByText("my account 2")).toBeTruthy();
+    expect(within(keyGroup).getByText("Secret key 1")).toBeTruthy();
+    expect(within(keyGroup).getByText("imported")).toBeTruthy();
+  });
+
+  it("collapses a group, and keeps it collapsed when the sheet reopens", () => {
+    const first = renderWithProviders(
+      <ManageAccountBottomSheet {...groupedProps} />,
+    );
+    const [, keyToggle] = first.getAllByTestId("manage-accounts-group-toggle");
+
+    fireEvent.press(keyToggle);
+
+    expect(first.queryByText("imported")).toBeNull();
+    expect(keyToggle.props.accessibilityState).toEqual({ expanded: false });
+    first.unmount();
+
+    // The sheet's content unmounts on dismiss; the collapse outlives it.
+    const reopened = renderWithProviders(
+      <ManageAccountBottomSheet {...groupedProps} />,
+    );
+    expect(reopened.queryByText("imported")).toBeNull();
+    expect(reopened.getByText("my account 2")).toBeTruthy();
+
+    // Expanding again restores the rows, and the state for later tests.
+    fireEvent.press(reopened.getAllByTestId("manage-accounts-group-toggle")[1]);
+    expect(reopened.getByText("imported")).toBeTruthy();
   });
 });
 

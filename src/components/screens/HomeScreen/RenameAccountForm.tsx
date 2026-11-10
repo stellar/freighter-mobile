@@ -23,8 +23,7 @@ export interface RenameAccountFormProps {
 
 /**
  * The rename form: avatar, a single autofocused name input and Cancel / Save
- * name actions. Shared by the centered modal on Home and the bottom sheet on
- * Edit account.
+ * name actions. Edit account shows it in a bottom sheet.
  */
 const RenameAccountForm: React.FC<RenameAccountFormProps> = ({
   account,

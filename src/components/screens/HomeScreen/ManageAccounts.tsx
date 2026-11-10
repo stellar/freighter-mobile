@@ -5,21 +5,19 @@ import AddWalletFooter from "components/screens/HomeScreen/AddWalletFooter";
 import ManageAccountBottomSheet, {
   ManageAccountSheetHeader,
 } from "components/screens/HomeScreen/ManageAccountBottomSheet";
-import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { ERROR_TOAST_DURATION } from "config/constants";
 import { logger } from "config/logger";
 import { RootStackParamList, ROOT_NAVIGATOR_ROUTES } from "config/routes";
-import { Account } from "config/types";
+import { Account, SecretSource } from "config/types";
 import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
-import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
-import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useToast } from "providers/ToastProvider";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { analytics } from "services/analytics";
+import { getSecretSources } from "services/auth/secretSources";
 
 interface ManageAccountsProps {
   accounts: Account[];
@@ -33,9 +31,9 @@ const ACCOUNT_SWITCH_DISMISS_DELAY_MS = 500;
 
 /**
  * Manage-accounts (wallets) bottom sheet orchestrator: owns the sheet
- * lifecycle and all its actions — active-account quick actions (QR code,
- * copy, explorer, rename), account switching with its post-switch dismiss
- * delay, the rename modal, and the "+ Add wallet" footer. Presents through
+ * lifecycle and its actions: copying the active address, account switching
+ * with its post-switch dismiss delay, and the "+ Add wallet" footer. Reads the
+ * wallet's secret sources so the list can group by them. Presents through
  * the shared BottomSheet in scrollable mode with a pinned header/footer,
  * and triggers the TTL-gated per-account USD totals fetch on present.
  */
@@ -47,13 +45,8 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   isLoadingAccounts = false,
 }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const {
-    network,
-    renameAccount,
-    selectAccount,
-    isRenamingAccount,
-    isSwitchingAccount,
-  } = useAuthenticationStore();
+  const { network, selectAccount, isSwitchingAccount } =
+    useAuthenticationStore();
   const fiatTotals = useAccountsFiatTotalsStore((state) => state.fiatTotals);
   const isLoadingFiatTotals = useAccountsFiatTotalsStore(
     (state) => state.isLoading,
@@ -62,16 +55,25 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     (state) => state.fetchAccountsFiatTotals,
   );
   const { copyToClipboard } = useClipboard();
-  const { open: openInAppBrowser } = useInAppBrowser();
   const { showToast } = useToast();
   const { t } = useAppTranslation();
 
-  const [accountToRename, setAccountToRename] = useState<Account | null>(null);
-  const [renameAccountModalVisible, setRenameAccountModalVisible] =
-    useState(false);
+  const [sources, setSources] = useState<SecretSource[] | null>(null);
   const [switchingToPublicKey, setSwitchingToPublicKey] = useState<
     string | null
   >(null);
+
+  // Read while the sheet is still closed (Home keeps this mounted), and again
+  // when the list changes, so the groups are ready when it opens.
+  useEffect(() => {
+    getSecretSources()
+      .then((map) => setSources(Object.values(map)))
+      .catch((error) => {
+        logger.error("ManageAccounts", "Failed to read secret sources", error);
+        // Still list the wallets, under the trailing group.
+        setSources((current) => current ?? []);
+      });
+  }, [accounts]);
 
   const handleSheetPresent = useCallback(
     (index: number) => {
@@ -115,13 +117,6 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK);
   }, [navigation, bottomSheetRef]);
 
-  const handleOpenMyQRCode = useCallback(() => {
-    bottomSheetRef.current?.dismiss();
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN, {
-      initialTab: "receive",
-    });
-  }, [navigation, bottomSheetRef]);
-
   const handleCopyActiveAddress = useCallback(() => {
     if (!activeAccount) {
       return;
@@ -134,42 +129,6 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     analytics.trackCopyPublicKey();
   }, [activeAccount, copyToClipboard, t]);
 
-  const handleViewActiveOnExplorer = useCallback(() => {
-    if (!activeAccount) {
-      return;
-    }
-
-    const url = `${getStellarExpertUrl(network)}/account/${activeAccount.publicKey}`;
-    analytics.track(AnalyticsEvent.VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT);
-
-    openInAppBrowser(url).catch((error) =>
-      logger.warn(
-        "ManageAccounts",
-        "Error opening account on stellar.expert:",
-        error,
-      ),
-    );
-  }, [activeAccount, network, openInAppBrowser]);
-
-  const handleOpenRenameActiveAccount = useCallback(() => {
-    if (!activeAccount) {
-      return;
-    }
-
-    // Prefer the entry from the accounts list (it carries flags like
-    // importedFromSecretKey); fall back to mapping the active account.
-    const account = accounts.find(
-      (item) => item.publicKey === activeAccount.publicKey,
-    ) ?? {
-      id: activeAccount.id,
-      name: activeAccount.accountName,
-      publicKey: activeAccount.publicKey,
-    };
-
-    setAccountToRename(account);
-    setRenameAccountModalVisible(true);
-  }, [accounts, activeAccount]);
-
   const handleAddAnotherWallet = useCallback(() => {
     if (!navigation) return;
 
@@ -179,21 +138,6 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     bottomSheetRef.current?.dismiss();
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK);
   }, [navigation, bottomSheetRef]);
-
-  const handleRenameAccount = useCallback(
-    async (newAccountName: string) => {
-      if (!accountToRename || !activeAccount) return;
-
-      analytics.trackViewPublicKeyAccountRenamed();
-
-      await renameAccount({
-        accountName: newAccountName,
-        publicKey: accountToRename.publicKey,
-      });
-      setRenameAccountModalVisible(false);
-    },
-    [accountToRename, activeAccount, renameAccount],
-  );
 
   const handleSelectAccount = useCallback(
     async (publicKey: string) => {
@@ -272,51 +216,37 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     [handleAddAnotherWallet, isSwitchInProgress],
   );
 
+  // Scrollable mode (same recipe as the history details sheet): the pinned
+  // header/footer live inside the sheet's content tree, so the whole sheet
+  // slides in as one unit, and dynamic sizing measures the content before
+  // animating.
   return (
-    <>
-      {/* Scrollable mode (same recipe as the history details sheet): the
-          pinned header/footer live inside the sheet's content tree, so the
-          whole sheet slides in as one unit, and dynamic sizing measures the
-          content before animating. */}
-      <BottomSheet
-        modalRef={bottomSheetRef}
-        scrollable
-        analyticsEvent={AnalyticsEvent.VIEW_MANAGE_WALLETS}
-        bottomSheetModalProps={{ onChange: handleSheetPresent }}
-        scrollViewHeaderComponent={renderSheetHeader}
-        scrollViewFooterComponent={
-          showAddWallet ? renderAddWalletFooter : undefined
-        }
-        // The only keyboard over this sheet belongs to the rename modal on
-        // top — keep the add-wallet footer stuck to the bottom.
-        scrollViewFooterAvoidsKeyboard={false}
-        customContent={
-          <ManageAccountBottomSheet
-            onPressMyQRCode={handleOpenMyQRCode}
-            onPressCopyAddress={handleCopyActiveAddress}
-            onPressViewOnExplorer={handleViewActiveOnExplorer}
-            onPressRenameAccount={handleOpenRenameActiveAccount}
-            accounts={accounts}
-            activeAccount={activeAccount}
-            handleSelectAccount={handleSelectAccount}
-            // The composite flag keeps rows and quick actions disabled through
-            // the post-switch dismiss delay, not just while the auth store is
-            // switching.
-            isAccountSwitching={isSwitchInProgress}
-            switchingToPublicKey={switchingToPublicKey}
-            fiatTotals={fiatTotals}
-            isLoadingFiatTotals={isLoadingFiatTotals}
-          />
-        }
-      />
-      <RenameAccountModal
-        modalVisible={renameAccountModalVisible}
-        setModalVisible={setRenameAccountModalVisible}
-        handleRenameAccount={handleRenameAccount}
-        account={accountToRename}
-        isRenamingAccount={isRenamingAccount}
-      />
-    </>
+    <BottomSheet
+      modalRef={bottomSheetRef}
+      scrollable
+      analyticsEvent={AnalyticsEvent.VIEW_MANAGE_WALLETS}
+      bottomSheetModalProps={{ onChange: handleSheetPresent }}
+      scrollViewHeaderComponent={renderSheetHeader}
+      scrollViewFooterComponent={
+        showAddWallet ? renderAddWalletFooter : undefined
+      }
+      customContent={
+        <ManageAccountBottomSheet
+          onPressCopyAddress={handleCopyActiveAddress}
+          accounts={accounts}
+          sources={sources}
+          activeAccount={activeAccount}
+          handleSelectAccount={handleSelectAccount}
+          // The composite flag keeps rows and the copy button disabled through
+          // the post-switch dismiss delay, not just while the auth store is
+          // switching.
+          isAccountSwitching={isSwitchInProgress}
+          switchingToPublicKey={switchingToPublicKey}
+          fiatTotals={fiatTotals}
+          isLoadingFiatTotals={isLoadingFiatTotals}
+        />
+      }
+    />
   );
 };
 

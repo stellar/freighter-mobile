@@ -56,12 +56,7 @@
     },
     "manageAccount": {
       "addWallet": "Adicionar carteira",
-      "renameWallet": "Renomear carteira",
-      "copyAddress": "Copiar endereço",
-      "viewOnExplorer": "Ver no stellar.expert"
-    },
-    "account": {
-      "imported": "Importada"
+      "copyAddress": "Copiar endereço"
     }
   },
   "tabBar": {

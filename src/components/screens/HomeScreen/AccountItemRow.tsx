@@ -6,7 +6,6 @@ import { Account } from "config/types";
 import { AccountFiatTotal } from "ducks/accountsFiatTotals";
 import { getTotalUsdLabel } from "helpers/balances";
 import { truncateAddress } from "helpers/stellar";
-import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useCallback } from "react";
 import {
@@ -35,7 +34,7 @@ interface AccountItemRowProps {
 
 /**
  * One wallet row in the manage-accounts list: avatar with a selected badge,
- * name, truncated address (plus an "Imported" tag when applicable) and the
+ * name, truncated address and the
  * account's USD total — a spinner while the total is loading, and a
  * switching overlay while this account is being switched to.
  */
@@ -50,7 +49,6 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   testID,
 }) => {
   const { themeColors } = useColors();
-  const { t } = useAppTranslation();
 
   const truncatedPublicKey = truncateAddress(account.publicKey);
   const showSelectedBadge =
@@ -73,13 +71,12 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
       hasPrices: false,
     });
 
-  // Announce what the row shows — name, imported marker and USD total (only
+  // Announce what the row shows: name and USD total (only
   // once one is actually displayed, never a placeholder $0.00 mid-load).
   // The truncated address is deliberately left out: spoken character soup
   // identifies the account worse than its name does.
   const rowAccessibilityLabel = [
     account.name,
-    account.importedFromSecretKey ? t("home.account.imported") : null,
     isTotalLoading ? null : fiatTotalLabel,
   ]
     .filter(Boolean)
@@ -144,18 +141,11 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
           <Text md primary medium numberOfLines={1}>
             {account.name}
           </Text>
-          <View className="flex-row items-center">
-            <View className="shrink">
-              <Text sm secondary numberOfLines={1}>
-                {truncatedPublicKey}
-              </Text>
-            </View>
-            {account.importedFromSecretKey && (
-              <Text sm secondary>
-                {` • ${t("home.account.imported")}`}
-              </Text>
-            )}
-          </View>
+          {/* No "Imported" tag: the group header says where the account
+              comes from. */}
+          <Text sm secondary numberOfLines={1}>
+            {truncatedPublicKey}
+          </Text>
         </View>
         {renderFiatTotal()}
       </TouchableOpacity>
