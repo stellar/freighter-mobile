@@ -354,6 +354,98 @@ describe("prices duck", () => {
     });
   });
 
+  describe("reset", () => {
+    const deferredPrices = () => {
+      let resolveFetch: (value: TokenPricesMap) => void = () => {};
+      mockFetchTokenPrices.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+      );
+      return (value: TokenPricesMap) => resolveFetch(value);
+    };
+    const latePrices: TokenPricesMap = {
+      XLM: {
+        currentPrice: new BigNumber("1"),
+        percentagePriceChange24h: new BigNumber("0"),
+      },
+    };
+
+    it("clears every network's prices and the loading state", () => {
+      const { result } = renderHook(() => usePricesStore());
+      seedNetwork(NETWORKS.PUBLIC, mockPrices);
+
+      act(() => {
+        result.current.reset();
+      });
+
+      expect(result.current.pricesByNetwork).toEqual({});
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBeNull();
+      expect(result.current.lastUpdated).toBeNull();
+    });
+
+    it("drops a balance-price response that started before the reset", async () => {
+      const { result } = renderHook(() => usePricesStore());
+      const resolveFetch = deferredPrices();
+
+      let pending: Promise<void> = Promise.resolve();
+      act(() => {
+        pending = result.current.fetchPricesForBalances(mockParams);
+      });
+      act(() => {
+        result.current.reset();
+      });
+      await act(async () => {
+        resolveFetch(latePrices);
+        await pending;
+      });
+
+      expect(result.current.pricesByNetwork).toEqual({});
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.lastUpdated).toBeNull();
+    });
+
+    it("drops a token-id price response that started before the reset", async () => {
+      const { result } = renderHook(() => usePricesStore());
+      const resolveFetch = deferredPrices();
+
+      let pending: Promise<boolean> = Promise.resolve(true);
+      act(() => {
+        pending = result.current.fetchPricesForTokenIds({
+          tokens: ["XLM"],
+          network: NETWORKS.PUBLIC,
+        });
+      });
+      act(() => {
+        result.current.reset();
+      });
+      let ok = true;
+      await act(async () => {
+        resolveFetch(latePrices);
+        ok = await pending;
+      });
+
+      expect(ok).toBe(false);
+      expect(result.current.pricesByNetwork).toEqual({});
+    });
+
+    it("keeps responses for requests that start after the reset", async () => {
+      const { result } = renderHook(() => usePricesStore());
+      act(() => {
+        result.current.reset();
+      });
+
+      await act(async () => {
+        await result.current.fetchPricesForBalances(mockParams);
+      });
+
+      expect(result.current.pricesByNetwork[NETWORKS.TESTNET]).toEqual(
+        mockPrices,
+      );
+    });
+  });
+
   describe("usePricesForNetwork", () => {
     it("returns the requested network's prices", () => {
       seedNetwork(NETWORKS.PUBLIC, mockPrices);

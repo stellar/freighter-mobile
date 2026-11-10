@@ -10,6 +10,13 @@ import { create } from "zustand";
  */
 const EMPTY_PRICES: TokenPricesMap = Object.freeze({});
 
+/**
+ * Advanced by `reset()`. Each fetch reads it before its request and compares
+ * after: a response for a request that started before a reset is dropped, so
+ * it cannot write the old account's prices back into the cleared store.
+ */
+let resetGeneration = 0;
+
 interface PricesState {
   /**
    * Per-network price caches, keyed by {@link NETWORKS}. v2 prices are
@@ -42,6 +49,11 @@ interface PricesState {
     /** Refetch even tokens already in the map (e.g. pull-to-refresh). */
     forceRefresh?: boolean;
   }) => Promise<boolean>;
+  /**
+   * Clears every network's prices and drops the responses of requests that
+   * are still in flight. Call it when account data is cleared.
+   */
+  reset: () => void;
 }
 
 export const usePricesStore = create<PricesState>((set, get) => ({
@@ -51,6 +63,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
   lastUpdated: null,
   /** Fetch prices for tokens present in the user's balances. */
   fetchPricesForBalances: async ({ balances, network }) => {
+    const generation = resetGeneration;
     try {
       set({ isLoading: true, error: null });
 
@@ -68,6 +81,10 @@ export const usePricesStore = create<PricesState>((set, get) => ({
       // network's submap.
       const response = await fetchTokenPrices({ tokens, network });
 
+      // A reset landed while this request was in flight. reset() already
+      // cleared isLoading, so leave the store as it is.
+      if (generation !== resetGeneration) return;
+
       set({
         pricesByNetwork: {
           ...get().pricesByNetwork,
@@ -81,6 +98,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
         lastUpdated: Date.now(),
       });
     } catch (error) {
+      if (generation !== resetGeneration) return;
       set({
         error:
           error instanceof Error
@@ -92,6 +110,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
   },
   /** Lightweight fetch for arbitrary tokens */
   fetchPricesForTokenIds: async ({ tokens, network, forceRefresh = false }) => {
+    const generation = resetGeneration;
     try {
       if (!tokens || tokens.length === 0) return true;
 
@@ -106,6 +125,9 @@ export const usePricesStore = create<PricesState>((set, get) => ({
         tokens: toFetch,
         network,
       });
+
+      // Drop a response for a request that started before a reset.
+      if (generation !== resetGeneration) return false;
 
       set({
         pricesByNetwork: {
@@ -124,6 +146,15 @@ export const usePricesStore = create<PricesState>((set, get) => ({
       // callers know the quotes they asked for may be missing.
       return false;
     }
+  },
+  reset: () => {
+    resetGeneration += 1;
+    set({
+      pricesByNetwork: {},
+      isLoading: false,
+      error: null,
+      lastUpdated: null,
+    });
   },
 }));
 

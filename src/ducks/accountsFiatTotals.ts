@@ -276,10 +276,11 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
               batch.map(async (publicKey) => {
                 try {
                   // Deliberately no contractIds (locally-added custom
-                  // tokens): the prices backend rejects contract ids on
-                  // both v1 and v2, so those balances would contribute $0
-                  // to the total either way — the extension's wallets list
-                  // makes the same trade-off.
+                  // tokens), so those balances are not in the total — the
+                  // extension's wallets list makes the same trade-off. Held
+                  // SEP-41 balances that the balances endpoint returns are
+                  // still priced, because the prices backend prices contract
+                  // tokens.
                   const [{ balances, isFunded }, hiddenTokenIds] =
                     await Promise.all([
                       fetchBalances({

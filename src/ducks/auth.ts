@@ -1404,13 +1404,9 @@ export function clearAccountData(
     isFetching: false,
   });
 
-  // Clear prices data
-  usePricesStore.setState({
-    pricesByNetwork: {},
-    isLoading: false,
-    error: null,
-    lastUpdated: null,
-  });
+  // Clear prices data, and drop the responses of in-flight price requests so
+  // they cannot write this account's prices back into the cleared store.
+  usePricesStore.getState().reset();
 
   // Clear collectibles data
   useCollectiblesStore.setState({
