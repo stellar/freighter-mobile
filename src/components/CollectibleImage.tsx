@@ -1,7 +1,23 @@
 import Icon from "components/sds/Icon";
+import { decodeDataUri } from "helpers/dataUri";
 import useColors from "hooks/useColors";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Image, View } from "react-native";
+import { SvgXml } from "react-native-svg";
+
+type ResizeMode = "cover" | "contain" | "stretch" | "repeat" | "center";
+
+// Closest SVG equivalent of each Image resize mode
+const SVG_ASPECT_RATIO: Record<ResizeMode, string> = {
+  cover: "xMidYMid slice",
+  contain: "xMidYMid meet",
+  center: "xMidYMid meet",
+  repeat: "xMidYMid meet",
+  stretch: "none",
+};
+
+// A malformed SVG falls back to the placeholder; nothing else to report.
+const ignoreSvgError = () => undefined;
 
 /**
  * Props for the CollectibleImage component
@@ -16,7 +32,7 @@ interface CollectibleImageProps {
   /** Additional className for the image */
   imageClassName?: string;
   /** Image resize mode */
-  resizeMode?: "cover" | "contain" | "stretch" | "repeat" | "center";
+  resizeMode?: ResizeMode;
 }
 
 /**
@@ -25,6 +41,7 @@ interface CollectibleImageProps {
  * A reusable component for displaying collectible images with a fallback placeholder.
  * Features include:
  * - Displays collectible image with proper sizing
+ * - Renders inline SVG images (`data:image/svg+xml`), which Image can't show
  * - Shows placeholder icon after 500ms if image hasn't loaded
  * - Shows placeholder icon immediately when image fails to load
  * - Handles image loading states with timeout
@@ -46,10 +63,20 @@ export const CollectibleImage: React.FC<CollectibleImageProps> = ({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const imageLoadedRef = useRef(false);
 
+  // Some contracts embed the artwork as an inline SVG data URI. Image does
+  // not render SVG, so those are drawn with react-native-svg instead.
+  const svgXml = useMemo(
+    () => decodeDataUri(imageUri, "image/svg+xml"),
+    [imageUri],
+  );
+
   // Show placeholder after 500ms if image hasn't loaded, or immediately on error
   useEffect(() => {
     if (!imageUri) {
       setShowPlaceholder(true);
+    } else if (svgXml !== null) {
+      // Inline SVG renders synchronously, so there is no load to wait for
+      setShowPlaceholder(false);
     } else {
       // Reset states when imageUri changes
       setShowPlaceholder(false);
@@ -73,7 +100,7 @@ export const CollectibleImage: React.FC<CollectibleImageProps> = ({
         clearTimeout(timerRef.current);
       }
     };
-  }, [imageUri]);
+  }, [imageUri, svgXml]);
 
   return (
     <View
@@ -92,20 +119,43 @@ export const CollectibleImage: React.FC<CollectibleImageProps> = ({
       )}
 
       {/* NFT image */}
-      <Image
-        source={{ uri: imageUri }}
-        className={imageClassName}
-        resizeMode={resizeMode}
-        onError={() => setShowPlaceholder(true)}
-        onLoad={() => {
-          imageLoadedRef.current = true;
-          if (timerRef.current) {
-            clearTimeout(timerRef.current);
-          }
-          setShowPlaceholder(false);
-        }}
-        testID="collectible-image"
-      />
+      {svgXml !== null ? (
+        <View className={imageClassName} testID="collectible-image-svg">
+          <SvgXml
+            xml={svgXml}
+            override={{
+              width: "100%",
+              height: "100%",
+              preserveAspectRatio: SVG_ASPECT_RATIO[resizeMode],
+            }}
+            onError={ignoreSvgError}
+            fallback={
+              <View className="items-center justify-center w-full h-full">
+                <Icon.Image01
+                  size={placeholderIconSize}
+                  color={themeColors.text.secondary}
+                  testID="collectible-image-placeholder"
+                />
+              </View>
+            }
+          />
+        </View>
+      ) : (
+        <Image
+          source={{ uri: imageUri }}
+          className={imageClassName}
+          resizeMode={resizeMode}
+          onError={() => setShowPlaceholder(true)}
+          onLoad={() => {
+            imageLoadedRef.current = true;
+            if (timerRef.current) {
+              clearTimeout(timerRef.current);
+            }
+            setShowPlaceholder(false);
+          }}
+          testID="collectible-image"
+        />
+      )}
     </View>
   );
 };
