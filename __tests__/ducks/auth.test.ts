@@ -1768,6 +1768,94 @@ describe("auth duck", () => {
     });
 
     describe("getAuthStatus with LOCKED state", () => {
+      // The hard-expiry decision reads the wall clock, which the device holder
+      // controls. The persisted marker is the only clock-independent lock state,
+      // so restoring the clock should land back on LOCKED (password required),
+      // not AUTHENTICATED.
+      it.each([
+        ["moved forward past expiresAt", 73 * 3600000],
+        ["moved back before generatedAt", -24 * 3600000],
+      ])(
+        "should stay LOCKED when the clock is %s and then restored",
+        async (_label, clockOffsetMs) => {
+          const realNow = Date.now();
+          const nowSpy = jest.spyOn(Date, "now").mockReturnValue(realNow);
+          const getItemMock = secureDataStorage.getItem as jest.Mock;
+          const setItemMock = secureDataStorage.setItem as jest.Mock;
+          const removeMock = secureDataStorage.remove as jest.Mock;
+          const savedImpls = [
+            getItemMock.getMockImplementation(),
+            setItemMock.getMockImplementation(),
+            removeMock.getMockImplementation(),
+          ] as const;
+          resetHashKeyRefreshAttemptThrottle();
+
+          try {
+            const { result } = renderHook(() => useAuthenticationStore());
+
+            act(() => {
+              useAuthenticationStore.setState({
+                getAuthStatus: originalStoreMethods.getAuthStatus,
+              });
+            });
+
+            (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+              if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+                return Promise.resolve(JSON.stringify([mockAccount]));
+              }
+              return Promise.resolve(null);
+            });
+
+            // Stateful secure storage, so a removed marker stays removed.
+            const secureStore = new Map<string, string>([
+              [SENSITIVE_STORAGE_KEYS.AUTH_STATUS, AUTH_STATUS.LOCKED],
+              [SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE, "encrypted-temp-store"],
+            ]);
+            getItemMock.mockImplementation((key: string) =>
+              Promise.resolve(secureStore.get(key) ?? null),
+            );
+            setItemMock.mockImplementation((key: string, value: string) => {
+              secureStore.set(key, value);
+              return Promise.resolve();
+            });
+            removeMock.mockImplementation((key: string) => {
+              secureStore.delete(key);
+              return Promise.resolve();
+            });
+
+            // Soft-locked with a key anchored an hour ago: valid on the real clock.
+            (getHashKey as jest.Mock).mockResolvedValue({
+              hashKey: "mock-hash-key",
+              salt: "mock-salt",
+              generatedAt: realNow - 3600000,
+              expiresAt: realNow + 71 * 3600000,
+            });
+
+            nowSpy.mockReturnValue(realNow + clockOffsetMs);
+            await act(async () => {
+              expect(await result.current.getAuthStatus()).toBe(
+                AUTH_STATUS.HASH_KEY_EXPIRED,
+              );
+            });
+
+            nowSpy.mockReturnValue(realNow);
+            await act(async () => {
+              expect(await result.current.getAuthStatus()).toBe(
+                AUTH_STATUS.LOCKED,
+              );
+            });
+            expect(secureStore.get(SENSITIVE_STORAGE_KEYS.AUTH_STATUS)).toBe(
+              AUTH_STATUS.LOCKED,
+            );
+          } finally {
+            nowSpy.mockRestore();
+            getItemMock.mockImplementation(savedImpls[0]);
+            setItemMock.mockImplementation(savedImpls[1]);
+            removeMock.mockImplementation(savedImpls[2]);
+            resetHashKeyRefreshAttemptThrottle();
+          }
+        },
+      );
       it("should return LOCKED when persisted status is LOCKED and temp store exists", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
 
@@ -1854,9 +1942,10 @@ describe("auth duck", () => {
           expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
         });
 
-        // The stale soft-lock marker is consumed so the next check doesn't
-        // resurrect the fast path.
-        expect(secureDataStorage.remove).toHaveBeenCalledWith(
+        // The marker survives: it is the only clock-independent lock state,
+        // so consuming it here would let a clock change undo the lock (see
+        // the clock-restore cases below). signIn clears it after the password.
+        expect(secureDataStorage.remove).not.toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
         );
       });
@@ -1911,18 +2000,6 @@ describe("auth duck", () => {
       // account-bearing wallet to the onboarding auth stack instead of the
       // lock screen that collects the required password re-auth.
       it.each([
-        [
-          "an expired key under a persisted soft lock",
-          {
-            temporaryStore: "encrypted-temp-store",
-            hashKey: {
-              hashKey: "mock-hash-key",
-              salt: "mock-salt",
-              generatedAt: Date.now() - 73 * 3600000,
-              expiresAt: Date.now() - 3600000,
-            },
-          },
-        ],
         [
           "a persisted soft lock with no temporary store",
           {

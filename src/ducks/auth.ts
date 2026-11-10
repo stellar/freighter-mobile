@@ -534,13 +534,17 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     // with the TTL re-anchored on activity, an expired key here means a full
     // backstop window (72h) of no use — exactly the genuine-idle case that
     // must force the full password re-auth instead of the fast path. The
-    // stale soft-lock marker is consumed so later checks can't resurrect it.
+    // marker is deliberately left in place: expiry is judged by the device
+    // clock, and the marker is the only clock-independent lock state, so
+    // clearing it would let a clock change (forward past expiresAt, or back
+    // before generatedAt) followed by a restore resolve AUTHENTICATED with no
+    // password. The store's signIn wrapper clears it once the password is
+    // verified (the duck-level signIn below does not touch it).
     const persistedAuthStatus = await secureDataStorage.getItem(
       SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
     );
     if (persistedAuthStatus === AUTH_STATUS.LOCKED) {
       if (hashKey && isHashKeyExpired(hashKey)) {
-        await clearPersistedAuthStatus();
         return AUTH_STATUS.HASH_KEY_EXPIRED;
       }
       if (temporaryStore) {
