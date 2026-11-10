@@ -111,6 +111,21 @@ describe("groupAccountsBySource", () => {
     expect(other.accounts.map(({ id }) => id)).toEqual(["legacy", "orphan"]);
   });
 
+  // The switcher remembers collapsed groups by key.
+  it("keeps each group's key stable when accounts are reordered", () => {
+    const keyedSources = [
+      phrase("p1", "Seed Phrase 1", 1),
+      secretKey("k1", "Secret Key 1", 2),
+    ];
+    const accounts = [account("a1", "p1"), account("a2", "k1"), account("a3")];
+    const keys = (list: Account[]) =>
+      groupAccountsBySource({ accounts: list, sources: keyedSources, t }).map(
+        (g) => g.key,
+      );
+
+    expect(keys([...accounts].reverse())).toEqual(keys(accounts));
+  });
+
   it("leaves out sources with no accounts", () => {
     const groups = groupAccountsBySource({
       accounts: [account("c", "key-1")],
