@@ -100,8 +100,8 @@ const PathRow: React.FC<{
         testID={`swap-route-path-${index}`}
       >
         {path.share && (
-          <View className="rounded-full bg-navy-3 px-[10px] py-[2px]">
-            <Text sm medium color={themeColors.navy[11]}>
+          <View className="min-w-[48px] items-center rounded-full border border-navy-6 bg-navy-4 px-[8px]">
+            <Text sm semiBold color={themeColors.navy[9]}>
               {path.share}
             </Text>
           </View>
