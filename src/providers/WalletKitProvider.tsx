@@ -38,6 +38,9 @@ import {
   resolveDappRejectionEvent,
 } from "helpers/walletKitUtil";
 import {
+  getTransactionAuthInvocations,
+  normalizeAuthPreimage,
+  validateInvocationTrees,
   ValidationErrorKey,
   validateSignMessageContent,
   validateSignMessageLength,
@@ -820,6 +823,21 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       return null;
     }
 
+    // A transaction under the size cap can still carry thousands of tiny
+    // authorized calls, and the details view renders one card per call. An
+    // XDR that doesn't parse goes on and is shown as undisplayable.
+    const authInvocations = getTransactionAuthInvocations(
+      lengthResult.value,
+      networkDetails.networkPassphrase,
+    );
+    if (authInvocations) {
+      const treeResult = validateInvocationTrees(authInvocations);
+      if (!treeResult.valid) {
+        failRequestValidation(sessionRequest, treeResult.errorKey);
+        return null;
+      }
+    }
+
     return lengthResult.value;
   };
 
@@ -1016,6 +1034,16 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     );
     if (!preimage) {
       return false;
+    }
+
+    // Step 2b: Cap the authorized calls the sheet renders, one card per call
+    const normalized = normalizeAuthPreimage(preimage);
+    if (normalized) {
+      const treeResult = validateInvocationTrees([normalized.invocation]);
+      if (!treeResult.valid) {
+        failRequestValidation(sessionRequest, treeResult.errorKey);
+        return false;
+      }
     }
 
     // Step 3: Validate network (networkId matches wallet's active network)

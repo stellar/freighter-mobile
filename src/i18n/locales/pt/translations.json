@@ -959,6 +959,7 @@
     "errorInvalidXdr": "O XDR da transação está ausente ou malformado",
     "errorXdrTooLarge": "O XDR da transação é grande demais (máx. 256 KB)",
     "errorAuthEntryTooLarge": "O XDR da entrada de autorização é grande demais (máx. 64 KB)",
+    "errorTooManyInvocations": "A solicitação tem chamadas de contrato demais para exibir (máx. 100)",
     "errorAuthEntryNetworkMismatch": "A entrada de autorização é para uma rede diferente",
     "errorAuthEntryAddressMismatch": "A entrada de autorização está vinculada a uma conta diferente",
     "errorEmptyMessage": "Não é possível assinar mensagem vazia",

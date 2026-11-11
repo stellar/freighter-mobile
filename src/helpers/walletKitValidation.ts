@@ -2,7 +2,13 @@
  * Shared validation helpers for WalletKit sign requests.
  * Used by both WalletKitProvider (pre-UI validation) and walletKitUtil (approval-time validation).
  */
-import { hash, xdr } from "@stellar/stellar-sdk";
+import {
+  FeeBumpTransaction,
+  hash,
+  Operation,
+  TransactionBuilder,
+  xdr,
+} from "@stellar/stellar-sdk";
 import { addressToString } from "helpers/soroban";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,7 +24,16 @@ export const ValidationErrorKeys = {
   INVALID_XDR: "walletKit.errorInvalidXdr",
   XDR_TOO_LARGE: "walletKit.errorXdrTooLarge",
   AUTH_ENTRY_TOO_LARGE: "walletKit.errorAuthEntryTooLarge",
+  TOO_MANY_INVOCATIONS: "walletKit.errorTooManyInvocations",
 } as const;
+
+/**
+ * Max authorized contract calls a request may carry, counted across all of its
+ * authorization trees, and max nesting depth (a root call is depth 1). The
+ * signing screens render one card per call; real requests carry a handful.
+ */
+export const MAX_AUTH_INVOCATIONS = 100;
+export const MAX_AUTH_INVOCATION_DEPTH = 20;
 
 /**
  * Max length, in base64 characters, of the transaction XDR in sign_xdr and
@@ -69,6 +84,71 @@ export function validateSignXdrContent(
     return { valid: false, errorKey: ValidationErrorKeys.INVALID_XDR };
   }
   return { valid: true, value: xdrParam };
+}
+
+/**
+ * Validates that authorization trees stay within MAX_AUTH_INVOCATIONS calls in
+ * total and MAX_AUTH_INVOCATION_DEPTH levels. Walks with an explicit stack and
+ * stops as soon as either limit is passed, so an oversized tree costs little.
+ */
+export function validateInvocationTrees(
+  roots: xdr.SorobanAuthorizedInvocation[],
+): ValidationResult<true> {
+  const tooMany: ValidationError = {
+    valid: false,
+    errorKey: ValidationErrorKeys.TOO_MANY_INVOCATIONS,
+  };
+  const pending = roots.map((invocation) => ({ invocation, depth: 1 }));
+  let visited = 0;
+
+  while (pending.length > 0) {
+    const next = pending.pop();
+    if (!next) {
+      break;
+    }
+
+    visited += 1;
+    if (next.depth > MAX_AUTH_INVOCATION_DEPTH) {
+      return tooMany;
+    }
+
+    next.invocation.subInvocations.forEach((invocation) =>
+      pending.push({ invocation, depth: next.depth + 1 }),
+    );
+
+    // Every pending call will be counted too.
+    if (visited + pending.length > MAX_AUTH_INVOCATIONS) {
+      return tooMany;
+    }
+  }
+
+  return { valid: true, value: true };
+}
+
+/**
+ * Returns the root invocation of every authorization entry in a transaction's
+ * invokeHostFunction operations, or null when the XDR doesn't parse (the
+ * details view then reports it as undisplayable).
+ */
+export function getTransactionAuthInvocations(
+  xdrParam: string,
+  networkPassphrase: string,
+): xdr.SorobanAuthorizedInvocation[] | null {
+  try {
+    const parsed = TransactionBuilder.fromXDR(xdrParam, networkPassphrase);
+    const transaction =
+      parsed instanceof FeeBumpTransaction ? parsed.innerTransaction : parsed;
+
+    return transaction.operations
+      .filter(
+        (op): op is Operation.InvokeHostFunction =>
+          op.type === "invokeHostFunction",
+      )
+      .flatMap((op) => op.auth ?? [])
+      .map((entry) => entry.rootInvocation);
+  } catch {
+    return null;
+  }
 }
 
 /**
