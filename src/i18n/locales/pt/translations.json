@@ -739,6 +739,10 @@
       "bodySuffix": " do seu saldo. Você poderá recuperá-los removendo a trustline quando o saldo de {{tokenCode}} for zero.",
       "confirm": "Entendi"
     },
+    "quoteUnavailable": {
+      "title": "Cotação indisponível",
+      "body": "Não foi possível obter uma cotação para esta troca agora. Tente outro valor ou par de tokens, ou tente novamente mais tarde."
+    },
     "trustlineBanner": "Isso adicionará uma trustline para {{tokenCode}}",
     "xlmReserve": {
       "title": "Você precisa de XLM para criar uma trustline",
