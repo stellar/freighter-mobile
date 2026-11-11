@@ -32,6 +32,25 @@ describe("decodeDataUri", () => {
     ).toBe(text);
   });
 
+  it("decodes a base64 payload whose characters are percent-encoded", () => {
+    const encoded = encodeURIComponent(toBase64(svg));
+    expect(encoded).toContain("%2B");
+
+    expect(
+      decodeDataUri(`data:image/svg+xml;base64,${encoded}`, "image/svg+xml"),
+    ).toBe(svg);
+  });
+
+  it("returns a text payload as written when percentDecode is false", () => {
+    const encoded = encodeURIComponent(svg);
+
+    expect(
+      decodeDataUri(`data:image/svg+xml,${encoded}`, "image/svg+xml", {
+        percentDecode: false,
+      }),
+    ).toBe(encoded);
+  });
+
   it("accepts media type parameters and mixed casing", () => {
     expect(
       decodeDataUri(

@@ -5,12 +5,9 @@ import { Buffer } from "buffer";
 // ends the header.
 const DATA_URI_HEADER = /^data:([^;,]*)((?:;[^;,]*)*),/i;
 
-/*
- * Data URI payloads should be percent-encoded, but on-chain generators often
- * emit them raw (and inline SVG such as `width='100%'` makes the raw form
- * undecodable). Decode when we can, otherwise use the payload as written.
- */
-const decodePercentEncoded = (payload: string) => {
+// Payloads are not always valid percent-encoding, so fall back to the payload
+// as written when decoding fails.
+export const decodePercentEncoded = (payload: string) => {
   try {
     return decodeURIComponent(payload);
   } catch {
@@ -23,10 +20,16 @@ const decodePercentEncoded = (payload: string) => {
  * `data:application/json,{"name":"..."}` or
  * `data:image/svg+xml;base64,PHN2Zy...`.
  *
- * Handles raw, percent-encoded and base64 payloads. Returns null when the
- * string is not a data URI of that media type.
+ * Handles raw, percent-encoded and base64 payloads. A base64 payload is
+ * percent-decoded first, as browsers do. Pass `percentDecode: false` to get a
+ * text payload as written. Returns null when the string is not a data URI of
+ * that media type.
  */
-export const decodeDataUri = (uri: string, mediaType: string) => {
+export const decodeDataUri = (
+  uri: string,
+  mediaType: string,
+  { percentDecode = true }: { percentDecode?: boolean } = {},
+) => {
   const header = DATA_URI_HEADER.exec(uri);
   if (!header || header[1].trim().toLowerCase() !== mediaType) {
     return null;
@@ -34,7 +37,11 @@ export const decodeDataUri = (uri: string, mediaType: string) => {
 
   const payload = uri.slice(header[0].length);
 
-  return /;base64$/i.test(header[2])
-    ? Buffer.from(payload.trim(), "base64").toString("utf-8")
-    : decodePercentEncoded(payload);
+  if (/;base64$/i.test(header[2])) {
+    return Buffer.from(decodePercentEncoded(payload).trim(), "base64").toString(
+      "utf-8",
+    );
+  }
+
+  return percentDecode ? decodePercentEncoded(payload) : payload;
 };

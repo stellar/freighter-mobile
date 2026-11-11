@@ -1,5 +1,15 @@
-import { decodeDataUri } from "helpers/dataUri";
+import { decodeDataUri, decodePercentEncoded } from "helpers/dataUri";
 import { MAX_METADATA_BYTES } from "helpers/fetchMetadataJson";
+
+// Raw JSON can contain percent escapes that decoding would corrupt, so parse
+// the payload as written first and only decode it if that fails.
+const parseJson = (text: string): unknown => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return JSON.parse(decodePercentEncoded(text));
+  }
+};
 
 /**
  * Whether a token URI carries its metadata inline as a `data:` URI rather
@@ -24,14 +34,16 @@ export const parseMetadataDataUri = <T>(uri: string): T => {
     );
   }
 
-  const text = decodeDataUri(uri, "application/json");
+  const text = decodeDataUri(uri, "application/json", {
+    percentDecode: false,
+  });
   if (text === null) {
     throw new Error(
       "parseMetadataDataUri: uri is not a data:application/json URI",
     );
   }
 
-  const parsed: unknown = JSON.parse(text);
+  const parsed = parseJson(text);
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("parseMetadataDataUri: document is not a JSON object");
   }
