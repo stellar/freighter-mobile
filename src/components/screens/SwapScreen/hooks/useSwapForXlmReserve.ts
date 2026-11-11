@@ -58,8 +58,8 @@ export const useSwapForXlmReserve = ({
 }: UseSwapForXlmReserveParams) => {
   const xlmReserveBottomSheetRef = useRef<BottomSheetModal>(null);
   // The receive quote can take seconds. A result that lands after the screen
-  // unmounted (resetSwap has run) or after a newer tap must not write the
-  // store.
+  // unmounted (resetSwap has run), after a newer tap, or after the sell
+  // token, account or network changed must not write the store.
   const isMountedRef = useRef(true);
   const quoteRequestRef = useRef(0);
   useEffect(() => {
@@ -74,6 +74,11 @@ export const useSwapForXlmReserve = ({
     !isNativeAssetId(sourceBalance.id) &&
     (sourceBalance.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM4 ||
       sourceBalance.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM12);
+  // Keyed on the source itself, not the resolved sell token: switching the
+  // source to XLM must drop an in-flight quote even when the fallback
+  // resolves to the same token that was quoted.
+  const quoteInputsRef = useRef("");
+  quoteInputsRef.current = `${sourceBalance?.id}|${publicKey}|${network}`;
   const canOfferSwapToXlm =
     isCurrentSourceNonXlmClassic || !!bestNonXlmClassicBalance;
 
@@ -105,6 +110,7 @@ export const useSwapForXlmReserve = ({
 
     quoteRequestRef.current += 1;
     const requestId = quoteRequestRef.current;
+    const quotedFor = quoteInputsRef.current;
     let receivedSourceAmount: string | null = null;
     try {
       if (publicKey && isCurrentSourceNonXlmClassic) {
@@ -138,7 +144,11 @@ export const useSwapForXlmReserve = ({
         error,
       );
     }
-    if (!isMountedRef.current || requestId !== quoteRequestRef.current) {
+    if (
+      !isMountedRef.current ||
+      requestId !== quoteRequestRef.current ||
+      quotedFor !== quoteInputsRef.current
+    ) {
       return;
     }
 
