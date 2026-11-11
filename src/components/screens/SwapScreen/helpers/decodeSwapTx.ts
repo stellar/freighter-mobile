@@ -11,6 +11,7 @@ import {
 } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { isNativeAssetId } from "helpers/assetIdentity";
+import { formatTokenIdentifier } from "helpers/balances";
 
 /** What the swap review shows, read from the transaction, not the quote. */
 export interface DecodedSwapTx {
@@ -57,11 +58,12 @@ const toSwapToken = (wire: string, networkPassphrase: string): SwapToken => {
   if (isNativeAssetId(wire)) {
     classic = Asset.native();
   } else {
-    const [code, issuer, ...rest] = wire.split(":");
-    if (!code || !issuer || rest.length) {
+    const { tokenCode, issuer } = formatTokenIdentifier(wire);
+    try {
+      classic = new Asset(tokenCode, issuer);
+    } catch {
       throw mismatch(`unsupported asset ${wire}`);
     }
-    classic = new Asset(code, issuer);
   }
   return { classic, contract: classic.contractId(networkPassphrase) };
 };
@@ -71,6 +73,7 @@ const decodeClassic = (
   account: string,
   from: Asset,
   to: Asset,
+  amount: string,
 ): DecodedSwapTx => {
   const ops = tx.operations;
   const payment = ops[ops.length - 1];
@@ -94,6 +97,9 @@ const decodeClassic = (
   ) {
     throw mismatch("trustline");
   }
+  if (!new BigNumber(payment.sendAmount).eq(amount)) {
+    throw mismatch("amount");
+  }
   return {
     sendAmount: new BigNumber(payment.sendAmount).toFixed(),
     minReceived: new BigNumber(payment.destMin).toFixed(),
@@ -113,6 +119,18 @@ const contractCalls = (
   return own.concat(...invocation.subInvocations.map(contractCalls));
 };
 
+// The SEP-41 / SAC calls an account authorizes for itself. Only the swap's
+// own transfer and trust belong in the tree; any other grants the source
+// something the user did not ask for.
+const ACCOUNT_TOKEN_CALLS = new Set([
+  "approve",
+  "burn",
+  "burn_from",
+  "transfer",
+  "transfer_from",
+  "trust",
+]);
+
 /**
  * Any source's Soroban swap. Only the authorization tree is read, since it is
  * what the signature authorizes and every source must use it: the amount sold
@@ -126,6 +144,7 @@ const decodeSoroban = (
   account: string,
   from: SwapToken,
   to: SwapToken,
+  amount: string,
   fromDecimals: number,
 ): DecodedSwapTx => {
   const op = tx.operations[0] as Operation.InvokeHostFunction;
@@ -145,23 +164,28 @@ const decodeSoroban = (
       const firstArg = fn.args.length ? scValToNative(fn.args[0]) : undefined;
       if (firstArg !== account) return;
       if (name === "transfer") {
-        const amount = scValToNative(fn.args[2]) as unknown;
+        const moved = scValToNative(fn.args[2]) as unknown;
         if (
           contract !== fromContract ||
-          typeof amount !== "bigint" ||
-          amount < BigInt(0)
+          typeof moved !== "bigint" ||
+          moved < BigInt(0)
         ) {
           throw mismatch("transfer");
         }
-        sent += amount;
+        sent += moved;
       } else if (name === "trust") {
         if (contract !== toContract || !to.classic) {
           throw mismatch("trustline");
         }
         addsTrustline = true;
+      } else if (ACCOUNT_TOKEN_CALLS.has(name)) {
+        throw mismatch(name);
       }
     });
-  if (sent <= BigInt(0)) {
+  if (
+    sent <= BigInt(0) ||
+    !new BigNumber(fromUnits(sent, fromDecimals)).eq(amount)
+  ) {
     throw mismatch("amount");
   }
 
@@ -180,6 +204,7 @@ const decode = ({
   fromAsset,
   toAsset,
   minOut,
+  amount,
   fromDecimals,
 }: {
   transactionXdr: string;
@@ -190,6 +215,8 @@ const decode = ({
   toAsset: string;
   /** The `minOut` sent to `/swap/tx`; a classic destMin must meet it */
   minOut: string;
+  /** The `amount` sent to `/swap/tx`; the transaction must sell exactly it */
+  amount: string;
   /** The sold token's decimals: the unit of its authorized transfers */
   fromDecimals: number;
 }): DecodedSwapTx => {
@@ -209,12 +236,18 @@ const decode = ({
     parsed.operations.length === 1 &&
     parsed.operations[0].type === "invokeHostFunction"
   ) {
-    return decodeSoroban(parsed, account, from, to, fromDecimals);
+    return decodeSoroban(parsed, account, from, to, amount, fromDecimals);
   }
   if (!from.classic || !to.classic) {
     throw mismatch("operations");
   }
-  const decoded = decodeClassic(parsed, account, from.classic, to.classic);
+  const decoded = decodeClassic(
+    parsed,
+    account,
+    from.classic,
+    to.classic,
+    amount,
+  );
   const wantMin = new BigNumber(minOut);
   if (
     !wantMin.isFinite() ||

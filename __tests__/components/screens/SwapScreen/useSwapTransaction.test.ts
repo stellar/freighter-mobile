@@ -161,6 +161,7 @@ const baseParams: Parameters<typeof useSwapTransaction>[0] = {
   } as ActiveAccount,
   network: NETWORKS.PUBLIC,
   navigation: mockNavigation,
+  recommendedFee: "",
 };
 
 /** submitTransaction now resolves with the attempt's own outcome. */
@@ -397,6 +398,82 @@ describe("useSwapTransaction", () => {
       expect(mockScanTransaction).toHaveBeenCalledWith("xdr", "internal");
       // The scan result is tied to the transaction it scanned.
       expect(result.current.scannedTransactionXDR).toBe("xdr");
+    });
+  });
+
+  describe("setupSwapTransaction — fee by route", () => {
+    const requestFee = () =>
+      (
+        mockBuildSwapTransaction.mock.calls[0][0] as {
+          request: { fee: string };
+        }
+      ).request.fee;
+
+    it("sends the per-op recommended fee for a LI.FI route, not the op-count total", async () => {
+      // The store holds recommended × 2 (a new-trustline classic swap is two
+      // ops); LI.FI builds one op and charges the whole fee as inclusion.
+      mockSwapSettings = { ...DEFAULT_SWAP_SETTINGS, swapFee: "0.00002" };
+      const { result } = renderHook(() =>
+        useSwapTransaction({ ...baseParams, recommendedFee: "0.00001" }),
+      );
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(requestFee()).toBe("0.00001");
+    });
+
+    it("never sends more than the frozen total the balance check reserved", async () => {
+      // The store's fee is frozen once an amount is entered (Max is sized
+      // from it); a recommendation that rose since must not exceed it.
+      mockSwapSettings = { ...DEFAULT_SWAP_SETTINGS, swapFee: "0.00002" };
+      const { result } = renderHook(() =>
+        useSwapTransaction({ ...baseParams, recommendedFee: "0.00005" }),
+      );
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(requestFee()).toBe("0.00002");
+    });
+
+    it("sends the op-count total for a classic route", async () => {
+      mockSwapSettings = { ...DEFAULT_SWAP_SETTINGS, swapFee: "0.00002" };
+      const { result } = renderHook(() =>
+        useSwapTransaction({
+          ...baseParams,
+          pathResult: {
+            ...baseParams.pathResult,
+            route: { ...QUOTED_ROUTE, source: "classic" },
+          } as never,
+          recommendedFee: "0.00001",
+        }),
+      );
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(requestFee()).toBe("0.00002");
+    });
+
+    it("sends a user-set fee as typed whatever the route", async () => {
+      mockSwapSettings = {
+        ...DEFAULT_SWAP_SETTINGS,
+        swapFee: "0.0005",
+        feeManuallyChanged: true,
+      } as never;
+      const { result } = renderHook(() =>
+        useSwapTransaction({ ...baseParams, recommendedFee: "0.00001" }),
+      );
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(requestFee()).toBe("0.0005");
     });
   });
 

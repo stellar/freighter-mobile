@@ -88,6 +88,8 @@ interface SwapTransactionParams {
   currentQuoteKey: string | null;
   account: ActiveAccount | null;
   network: NETWORKS;
+  /** Per-op network recommendation; "" while unknown */
+  recommendedFee: string;
   navigation: NativeStackNavigationProp<
     SwapStackParamList,
     typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN
@@ -127,6 +129,7 @@ export const useSwapTransaction = ({
   currentQuoteKey,
   account,
   network,
+  recommendedFee,
   navigation,
 }: SwapTransactionParams): UseSwapTransactionResult => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -191,8 +194,18 @@ export const useSwapTransaction = ({
       swapFee: freshSwapFee,
       swapTimeout: freshSwapTimeout,
       swapSlippage: freshSwapSlippage,
+      feeManuallyChanged,
     } = useSwapSettingsStore.getState();
     const { route } = pathResult;
+    // The stored default is recommended × op count, sized for a classic
+    // build (changeTrust + path payment). A Soroban source builds one op and
+    // charges the whole fee as inclusion, so it gets the per-op rate, capped
+    // at the stored total: that is what spendable (Max) was sized from, and
+    // it stays frozen while the recommendation keeps moving.
+    const requestFee =
+      !feeManuallyChanged && route.source !== "classic" && recommendedFee
+        ? BigNumber.min(recommendedFee, freshSwapFee).toFixed()
+        : freshSwapFee;
 
     const isStillCurrent = (xdr: string) => {
       const settings = useSwapSettingsStore.getState();
@@ -225,7 +238,7 @@ export const useSwapTransaction = ({
           ),
           slippage: new BigNumber(freshSwapSlippage).toFixed(),
           timeout: freshSwapTimeout,
-          fee: new BigNumber(freshSwapFee).toFixed(),
+          fee: new BigNumber(requestFee).toFixed(),
           // Only classic builds read them; the backend ignores them otherwise.
           paths: route.paths,
         },
@@ -279,6 +292,7 @@ export const useSwapTransaction = ({
     account?.publicKey,
     sourceAmount,
     network,
+    recommendedFee,
     scanTransaction,
     requote,
     t,
