@@ -135,5 +135,22 @@ describe("App", () => {
 
       expect(text.props.children).toBe("Mu");
     });
+
+    it.each([
+      [7, "7"],
+      [123456, "12"],
+      [undefined, ""],
+      [null, ""],
+    ])(
+      "shows initials for the non-string app name %p as %p",
+      (appName, initials) => {
+        const { getByTestId } = renderWithProviders(
+          <App appName={appName as unknown as string} testID="test-app" />,
+        );
+        const text = getByTestId("test-app").findByType(Text);
+
+        expect(text.props.children).toBe(initials);
+      },
+    );
   });
 });

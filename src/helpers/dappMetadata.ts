@@ -1,5 +1,7 @@
-import { CoreTypes } from "@walletconnect/types";
-import { getDisplayHost } from "helpers/protocols";
+import { CoreTypes, SessionTypes } from "@walletconnect/types";
+import type { ConnectedDapp } from "components/screens/HomeScreen/ConnectedAppsBottomSheet";
+import { DiscoverProtocol } from "config/types";
+import { findMatchedProtocol, getDisplayHost } from "helpers/protocols";
 
 /**
  * The longest values kept from a dApp's metadata. Real dApps stay well under
@@ -68,5 +70,31 @@ export const sanitizeDappMetadata = (metadata: unknown): CoreTypes.Metadata => {
           )
           .slice(0, DAPP_METADATA_LIMITS.ICONS)
       : [],
+  };
+};
+
+/**
+ * Builds the Connected Apps row for a stored session from its normalized
+ * metadata. A dApp whose url matches a listed protocol shows that protocol's
+ * name and icon.
+ *
+ * @param session - A stored WalletConnect session
+ * @param protocols - The listed protocols
+ * @returns The row's topic, name and icon
+ */
+export const toConnectedDapp = (
+  session: SessionTypes.Struct,
+  protocols: DiscoverProtocol[],
+): ConnectedDapp => {
+  const metadata = sanitizeDappMetadata(session.peer?.metadata);
+  const matchedProtocol = findMatchedProtocol({
+    protocols,
+    searchUrl: metadata.url,
+  });
+
+  return {
+    topic: session.topic,
+    name: matchedProtocol?.name ?? metadata.name,
+    favicon: matchedProtocol?.iconUrl ?? metadata.icons[0],
   };
 };

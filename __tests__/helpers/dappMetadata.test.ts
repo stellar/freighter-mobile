@@ -1,7 +1,63 @@
-import { sanitizeDappMetadata } from "helpers/dappMetadata";
+import { SessionTypes } from "@walletconnect/types";
+import { DiscoverProtocol } from "config/types";
+import { sanitizeDappMetadata, toConnectedDapp } from "helpers/dappMetadata";
 
 const DAPP_URL = "https://dapp.example";
 const EMPTY_METADATA = { name: "", description: "", url: "", icons: [] };
+
+describe("toConnectedDapp", () => {
+  const LISTED_PROTOCOL: DiscoverProtocol = {
+    description: "A listed protocol",
+    iconUrl: "https://cdn.example/listed.png",
+    name: "Listed",
+    websiteUrl: DAPP_URL,
+    tags: [],
+    isTrending: false,
+  };
+
+  const session = (metadata: unknown) =>
+    ({ topic: "topic", peer: { metadata } }) as unknown as SessionTypes.Struct;
+
+  it("names an unlisted dApp after its domain when its name isn't a string", () => {
+    expect(toConnectedDapp(session({ name: 7, url: DAPP_URL }), [])).toEqual({
+      topic: "topic",
+      name: "dapp.example",
+      favicon: undefined,
+    });
+  });
+
+  it("uses the dApp's first string icon", () => {
+    expect(
+      toConnectedDapp(
+        session({
+          name: "dApp",
+          url: DAPP_URL,
+          icons: [1, `${DAPP_URL}/a.png`],
+        }),
+        [],
+      ),
+    ).toEqual({ topic: "topic", name: "dApp", favicon: `${DAPP_URL}/a.png` });
+  });
+
+  it("uses the listed protocol's name and icon when the dApp's url matches it", () => {
+    expect(
+      toConnectedDapp(
+        session({ name: "Other", url: DAPP_URL, icons: [`${DAPP_URL}/a.png`] }),
+        [LISTED_PROTOCOL],
+      ),
+    ).toEqual({
+      topic: "topic",
+      name: "Listed",
+      favicon: "https://cdn.example/listed.png",
+    });
+  });
+
+  it("returns an empty name and no icon for a session without a peer", () => {
+    expect(
+      toConnectedDapp({ topic: "topic" } as unknown as SessionTypes.Struct, []),
+    ).toEqual({ topic: "topic", name: "", favicon: undefined });
+  });
+});
 
 describe("sanitizeDappMetadata", () => {
   it("keeps well-formed metadata as is", () => {
