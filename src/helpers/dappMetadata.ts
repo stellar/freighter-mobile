@@ -1,0 +1,72 @@
+import { CoreTypes } from "@walletconnect/types";
+import { getDisplayHost } from "helpers/protocols";
+
+/**
+ * The longest values kept from a dApp's metadata. Real dApps stay well under
+ * every one of them.
+ */
+export const DAPP_METADATA_LIMITS = {
+  NAME: 100,
+  DESCRIPTION: 500,
+  URL: 2048,
+  ICON_URL: 2048,
+  ICONS: 5,
+} as const;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
+ * Returns a dApp's metadata with the types and lengths the wallet's UI
+ * expects.
+ *
+ * The dApp writes its own metadata, so any field can arrive with another type
+ * or any length. This is the single place where it becomes safe to display:
+ * read dApp metadata through it rather than from the session or proposal.
+ *
+ * - `url` is kept only if it is a string of at most `URL` characters. A longer
+ *   one is dropped rather than truncated, because a cut URL is a different
+ *   URL.
+ * - `name` is cut to `NAME` characters. A missing, blank or non-string name
+ *   becomes the host of `url`, or an empty string.
+ * - `description` is cut to `DESCRIPTION` characters.
+ * - `icons` keeps its string entries of at most `ICON_URL` characters, up to
+ *   `ICONS` of them.
+ *
+ * @param metadata - The metadata exactly as the dApp sent it
+ * @returns Metadata holding only `name`, `description`, `url` and `icons`
+ */
+export const sanitizeDappMetadata = (metadata: unknown): CoreTypes.Metadata => {
+  if (!isRecord(metadata)) {
+    return { name: "", description: "", url: "", icons: [] };
+  }
+
+  const { name, description, url, icons } = metadata;
+
+  const cleanUrl =
+    typeof url === "string" && url.length <= DAPP_METADATA_LIMITS.URL
+      ? url
+      : "";
+
+  const cappedName =
+    typeof name === "string" ? name.slice(0, DAPP_METADATA_LIMITS.NAME) : "";
+
+  return {
+    name:
+      cappedName.trim() !== "" ? cappedName : (getDisplayHost(cleanUrl) ?? ""),
+    description:
+      typeof description === "string"
+        ? description.slice(0, DAPP_METADATA_LIMITS.DESCRIPTION)
+        : "",
+    url: cleanUrl,
+    icons: Array.isArray(icons)
+      ? icons
+          .filter(
+            (icon): icon is string =>
+              typeof icon === "string" &&
+              icon.length <= DAPP_METADATA_LIMITS.ICON_URL,
+          )
+          .slice(0, DAPP_METADATA_LIMITS.ICONS)
+      : [],
+  };
+};
