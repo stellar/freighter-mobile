@@ -454,8 +454,9 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         return { xdr, review };
       } catch (error) {
         const errorMessage = extractErrorMessage(error);
-        // A moved quote or a rejected request is an answer, not a fault.
-        if (!isApiError(error) || ![400, 409].includes(error.status)) {
+        // A moved quote (409) is an answer, not a fault. A 400 is ours: the
+        // body is built from the client's own state.
+        if (!isApiError(error) || error.status !== 409) {
           logger.error(
             "TransactionBuilderStore",
             "Failed to build swap transaction",

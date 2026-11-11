@@ -1033,7 +1033,7 @@ describe("transactionBuilder Duck", () => {
       expect(logger.error).toHaveBeenCalled();
     });
 
-    it("does not report a rejected request (400)", async () => {
+    it("reports a rejected request (400): the body came from our own state", async () => {
       const badRequest = {
         message: "invalid swap request",
         status: 400,
@@ -1047,7 +1047,11 @@ describe("transactionBuilder Duck", () => {
         ).rejects.toBe(badRequest);
       });
 
-      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        "TransactionBuilderStore",
+        "Failed to build swap transaction",
+        badRequest,
+      );
     });
 
     it("passes a moved quote (409) through without reporting it", async () => {
