@@ -15,6 +15,7 @@ export const ValidationErrorKeys = {
   INVALID_AUTH_ENTRY: "walletKit.errorInvalidAuthEntry",
   AUTH_ENTRY_NETWORK_MISMATCH: "walletKit.errorAuthEntryNetworkMismatch",
   AUTH_ENTRY_ADDRESS_MISMATCH: "walletKit.errorAuthEntryAddressMismatch",
+  INVALID_XDR: "walletKit.errorInvalidXdr",
 } as const;
 
 /**
@@ -38,6 +39,22 @@ export type ValidationResult<T> = ValidationSuccess<T> | ValidationError;
 // ─────────────────────────────────────────────────────────────────────────────
 // Sign Message Validation
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Validates sign_xdr and sign_and_submit_xdr content: must be a non-empty string.
+ */
+export function validateSignXdrContent(
+  xdrParam: unknown,
+): ValidationResult<string> {
+  if (
+    !xdrParam ||
+    typeof xdrParam !== "string" ||
+    xdrParam.trim().length === 0
+  ) {
+    return { valid: false, errorKey: ValidationErrorKeys.INVALID_XDR };
+  }
+  return { valid: true, value: xdrParam };
+}
 
 /**
  * Validates sign_message content: must be a non-empty string.

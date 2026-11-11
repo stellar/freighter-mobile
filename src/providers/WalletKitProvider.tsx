@@ -40,6 +40,7 @@ import {
 import {
   validateSignMessageContent,
   validateSignMessageLength,
+  validateSignXdrContent,
   validateSignAuthEntryContent,
   parseAuthEntryPreimage,
   validateAuthEntryNetwork,
@@ -761,6 +762,38 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   // ─────────────────────────────────────────────────────────────────────────────
 
   /**
+   * Validates the xdr param for sign_xdr and sign_and_submit_xdr requests.
+   * @returns the xdr string if valid, or null if invalid (rejection handled)
+   */
+  const prevalidateSignXdr = (
+    sessionRequest: WalletKitSessionRequest,
+  ): string | null => {
+    const xdrParam = (
+      sessionRequest.params as
+        | { request?: { params?: { xdr?: unknown } } }
+        | undefined
+    )?.request?.params?.xdr;
+
+    const result = validateSignXdrContent(xdrParam);
+    if (!result.valid) {
+      showToast({
+        title: t("walletKit.invalidRequestTitle"),
+        message: t(result.errorKey),
+        variant: "error",
+      });
+      rejectSessionRequest({
+        sessionRequest,
+        message: t(result.errorKey),
+      });
+      clearEvent();
+      isProcessingRequestRef.current = false;
+      return null;
+    }
+
+    return result.value;
+  };
+
+  /**
    * Validates the message param for sign_message requests.
    * @returns true if valid, false if invalid (rejection already handled)
    */
@@ -1221,17 +1254,19 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       "";
 
     const requestParams = sessionRequest.params as
-      | { request?: { method?: string; params?: { xdr?: string } } }
+      | { request?: { method?: string } }
       | undefined;
     const currentRequestMethod = requestParams?.request?.method;
-    const requestXdr = requestParams?.request?.params?.xdr;
 
     const isXdrRequest =
       currentRequestMethod === (StellarRpcMethods.SIGN_XDR as string) ||
       currentRequestMethod ===
         (StellarRpcMethods.SIGN_AND_SUBMIT_XDR as string);
 
-    if (isXdrRequest && requestXdr) {
+    if (isXdrRequest) {
+      const requestXdr = prevalidateSignXdr(sessionRequest);
+      if (requestXdr === null) return;
+
       // XDR-based requests: scan transaction first
       scanTransaction(requestXdr, dappDomain)
         .then((scanResult) => {

@@ -9,6 +9,7 @@ import {
   validateSignAuthEntryContent,
   validateSignMessageContent,
   validateSignMessageLength,
+  validateSignXdrContent,
   ValidationErrorKeys,
 } from "helpers/walletKitValidation";
 
@@ -86,6 +87,25 @@ const buildNonSorobanPreimage = (): string =>
 // ─────────────────────────────────────────────────────────────────────────────
 // validateSignMessageContent
 // ─────────────────────────────────────────────────────────────────────────────
+
+describe("validateSignXdrContent", () => {
+  it.each([undefined, null, 42, "", "   ", {}, ["AAAA"]])(
+    "rejects the xdr %p",
+    (xdrParam) => {
+      expect(validateSignXdrContent(xdrParam)).toEqual({
+        valid: false,
+        errorKey: "walletKit.errorInvalidXdr",
+      });
+    },
+  );
+
+  it("accepts a non-empty xdr string", () => {
+    expect(validateSignXdrContent("AAAAAgAAAAA=")).toEqual({
+      valid: true,
+      value: "AAAAAgAAAAA=",
+    });
+  });
+});
 
 describe("validateSignMessageContent", () => {
   it("returns valid with value for a non-empty string", () => {

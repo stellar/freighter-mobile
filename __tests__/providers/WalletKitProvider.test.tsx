@@ -367,6 +367,49 @@ describe("WalletKitProvider: a dApp request whose details can't be displayed", (
   });
 });
 
+describe("WalletKitProvider: a transaction request without an XDR string", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+    jest
+      .spyOn(walletKitUtil, "rejectSessionRequest")
+      .mockResolvedValue(undefined);
+    mockRequestSheetProps = undefined;
+    mockBlockaidOverride = null;
+    useWalletKitStore.getState().clearEvent();
+    useWalletKitStore.setState({ activeSessions: ACTIVE_SESSIONS });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  it.each([42, ""])(
+    "rejects a stellar_signXDR request whose xdr is %p and moves on to the next request",
+    async (badXdr) => {
+      render(provider());
+      await deliver(signXdrRequest(1, badXdr as unknown as string));
+
+      expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledWith({
+        sessionRequest: expect.objectContaining({ id: 1 }),
+        message: "walletKit.errorInvalidXdr",
+      });
+      expect(mockToast.showToast).toHaveBeenCalledWith({
+        title: "walletKit.invalidRequestTitle",
+        message: "walletKit.errorInvalidXdr",
+        variant: "error",
+      });
+
+      // Rejected up front, so nothing is left processing: the next request
+      // shows at once instead of waiting in the queue.
+      await deliver(signXdrRequest(2, sacTransferTransactionXdr()));
+
+      expect(requestSheet().requestEvent?.id).toBe(2);
+    },
+  );
+});
+
 /** A connection proposal from the dApp. */
 const dappProposal = (id: number) =>
   ({
