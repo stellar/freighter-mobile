@@ -52,6 +52,8 @@ type SheetRefSpy = {
    * Returns true when the sheet had an onChange handler.
    */
   fireDismiss: () => boolean;
+  /** The sheet's customContent element, so tests can call its callbacks. */
+  customContent?: React.ReactElement;
 };
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace, vars-on-top, no-var, no-underscore-dangle
@@ -68,8 +70,9 @@ jest.mock("components/BottomSheet", () => {
   const NoopSheet = (props: {
     modalRef?: React.RefObject<unknown>;
     bottomSheetModalProps?: { onChange?: (index: number) => void };
+    customContent?: React.ReactElement;
   }) => {
-    const { modalRef, bottomSheetModalProps } = props;
+    const { modalRef, bottomSheetModalProps, customContent } = props;
     ReactModule.useImperativeHandle(modalRef, () => {
       const spy: SheetRefSpy = {
         present: jest.fn(),
@@ -81,6 +84,7 @@ jest.mock("components/BottomSheet", () => {
           }
           return false;
         },
+        customContent,
       };
       // eslint-disable-next-line no-underscore-dangle
       globalThis.__mockSheetRefs.push(spy);
@@ -1940,6 +1944,100 @@ describe("SwapAmountScreen", () => {
       await fireSettingsChange(UNSAFE_getAllByType as never);
 
       expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("quote unavailable line", () => {
+    const NO_ROUTE = "No path found between these tokens";
+    const UNAVAILABLE = "Swaps are temporarily unavailable";
+    const renderScreen = () =>
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+    it("shows when no route was found", () => {
+      setSwapStoreState({ pathError: NO_ROUTE });
+      const { getByTestId } = renderScreen();
+
+      expect(getByTestId("swap-quote-unavailable")).toHaveTextContent(
+        "Quote unavailable",
+      );
+    });
+
+    it("shows when the source is unavailable", () => {
+      setSwapStoreState({ pathError: UNAVAILABLE });
+      const { getByTestId } = renderScreen();
+
+      expect(getByTestId("swap-quote-unavailable")).toBeTruthy();
+    });
+
+    it("is hidden while quoting", () => {
+      setSwapStoreState({ pathError: NO_ROUTE, isLoadingPath: true });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden when there is a quote", () => {
+      setSwapStoreState({
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden when no amount is entered", () => {
+      setSwapStoreState({
+        pathError: NO_ROUTE,
+        sourceAmount: "0",
+        sourceAmountDisplay: "0",
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden when no destination is chosen", () => {
+      setSwapStoreState({ pathError: NO_ROUTE, destinationToken: null });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden for an unrelated quote failure", () => {
+      setSwapStoreState({
+        pathError: "Couldn't fetch swap path. Please try again.",
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("opens the explanation sheet when tapped", async () => {
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      setSwapStoreState({ pathError: NO_ROUTE });
+      const { getByTestId } = renderScreen();
+
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-quote-unavailable"));
+        await Promise.resolve();
+      });
+
+      // eslint-disable-next-line no-underscore-dangle
+      const sheet = globalThis.__mockSheetRefs.find(
+        (spy) =>
+          (spy.customContent?.props as { title?: string } | undefined)
+            ?.title === "Quote unavailable",
+      );
+      expect(sheet?.present).toHaveBeenCalledTimes(1);
+      const { texts } = sheet?.customContent?.props as {
+        texts: { value: string }[];
+      };
+      expect(texts[0].value).toBe(
+        "We couldn't get a quote for this swap right now. Try a different amount or token pair, or try again later.",
+      );
     });
   });
 });
