@@ -1071,7 +1071,7 @@ export const buildBlendDepositTransaction = async ({
     .build();
 
   const simulation = await simulateTransaction({
-    xdr: builtTx.toXDR(),
+    xdr: builtTx.toXdr(),
     network_url: networkDetails.sorobanRpcUrl,
     network_passphrase: networkDetails.networkPassphrase,
   });
@@ -1084,7 +1084,7 @@ export const buildBlendDepositTransaction = async ({
   }
 
   return {
-    xdr: builtTx.toXDR(),
+    xdr: builtTx.toXdr(),
     preparedXdr: simulation.preparedTransaction,
     minResourceFee: simulation.simulationResponse?.minResourceFee ?? null,
   };

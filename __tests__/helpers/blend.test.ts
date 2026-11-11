@@ -59,8 +59,8 @@ describe("buildBlendRequestScVal", () => {
       amount: "5000000000",
       requestType: BlendRequestType.SupplyCollateral,
     });
-    const restored = xdr.ScVal.fromXDR(val.toXDR());
-    expect(restored.toXDR("base64")).toBe(val.toXDR("base64"));
+    const restored = xdr.ScVal.fromXdr(val.toXdr());
+    expect(restored.toXdr("base64")).toBe(val.toXdr("base64"));
   });
 });
 
@@ -89,10 +89,10 @@ describe("buildBlendSubmitOp", () => {
     expect(invocation.args).toHaveLength(4);
 
     // Verify that from, spender, and to are all the user's Address
-    const expectedUser = new Address(PUBLIC_KEY).toScVal().toXDR("base64");
+    const expectedUser = new Address(PUBLIC_KEY).toScVal().toXdr("base64");
     const { args } = invocation;
-    expect(args[0].toXDR("base64")).toBe(expectedUser);
-    expect(args[1].toXDR("base64")).toBe(expectedUser);
-    expect(args[2].toXDR("base64")).toBe(expectedUser);
+    expect(args[0].toXdr("base64")).toBe(expectedUser);
+    expect(args[1].toXdr("base64")).toBe(expectedUser);
+    expect(args[2].toXdr("base64")).toBe(expectedUser);
   });
 });

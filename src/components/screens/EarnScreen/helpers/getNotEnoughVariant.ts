@@ -1,6 +1,7 @@
 import BigNumber from "bignumber.js";
 import { NetworkDetails, NETWORKS } from "config/constants";
 import { PricedBalanceMap } from "config/types";
+import { isNativeToken } from "helpers/assetIdentity";
 
 /**
  * Assets the Coinbase onramp can sell, by code.
@@ -64,7 +65,7 @@ export const hasSwappableBalance = (
     if (!("token" in balance)) {
       return false;
     }
-    const isNative = "type" in balance.token && balance.token.type === "native";
+    const isNative = isNativeToken(balance.token);
     if (!isNative && !("issuer" in balance.token)) {
       return false;
     }

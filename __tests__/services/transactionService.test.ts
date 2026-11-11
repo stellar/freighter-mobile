@@ -1003,7 +1003,7 @@ describe("buildBlendDepositTransaction", () => {
     expect(result.preparedXdr).toBe(mockPreparedXdr);
     expect(result.minResourceFee).toBe("546395");
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.PUBLIC,
     ) as Transaction;
@@ -1036,8 +1036,8 @@ describe("buildBlendDepositTransaction", () => {
     expect(xdr.expectUnionVariant(byKey("request_type"), "scvU32").u32).toBe(
       BlendRequestType.SupplyCollateral,
     );
-    expect(byKey("amount").toXDR("base64")).toBe(
-      new XdrLargeInt("i128", "5000000000").toI128().toXDR("base64"),
+    expect(byKey("amount").toXdr("base64")).toBe(
+      new XdrLargeInt("i128", "5000000000").toI128().toXdr("base64"),
     );
 
     // transactionFee is the INCLUSION fee only: 0.00001 XLM = 100 stroops.
