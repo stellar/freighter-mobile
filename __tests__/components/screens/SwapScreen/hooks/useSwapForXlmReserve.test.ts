@@ -167,6 +167,7 @@ describe("useSwapForXlmReserve — 0.5 XLM estimate", () => {
     expect(setDestinationToken).toHaveBeenCalledWith(
       expect.objectContaining({ id: "XLM" }),
     );
+    expect(logger.error).toHaveBeenCalled();
   });
 
   it("reports a classic outage the way a failed quote is reported", async () => {
@@ -181,7 +182,24 @@ describe("useSwapForXlmReserve — 0.5 XLM estimate", () => {
     });
 
     expect(setTokenAmount).not.toHaveBeenCalled();
-    expect(logger.warn).toHaveBeenCalled();
+    // Same level as the extension: a tap-driven quote failure is reported.
+    expect(logger.error).toHaveBeenCalled();
+  });
+
+  it("reports a rejected receive quote (400) like any other failure", async () => {
+    mockFetchSwapQuotes.mockRejectedValue({
+      message: "Request failed with status code 400",
+      status: 400,
+      isNetworkError: false,
+    });
+    const { result, setDestinationToken } = renderReserveHook();
+
+    await act(async () => {
+      await result.current.handleSwapForXlmFromSheet();
+    });
+
+    expect(logger.error).toHaveBeenCalled();
+    expect(setDestinationToken).toHaveBeenCalled();
   });
 
   it("does not report a plain no-route answer", async () => {
@@ -196,6 +214,7 @@ describe("useSwapForXlmReserve — 0.5 XLM estimate", () => {
     });
 
     expect(logger.warn).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
   });
 
   it("does not write the store when the quote lands after unmount", async () => {

@@ -127,7 +127,7 @@ export const useSwapForXlmReserve = ({
           !receivedSourceAmount &&
           missingSwapRouteReason(quotes) === "unavailable"
         ) {
-          logger.warn(
+          logger.error(
             "useSwapForXlmReserve.handleSwapForXlmFromSheet",
             "receive quote source unavailable",
             quotes.unavailable,
@@ -136,9 +136,10 @@ export const useSwapForXlmReserve = ({
       }
     } catch (error) {
       // No path / network error — fall back to setting source+dest without
-      // a pre-filled amount so the user can still adjust manually. Expected
-      // and handled, so warn (not error → no red LogBox / Sentry issue).
-      logger.warn(
+      // a pre-filled amount so the user can still adjust manually. Reported
+      // per tap, 400 included, as the extension does: the request was built
+      // from the app's own balances, so a rejection is worth seeing.
+      logger.error(
         "useSwapForXlmReserve.handleSwapForXlmFromSheet",
         "receive quote failed",
         error,
