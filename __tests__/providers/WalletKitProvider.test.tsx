@@ -492,6 +492,39 @@ describe("WalletKitProvider: a dApp event whose handling throws", () => {
     expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledTimes(1);
   });
 
+  it("doesn't bring back a rejected request when the sessions refresh during the teardown", async () => {
+    render(provider());
+    failNextMetadataLookup();
+    await deliver(signXdrRequest(1, sacTransferTransactionXdr()));
+
+    // A session refresh lands before the deferred teardown has run.
+    await actAndSettle(() =>
+      useWalletKitStore.setState({ activeSessions: { ...ACTIVE_SESSIONS } }),
+    );
+    await actAndSettle(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(mockRequestSheetProps?.requestEvent ?? null).toBeNull();
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledTimes(1);
+    expect(mockToast.showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a request that arrives during the teardown once the teardown runs", async () => {
+    render(provider());
+    failNextMetadataLookup();
+    await deliver(signXdrRequest(1, sacTransferTransactionXdr()));
+
+    // The next request arrives before the deferred teardown has run.
+    await deliver(signXdrRequest(2, sacTransferTransactionXdr()));
+    await actAndSettle(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(requestSheet().requestEvent?.id).toBe(2);
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects the proposal and clears it", async () => {
     render(provider());
     failNextMetadataLookup();

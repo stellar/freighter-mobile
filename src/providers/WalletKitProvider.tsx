@@ -1343,6 +1343,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         title: t("walletKit.invalidRequestTitle"),
         variant: "error",
       });
+      // Clear the event now, like the other reject paths: the teardown below
+      // clears it only after a delay, and a dependency change before then
+      // would hand this request to the dispatch effect again.
+      clearEvent();
       handleClearDappRequest();
     }
   };
