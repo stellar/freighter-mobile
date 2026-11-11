@@ -811,6 +811,7 @@
     }
   },
   "earnReview": {
+    "sheetTitle": "Revisar depósito",
     "title": "Você está depositando",
     "to": "Para",
     "apy": "APY atual",

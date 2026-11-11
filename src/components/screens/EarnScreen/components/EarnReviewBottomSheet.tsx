@@ -2,6 +2,7 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import blendIcon from "assets/logos/blend-icon.png";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
+import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import {
@@ -246,6 +247,12 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
 
   return (
     <View className="flex-1" testID="earn-review-sheet">
+      <View className="mb-[24px]">
+        <BottomSheetHeader
+          title={t("earnReview.sheetTitle")}
+          layout="centered"
+        />
+      </View>
       <View className="rounded-[16px] p-[16px] gap-[16px] bg-background-tertiary">
         <Text lg medium>
           {t("earnReview.title")}

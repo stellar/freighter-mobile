@@ -1,11 +1,10 @@
+import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { TokenIcon } from "components/TokenIcon";
 import { NotEnoughVariant } from "components/screens/EarnScreen/helpers";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { Balance, Token } from "config/types";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
@@ -20,12 +19,7 @@ export interface NotEnoughTokenBottomSheetProps {
    */
   token?: Token | Balance;
   onBuy: () => void;
-  /**
-   * The swap-within-earn branch doesn't exist yet on this branch (see the
-   * caller's `handleSwapForToken`) -- this prop is wired now, ahead of that
-   * work, so the button renders per the design without a dead branch to add
-   * later.
-   */
+  /** Opens the swap-within-Earn sheet for this token. */
   onSwap: () => void;
   onReceive: () => void;
   onClose: () => void;
@@ -61,7 +55,6 @@ export const NotEnoughTokenBottomSheet: React.FC<
   NotEnoughTokenBottomSheetProps
 > = ({ variant, tokenCode, token, onBuy, onSwap, onReceive, onClose }) => {
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
 
   // No option selected yet -- the sheet isn't presented in this state, so
   // there is nothing to render (mirrors `PoolDetailsBottomSheet`'s guard for
@@ -209,27 +202,12 @@ export const NotEnoughTokenBottomSheet: React.FC<
 
   return (
     <View className="flex-1" testID="not-enough-token-bottom-sheet">
-      {/* Design `13717:333143`: the asset icon and title share a left-hand
-          column (gap 12), with the close control opposite at the TOP rather
-          than vertically centred on a full-width icon row. Title is 20/28
-          (`Text xl`), previously 18/26. The 24 gaps below come from the
-          modal's own `13717:333139`/`333141` stacks; they were 12 and 16. */}
-      <View className="flex-row items-start justify-between">
-        <View className="flex-1 gap-[12px]">
-          <TokenIcon token={token} />
-          <Text xl medium primary textAlign="left">
-            {t("earnNotEnough.title", { tokenCode })}
-          </Text>
-        </View>
-        <TouchableOpacity onPress={onClose} testID="not-enough-token-close">
-          <Icon.X
-            color={themeColors.foreground.secondary}
-            size={22}
-            circle
-            circleBackground={themeColors.background.tertiary}
-          />
-        </TouchableOpacity>
-      </View>
+      <BottomSheetHeader
+        title={t("earnNotEnough.title", { tokenCode })}
+        leading={<TokenIcon token={token} />}
+        onClose={onClose}
+        closeTestID="not-enough-token-close"
+      />
 
       <View className="mt-[24px]">
         <Text md regular secondary textAlign="left">

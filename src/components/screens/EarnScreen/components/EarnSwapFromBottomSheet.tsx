@@ -1,3 +1,4 @@
+import { BottomSheetCloseButton } from "components/BottomSheetHeader";
 import { SwapTokenRow } from "components/screens/SwapScreen/components/SwapTokenRow";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
@@ -67,19 +68,15 @@ export const EarnSwapFromBottomSheet: React.FC<
         </TouchableOpacity>
 
         <View className="flex-1 items-center">
-          <Text lg medium primary>
+          <Text lg semiBold primary>
             {t("earnSwapFrom.title")}
           </Text>
         </View>
 
-        <TouchableOpacity onPress={onClose} testID="earn-swap-from-close">
-          <Icon.X
-            color={themeColors.foreground.secondary}
-            size={22}
-            circle
-            circleBackground={themeColors.background.tertiary}
-          />
-        </TouchableOpacity>
+        <BottomSheetCloseButton
+          onPress={onClose}
+          testID="earn-swap-from-close"
+        />
       </View>
 
       <Input

@@ -1,14 +1,14 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { AccountQrDisplay } from "components/AccountQrDisplay";
+import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
-import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 
 export interface ReceiveFundsBottomSheetProps {
   bottomSheetModalRef?: React.RefObject<BottomSheetModal | null>;
@@ -42,7 +42,6 @@ export const ReceiveFundsBottomSheet: React.FC<
   ReceiveFundsBottomSheetProps
 > = ({ bottomSheetModalRef }) => {
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { copyToClipboard } = useClipboard();
 
@@ -58,22 +57,13 @@ export const ReceiveFundsBottomSheet: React.FC<
 
   return (
     <View testID="receive-funds-bottom-sheet">
-      <View className="relative items-center mb-8">
-        <Text lg medium primary textAlign="center">
-          {t("earnReceiveFunds.title")}
-        </Text>
-        <TouchableOpacity
-          onPress={handleClose}
-          className="absolute right-0 top-0"
-          testID="receive-funds-close"
-        >
-          <Icon.X
-            color={themeColors.foreground.secondary}
-            size={22}
-            circle
-            circleBackground={themeColors.background.tertiary}
-          />
-        </TouchableOpacity>
+      <View className="mb-8">
+        <BottomSheetHeader
+          title={t("earnReceiveFunds.title")}
+          layout="centered"
+          onClose={handleClose}
+          closeTestID="receive-funds-close"
+        />
       </View>
 
       <AccountQrDisplay

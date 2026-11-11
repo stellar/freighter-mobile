@@ -30,6 +30,39 @@ export interface BottomSheetHeaderProps {
   titleTestID?: string;
 }
 
+export interface BottomSheetCloseButtonProps {
+  onPress: () => void;
+  disabled?: boolean;
+  testID?: string;
+}
+
+/**
+ * The sheet header's plain X on its own, for headers whose layout
+ * `BottomSheetHeader` doesn't cover (e.g. a back or settings control on the
+ * left of a centered title).
+ */
+export const BottomSheetCloseButton: React.FC<BottomSheetCloseButtonProps> = ({
+  onPress,
+  disabled,
+  testID,
+}) => {
+  const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={CLOSE_HIT_SLOP}
+      accessibilityRole="button"
+      accessibilityLabel={t("common.close")}
+      testID={testID}
+    >
+      <Icon.X size={CLOSE_ICON_SIZE} color={themeColors.text.primary} />
+    </TouchableOpacity>
+  );
+};
+
 /**
  * Shared bottom sheet header: a title and a plain X in one of three layouts.
  * Renders nothing without a title, leading element or `onClose`. Adds no
@@ -44,9 +77,6 @@ export const BottomSheetHeader: React.FC<BottomSheetHeaderProps> = ({
   closeTestID,
   titleTestID,
 }) => {
-  const { t } = useAppTranslation();
-  const { themeColors } = useColors();
-
   const resolvedLayout: BottomSheetHeaderLayout =
     layout ?? (leading ? "stacked" : "inline");
 
@@ -55,16 +85,11 @@ export const BottomSheetHeader: React.FC<BottomSheetHeaderProps> = ({
   }
 
   const closeButton = onClose ? (
-    <TouchableOpacity
+    <BottomSheetCloseButton
       onPress={onClose}
       disabled={closeDisabled}
-      hitSlop={CLOSE_HIT_SLOP}
-      accessibilityRole="button"
-      accessibilityLabel={t("common.close")}
       testID={closeTestID}
-    >
-      <Icon.X size={CLOSE_ICON_SIZE} color={themeColors.text.primary} />
-    </TouchableOpacity>
+    />
   ) : null;
 
   const titleText = title ? (

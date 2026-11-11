@@ -845,6 +845,7 @@
     }
   },
   "earnReview": {
+    "sheetTitle": "Review deposit",
     "title": "You are depositing",
     "to": "To",
     "apy": "Current APY",

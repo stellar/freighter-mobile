@@ -1,5 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import blendIcon from "assets/logos/blend-icon.png";
+import { BottomSheetCloseButton } from "components/BottomSheetHeader";
 import { TokenIcon } from "components/TokenIcon";
 import {
   formatCompactUsd,
@@ -7,7 +8,6 @@ import {
   getPoolDescriptionKey,
 } from "components/screens/EarnScreen/helpers";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { BlendCatalogPool, BlendCatalogReserve } from "config/blendTypes";
 import { NATIVE_TOKEN_CODE } from "config/constants";
@@ -17,7 +17,7 @@ import { getNativeContractDetails } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { Image, TouchableOpacity, View } from "react-native";
+import { Image, View } from "react-native";
 
 export interface PoolDetailsBottomSheetProps {
   pool: BlendCatalogPool | null;
@@ -268,15 +268,10 @@ export const PoolDetailsBottomSheet: React.FC<PoolDetailsBottomSheetProps> = ({
             </Text>
           </View>
         </View>
-        <TouchableOpacity onPress={handleClose} testID="pool-details-close">
-          <Icon.X
-            color={themeColors.foreground.secondary}
-            size={22}
-            circle
-            circleBorder={themeColors.background.tertiary}
-            circleBackground={themeColors.background.tertiary}
-          />
-        </TouchableOpacity>
+        <BottomSheetCloseButton
+          onPress={handleClose}
+          testID="pool-details-close"
+        />
       </View>
 
       {description && (

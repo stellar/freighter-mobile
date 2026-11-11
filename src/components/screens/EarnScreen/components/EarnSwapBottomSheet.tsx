@@ -1,4 +1,5 @@
 import { AmountCard } from "components/AmountCard";
+import { BottomSheetCloseButton } from "components/BottomSheetHeader";
 import { PercentageButtons } from "components/PercentageButtons";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -90,32 +91,26 @@ export const EarnSwapBottomSheet: React.FC<EarnSwapBottomSheetProps> = ({
 
   return (
     <View className="gap-[24px]" testID="earn-swap-bottom-sheet">
-      {/* Header `13722:342081`: settings at the left, centred title, and a
-          40px circled X at the right that the sheet owns itself. */}
+      {/* Settings at the left, centred title, and the shared sheet X at the
+          right -- a layout `BottomSheetHeader` itself doesn't offer. */}
       <View className="flex-row items-center justify-between">
         <TouchableOpacity
           onPress={onSettingsPress}
           hitSlop={12}
           accessibilityRole="button"
+          accessibilityLabel={t("settings.title")}
           testID="earn-swap-settings"
         >
           <Icon.Settings04 size={24} themeColor="gray" />
         </TouchableOpacity>
 
         <View className="flex-1 items-center">
-          <Text lg medium primary>
+          <Text lg semiBold primary>
             {t("swapScreen.title")}
           </Text>
         </View>
 
-        <TouchableOpacity onPress={onClose} testID="earn-swap-close">
-          <Icon.X
-            color={themeColors.foreground.secondary}
-            size={22}
-            circle
-            circleBackground={themeColors.background.tertiary}
-          />
-        </TouchableOpacity>
+        <BottomSheetCloseButton onPress={onClose} testID="earn-swap-close" />
       </View>
 
       <View className="gap-[12px]">
