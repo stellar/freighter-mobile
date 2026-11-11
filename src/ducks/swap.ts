@@ -54,6 +54,8 @@ interface SwapState {
   swapQuotes: SwapQuotes | null;
   isLoadingPath: boolean;
   pathError: string | null;
+  /** `swapQuoteKey` of the inputs `pathError` is for. */
+  pathErrorQuoteKey: string | null;
   isBuilding: boolean;
   buildError: string | null;
 
@@ -86,6 +88,7 @@ const initialState = {
   swapQuotes: null as SwapQuotes | null,
   isLoadingPath: false,
   pathError: null,
+  pathErrorQuoteKey: null as string | null,
   isBuilding: false,
   buildError: null,
 };
@@ -198,10 +201,12 @@ export const useSwapStore = create<SwapState>((set) => ({
     quoteRequestId += 1;
     const requestId = quoteRequestId;
     const isStale = () => requestId !== quoteRequestId;
+    const pathErrorQuoteKey = swapQuoteKey(params);
 
     set({
       isLoadingPath: true,
       pathError: null,
+      pathErrorQuoteKey: null,
       pathResult: null,
       swapQuotes: null,
     });
@@ -226,6 +231,7 @@ export const useSwapStore = create<SwapState>((set) => ({
         set({
           isLoadingPath: false,
           pathError: t("swapScreen.errors.customTokenSwapNotSupported"),
+          pathErrorQuoteKey,
         });
         return;
       }
@@ -250,6 +256,7 @@ export const useSwapStore = create<SwapState>((set) => ({
           isLoadingPath: false,
           swapQuotes,
           pathError: t(QUOTE_ERROR_KEYS[reason]),
+          pathErrorQuoteKey,
         });
         return;
       }
@@ -291,6 +298,7 @@ export const useSwapStore = create<SwapState>((set) => ({
       set({
         isLoadingPath: false,
         pathError: displayError,
+        pathErrorQuoteKey,
       });
     }
   },
@@ -302,6 +310,7 @@ export const useSwapStore = create<SwapState>((set) => ({
       swapQuotes: null,
       destinationAmount: "0",
       pathError: null,
+      pathErrorQuoteKey: null,
       isLoadingPath: false,
     });
   },

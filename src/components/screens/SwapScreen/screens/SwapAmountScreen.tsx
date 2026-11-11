@@ -156,6 +156,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     pathResult,
     isLoadingPath,
     pathError,
+    pathErrorQuoteKey,
     setSourceToken,
     setDestinationToken,
     setEntrySource,
@@ -400,13 +401,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     trendingListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [sourceTokenId, destinationTokenDescriptor?.id, trendingListRef]);
 
-  const showQuoteUnavailable =
-    !isLoadingPath &&
-    !!currentQuoteKey &&
-    new BigNumber(sourceAmount || "0").gt(0) &&
-    (pathError === t("swapScreen.errors.noPathFound") ||
-      pathError === t("swapScreen.errors.swapsUnavailable"));
-
   const { ctaState, ctaLabel, isCtaDisabled } = useSwapCtaState({
     sourceBalance,
     destinationTokenDescriptor,
@@ -419,6 +413,20 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     amountError,
     currentQuoteKey,
   });
+
+  const showQuoteUnavailable =
+    !isLoadingPath &&
+    !!currentQuoteKey &&
+    pathErrorQuoteKey === currentQuoteKey &&
+    ctaState.kind !== "insufficient" &&
+    !amountError &&
+    new BigNumber(sourceAmount || "0").gt(0) &&
+    (pathError === t("swapScreen.errors.noPathFound") ||
+      pathError === t("swapScreen.errors.swapsUnavailable"));
+
+  useEffect(() => {
+    if (!showQuoteUnavailable) quoteUnavailableSheetRef.current?.dismiss();
+  }, [showQuoteUnavailable]);
 
   useEffect(() => {
     if (swapFromTokenId && swapFromTokenSymbol) {
