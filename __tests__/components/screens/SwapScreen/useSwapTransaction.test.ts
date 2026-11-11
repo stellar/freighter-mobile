@@ -43,7 +43,7 @@ jest.mock("ducks/balances", () => ({
   useBalancesStore: { getState: () => ({ balances: {} }) },
 }));
 jest.mock("ducks/remoteConfig", () => ({
-  useRemoteConfigStore: { getState: () => ({ use_token_prices_v2: true }) },
+  useRemoteConfigStore: { getState: () => ({}) },
 }));
 // The prices store backs the receive card's fiat line for a NON-held
 // destination, which carries no `currentPrice` of its own. Mutated per-test.

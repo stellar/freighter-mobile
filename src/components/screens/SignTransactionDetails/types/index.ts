@@ -34,3 +34,21 @@ export interface SignTransactionDetailsInterface {
   operations: OperationRecord[];
   hasTrustlineChanges: boolean;
 }
+
+/**
+ * What the signing screens can show for a transaction XDR.
+ *
+ * - `empty`: there is no XDR, so there is nothing to show and nothing wrong.
+ * - `ready`: the XDR decoded, and every conversion the details sheet makes
+ *   that can throw was dry-run (`helpers/signingDisplay`), so `details` can be
+ *   rendered.
+ * - `undisplayable`: the XDR didn't parse, or its display data couldn't be
+ *   built. A dApp request in this state can only be rejected.
+ *
+ * It exists so a dApp request can tell `empty` from `undisplayable`, which a
+ * bare `null` for the details can't.
+ */
+export type SignTransactionDetailsState =
+  | { status: "empty" }
+  | { status: "ready"; details: SignTransactionDetailsInterface }
+  | { status: "undisplayable" };

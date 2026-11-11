@@ -25,6 +25,7 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
+import { isMuxedContract } from "helpers/muxedContract";
 import { computeTotalFeeXlm, isSorobanTransaction } from "helpers/soroban";
 import {
   truncateAddress,
@@ -80,6 +81,8 @@ type SendReviewBottomSheetProps = {
  * Features:
  * - Displays transaction summary with all relevant details
  * - Shows memo validation warnings when required memos are missing
+ * - Hides the memo line for muxed recipients (M and W addresses), which carry
+ *   their mux id in the address
  * - Provides copy functionality for transaction XDR
  * - Handles loading states during transaction building
  * - Integrates with memo validation flow
@@ -220,7 +223,8 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
    * @returns {JSX.Element} The appropriate button for the current state
    */
 
-  const isRecipientMuxed = isMuxedAccount(recipientAddress);
+  const isRecipientMuxed =
+    isMuxedAccount(recipientAddress) || isMuxedContract(recipientAddress);
 
   /**
    * Renders the recipient display label. Priority order:
@@ -282,7 +286,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             </View>
           ),
         },
-        // Hide memo line for M addresses (memo is encoded in the address)
+        // Hide memo line for M and W addresses (the mux id is encoded in the address)
         !isRecipientMuxed
           ? {
               icon: (
@@ -465,7 +469,6 @@ type SendReviewFooterProps = {
   isSuspicious?: boolean;
   isUnableToScan?: boolean;
   isExpectedToFail?: boolean;
-  isMuxedAddressWithoutMemoSupport?: boolean;
   onSettingsPress?: () => void;
   amountError?: string | null;
 };
@@ -531,21 +534,16 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isSuspicious,
       isUnableToScan,
       isExpectedToFail,
-      isMuxedAddressWithoutMemoSupport,
       onSettingsPress,
       amountError,
     } = props;
 
     const isTrusted =
-      !isMalicious &&
-      !isSuspicious &&
-      !isUnableToScan &&
-      !isExpectedToFail &&
-      !isMuxedAddressWithoutMemoSupport;
+      !isMalicious && !isSuspicious && !isUnableToScan && !isExpectedToFail;
     const isLoading = isBuilding;
     const isDisabled = !transactionXDR || isLoading;
 
-    const shouldUseRowLayout = isTrusted || isMuxedAddressWithoutMemoSupport;
+    const shouldUseRowLayout = isTrusted;
 
     const renderConfirmButton = useCallback(() => {
       const getButtonText = () => {
@@ -565,7 +563,6 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
         !transactionXDR ||
         !!error ||
         isValidatingMemo ||
-        isMuxedAddressWithoutMemoSupport ||
         !!amountError;
 
       return (
@@ -593,7 +590,6 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isBuilding,
       transactionXDR,
       error,
-      isMuxedAddressWithoutMemoSupport,
       amountError,
     ]);
 

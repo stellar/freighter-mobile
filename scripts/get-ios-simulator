@@ -1,24 +1,60 @@
-#!/bin/bash
+#!/usr/bin/env node
 
-# This script finds the most recently booted simulator, prioritizing newer iOS versions
+/**
+ * Prints the UDID of the iOS simulator `yarn ios` should run on:
+ *   1. a booted iOS simulator, newest iOS version first;
+ *   2. otherwise the first available iPhone on the newest iOS runtime.
+ *
+ * Reads `xcrun simctl list --json` rather than the text listing, whose layout
+ * changes between Xcode versions. Xcode 27, for instance, lists a runtime built
+ * for one device (iOS-27-2-iPhone19-4, whose only device is the iPhone Duo)
+ * under the same "iOS 27.2" heading as the general runtime, so step 2 skips
+ * device-specific runtimes.
+ */
 
-# Get all booted simulators and sort by iOS version (newest first)
-booted_simulators=$(xcrun simctl list devices | grep "Booted" | sort -V -r)
+const { execFileSync } = require("child_process");
 
-if [ -n "$booted_simulators" ]; then
-    # If there are booted simulators, use the first one (newest iOS version)
-    # Extract the simulator name (everything before the first parenthesis)
-    echo "$booted_simulators" | head -1 | sed 's/^[[:space:]]*\([^(]*\).*/\1/' | sed 's/[[:space:]]*$//'
-else
-    # If no booted simulators, get the newest available iPhone simulator
-    # Find the newest iOS version section and get the first iPhone from it
-    newest_ios_section=$(xcrun simctl list devices | grep -E "^-- iOS [0-9]" | sort -V -r | head -1)
-    
-    if [ -n "$newest_ios_section" ]; then
-        # Get the first iPhone from the newest iOS version section
-        xcrun simctl list devices | sed -n "/$newest_ios_section/,/^--/p" | grep "iPhone" | grep -v "unavailable" | head -1 | sed 's/^[[:space:]]*\([^(]*\).*/\1/' | sed 's/[[:space:]]*$//'
-    else
-        # Fallback: get any available iPhone
-        xcrun simctl list devices | grep "iPhone" | grep -v "unavailable" | head -1 | sed 's/^[[:space:]]*\([^(]*\).*/\1/' | sed 's/[[:space:]]*$//'
-    fi
-fi
+const simctlList = (...args) =>
+  JSON.parse(
+    execFileSync("xcrun", ["simctl", "list", ...args, "--json"], {
+      encoding: "utf8",
+    }),
+  );
+
+const compareVersionsDescending = (a, b) => {
+  const partsA = a.split(".").map(Number);
+  const partsB = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i += 1) {
+    const difference = (partsB[i] || 0) - (partsA[i] || 0);
+    if (difference !== 0) return difference;
+  }
+  return 0;
+};
+
+// A general runtime's identifier is only the OS and version
+// (com.apple.CoreSimulator.SimRuntime.iOS-27-2); a device-specific one adds
+// the device model (...iOS-27-2-iPhone19-4).
+const isGeneralRuntime = (runtime) => /\.iOS(-\d+)+$/.test(runtime.identifier);
+const isIPhone = (device) => device.name.startsWith("iPhone");
+
+// Newest iOS first; on the same version, the general runtime first.
+const iosRuntimes = simctlList("runtimes")
+  .runtimes.filter(
+    (runtime) => runtime.platform === "iOS" && runtime.isAvailable,
+  )
+  .sort(
+    (a, b) =>
+      compareVersionsDescending(a.version, b.version) ||
+      Number(isGeneralRuntime(b)) - Number(isGeneralRuntime(a)),
+  );
+const { devices } = simctlList("devices", "available");
+const devicesOn = (runtime) => devices[runtime.identifier] || [];
+
+const simulator =
+  iosRuntimes.flatMap(devicesOn).find((device) => device.state === "Booted") ||
+  iosRuntimes.filter(isGeneralRuntime).flatMap(devicesOn).find(isIPhone) ||
+  iosRuntimes.flatMap(devicesOn).find(isIPhone);
+
+if (simulator) {
+  process.stdout.write(`${simulator.udid}\n`);
+}

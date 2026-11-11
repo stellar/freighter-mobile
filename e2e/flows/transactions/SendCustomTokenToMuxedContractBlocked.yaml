@@ -1,0 +1,206 @@
+appId: org.stellar.freighterdev
+tags:
+  - transactions
+  - send
+  - muxed-contract
+  - testnet
+---
+# A custom (SEP-41) token can't be sent to a muxed contract (W...) address on
+# testnet: the amount screen shows the "not supported" banner, Continue stays
+# disabled even with a valid amount, nothing is built or simulated, and the
+# banner explains why. It submits nothing.
+#
+# The recipient is the SEP-23 test vector's contract with mux id 1234
+# (MUXED_CONTRACT_ID_1234 in __tests__/support/muxedContractFixtures.ts).
+#
+# Env:
+# - E2E_TEST_FUNDED_RECOVERY_PHRASE: a funded testnet account that holds the
+#   custom token below.
+# - E2E_TEST_CUSTOM_TOKEN_CONTRACT: the C... id of a testnet SEP-41 token that
+#   is NOT a Stellar Asset Contract. A SAC wraps a classic asset, and a
+#   classic asset can go to a W, so it isn't blocked.
+# - E2E_TEST_CUSTOM_TOKEN_CODE: that token's symbol, which names its row in the
+#   send token list (token-option-<code>).
+# For example CCCGL2XZP24FD54WRTLGDM7GTLUVCWMNMFH364VLC474IOG35HZ7KHKN and TZT
+# ("Test ZP Token", 3 decimals). run-e2e-tests.sh passes all three from .env.
+#
+# The account must hold the custom token: the flow types an amount within its
+# balance (1), so only the W block can keep Continue disabled.
+
+# Import funded wallet
+- runFlow:
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Switch to Testnet. The shared sub-flow waits for Home to settle, dismisses
+# any auth-error toast, then performs the network switch.
+- runFlow:
+    file: ../shared/SwitchToTestnet.yaml
+
+# Wait for accounts and balances to load
+- extendedWaitUntil:
+    visible:
+      id: home-account-switcher
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: icon-button-send
+    timeout: 15000
+
+# Add the custom token by its contract id. Home's Add token button sits under
+# the last token row, so scroll to it on short screens.
+- scrollUntilVisible:
+    element:
+      id: home-add-token-button
+    direction: DOWN
+- tapOn:
+    id: home-add-token-button
+- tapOn:
+    id: add-token-search-input
+- inputText: ${E2E_TEST_CUSTOM_TOKEN_CONTRACT}
+- extendedWaitUntil:
+    visible:
+      id: add-token-button
+    timeout: 30000
+# Close the keyboard with its return key, as a user would: while it's up, the
+# first tap on a search result only dismisses it.
+- pressKey: Enter
+- tapOn:
+    id: add-token-button
+- tapOn:
+    text: "Approve|Approve anyway"
+
+# Back on Home once the token is added. Scroll back up to the Send button.
+- scrollUntilVisible:
+    element:
+      id: icon-button-send
+    direction: UP
+    timeout: 30000
+
+# Navigate to send flow and select the custom token
+- tapOn:
+    id: icon-button-send
+- extendedWaitUntil:
+    visible:
+      id: token-option-${E2E_TEST_CUSTOM_TOKEN_CODE}
+    timeout: 30000
+- tapOn:
+    id: token-option-${E2E_TEST_CUSTOM_TOKEN_CODE}
+
+# Wait for recipient search screen
+- extendedWaitUntil:
+    visible:
+      id: send-search-contacts-screen
+    timeout: 15000
+
+# Type the W recipient and select its suggestion
+- tapOn:
+    id: send-recipient-input
+- inputText: "WA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAE2LLEM"
+- extendedWaitUntil:
+    visible:
+      id: search-suggestion-0
+    timeout: 30000
+- tapOn:
+    id: search-suggestion-0
+
+# Verify we're on amount screen
+- extendedWaitUntil:
+    visible:
+      id: send-amount-screen
+    timeout: 15000
+
+# Nothing may be built or simulated here. A failure would show only as a
+# 5-second toast titled with the builder's error, so this checks right after
+# arrival, when the screen's fee estimate would run, and again after the
+# amount is typed. It waits a few seconds for such a toast and fails if one
+# shows up. (assertNotVisible can't do this: it waits for a toast to go away.)
+# The toast texts:
+# - build: transactionService wraps every build error as "Failed to build
+#   payment transaction: <reason>"; here the reason would be
+#   transaction.errors.muxedContractNotSupported. The builder throws "Failed
+#   to build transaction" when the build returns nothing.
+# - simulation: the builder throws "Simulation returned no prepared
+#   transaction XDR", and a failed /simulate-token-transfer or /simulate-tx
+#   call shows the API client's "Request failed with status code <n>".
+# After the amount, the check also fails on the amount screen's two amount
+# errors, since either one would disable Continue too and let the Continue
+# check below pass for the wrong reason (an account holding less than 1 of
+# the token, say). Both show as toasts:
+# - transactionAmountScreen.errors.amountTooHigh: "The amount entered is
+#   greater than the available balance"
+# - transactionAmountScreen.errors.insufficientXlmForFees: "XLM insufficient
+#   for transaction fees. You need at least <fee> XLM to pay the transaction
+#   fee."
+- runFlow:
+    when:
+      visible:
+        text:
+          ".*(Failed to build|Simulation returned no prepared transaction
+          XDR|Request failed with status code).*"
+    commands:
+      - assertTrue:
+          condition: ${false}
+          label: "A build or simulation error toast showed up on arrival"
+
+# The send is blocked: the banner shows. On Android the open keyboard covers
+# the bottom of the screen, where the banner and Continue sit (it covers
+# Continue on any send), so close it first.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- assertVisible:
+    id: muxed-contract-not-supported-banner
+
+# An amount within the balance, so only the W block can disable Continue
+- tapOn:
+    id: send-amount-focus-trigger
+- inputText: "1"
+- runFlow:
+    when:
+      visible:
+        text:
+          ".*(Failed to build|Simulation returned no prepared transaction
+          XDR|Request failed with status code|The amount entered is greater than
+          the available balance|XLM insufficient for transaction fees).*"
+    commands:
+      - assertTrue:
+          condition: ${false}
+          label:
+            "A build, simulation or amount error toast showed up after the
+            amount"
+
+# Dismiss the keyboard on Android so Continue and the banner are not obscured
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- assertVisible:
+    id: send-continue-button
+    enabled: false
+
+# The banner opens the sheet that explains the block. The bounded retry is a
+# test-timing mitigation: on an iPhone SE simulator a tap occasionally landed
+# without opening the sheet.
+- waitForAnimationToEnd
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          id: muxed-contract-not-supported-banner
+      - extendedWaitUntil:
+          visible:
+            id: muxed-address-warning-close-button
+          timeout: 10000
+- assertVisible:
+    text:
+      'This token does not support muxed contract address \(W-\) as a target
+      destination\.'
+- tapOn:
+    id: muxed-address-warning-close-button
+- extendedWaitUntil:
+    notVisible:
+      id: muxed-address-warning-close-button
+    timeout: 10000

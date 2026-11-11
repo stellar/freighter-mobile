@@ -350,7 +350,6 @@ jest.mock("ducks/prices", () => ({
   usePricesStore: (selector?: (s: unknown) => unknown): unknown => {
     const state = {
       pricesByNetwork: {},
-      sourceByNetwork: {},
       fetchPricesForTokenIds: mockFetchPricesForTokenIds,
     };
     return selector ? selector(state) : state;
@@ -1417,7 +1416,6 @@ describe("SwapAmountScreen", () => {
           "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
         ],
         network: NETWORKS.PUBLIC,
-        useV2: true,
       });
     });
 
