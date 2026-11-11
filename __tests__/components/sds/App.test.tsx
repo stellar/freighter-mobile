@@ -1,10 +1,15 @@
 import { act } from "@testing-library/react-native";
 import { App, AppSize } from "components/sds/App";
 import { Text } from "components/sds/Typography";
+import { fetchBoundedSvg } from "helpers/boundedSvg";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { Image } from "react-native";
-import { SvgUri } from "react-native-svg";
+import { SvgXml } from "react-native-svg";
+
+jest.mock("helpers/boundedSvg", () => ({ fetchBoundedSvg: jest.fn() }));
+
+const SMALL_SVG = "<svg viewBox='0 0 1 1'><path d='M0 0h1v1z'/></svg>";
 
 describe("App", () => {
   const defaultProps = {
@@ -66,7 +71,9 @@ describe("App", () => {
       expect(image.props.source.uri).toBe("https://example.com/icon.png");
     });
 
-    it("renders SVG image when provided", () => {
+    it("draws an SVG icon from its bounded download", async () => {
+      jest.mocked(fetchBoundedSvg).mockResolvedValue(SMALL_SVG);
+
       const { getByTestId } = renderWithProviders(
         <App
           {...defaultProps}
@@ -74,10 +81,31 @@ describe("App", () => {
           testID="test-app"
         />,
       );
-      const app = getByTestId("test-app");
-      const svg = app.findByType(SvgUri);
+      await act(async () => {});
 
-      expect(svg.props.uri).toBe("https://example.com/icon.svg");
+      expect(fetchBoundedSvg).toHaveBeenCalledWith(
+        "https://example.com/icon.svg",
+      );
+      expect(getByTestId("test-app").findByType(SvgXml).props.xml).toBe(
+        SMALL_SVG,
+      );
+    });
+
+    it("shows initials when the SVG icon can't be drawn safely", async () => {
+      jest.mocked(fetchBoundedSvg).mockResolvedValue(null);
+
+      const { getByTestId } = renderWithProviders(
+        <App
+          {...defaultProps}
+          favicon="https://example.com/icon.svg"
+          testID="test-app"
+        />,
+      );
+      await act(async () => {});
+
+      expect(getByTestId("test-app").findByType(Text).props.children).toBe(
+        "Te",
+      );
     });
 
     it("falls back to initials when image fails to load", async () => {
