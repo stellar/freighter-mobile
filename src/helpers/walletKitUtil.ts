@@ -25,6 +25,7 @@ import {
   WalletKitSessionRequest,
   useWalletKitStore,
 } from "ducks/walletKit";
+import { sanitizeDappMetadata } from "helpers/dappMetadata";
 import {
   validateSignMessageContent,
   validateSignMessageLength,
@@ -199,6 +200,8 @@ export const approveSessionProposal = async ({
   t: TFunction<"translations", undefined>;
 }) => {
   const { id, params } = sessionProposal;
+  // The dApp writes its own name; show the normalized one.
+  const dappName = sanitizeDappMetadata(params?.proposer?.metadata).name;
 
   try {
     const proposalChains = [
@@ -245,15 +248,13 @@ export const approveSessionProposal = async ({
       },
     });
 
-    const session = await walletKit.approveSession({
+    await walletKit.approveSession({
       id,
       namespaces: approvedNamespaces,
     });
 
     showToast({
-      title: t("walletKit.connectionSuccessfull", {
-        dappName: session.peer.metadata.name,
-      }),
+      title: t("walletKit.connectionSuccessfull", { dappName }),
       message: t("walletKit.returnToBrowser"),
       variant: "success",
     });
@@ -261,9 +262,7 @@ export const approveSessionProposal = async ({
     const errorMessage =
       error instanceof Error ? error.message : t("common.unknownError");
     showToast({
-      title: t("walletKit.errorConnecting", {
-        dappName: params.proposer.metadata.name,
-      }),
+      title: t("walletKit.errorConnecting", { dappName }),
       message: t("common.error", {
         errorMessage,
       }),
