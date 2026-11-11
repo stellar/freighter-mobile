@@ -148,6 +148,9 @@ const QUOTE_ERROR_KEYS = {
 // Quotes can take seconds, so a slower earlier request must not overwrite a
 // newer one or a cleared path.
 let quoteRequestId = 0;
+// The quote re-fires per debounced keystroke, so an outage is reported to
+// Sentry once until a quote succeeds or the screen is left.
+let outageReported = false;
 
 export const useSwapStore = create<SwapState>((set) => ({
   ...initialState,
@@ -225,6 +228,7 @@ export const useSwapStore = create<SwapState>((set) => ({
           isContractId(destinationBalance.id ?? ""));
 
       if (isSourceCustom || isDestCustom) {
+        outageReported = false;
         set({
           isLoadingPath: false,
           pathError: t("swapScreen.errors.customTokenSwapNotSupported"),
@@ -243,11 +247,25 @@ export const useSwapStore = create<SwapState>((set) => ({
       if (!route) {
         const reason = missingSwapRouteReason(swapQuotes);
         if (reason === "unavailable") {
-          logger.error(
-            "SwapStore",
-            "Swap source unavailable",
-            swapQuotes.unavailable,
-          );
+          if (!outageReported) {
+            outageReported = true;
+            logger.error(
+              "SwapStore",
+              "Swap source unavailable",
+              swapQuotes.unavailable,
+            );
+          }
+        } else {
+          outageReported = false;
+          if (swapQuotes.routes.some((r) => r.source === "classic")) {
+            // A classic route was quoted but selectSwapRoute rejected it
+            // (no hops): a backend bug, not a pair without liquidity.
+            logger.error(
+              "SwapStore",
+              "Malformed classic route",
+              swapQuotes.routes,
+            );
+          }
         }
         set({
           isLoadingPath: false,
@@ -268,6 +286,7 @@ export const useSwapStore = create<SwapState>((set) => ({
         quoteKey: quoteKeyOf(request),
       };
 
+      outageReported = false;
       set({
         isLoadingPath: false,
         swapQuotes,
@@ -280,9 +299,19 @@ export const useSwapStore = create<SwapState>((set) => ({
       const errorMessage =
         (error as { message?: string } | null)?.message ?? String(error);
 
-      logger.error("SwapStore", "Failed to find swap path", error);
-
       const reason = swapQuoteErrorReason(error);
+      if (reason === "noRoute") {
+        // A 400 is the request (bad input, an unfunded account), not a fault.
+        outageReported = false;
+        logger.warn("SwapStore", "Swap quote rejected", error);
+      } else if (reason === "unavailable") {
+        if (!outageReported) {
+          outageReported = true;
+          logger.error("SwapStore", "Failed to find swap path", error);
+        }
+      } else {
+        logger.error("SwapStore", "Failed to find swap path", error);
+      }
       const fallbackError = __DEV__
         ? errorMessage
         : t("swapScreen.errors.pathFindFailed");
@@ -298,6 +327,7 @@ export const useSwapStore = create<SwapState>((set) => ({
 
   clearPath: () => {
     quoteRequestId += 1;
+    outageReported = false;
     set({
       pathResult: null,
       swapQuotes: null,
@@ -310,6 +340,7 @@ export const useSwapStore = create<SwapState>((set) => ({
 
   resetSwap: () => {
     quoteRequestId += 1;
+    outageReported = false;
     set(initialState);
   },
 }));
