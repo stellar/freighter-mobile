@@ -30,7 +30,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  *   one is dropped rather than truncated, because a cut URL is a different
  *   URL.
  * - `name` is cut to `NAME` characters. A missing, blank or non-string name
- *   becomes the host of `url`, or an empty string.
+ *   becomes the host of `url`, or an empty string, cut the same way.
  * - `description` is cut to `DESCRIPTION` characters.
  * - `icons` keeps its string entries of at most `ICON_URL` characters, up to
  *   `ICONS` of them.
@@ -54,8 +54,11 @@ export const sanitizeDappMetadata = (metadata: unknown): CoreTypes.Metadata => {
     typeof name === "string" ? name.slice(0, DAPP_METADATA_LIMITS.NAME) : "";
 
   return {
+    // A host can be far longer than a name, so the fallback is cut as well.
     name:
-      cappedName.trim() !== "" ? cappedName : (getDisplayHost(cleanUrl) ?? ""),
+      cappedName.trim() !== ""
+        ? cappedName
+        : (getDisplayHost(cleanUrl) ?? "").slice(0, DAPP_METADATA_LIMITS.NAME),
     description:
       typeof description === "string"
         ? description.slice(0, DAPP_METADATA_LIMITS.DESCRIPTION)

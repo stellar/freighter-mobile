@@ -87,6 +87,16 @@ describe("sanitizeDappMetadata", () => {
     },
   );
 
+  it("caps a name taken from a long domain at 100 characters", () => {
+    // 35 labels of 50 letters: a valid host of 1793 characters, in a url
+    // short enough to keep.
+    const longHost = `${Array(35).fill("a".repeat(50)).join(".")}.example`;
+
+    expect(
+      sanitizeDappMetadata({ name: 7, url: `https://${longHost}` }).name,
+    ).toBe(`${"a".repeat(50)}.${"a".repeat(49)}`);
+  });
+
   it("leaves the name empty when there is no usable name or url", () => {
     expect(sanitizeDappMetadata({ name: 7, url: "not a url" }).name).toBe("");
   });
