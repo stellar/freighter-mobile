@@ -65,12 +65,13 @@ const renderSheet = () =>
 describe("SwapTransactionDetailsBottomSheet", () => {
   it("shows the minimum the signed transaction guarantees", () => {
     (useTransactionBuilderStore as unknown as jest.Mock).mockReturnValue(
-      builderState({ sendAmount: "100", minReceived: "17.1941798" } as never),
+      builderState({ sendAmount: "100", minReceived: "18191.30443" } as never),
     );
 
     const { getByText } = renderSheet();
 
-    expect(getByText("17.1941798 USDC")).toBeTruthy();
+    // Formatted like every other amount on the sheet.
+    expect(getByText("18,191.30443 USDC")).toBeTruthy();
   });
 
   it("falls back to quote × slippage when the transaction has no minimum", () => {
