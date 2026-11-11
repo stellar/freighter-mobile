@@ -348,6 +348,64 @@ describe("decodeSwapTx", () => {
 
       expect(() => decode(txXdr, account, EURC)).toThrow(/trustline/);
     });
+
+    // Appends a call the account authorizes to the LI.FI auth tree.
+    const withAuthorizedCall = (
+      txXdr: string,
+      contract: string,
+      name: string,
+      args: xdr.ScVal[],
+    ) => {
+      const env = xdr.TransactionEnvelope.fromXDR(txXdr, "base64");
+      const { body } =
+        env.type === "envelopeTypeTx"
+          ? env.v1.tx.operations[0]
+          : { body: null };
+      if (body?.type !== "invokeHostFunction") throw new Error("fixture");
+      const root = body.invokeHostFunctionOp.auth[0].rootInvocation;
+      const call = new xdr.SorobanAuthorizedInvocation({
+        function:
+          xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+            new xdr.InvokeContractArgs({
+              contractAddress: new Address(contract).toScAddress(),
+              functionName: name,
+              args,
+            }),
+          ),
+        subInvocations: [],
+      });
+      Object.assign(root, { subInvocations: [...root.subInvocations, call] });
+      return env.toXDR("base64");
+    };
+
+    it("refuses an allowance the swap would grant on another token", () => {
+      const { xdr: txXdr, account } = lifi.xlmUsdcWithTrust;
+      const usdcContract = new Asset("USDC", USDC_ISSUER).contractId(
+        Networks.PUBLIC,
+      );
+      const input = withAuthorizedCall(txXdr, usdcContract, "approve", [
+        new Address(account).toScVal(),
+        new Address(OTHER).toScVal(),
+        nativeToScVal(BigInt("170141183460469231731687303715884105727"), {
+          type: "i128",
+        }),
+        nativeToScVal(60_000_000, { type: "u32" }),
+      ]);
+
+      expect(() => decode(input, account)).toThrow(/approve/);
+    });
+
+    it("still reads a swap whose source calls its own contracts", () => {
+      const { xdr: txXdr, account } = lifi.xlmUsdcWithTrust;
+      const input = withAuthorizedCall(
+        txXdr,
+        "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE",
+        "swap_exact_in",
+        [new Address(account).toScVal()],
+      );
+
+      expect(decode(input, account)).toMatchObject({ sendAmount: "10" });
+    });
   });
 
   it.each([

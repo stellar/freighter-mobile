@@ -102,6 +102,18 @@ const contractCalls = (
   return own.concat(...invocation.subInvocations.map(contractCalls));
 };
 
+// The SEP-41 / SAC calls an account authorizes for itself. Only the swap's
+// own transfer and trust belong in the tree; any other grants the source
+// something the user did not ask for.
+const ACCOUNT_TOKEN_CALLS = new Set([
+  "approve",
+  "burn",
+  "burn_from",
+  "transfer",
+  "transfer_from",
+  "trust",
+]);
+
 /**
  * Any source's Soroban swap. Only the authorization tree is read, since it is
  * what the signature authorizes and every source must use it: the amount sold
@@ -145,6 +157,8 @@ const decodeSoroban = (
       } else if (name === "trust") {
         if (contract !== toContract) throw mismatch("trustline");
         addsTrustline = true;
+      } else if (ACCOUNT_TOKEN_CALLS.has(name)) {
+        throw mismatch(name);
       }
     });
   if (sent <= BigInt(0)) {
