@@ -1,4 +1,8 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
+import {
+  BASE_CONTRACT,
+  MUXED_CONTRACT_ID_0,
+} from "__tests__/support/muxedContractFixtures";
 import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import TransactionProcessingScreen from "components/screens/SendScreen/screens/TransactionProcessingScreen";
 import { AnalyticsEvent, AnalyticsFlow } from "config/analyticsConfig";
@@ -11,6 +15,11 @@ import { mockUseColors } from "../../../../../__mocks__/use-colors";
 
 mockUseColors();
 
+const mockDefaultRecipientAddress =
+  "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF";
+// Mutable so a test can send to another recipient.
+let mockRecipientAddress = mockDefaultRecipientAddress;
+
 // The store hooks pull in native/persisted state; stub them with the minimal
 // shape TransactionProcessingScreen reads so we can mount it in isolation.
 jest.mock("ducks/auth", () => ({
@@ -21,8 +30,7 @@ jest.mock("ducks/auth", () => ({
 }));
 jest.mock("ducks/transactionSettings", () => ({
   useTransactionSettingsStore: jest.fn(() => ({
-    recipientAddress:
-      "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
+    recipientAddress: mockRecipientAddress,
     federationAddress: "",
     recipientName: "",
   })),
@@ -63,21 +71,35 @@ jest.mock("components/layout/BaseLayout", () => ({
 }));
 jest.mock("components/sds/Avatar", () => () => null);
 jest.mock("components/sds/Button", () => ({ Button: () => null }));
-jest.mock("components/sds/Typography", () => ({
-  Display: () => null,
-  Text: () => null,
-}));
+// The status and the message render through Display and Text, so these render
+// their children, for a test to read.
+jest.mock("components/sds/Typography", () => {
+  const { createElement } = jest.requireActual<typeof import("react")>("react");
+  const { Text: NativeText } =
+    jest.requireActual<typeof import("react-native")>("react-native");
+  const RenderChildren = ({ children }: { children?: React.ReactNode }) =>
+    createElement(NativeText, null, children);
+
+  return { Display: RenderChildren, Text: RenderChildren };
+});
 jest.mock("components/sds/Icon", () => ({
   __esModule: true,
   default: new Proxy({}, { get: () => "View" }),
 }));
 
+/**
+ * Serves one builder state to the screen. Without a hash the submission is
+ * still running, unless `isSubmitting` says otherwise.
+ *
+ * @param state The hash, the error and, optionally, whether it's submitting
+ */
 const setTransactionState = (state: {
   transactionHash: string | null;
   error?: unknown;
+  isSubmitting?: boolean;
 }) => {
   (useTransactionBuilderStore as unknown as jest.Mock).mockReturnValue({
-    isSubmitting: state.transactionHash === null,
+    isSubmitting: state.isSubmitting ?? state.transactionHash === null,
     transactionHash: state.transactionHash,
     error: state.error ?? null,
     resetTransaction: jest.fn(),
@@ -128,5 +150,47 @@ describe("TransactionProcessingScreen analytics", () => {
     expect(
       props.filter((p) => p.screen_name === "send_payment_success"),
     ).toHaveLength(1);
+  });
+});
+
+describe("TransactionProcessingScreen status", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    mockRecipientAddress = mockDefaultRecipientAddress;
+  });
+
+  it.each([
+    ["a muxed contract (W)", MUXED_CONTRACT_ID_0],
+    ["a contract (C)", BASE_CONTRACT],
+  ])(
+    "shows unsupported for %s when nothing is submitting and there's no result",
+    (_label, recipientAddress) => {
+      mockRecipientAddress = recipientAddress;
+      setTransactionState({ transactionHash: null, isSubmitting: false });
+
+      const { getByText, queryByText } = renderWithProviders(
+        <TransactionProcessingScreen type={SendType.Token} />,
+      );
+
+      expect(getByText("transactionProcessingScreen.unsupported")).toBeTruthy();
+      expect(
+        getByText("transactionProcessingScreen.couldNotBeSentTo"),
+      ).toBeTruthy();
+      expect(queryByText("transactionProcessingScreen.sending")).toBeNull();
+    },
+  );
+
+  it("keeps a G recipient on sending in the same state", () => {
+    setTransactionState({ transactionHash: null, isSubmitting: false });
+
+    const { getByText, queryByText } = renderWithProviders(
+      <TransactionProcessingScreen type={SendType.Token} />,
+    );
+
+    expect(getByText("transactionProcessingScreen.sending")).toBeTruthy();
+    expect(queryByText("transactionProcessingScreen.unsupported")).toBeNull();
   });
 });

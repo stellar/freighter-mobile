@@ -53,13 +53,13 @@ export interface UnfundedDestinationContext {
    */
   isClassicAsset: boolean;
   /**
-   * True when the destination is a contract (C...) address. Contract
-   * addresses don't need deployed contracts to receive transfers — the
-   * balance entry lives inside the token contract's own storage rather
-   * than as a classic trustline or account ledger entry — so the
-   * unfunded-destination warning doesn't apply even for classic assets.
-   * False for G... and M... addresses, whose classic account must exist
-   * for a classic-asset send to succeed.
+   * True when the destination is a contract (C...) or muxed contract
+   * (W...) address. Contract addresses don't need deployed contracts to
+   * receive transfers — the balance entry lives inside the token
+   * contract's own storage rather than as a classic trustline or account
+   * ledger entry — so the unfunded-destination warning doesn't apply even
+   * for classic assets. False for G... and M... addresses, whose classic
+   * account must exist for a classic-asset send to succeed.
    */
   isContractDestination: boolean;
 }
@@ -255,9 +255,10 @@ export const isUnfundedDestinationError = (
     return false;
   }
 
-  // Contract (C...) destinations aren't classic accounts — their balances
-  // live in the token contract's storage (see isContractDestination docs)
-  // — so the unfunded-destination warning doesn't apply.
+  // Contract (C...) and muxed contract (W...) destinations aren't classic
+  // accounts — their balances live in the token contract's storage (see
+  // isContractDestination docs) — so the unfunded-destination warning
+  // doesn't apply.
   if (unfundedContext.isContractDestination) {
     return false;
   }

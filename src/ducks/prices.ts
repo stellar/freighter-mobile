@@ -10,6 +10,13 @@ import { create } from "zustand";
  */
 const EMPTY_PRICES: TokenPricesMap = Object.freeze({});
 
+/**
+ * Advanced by `reset()`. Each fetch reads it before its request and compares
+ * after: a response for a request that started before a reset is dropped, so
+ * it cannot write the old account's prices back into the cleared store.
+ */
+let resetGeneration = 0;
+
 interface PricesState {
   /**
    * Per-network price caches, keyed by {@link NETWORKS}. v2 prices are
@@ -20,13 +27,6 @@ interface PricesState {
    * network's submap rather than polluting the active one.
    */
   pricesByNetwork: Record<string, TokenPricesMap>;
-  /**
-   * Endpoint version (`use_token_prices_v2`) that populated each network's
-   * cache. A v1<->v2 rollback flips this; the next fetch for that network drops
-   * its stale-endpoint cache and refetches, so the rollback applies even to
-   * already-cached tokens.
-   */
-  sourceByNetwork: Record<string, boolean>;
   isLoading: boolean;
   error: string | null;
   lastUpdated: number | null;
@@ -34,8 +34,6 @@ interface PricesState {
     balances: Record<string, Balance>;
     publicKey: string;
     network: NETWORKS;
-    /** Endpoint version, from the `use_token_prices_v2` flag. */
-    useV2: boolean;
   }) => Promise<void>;
   /**
    * Fetch prices for arbitrary token identifiers (e.g., from Blockaid
@@ -48,40 +46,24 @@ interface PricesState {
     tokens: TokenIdentifier[];
     /** Active network — required by the network-scoped v2 prices endpoint. */
     network: NETWORKS;
-    /** Endpoint version, from the `use_token_prices_v2` flag. */
-    useV2: boolean;
     /** Refetch even tokens already in the map (e.g. pull-to-refresh). */
     forceRefresh?: boolean;
   }) => Promise<boolean>;
+  /**
+   * Clears every network's prices and drops the responses of requests that
+   * are still in flight. Call it when account data is cleared.
+   */
+  reset: () => void;
 }
-
-/**
- * Drop a network's cache when the endpoint (v1/v2) that populated it differs
- * from the requested one, and stamp the new endpoint. A network *switch* is
- * handled purely by the per-network key, so this only fires on an actual
- * v1<->v2 rollback (rare). Returns whether a clear happened.
- */
-const reconcileSource = (
-  get: () => PricesState,
-  set: (partial: Partial<PricesState>) => void,
-  network: NETWORKS,
-  useV2: boolean,
-): void => {
-  if (get().sourceByNetwork[network] === useV2) return;
-  set({
-    pricesByNetwork: { ...get().pricesByNetwork, [network]: {} },
-    sourceByNetwork: { ...get().sourceByNetwork, [network]: useV2 },
-  });
-};
 
 export const usePricesStore = create<PricesState>((set, get) => ({
   pricesByNetwork: {},
-  sourceByNetwork: {},
   isLoading: false,
   error: null,
   lastUpdated: null,
   /** Fetch prices for tokens present in the user's balances. */
-  fetchPricesForBalances: async ({ balances, network, useV2 }) => {
+  fetchPricesForBalances: async ({ balances, network }) => {
+    const generation = resetGeneration;
     try {
       set({ isLoading: true, error: null });
 
@@ -91,22 +73,17 @@ export const usePricesStore = create<PricesState>((set, get) => ({
         return;
       }
 
-      reconcileSource(get, set, network, useV2);
-
       // Refetch every held token on each call — no per-token dedupe here. The
       // balance poll (and pull-to-refresh) is the price-refresh mechanism for
       // held assets, so deduping would freeze currentPrice/fiatTotal (and any
       // null-filled entries) for the rest of the session.
-      const response = await fetchTokenPrices({ tokens, network, useV2 });
+      // No network guard needed — a late response only ever writes its own
+      // network's submap.
+      const response = await fetchTokenPrices({ tokens, network });
 
-      // A v1<->v2 rollback may have landed while this request was in flight;
-      // its response is for the now-superseded endpoint, so drop it rather than
-      // polluting the freshly-stamped cache. (No network guard needed — a late
-      // response only ever writes its own network's submap.)
-      if (get().sourceByNetwork[network] !== useV2) {
-        set({ isLoading: false });
-        return;
-      }
+      // A reset landed while this request was in flight. reset() already
+      // cleared isLoading, so leave the store as it is.
+      if (generation !== resetGeneration) return;
 
       set({
         pricesByNetwork: {
@@ -121,6 +98,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
         lastUpdated: Date.now(),
       });
     } catch (error) {
+      if (generation !== resetGeneration) return;
       set({
         error:
           error instanceof Error
@@ -131,16 +109,10 @@ export const usePricesStore = create<PricesState>((set, get) => ({
     }
   },
   /** Lightweight fetch for arbitrary tokens */
-  fetchPricesForTokenIds: async ({
-    tokens,
-    network,
-    useV2,
-    forceRefresh = false,
-  }) => {
+  fetchPricesForTokenIds: async ({ tokens, network, forceRefresh = false }) => {
+    const generation = resetGeneration;
     try {
       if (!tokens || tokens.length === 0) return true;
-
-      reconcileSource(get, set, network, useV2);
 
       // Skip tokens already loaded to avoid duplicate requests — unless the
       // caller forces a refresh (e.g. pull-to-refresh), since otherwise a price
@@ -152,12 +124,10 @@ export const usePricesStore = create<PricesState>((set, get) => ({
       const response = await fetchTokenPrices({
         tokens: toFetch,
         network,
-        useV2,
       });
 
-      // Drop the response if a v1<->v2 rollback superseded its endpoint while
-      // it was in flight (see fetchPricesForBalances for the rationale).
-      if (get().sourceByNetwork[network] !== useV2) return false;
+      // Drop a response for a request that started before a reset.
+      if (generation !== resetGeneration) return false;
 
       set({
         pricesByNetwork: {
@@ -177,12 +147,21 @@ export const usePricesStore = create<PricesState>((set, get) => ({
       return false;
     }
   },
+  reset: () => {
+    resetGeneration += 1;
+    set({
+      pricesByNetwork: {},
+      isLoading: false,
+      error: null,
+      lastUpdated: null,
+    });
+  },
 }));
 
 /**
  * Live price map for the given network. Returns a stable empty map when the
  * network has no cached prices yet. Use this instead of reading the raw store
- * so consumers never see another network's (or the wrong endpoint's) prices.
+ * so consumers never see another network's prices.
  */
 export const usePricesForNetwork = (network: NETWORKS): TokenPricesMap =>
   usePricesStore((state) => state.pricesByNetwork[network] ?? EMPTY_PRICES);

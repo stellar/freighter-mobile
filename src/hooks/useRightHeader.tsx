@@ -18,6 +18,8 @@ import React, { useLayoutEffect, useCallback } from "react";
  * @param options.accessibilityLabel - What screen readers call the button
  * (optional; a custom icon has no text of its own, so pass one)
  * @param options.className - Additional CSS classes for styling (optional)
+ * @param options.testID - The button's testID (optional, defaults to
+ * CustomHeaderButton's "header-button", which the left back button shares)
  *
  * @example
  * // Basic usage with onPress
@@ -46,6 +48,7 @@ export const useRightHeaderButton = ({
   iconColor,
   accessibilityLabel,
   className,
+  testID,
 }: {
   hidden?: boolean;
   onPress?: () => void;
@@ -54,6 +57,7 @@ export const useRightHeaderButton = ({
   iconColor?: string;
   accessibilityLabel?: string;
   className?: string;
+  testID?: string;
 }) => {
   const navigation = useNavigation();
 
@@ -69,9 +73,10 @@ export const useRightHeaderButton = ({
         iconColor={iconColor}
         accessibilityLabel={accessibilityLabel}
         className={className}
+        testID={testID}
       />
     ),
-    [onPress, icon, iconSize, iconColor, accessibilityLabel, className],
+    [onPress, icon, iconSize, iconColor, accessibilityLabel, className, testID],
   );
 
   // useLayoutEffect is the official recommended hook to use for setting up
