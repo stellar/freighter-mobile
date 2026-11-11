@@ -238,6 +238,27 @@ describe("useSwapAmountError", () => {
       expect(pathErrorCalls.length).toBe(0);
     });
 
+    // The amount screen renders these two as a persistent "Quote unavailable"
+    // row with its own sheet; a toast on top would say the same thing twice.
+    it.each([
+      "swapScreen.errors.noPathFound",
+      "swapScreen.errors.swapsUnavailable",
+    ])("does NOT toast %s, which the screen shows inline", (key) => {
+      renderHook(() =>
+        useSwapAmountError({
+          ...baseProps,
+          pathError: `${key}::{}`,
+        }),
+      );
+
+      const pathErrorCalls = mockShowToast.mock.calls.filter(
+        ([arg]) =>
+          (arg as { toastId?: string }).toastId ===
+          SWAP_TOAST_IDS.SWAP_PATH_ERROR,
+      );
+      expect(pathErrorCalls.length).toBe(0);
+    });
+
     it("dismisses the path-error toast when a subsequent pathResult arrives without a pathError", () => {
       const initialProps: HookProps = {
         ...baseProps,
@@ -259,7 +280,6 @@ describe("useSwapAmountError", () => {
         pathResult: {
           path: [],
           destinationAmount: "1",
-          destinationAmountMin: "0.99",
           sourceAmount: "1",
           conversionRate: "1",
         } as never,

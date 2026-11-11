@@ -718,6 +718,7 @@
       "insufficientXlmForFees": "Insufficient XLM for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
       "noPathFound": "No path found between these tokens",
       "pathFindFailed": "Couldn't fetch swap path. Please try again.",
+      "swapsUnavailable": "Swaps are temporarily unavailable",
       "customTokenSwapNotSupported": "Swapping custom tokens is not supported yet",
       "quoteExpired": "Quote has expired, please try again to get a new quote"
     },
@@ -751,6 +752,10 @@
       "bodyEmphasis": "0.5 XLM will be reserved",
       "bodySuffix": " from your balance. You can get it back by removing the trustline after your {{tokenCode}} balance is zero.",
       "confirm": "Got it"
+    },
+    "quoteUnavailable": {
+      "title": "Quote unavailable",
+      "body": "We couldn't get a quote for this swap right now. Try a different amount or token pair, or try again later."
     },
     "trustlineBanner": "This will add a trustline to {{tokenCode}}",
     "xlmReserve": {

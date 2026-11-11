@@ -4,6 +4,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
 import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
+import InformationBottomSheet from "components/InformationBottomSheet";
 import { PercentageButtons } from "components/PercentageButtons";
 import Spinner from "components/Spinner";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
@@ -57,7 +58,11 @@ import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { FormattedSearchTokenRecord } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
-import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
+import {
+  descriptorAsPathBalance,
+  swapQuoteKey,
+  useSwapStore,
+} from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { isNativeAssetId } from "helpers/assetIdentity";
@@ -114,7 +119,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const headerHeight = useHeaderHeight();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { swapFee, swapSlippage, resetToDefaults } = useSwapSettingsStore();
+  const { swapFee, resetToDefaults } = useSwapSettingsStore();
   const { overriddenBlockaidResponse } = useDebugStore();
   const { isBuilding, resetTransaction } = useTransactionBuilderStore();
   const { transactionXDR, transactionHash } = useTransactionBuilderStore();
@@ -125,6 +130,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   // kept structurally separate so the two can't share a proceed handler.
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
+  const quoteUnavailableSheetRef = useRef<BottomSheetModal>(null);
   const amountInputRef = useRef<TextInput>(null);
   const { showToast } = useToast();
 
@@ -150,6 +156,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     pathResult,
     isLoadingPath,
     pathError,
+    pathErrorQuoteKey,
     setSourceToken,
     setDestinationToken,
     setEntrySource,
@@ -250,11 +257,30 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     return undefined;
   }, [destinationBalance, destinationTokenDescriptor]);
 
+  const currentQuoteKey = useMemo(
+    () =>
+      sourceBalance && destinationForPath && account?.publicKey
+        ? swapQuoteKey({
+            sourceBalance,
+            destinationBalance: destinationForPath,
+            sourceAmount,
+            network,
+            publicKey: account.publicKey,
+          })
+        : null,
+    [
+      sourceBalance,
+      destinationForPath,
+      sourceAmount,
+      network,
+      account?.publicKey,
+    ],
+  );
+
   useSwapPathFinding({
     sourceBalance,
     destinationTokenForPath: destinationForPath,
     sourceAmount,
-    swapSlippage,
     network,
     publicKey: account?.publicKey,
     amountError,
@@ -273,7 +299,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceBalance,
     destinationTokenInput: destinationForPath,
     pathResult,
-
+    currentQuoteKey,
     account,
     network,
     navigation,
@@ -384,7 +410,22 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     pathResult,
     pathError,
     amountError,
+    currentQuoteKey,
   });
+
+  const showQuoteUnavailable =
+    !isLoadingPath &&
+    !!currentQuoteKey &&
+    pathErrorQuoteKey === currentQuoteKey &&
+    ctaState.kind !== "insufficient" &&
+    !amountError &&
+    new BigNumber(sourceAmount || "0").gt(0) &&
+    (pathError === t("swapScreen.errors.noPathFound") ||
+      pathError === t("swapScreen.errors.swapsUnavailable"));
+
+  useEffect(() => {
+    if (!showQuoteUnavailable) quoteUnavailableSheetRef.current?.dismiss();
+  }, [showQuoteUnavailable]);
 
   useEffect(() => {
     if (swapFromTokenId && swapFromTokenSymbol) {
@@ -522,6 +563,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceBalance,
     bestNonXlmClassicBalance,
     network,
+    publicKey: account?.publicKey,
     subentryCount: account?.subentryCount ?? 0,
     swapFee,
     setSourceToken,
@@ -683,9 +725,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [executeSwap]);
 
   const handleSettingsChange = useCallback(() => {
+    // Review stays disabled until the matching quote lands, so there is
+    // nothing to rebuild yet.
+    if (pathResult?.quoteKey !== currentQuoteKey) return;
     // Settings have changed, rebuild the swap transaction with new values
     prepareSwapTransaction(false);
-  }, [prepareSwapTransaction]);
+  }, [prepareSwapTransaction, pathResult?.quoteKey, currentQuoteKey]);
 
   const handleMainButtonPress = useCallback(async () => {
     // "enter" branch focuses the input — let the keyboard rise naturally.
@@ -914,6 +959,20 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         placeholderActive={!destinationTokenDescriptor}
       />
 
+      {showQuoteUnavailable && (
+        <TouchableOpacity
+          className="flex-row items-center justify-center gap-[6px] mt-[16px]"
+          onPress={() => quoteUnavailableSheetRef.current?.present()}
+          hitSlop={8}
+          testID="swap-quote-unavailable"
+        >
+          <Text sm secondary>
+            {t("swapScreen.quoteUnavailable.title")}
+          </Text>
+          <Icon.InfoCircle size={14} color={themeColors.text.secondary} />
+        </TouchableOpacity>
+      )}
+
       <View className="items-center mt-[24px]">
         <PercentageButtons onPress={handlePercentagePress} />
       </View>
@@ -1078,6 +1137,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             onConfirm={confirmSettings}
             onSettingsChange={handleSettingsChange}
             operationCount={swapOperationCount}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={quoteUnavailableSheetRef}
+        customContent={
+          <InformationBottomSheet
+            title={t("swapScreen.quoteUnavailable.title")}
+            texts={[
+              { key: "body", value: t("swapScreen.quoteUnavailable.body") },
+            ]}
+            onClose={() => quoteUnavailableSheetRef.current?.dismiss()}
+            closeTestID="quote-unavailable-close"
           />
         }
       />

@@ -25,7 +25,11 @@ import { ActiveAccount } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useHistoryStore } from "ducks/history";
 import { usePricesStore } from "ducks/prices";
-import { SwapPathResult, useSwapStore } from "ducks/swap";
+import {
+  computeDestMinWithSlippage,
+  SwapPathResult,
+  useSwapStore,
+} from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import {
   SubmitResultCodes,
@@ -74,6 +78,8 @@ interface SwapTransactionParams {
   sourceBalance: PricedBalance | undefined;
   destinationTokenInput: PricedBalance | undefined;
   pathResult: SwapPathResult | null;
+  /** `swapQuoteKey` of the current inputs; `pathResult` must match it. */
+  currentQuoteKey: string | null;
   account: ActiveAccount | null;
   network: NETWORKS;
   navigation: NativeStackNavigationProp<
@@ -106,6 +112,7 @@ export const useSwapTransaction = ({
   sourceBalance,
   destinationTokenInput,
   pathResult,
+  currentQuoteKey,
   account,
   network,
   navigation,
@@ -140,9 +147,16 @@ export const useSwapTransaction = ({
       return undefined;
     }
 
+    if (pathResult.quoteKey !== currentQuoteKey) {
+      throw new Error(t("swapScreen.errors.quoteExpired"));
+    }
+
     // Get fresh settings values each time the function is called
-    const { swapFee: freshSwapFee, swapTimeout: freshSwapTimeout } =
-      useSwapSettingsStore.getState();
+    const {
+      swapFee: freshSwapFee,
+      swapTimeout: freshSwapTimeout,
+      swapSlippage: freshSwapSlippage,
+    } = useSwapSettingsStore.getState();
 
     // Derive includeTrustline from the swap store's destinationToken.
     // When requiresTrustline === true the user doesn't yet hold a trustline for the
@@ -170,7 +184,12 @@ export const useSwapTransaction = ({
       destinationBalance: destinationTokenInput,
       path: pathResult.path,
       destinationAmount: pathResult.destinationAmount,
-      destinationAmountMin: pathResult.destinationAmountMin,
+      // Slippage isn't in the quote key; the settings sheet can change it
+      // after quoting.
+      destinationAmountMin: computeDestMinWithSlippage(
+        pathResult.destinationAmount,
+        freshSwapSlippage,
+      ),
       transactionFee: freshSwapFee,
       transactionTimeout: freshSwapTimeout,
       network,
@@ -197,11 +216,13 @@ export const useSwapTransaction = ({
     sourceBalance,
     destinationTokenInput,
     pathResult,
+    currentQuoteKey,
     buildSwapTransaction,
     account?.publicKey,
     sourceAmount,
     network,
     scanTransaction,
+    t,
   ]);
 
   const executeSwap = useCallback(async () => {
@@ -582,7 +603,6 @@ export const useSwapTransaction = ({
             sourceBalance: latestSource,
             destinationBalance: latestDest,
             sourceAmount,
-            slippage: useSwapSettingsStore.getState().swapSlippage,
             network,
             publicKey: account.publicKey,
           });

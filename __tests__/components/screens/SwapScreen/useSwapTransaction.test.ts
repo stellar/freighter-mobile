@@ -131,7 +131,9 @@ const baseParams: Parameters<typeof useSwapTransaction>[0] = {
     path: [],
     destinationAmount: "2.5",
     destinationAmountMin: "2.4",
+    quoteKey: "quote-key",
   } as never,
+  currentQuoteKey: "quote-key",
   account: {
     publicKey: "GA...",
     privateKey: "SA...",
@@ -337,6 +339,37 @@ describe("useSwapTransaction", () => {
         }),
       );
       expect(mockTrackTransactionError).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setupSwapTransaction — slippage", () => {
+    it("computes the minimum from the current slippage, not the quote-time minimum", async () => {
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      // destinationAmount 2.5 at the settings mock's 0.5% slippage.
+      expect(mockBuildSwapTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ destinationAmountMin: "2.4875000" }),
+      );
+    });
+  });
+
+  describe("setupSwapTransaction — quote freshness", () => {
+    it("refuses to build from a quote for other inputs", async () => {
+      const { result } = renderHook(() =>
+        useSwapTransaction({ ...baseParams, currentQuoteKey: "newer-key" }),
+      );
+
+      await act(async () => {
+        await expect(result.current.setupSwapTransaction()).rejects.toThrow(
+          "swapScreen.errors.quoteExpired",
+        );
+      });
+
+      expect(mockBuildSwapTransaction).not.toHaveBeenCalled();
     });
   });
 

@@ -22,7 +22,6 @@ interface UseSwapPathFindingParams {
   sourceBalance: BalanceItem | undefined;
   destinationTokenForPath: BalanceItem | undefined;
   sourceAmount: string;
-  swapSlippage: number;
   network: NETWORKS;
   publicKey: string | undefined;
   amountError: string | null;
@@ -32,7 +31,6 @@ export const useSwapPathFinding = ({
   sourceBalance,
   destinationTokenForPath,
   sourceAmount,
-  swapSlippage,
   network,
   publicKey,
   amountError,
@@ -52,7 +50,6 @@ export const useSwapPathFinding = ({
         sourceBalance,
         destinationBalance: destinationTokenForPath,
         sourceAmount,
-        slippage: swapSlippage,
         network,
         publicKey,
       });
@@ -63,8 +60,11 @@ export const useSwapPathFinding = ({
 
   // Key on the stable `id` (not the object ref) so the 30s balance-polling
   // re-renders don't re-trigger path-finding. The quote stays frozen until
-  // the token or amount actually changes. `debouncedFindSwapPath` is a stable
-  // wrapper that reads the latest objects at call time.
+  // the token or amount actually changes. Slippage is not an input: the
+  // build recomputes the minimum received from the stored quote, and a
+  // re-quote here would replace the quote the review was built from.
+  // `debouncedFindSwapPath` is a stable wrapper that reads the latest
+  // objects at call time.
   useEffect(() => {
     debouncedFindSwapPath();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,7 +72,6 @@ export const useSwapPathFinding = ({
     sourceBalance?.id,
     destinationTokenForPath?.id,
     sourceAmount,
-    swapSlippage,
     network,
     publicKey,
     amountError,

@@ -3,6 +3,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
+import BottomSheet from "components/BottomSheet";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
 import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
@@ -51,6 +52,8 @@ type SheetRefSpy = {
    * Returns true when the sheet had an onChange handler.
    */
   fireDismiss: () => boolean;
+  /** The sheet's customContent element, so tests can call its callbacks. */
+  customContent?: React.ReactElement;
 };
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace, vars-on-top, no-var, no-underscore-dangle
@@ -67,8 +70,9 @@ jest.mock("components/BottomSheet", () => {
   const NoopSheet = (props: {
     modalRef?: React.RefObject<unknown>;
     bottomSheetModalProps?: { onChange?: (index: number) => void };
+    customContent?: React.ReactElement;
   }) => {
-    const { modalRef, bottomSheetModalProps } = props;
+    const { modalRef, bottomSheetModalProps, customContent } = props;
     ReactModule.useImperativeHandle(modalRef, () => {
       const spy: SheetRefSpy = {
         present: jest.fn(),
@@ -80,6 +84,7 @@ jest.mock("components/BottomSheet", () => {
           }
           return false;
         },
+        customContent,
       };
       // eslint-disable-next-line no-underscore-dangle
       globalThis.__mockSheetRefs.push(spy);
@@ -106,9 +111,10 @@ type SwapStoreState = {
   sourceAmount: string;
   sourceAmountDisplay: string;
   destinationAmount: string;
-  pathResult: null | { destinationAmount: string };
+  pathResult: null | { destinationAmount: string; quoteKey: string };
   isLoadingPath: boolean;
   pathError: string | null;
+  pathErrorQuoteKey?: string | null;
   setSourceToken: jest.Mock;
   setDestinationToken: jest.Mock;
   setEntrySource: jest.Mock;
@@ -145,6 +151,7 @@ const makeDefaultSwapState = (): SwapStoreState => ({
 
 jest.mock("ducks/swap", () => ({
   useSwapStore: jest.fn(),
+  swapQuoteKey: jest.fn(() => "quote-key"),
   // Pass-through adapter — tests can inspect the call by passing in a
   // descriptor that doesn't match any held balance and asserting that the
   // useSwapPathFinding mock receives an object with `tokenCode`/`id` from
@@ -833,7 +840,7 @@ describe("SwapAmountScreen", () => {
     it("shows 'Review swap' (enabled) when path-finding succeeds", async () => {
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
       });
 
       const { getByTestId } = renderWithProviders(
@@ -875,7 +882,7 @@ describe("SwapAmountScreen", () => {
 
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
       });
 
       const { getByTestId } = renderWithProviders(
@@ -968,7 +975,7 @@ describe("SwapAmountScreen", () => {
 
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           tokenCode: "FTT",
@@ -1010,7 +1017,7 @@ describe("SwapAmountScreen", () => {
       // The pre-flight gate should NOT fire, so setupSwapTransaction is called.
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           tokenCode: "FTT",
@@ -1076,7 +1083,7 @@ describe("SwapAmountScreen", () => {
         // sourceTokenId = "XLM" (NATIVE_TOKEN_CODE) — XLM is the source
         sourceTokenId: "XLM",
         sourceAmount: "0.39",
-        pathResult: { destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           tokenCode: "FTT",
@@ -1138,7 +1145,7 @@ describe("SwapAmountScreen", () => {
       setSwapStoreState({
         sourceTokenId: "XLM",
         sourceAmount: "0.89",
-        pathResult: { destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           tokenCode: "FTT",
@@ -1887,6 +1894,200 @@ describe("SwapAmountScreen", () => {
           tokenIssuer: expect.any(String),
         }),
       );
+    });
+  });
+
+  describe("settings change rebuild", () => {
+    const fireSettingsChange = (
+      getAllByType: (type: unknown) => { props: Record<string, unknown> }[],
+    ) => {
+      const settingsSheet = getAllByType(BottomSheet).find(
+        (sheet) =>
+          (sheet.props.customContent as { props?: Record<string, unknown> })
+            ?.props?.onSettingsChange,
+      );
+      const { onSettingsChange } = (
+        settingsSheet?.props.customContent as {
+          props: { onSettingsChange: () => void };
+        }
+      ).props;
+      return act(async () => {
+        onSettingsChange();
+        await Promise.resolve();
+      });
+    };
+
+    it("rebuilds when the quote matches the current inputs", async () => {
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+      const { UNSAFE_getAllByType } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await fireSettingsChange(UNSAFE_getAllByType as never);
+
+      expect(mockSetupSwapTransaction).toHaveBeenCalled();
+    });
+
+    it("skips the rebuild while the matching quote is still pending", async () => {
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "older-key" },
+      });
+      const { UNSAFE_getAllByType } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await fireSettingsChange(UNSAFE_getAllByType as never);
+
+      expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("quote unavailable line", () => {
+    const NO_ROUTE = "No path found between these tokens";
+    const UNAVAILABLE = "Swaps are temporarily unavailable";
+    // A failed quote for the current inputs (swapQuoteKey is mocked).
+    const failed = (pathError: string) => ({
+      pathError,
+      pathErrorQuoteKey: "quote-key",
+    });
+    const renderScreen = () =>
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+    it("shows when no route was found", () => {
+      setSwapStoreState({ ...failed(NO_ROUTE) });
+      const { getByTestId } = renderScreen();
+
+      expect(getByTestId("swap-quote-unavailable")).toHaveTextContent(
+        "Quote unavailable",
+      );
+    });
+
+    it("shows when the source is unavailable", () => {
+      setSwapStoreState({ ...failed(UNAVAILABLE) });
+      const { getByTestId } = renderScreen();
+
+      expect(getByTestId("swap-quote-unavailable")).toBeTruthy();
+    });
+
+    it("is hidden while quoting", () => {
+      setSwapStoreState({ ...failed(NO_ROUTE), isLoadingPath: true });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden when there is a quote", () => {
+      setSwapStoreState({
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden when no amount is entered", () => {
+      setSwapStoreState({
+        ...failed(NO_ROUTE),
+        sourceAmount: "0",
+        sourceAmountDisplay: "0",
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden when no destination is chosen", () => {
+      setSwapStoreState({ ...failed(NO_ROUTE), destinationToken: null });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden for an unrelated quote failure", () => {
+      setSwapStoreState({
+        pathError: "Couldn't fetch swap path. Please try again.",
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("opens the explanation sheet when tapped", async () => {
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      setSwapStoreState({ ...failed(NO_ROUTE) });
+      const { getByTestId } = renderScreen();
+
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-quote-unavailable"));
+        await Promise.resolve();
+      });
+
+      // eslint-disable-next-line no-underscore-dangle
+      const sheet = globalThis.__mockSheetRefs.find(
+        (spy) =>
+          (spy.customContent?.props as { title?: string } | undefined)
+            ?.title === "Quote unavailable",
+      );
+      expect(sheet?.present).toHaveBeenCalledTimes(1);
+      const { texts } = sheet?.customContent?.props as {
+        texts: { value: string }[];
+      };
+      expect(texts[0].value).toBe(
+        "We couldn't get a quote for this swap right now. Try a different amount or token pair, or try again later.",
+      );
+    });
+    it("is hidden while the error is for earlier inputs", () => {
+      setSwapStoreState({
+        pathError: NO_ROUTE,
+        pathErrorQuoteKey: "older-key",
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden when the amount exceeds the balance", () => {
+      setSwapStoreState({
+        ...failed(NO_ROUTE),
+        sourceAmount: "999999999",
+        sourceAmountDisplay: "999999999",
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("dismisses the sheet when a quote arrives", async () => {
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      setSwapStoreState(failed(NO_ROUTE));
+      const { getByTestId, rerender } = renderScreen();
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-quote-unavailable"));
+        await Promise.resolve();
+      });
+      // eslint-disable-next-line no-underscore-dangle
+      const sheet = globalThis.__mockSheetRefs.find(
+        (spy) =>
+          (spy.customContent?.props as { title?: string } | undefined)
+            ?.title === "Quote unavailable",
+      );
+
+      setSwapStoreState({
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+      rerender(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(sheet?.dismiss).toHaveBeenCalled();
     });
   });
 });

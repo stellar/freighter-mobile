@@ -32,6 +32,9 @@ import {
   GetTokenDetailsParams,
   DiscoverProtocol,
   PriceHistoryRange,
+  SwapQuoteMode,
+  SwapQuotes,
+  SwapQuotesResponse,
   TokenDetailsResponse,
   TokenIdentifier,
   TokenPriceHistory,
@@ -969,6 +972,49 @@ export const fetchTokenStats = async ({
 
   assertEchoes("token stats", { token: wireToken }, data.data);
   assertTokenStats(data.data);
+
+  return data.data;
+};
+
+export interface FetchSwapQuotesParams {
+  network: NETWORKS;
+  /** The account swapping (the JWT identifies the wallet, not the account) */
+  account: string;
+  mode: SwapQuoteMode;
+  /** `XLM`, `CODE:ISSUER` or a `C…` contract ID */
+  fromAsset: string;
+  /** `XLM`, `CODE:ISSUER` or a `C…` contract ID */
+  toAsset: string;
+  /** Decimal string: sold for `send`, received for `receive` */
+  amount: string;
+}
+
+/** A 200 whose body is not a quotes envelope; classified as an outage. */
+export class SwapQuotesResponseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SwapQuotesResponseError";
+  }
+}
+
+/**
+ * Quotes a swap from every backend source, best route first. A 200 with empty
+ * `routes` means no source can quote the pair; HTTP failures reject with the
+ * normalized `ApiError` so callers can branch on `status`.
+ */
+export const fetchSwapQuotes = async ({
+  network,
+  ...body
+}: FetchSwapQuotesParams): Promise<SwapQuotes> => {
+  const { data } = await freighterBackendV2.post<SwapQuotesResponse>(
+    "/swap/quotes",
+    body,
+    { params: { network } },
+  );
+
+  if (!Array.isArray(data?.data?.routes)) {
+    throw new SwapQuotesResponseError("Unexpected swap quotes response shape");
+  }
 
   return data.data;
 };

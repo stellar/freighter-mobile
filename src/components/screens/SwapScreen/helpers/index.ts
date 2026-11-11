@@ -22,3 +22,9 @@ export {
   getQuoteExpiredOperationCodes,
   isQuoteExpiredResultCodes,
 } from "./quoteErrors";
+export {
+  missingSwapRouteReason,
+  selectSwapRoute,
+  swapQuoteErrorReason,
+  swapRouteIntermediateAssets,
+} from "./selectSwapRoute";

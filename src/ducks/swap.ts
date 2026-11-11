@@ -1,41 +1,38 @@
-import { Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
-import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers";
+import {
+  DestinationTokenDescriptor,
+  missingSwapRouteReason,
+  selectSwapRoute,
+  swapQuoteErrorReason,
+  swapRouteIntermediateAssets,
+} from "components/screens/SwapScreen/helpers";
 import {
   DEFAULT_DECIMALS,
+  NATIVE_TOKEN_CODE,
   NETWORKS,
-  mapNetworkToNetworkDetails,
 } from "config/constants";
 import { logger } from "config/logger";
-import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
+import {
+  PricedBalance,
+  SwapQuotes,
+  TokenTypeWithCustomToken,
+} from "config/types";
 import { useDebugStore } from "ducks/debug";
-import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { t } from "i18next";
+import { fetchSwapQuotes } from "services/backend";
 import { getTokenForPayment } from "services/transactionService";
 import { create } from "zustand";
 
 export interface SwapPathResult {
   sourceAmount: string;
   destinationAmount: string;
-  destinationAmountMin: string;
   path: string[];
   conversionRate: string;
-}
-
-interface HorizonPathToken {
-  asset_type: string;
-  asset_code?: string;
-  asset_issuer?: string;
-}
-
-interface SwapPathData {
-  sourceAmount: string;
-  destinationAmount: string;
-  path: string[];
-  conversionRate: string;
+  /** `swapQuoteKey` of the inputs this quote answered. */
+  quoteKey: string;
 }
 
 interface SwapState {
@@ -52,8 +49,12 @@ interface SwapState {
   sourceAmountDisplay: string; // Display value (locale formatted)
   destinationAmount: string;
   pathResult: SwapPathResult | null;
+  /** Every route and unavailable source from the last quote, for the route list. */
+  swapQuotes: SwapQuotes | null;
   isLoadingPath: boolean;
   pathError: string | null;
+  /** `swapQuoteKey` of the inputs `pathError` is for. */
+  pathErrorQuoteKey: string | null;
   isBuilding: boolean;
   buildError: string | null;
 
@@ -66,7 +67,6 @@ interface SwapState {
     sourceBalance: PricedBalance;
     destinationBalance: PricedBalance;
     sourceAmount: string;
-    slippage: number;
     network: NETWORKS;
     publicKey: string;
   }) => Promise<void>;
@@ -83,13 +83,15 @@ const initialState = {
   sourceAmountDisplay: "0",
   destinationAmount: "0",
   pathResult: null,
+  swapQuotes: null as SwapQuotes | null,
   isLoadingPath: false,
   pathError: null,
+  pathErrorQuoteKey: null as string | null,
   isBuilding: false,
   buildError: null,
 };
 
-const computeDestMinWithSlippage = (
+export const computeDestMinWithSlippage = (
   destinationAmount: string,
   slippage: number,
 ): string => {
@@ -97,58 +99,58 @@ const computeDestMinWithSlippage = (
   return new BigNumber(destinationAmount).times(new BigNumber(mult)).toFixed(7);
 };
 
-/**
- * Finds the best swap path using Horizon's strict send paths endpoint
- * This is for classic token swaps using Stellar's built-in DEX
- */
-const findClassicSwapPath = async (params: {
+const toSwapWireAsset = (balance: PricedBalance): string => {
+  const token = getTokenForPayment(balance);
+  return token.isNative()
+    ? NATIVE_TOKEN_CODE
+    : `${token.getCode()}:${token.getIssuer()}`;
+};
+
+interface SwapQuoteInputs {
   sourceBalance: PricedBalance;
   destinationBalance: PricedBalance;
   sourceAmount: string;
   network: NETWORKS;
-}): Promise<SwapPathData | null> => {
-  const { sourceBalance, destinationBalance, sourceAmount, network } = params;
+  publicKey: string;
+}
 
+const sendQuoteRequest = (inputs: SwapQuoteInputs) => ({
+  network: inputs.network,
+  account: inputs.publicKey,
+  mode: "send" as const,
+  fromAsset: toSwapWireAsset(inputs.sourceBalance),
+  toAsset: toSwapWireAsset(inputs.destinationBalance),
+  // The backend accepts only plain decimals; the store can hold "5." or "1e-7".
+  amount: new BigNumber(inputs.sourceAmount).toFixed(),
+});
+
+const quoteKeyOf = (r: ReturnType<typeof sendQuoteRequest>): string =>
+  [r.account, r.network, r.mode, r.fromAsset, r.toAsset, r.amount].join("|");
+
+/**
+ * Identifies the send-quote request for these inputs. Review and build use
+ * `pathResult` only when its `quoteKey` equals the key of the current inputs.
+ * Null when the inputs can't be quoted.
+ */
+export const swapQuoteKey = (inputs: SwapQuoteInputs): string | null => {
   try {
-    const networkDetails = mapNetworkToNetworkDetails(network);
-    const server = new Horizon.Server(networkDetails.networkUrl);
-
-    const sourceToken = getTokenForPayment(sourceBalance);
-    const destToken = getTokenForPayment(destinationBalance);
-
-    const pathsResult = await server
-      .strictSendPaths(sourceToken, sourceAmount, [destToken])
-      .limit(1)
-      .call();
-
-    if (pathsResult.records.length === 0) {
-      return null;
-    }
-
-    const bestPath = pathsResult.records[0];
-
-    const path: string[] = bestPath.path.map((token: HorizonPathToken) => {
-      if (isNativeAssetId(token.asset_type)) {
-        return "native";
-      }
-      return `${token.asset_code}:${token.asset_issuer}`;
-    });
-
-    const sourceAmountBN = new BigNumber(sourceAmount);
-    const destAmountBN = new BigNumber(bestPath.destination_amount);
-    const conversionRate = destAmountBN.dividedBy(sourceAmountBN).toFixed(7);
-
-    return {
-      sourceAmount,
-      destinationAmount: bestPath.destination_amount,
-      path,
-      conversionRate,
-    };
-  } catch (error) {
-    logger.error("SwapStore", "Failed to find classic swap path", error);
-    throw error;
+    return quoteKeyOf(sendQuoteRequest(inputs));
+  } catch {
+    return null;
   }
 };
+
+const QUOTE_ERROR_KEYS = {
+  unavailable: "swapScreen.errors.swapsUnavailable",
+  noRoute: "swapScreen.errors.noPathFound",
+} as const;
+
+// Quotes can take seconds, so a slower earlier request must not overwrite a
+// newer one or a cleared path.
+let quoteRequestId = 0;
+// The quote re-fires per debounced keystroke, so an outage is reported to
+// Sentry once until a quote succeeds or the screen is left.
+let outageReported = false;
 
 export const useSwapStore = create<SwapState>((set) => ({
   ...initialState,
@@ -194,15 +196,20 @@ export const useSwapStore = create<SwapState>((set) => ({
   },
 
   findSwapPath: async (params) => {
-    const {
-      sourceBalance,
-      destinationBalance,
-      sourceAmount,
-      slippage,
-      network,
-    } = params;
+    const { sourceBalance, destinationBalance, sourceAmount } = params;
 
-    set({ isLoadingPath: true, pathError: null, pathResult: null });
+    quoteRequestId += 1;
+    const requestId = quoteRequestId;
+    const isStale = () => requestId !== quoteRequestId;
+    const pathErrorQuoteKey = swapQuoteKey(params);
+
+    set({
+      isLoadingPath: true,
+      pathError: null,
+      pathErrorQuoteKey: null,
+      pathResult: null,
+      swapQuotes: null,
+    });
 
     try {
       const { forceSwapPathFailure } = useDebugStore.getState();
@@ -221,69 +228,127 @@ export const useSwapStore = create<SwapState>((set) => ({
           isContractId(destinationBalance.id ?? ""));
 
       if (isSourceCustom || isDestCustom) {
+        outageReported = false;
         set({
           isLoadingPath: false,
+          destinationAmount: "0",
           pathError: t("swapScreen.errors.customTokenSwapNotSupported"),
+          pathErrorQuoteKey,
         });
         return;
       }
 
-      // TODO: Add Soroswap support for Testnet
-      const pathResult = await findClassicSwapPath({
-        sourceBalance,
-        destinationBalance,
-        sourceAmount,
-        network,
-      });
+      const request = sendQuoteRequest(params);
+      const swapQuotes = await fetchSwapQuotes(request);
 
-      if (!pathResult) {
+      if (isStale()) return;
+
+      const route = selectSwapRoute(swapQuotes);
+
+      if (!route) {
+        const reason = missingSwapRouteReason(swapQuotes);
+        if (reason === "unavailable") {
+          if (!outageReported) {
+            outageReported = true;
+            logger.error(
+              "SwapStore",
+              "Swap source unavailable",
+              swapQuotes.unavailable,
+            );
+          }
+        } else {
+          outageReported = false;
+          if (swapQuotes.routes.some((r) => r.source === "classic")) {
+            // A classic route was quoted but selectSwapRoute rejected it
+            // (no hops): a backend bug, not a pair without liquidity.
+            logger.error(
+              "SwapStore",
+              "Malformed classic route",
+              swapQuotes.routes,
+            );
+          }
+        }
+        // The receive card renders destinationAmount directly: the previous
+        // quote's amount stays while a new quote is in flight (as designed)
+        // but must not sit next to a failure.
         set({
           isLoadingPath: false,
-          pathError: t("swapScreen.errors.noPathFound"),
+          swapQuotes,
+          destinationAmount: "0",
+          pathError: t(QUOTE_ERROR_KEYS[reason]),
+          pathErrorQuoteKey,
         });
         return;
       }
 
-      const destinationAmountMin = computeDestMinWithSlippage(
-        pathResult.destinationAmount,
-        slippage,
-      );
-
-      const finalPathResult: SwapPathResult = {
-        ...pathResult,
-        destinationAmountMin,
+      const pathResult: SwapPathResult = {
+        sourceAmount,
+        destinationAmount: route.toAmount,
+        path: swapRouteIntermediateAssets(route),
+        conversionRate: new BigNumber(route.toAmount)
+          .dividedBy(new BigNumber(sourceAmount))
+          .toFixed(7),
+        quoteKey: quoteKeyOf(request),
       };
 
+      outageReported = false;
       set({
         isLoadingPath: false,
-        pathResult: finalPathResult,
-        destinationAmount: pathResult.destinationAmount,
+        swapQuotes,
+        pathResult,
+        destinationAmount: route.toAmount,
       });
     } catch (error) {
+      if (isStale()) return;
+
       const errorMessage =
-        error instanceof Error ? error.message : String(error);
+        (error as { message?: string } | null)?.message ?? String(error);
 
-      logger.error("SwapStore", "Failed to find swap path", error);
-
-      const displayError = __DEV__
+      const reason = swapQuoteErrorReason(error);
+      if (reason === "noRoute") {
+        // A 400 is the request (bad input, an unfunded account), not a fault.
+        outageReported = false;
+        logger.warn("SwapStore", "Swap quote rejected", error);
+      } else if (reason === "unavailable") {
+        if (!outageReported) {
+          outageReported = true;
+          logger.error("SwapStore", "Failed to find swap path", error);
+        }
+      } else {
+        logger.error("SwapStore", "Failed to find swap path", error);
+      }
+      const fallbackError = __DEV__
         ? errorMessage
         : t("swapScreen.errors.pathFindFailed");
+      const displayError = reason ? t(QUOTE_ERROR_KEYS[reason]) : fallbackError;
 
       set({
         isLoadingPath: false,
+        destinationAmount: "0",
         pathError: displayError,
+        pathErrorQuoteKey,
       });
     }
   },
 
-  clearPath: () =>
+  clearPath: () => {
+    quoteRequestId += 1;
+    outageReported = false;
     set({
       pathResult: null,
+      swapQuotes: null,
       destinationAmount: "0",
       pathError: null,
-    }),
+      pathErrorQuoteKey: null,
+      isLoadingPath: false,
+    });
+  },
 
-  resetSwap: () => set(initialState),
+  resetSwap: () => {
+    quoteRequestId += 1;
+    outageReported = false;
+    set(initialState);
+  },
 }));
 
 /**
