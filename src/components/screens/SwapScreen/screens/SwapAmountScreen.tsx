@@ -24,6 +24,7 @@ import {
   computeDestinationFiat,
   recordTokenId,
   shouldShowXlmReservePreflight,
+  SwapSetupAnswerError,
 } from "components/screens/SwapScreen/helpers";
 import {
   SWAP_TOAST_IDS,
@@ -294,6 +295,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceToken,
     destinationToken,
     transactionScanResult,
+    scannedTransactionXDR,
   } = useSwapTransaction({
     sourceAmount,
     sourceBalance,
@@ -302,6 +304,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     currentQuoteKey,
     account,
     network,
+    recommendedFee,
     navigation,
   });
 
@@ -646,6 +649,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       if (shouldPresent) setIsOpeningReviewSheet(true);
       try {
         const setup = await setupSwapTransaction();
+        if (setup && "superseded" in setup) {
+          if (shouldPresent) setIsOpeningReviewSheet(false);
+          return;
+        }
 
         if (shouldPresent) {
           // Decide the gate from the FRESH tx scan (the lazily-scanned XDR),
@@ -666,11 +673,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         }
       } catch (error) {
         if (shouldPresent) setIsOpeningReviewSheet(false);
-        logger.error(
-          "SwapAmountScreen",
-          "Failed to setup swap transaction:",
-          error,
-        );
+        if (!(error instanceof SwapSetupAnswerError)) {
+          logger.error(
+            "SwapAmountScreen",
+            "Failed to setup swap transaction:",
+            error,
+          );
+        }
 
         const errorMessage =
           error instanceof Error
@@ -811,12 +820,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
   };
 
+  // A rebuild stores its XDR before its scan lands; until then the shown
+  // verdict is the previous transaction's, so confirming waits.
+  const confirmableXDR =
+    transactionXDR && scannedTransactionXDR === transactionXDR
+      ? transactionXDR
+      : undefined;
+
   const handleConfirmAnyway = () => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
     if (isUnableToScan) {
       swapReviewBottomSheetModalRef.current?.present();
-    } else {
+    } else if (!isBuilding && confirmableXDR) {
       handleConfirmSwap();
     }
   };
@@ -827,7 +843,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     isBuilding,
     isMalicious,
     isSuspicious,
-    transactionXDR,
+    transactionXDR: confirmableXDR,
     onSettingsPress: openSettings,
   });
 

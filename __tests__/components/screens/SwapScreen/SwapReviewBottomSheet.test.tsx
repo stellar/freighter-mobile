@@ -1,8 +1,11 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { userEvent } from "@testing-library/react-native";
 import { TokenIcon } from "components/TokenIcon";
-import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
+import SwapReviewBottomSheet, {
+  SwapReviewFooter,
+} from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
 import { useSwapStore } from "ducks/swap";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { SecurityLevel } from "services/blockaid/constants";
@@ -83,11 +86,20 @@ jest.mock("ducks/swap", () => ({
   })),
 }));
 
+const builderState = (swapReview: Record<string, unknown> = {}) => ({
+  transactionXDR: "mock-xdr",
+  isBuilding: false,
+  swapReview: {
+    sendAmount: "10",
+    minReceived: "4.9",
+    fee: "0.00001",
+    addsTrustline: false,
+    ...swapReview,
+  },
+});
+
 jest.mock("ducks/transactionBuilder", () => ({
-  useTransactionBuilderStore: jest.fn(() => ({
-    transactionXDR: "mock-xdr",
-    isBuilding: false,
-  })),
+  useTransactionBuilderStore: jest.fn(),
 }));
 
 jest.mock("hooks/useBalancesList", () => ({
@@ -117,6 +129,9 @@ describe("SwapReviewBottomSheet", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (useTransactionBuilderStore as unknown as jest.Mock).mockReturnValue(
+      builderState(),
+    );
   });
 
   describe("Basic layout", () => {
@@ -127,6 +142,26 @@ describe("SwapReviewBottomSheet", () => {
 
       expect(getAllByText(/10(.*)XLM/)[0]).toBeTruthy();
       expect(getAllByText(/5(.*)USDC/)[0]).toBeTruthy();
+    });
+
+    it("shows the amount sold and fee from the transaction, not the quote", () => {
+      (useTransactionBuilderStore as unknown as jest.Mock).mockReturnValue(
+        builderState({
+          sendAmount: "9.5",
+          minReceived: "4.75",
+          fee: "0.0829393",
+        }),
+      );
+
+      const { getAllByText, queryByText, getByTestId } = renderWithProviders(
+        <SwapReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(getAllByText(/9\.5(.*)XLM/)[0]).toBeTruthy();
+      expect(queryByText(/^10(.*)XLM$/)).toBeNull();
+      expect(getByTestId("swap-review-fee")).toHaveTextContent(
+        /0\.0829393(.*)XLM/,
+      );
     });
 
     it("displays account information", () => {
@@ -403,18 +438,23 @@ describe("SwapReviewBottomSheet", () => {
       sourceTokenId: "XLM",
     };
 
-    it("renders the purple banner when destinationToken.requiresTrustline is true", () => {
+    const usdc = (requiresTrustline: boolean) => ({
+      id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
+      tokenCode: "USDC",
+      issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
+      decimals: 7,
+      tokenType: "credit_alphanum4",
+      requiresTrustline,
+    });
+
+    it("renders the purple banner when the transaction adds the trustline", () => {
       (useSwapStore as unknown as jest.Mock).mockReturnValue({
         ...baseSwapState,
-        destinationToken: {
-          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
-          tokenCode: "USDC",
-          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
-          decimals: 7,
-          tokenType: "credit_alphanum4",
-          requiresTrustline: true,
-        },
+        destinationToken: usdc(false),
       });
+      (useTransactionBuilderStore as unknown as jest.Mock).mockReturnValue(
+        builderState({ addsTrustline: true }),
+      );
 
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet {...defaultProps} />,
@@ -423,17 +463,10 @@ describe("SwapReviewBottomSheet", () => {
       expect(getByText(/This will add a trustline to USDC/)).toBeTruthy();
     });
 
-    it("does NOT render the banner when destinationToken.requiresTrustline is false", () => {
+    it("does NOT render the banner when the transaction adds no trustline", () => {
       (useSwapStore as unknown as jest.Mock).mockReturnValue({
         ...baseSwapState,
-        destinationToken: {
-          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
-          tokenCode: "USDC",
-          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
-          decimals: 7,
-          tokenType: "credit_alphanum4",
-          requiresTrustline: false,
-        },
+        destinationToken: usdc(true),
       });
 
       const { queryByText } = renderWithProviders(
@@ -455,5 +488,47 @@ describe("SwapReviewBottomSheet", () => {
 
       expect(queryByText(/This will add a trustline/)).toBeNull();
     });
+  });
+});
+
+describe("SwapReviewFooter", () => {
+  it.each([
+    ["while the transaction is building", { isBuilding: true }],
+    ["without a transaction", { transactionXDR: undefined }],
+  ])("disables Confirm anyway %s", async (_, overrides) => {
+    const user = userEvent.setup();
+    const onConfirm = jest.fn();
+
+    const { getByTestId } = renderWithProviders(
+      <SwapReviewFooter
+        isMalicious
+        isSuspicious={false}
+        onConfirm={onConfirm}
+        onCancel={jest.fn()}
+        transactionXDR="xdr"
+        {...overrides}
+      />,
+    );
+
+    await user.press(getByTestId("swap-review-confirm-anyway-button"));
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it("lets Confirm anyway through once the transaction is built", async () => {
+    const user = userEvent.setup();
+    const onConfirm = jest.fn();
+
+    const { getByTestId } = renderWithProviders(
+      <SwapReviewFooter
+        isMalicious
+        isSuspicious={false}
+        onConfirm={onConfirm}
+        onCancel={jest.fn()}
+        transactionXDR="xdr"
+      />,
+    );
+
+    await user.press(getByTestId("swap-review-confirm-anyway-button"));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 });

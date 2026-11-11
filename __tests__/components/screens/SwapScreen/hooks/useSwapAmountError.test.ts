@@ -278,7 +278,6 @@ describe("useSwapAmountError", () => {
         ...baseProps,
         pathError: null,
         pathResult: {
-          path: [],
           destinationAmount: "1",
           sourceAmount: "1",
           conversionRate: "1",

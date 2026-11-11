@@ -5,7 +5,10 @@ import BigNumber from "bignumber.js";
 import {
   getQuoteExpiredOperationCodes,
   getTokenFromBalance,
+  SwapSetupAnswerError,
+  swapQuoteErrorReason,
 } from "components/screens/SwapScreen/helpers";
+import { SwapTxMismatchError } from "components/screens/SwapScreen/helpers/decodeSwapTx";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
@@ -26,8 +29,9 @@ import { useBalancesStore } from "ducks/balances";
 import { useHistoryStore } from "ducks/history";
 import { usePricesStore } from "ducks/prices";
 import {
-  computeDestMinWithSlippage,
   SwapPathResult,
+  swapMinOut,
+  toSwapWireAsset,
   useSwapStore,
 } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
@@ -62,6 +66,7 @@ import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "services/analytics";
 import { FailureVolume } from "services/analytics/types";
+import { isApiError } from "services/apiFactory";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -82,6 +87,8 @@ interface SwapTransactionParams {
   currentQuoteKey: string | null;
   account: ActiveAccount | null;
   network: NETWORKS;
+  /** Per-op network recommendation; "" while unknown */
+  recommendedFee: string;
   navigation: NativeStackNavigationProp<
     SwapStackParamList,
     typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN
@@ -96,15 +103,21 @@ interface UseSwapTransactionResult {
    * result so callers can decide the post-scan UX (e.g. the unable-to-scan
    * gate) without reading the lagging `transactionScanResult` render state.
    * `scanResult` is undefined when the scan fails (treated as unable-to-scan).
-   * Returns undefined only when required params are missing (no build).
+   * Returns undefined only when required params are missing (no build), and
+   * `superseded` when the inputs, the settings or the stored transaction
+   * changed while it ran: the caller must not open review on it.
    */
-  setupSwapTransaction: () => Promise<{
-    scanResult: Blockaid.StellarTransactionScanResponse | undefined;
-  } | void>;
+  setupSwapTransaction: () => Promise<
+    | { scanResult: Blockaid.StellarTransactionScanResponse | undefined }
+    | { superseded: true }
+    | void
+  >;
   handleProcessingScreenClose: () => void;
   sourceToken: NativeToken | NonNativeToken;
   destinationToken: NativeToken | NonNativeToken;
   transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined;
+  /** The XDR `transactionScanResult` is for; review waits until it is current. */
+  scannedTransactionXDR: string | undefined;
 }
 
 export const useSwapTransaction = ({
@@ -115,11 +128,14 @@ export const useSwapTransaction = ({
   currentQuoteKey,
   account,
   network,
+  recommendedFee,
   navigation,
 }: SwapTransactionParams): UseSwapTransactionResult => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [transactionScanResult, setTransactionScanResult] =
-    useState<UseSwapTransactionResult["transactionScanResult"]>(undefined);
+  const [scan, setScan] = useState<{
+    xdr: string;
+    result: Blockaid.StellarTransactionScanResponse | undefined;
+  } | null>(null);
   const { buildSwapTransaction, signTransaction, submitTransaction } =
     useTransactionBuilderStore();
   const { fetchAccountHistory } = useHistoryStore();
@@ -136,6 +152,27 @@ export const useSwapTransaction = ({
   useEffect(() => {
     swapBalancesRef.current = { sourceBalance, destinationTokenInput };
   }, [sourceBalance, destinationTokenInput]);
+
+  // Read after the build's await, which can outlive an edit to the inputs.
+  const currentQuoteKeyRef = useRef(currentQuoteKey);
+  currentQuoteKeyRef.current = currentQuoteKey;
+
+  // Re-quotes after the quote expired, so the user's retry uses a new quote
+  // instead of the expired one. Fire-and-forget: findSwapPath updates the
+  // store and handles its own errors (as useSwapPathFinding invokes it).
+  const requote = useCallback(() => {
+    const { sourceBalance: latestSource, destinationTokenInput: latestDest } =
+      swapBalancesRef.current;
+    if (latestSource && latestDest && account?.publicKey) {
+      useSwapStore.getState().findSwapPath({
+        sourceBalance: latestSource,
+        destinationBalance: latestDest,
+        sourceAmount,
+        network,
+        publicKey: account.publicKey,
+      });
+    }
+  }, [account?.publicKey, sourceAmount, network]);
 
   const setupSwapTransaction = useCallback(async () => {
     if (
@@ -156,62 +193,91 @@ export const useSwapTransaction = ({
       swapFee: freshSwapFee,
       swapTimeout: freshSwapTimeout,
       swapSlippage: freshSwapSlippage,
+      feeManuallyChanged,
     } = useSwapSettingsStore.getState();
+    const { route } = pathResult;
+    // The stored default is recommended × op count, sized for a classic
+    // build (changeTrust + path payment). A Soroban source builds one op and
+    // charges the whole fee as inclusion, so it gets the per-op rate, capped
+    // at the stored total: that is what spendable (Max) was sized from, and
+    // it stays frozen while the recommendation keeps moving.
+    const requestFee =
+      !feeManuallyChanged && route.source !== "classic" && recommendedFee
+        ? BigNumber.min(recommendedFee, freshSwapFee).toFixed()
+        : freshSwapFee;
 
-    // Derive includeTrustline from the swap store's destinationToken.
-    // When requiresTrustline === true the user doesn't yet hold a trustline for the
-    // destination asset; the changeTrust op is prepended atomically.
-    const { destinationToken } = useSwapStore.getState();
-    let includeTrustline: { tokenCode: string; issuer: string } | undefined;
-    if (destinationToken?.requiresTrustline) {
-      if (!destinationToken.issuer) {
-        // Unreachable in practice: native XLM can't be requiresTrustline, and the picker
-        // filters out Soroban. Fail fast so the bug surfaces here rather than
-        // submitting a doomed transaction that fails on-chain with tx_no_trust.
-        throw new Error(
-          `useSwapTransaction: requiresTrustline=true but issuer missing on destinationToken (id=${destinationToken.id})`,
+    const isStillCurrent = (xdr: string) => {
+      const settings = useSwapSettingsStore.getState();
+      return (
+        currentQuoteKeyRef.current === pathResult.quoteKey &&
+        settings.swapFee === freshSwapFee &&
+        settings.swapTimeout === freshSwapTimeout &&
+        settings.swapSlippage === freshSwapSlippage &&
+        useTransactionBuilderStore.getState().transactionXDR === xdr
+      );
+    };
+
+    let transactionXDR: string;
+    try {
+      ({ xdr: transactionXDR } = await buildSwapTransaction({
+        request: {
+          network,
+          account: account.publicKey,
+          source: route.source,
+          fromAsset: toSwapWireAsset(sourceBalance),
+          toAsset: toSwapWireAsset(destinationTokenInput),
+          // The quote key holds the same plain decimal.
+          amount: new BigNumber(sourceAmount).toFixed(),
+          // Slippage isn't in the quote key; the settings sheet can change it
+          // after quoting.
+          minOut: swapMinOut(route.toAmount, freshSwapSlippage),
+          slippage: new BigNumber(freshSwapSlippage).toFixed(),
+          timeout: freshSwapTimeout,
+          fee: new BigNumber(requestFee).toFixed(),
+          // Only classic builds read them; the backend ignores them otherwise.
+          paths: route.paths,
+        },
+        sourceBalance,
+        destinationBalance: destinationTokenInput,
+        destinationAmount: pathResult.destinationAmount,
+      }));
+    } catch (error) {
+      if (isApiError(error) && error.status === 409) {
+        analytics.track(AnalyticsEvent.SWAP_QUOTE_EXPIRED, {
+          from_asset_code: sourceBalance.tokenCode,
+          to_asset_code: destinationTokenInput.tokenCode,
+          result_code: "quote_moved",
+        });
+        requote();
+        throw new SwapSetupAnswerError(t("swapScreen.errors.quoteExpired"));
+      }
+      if (swapQuoteErrorReason(error) === "unavailable") {
+        throw new Error(t("swapScreen.errors.swapsUnavailable"));
+      }
+      if (isApiError(error) && error.status === 400) {
+        throw new SwapSetupAnswerError(
+          t("swapScreen.errors.failedToSetupTransaction"),
         );
       }
-      includeTrustline = {
-        tokenCode: destinationToken.tokenCode,
-        issuer: destinationToken.issuer,
-      };
+      if (error instanceof SwapTxMismatchError) {
+        throw new Error(t("swapScreen.errors.swapTransactionMismatch"));
+      }
+      throw error;
     }
 
-    const transactionXDR = await buildSwapTransaction({
-      sourceAmount,
-      sourceBalance,
-      destinationBalance: destinationTokenInput,
-      path: pathResult.path,
-      destinationAmount: pathResult.destinationAmount,
-      // Slippage isn't in the quote key; the settings sheet can change it
-      // after quoting.
-      destinationAmountMin: computeDestMinWithSlippage(
-        pathResult.destinationAmount,
-        freshSwapSlippage,
-      ),
-      transactionFee: freshSwapFee,
-      transactionTimeout: freshSwapTimeout,
-      network,
-      senderAddress: account.publicKey,
-      includeTrustline,
-    });
+    if (!isStillCurrent(transactionXDR)) return { superseded: true as const };
 
-    if (!transactionXDR) {
-      // Get the error message stored in the transaction builder
-      const { error: builderError } = useTransactionBuilderStore.getState();
-      throw new Error(builderError || "Failed to build swap transaction");
-    }
+    let scanResult: Blockaid.StellarTransactionScanResponse | undefined;
     try {
-      const scanResult = await scanTransaction(transactionXDR, "internal");
-      setTransactionScanResult(scanResult);
-      return { scanResult };
+      scanResult = await scanTransaction(transactionXDR, "internal");
     } catch (error) {
       logger.error("SwapTransaction", "Transaction scan failed", error);
       // Scan failed → undefined classifies as unable-to-scan downstream.
-      setTransactionScanResult(undefined);
-      return { scanResult: undefined };
+      scanResult = undefined;
     }
+    if (!isStillCurrent(transactionXDR)) return { superseded: true as const };
+    setScan({ xdr: transactionXDR, result: scanResult });
+    return { scanResult };
   }, [
     sourceBalance,
     destinationTokenInput,
@@ -221,7 +287,9 @@ export const useSwapTransaction = ({
     account?.publicKey,
     sourceAmount,
     network,
+    recommendedFee,
     scanTransaction,
+    requote,
     t,
   ]);
 
@@ -372,6 +440,9 @@ export const useSwapTransaction = ({
       // rather than the one this swap was actually built with.
       const { swapSlippage: freshSwapSlippage } =
         useSwapSettingsStore.getState();
+      const addsTrustline =
+        !!useTransactionBuilderStore.getState().swapReview?.addsTrustline;
+      const { destinationToken: swappedDestination } = useSwapStore.getState();
 
       // submitTransaction throws only for a debug override; otherwise it
       // resolves with this attempt's own outcome. That outcome is read from
@@ -487,13 +558,10 @@ export const useSwapTransaction = ({
         },
       });
 
-      // Fire SWAP_TRUSTLINE_ADDED when the combined changeTrust +
-      // pathPaymentStrictSend transaction confirmed a new trustline.
-      const { destinationToken: swappedDestination } = useSwapStore.getState();
-      if (swappedDestination?.requiresTrustline) {
+      if (addsTrustline) {
         analytics.track(AnalyticsEvent.SWAP_TRUSTLINE_ADDED, {
           asset_code: destinationTokenInput.tokenCode,
-          asset_issuer: swappedDestination.issuer ?? "",
+          asset_issuer: swappedDestination?.issuer ?? "",
         });
       }
     } catch (error) {
@@ -590,23 +658,7 @@ export const useSwapTransaction = ({
           duration: 0,
         });
 
-        // The frozen quote is stale — fetch a fresh path so the user's retry
-        // uses a new quote instead of resubmitting the expired one.
-        const {
-          sourceBalance: latestSource,
-          destinationTokenInput: latestDest,
-        } = swapBalancesRef.current;
-        if (latestSource && latestDest && account.publicKey) {
-          // Fire-and-forget: findSwapPath updates the store and handles its own
-          // errors (matches how useSwapPathFinding invokes it).
-          useSwapStore.getState().findSwapPath({
-            sourceBalance: latestSource,
-            destinationBalance: latestDest,
-            sourceAmount,
-            network,
-            publicKey: account.publicKey,
-          });
-        }
+        requote();
 
         return;
       }
@@ -649,6 +701,7 @@ export const useSwapTransaction = ({
     signTransaction,
     network,
     submitTransaction,
+    requote,
     t,
     showToast,
   ]);
@@ -690,6 +743,7 @@ export const useSwapTransaction = ({
     handleProcessingScreenClose,
     sourceToken,
     destinationToken,
-    transactionScanResult,
+    transactionScanResult: scan?.result,
+    scannedTransactionXDR: scan?.xdr,
   };
 };

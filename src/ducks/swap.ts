@@ -4,7 +4,6 @@ import {
   missingSwapRouteReason,
   selectSwapRoute,
   swapQuoteErrorReason,
-  swapRouteIntermediateAssets,
 } from "components/screens/SwapScreen/helpers";
 import {
   DEFAULT_DECIMALS,
@@ -15,6 +14,7 @@ import { logger } from "config/logger";
 import {
   PricedBalance,
   SwapQuotes,
+  SwapRoute,
   TokenTypeWithCustomToken,
 } from "config/types";
 import { useDebugStore } from "ducks/debug";
@@ -29,7 +29,8 @@ import { create } from "zustand";
 export interface SwapPathResult {
   sourceAmount: string;
   destinationAmount: string;
-  path: string[];
+  /** The quoted route `/swap/tx` builds */
+  route: SwapRoute;
   conversionRate: string;
   /** `swapQuoteKey` of the inputs this quote answered. */
   quoteKey: string;
@@ -91,15 +92,18 @@ const initialState = {
   buildError: null,
 };
 
-export const computeDestMinWithSlippage = (
-  destinationAmount: string,
-  slippage: number,
-): string => {
-  const mult = 1 - slippage / 100;
-  return new BigNumber(destinationAmount).times(new BigNumber(mult)).toFixed(7);
-};
+/**
+ * The minOut sent to `/swap/tx`: exact decimal arithmetic, rounded down to
+ * 7 dp. LI.FI's min_amount_out is truncated, so rounding up here can exceed
+ * it by a stroop and turn every build into a 409.
+ */
+export const swapMinOut = (toAmount: string, slippage: number): string =>
+  new BigNumber(toAmount)
+    .times(new BigNumber(100).minus(slippage))
+    .div(100)
+    .toFixed(7, BigNumber.ROUND_DOWN);
 
-const toSwapWireAsset = (balance: PricedBalance): string => {
+export const toSwapWireAsset = (balance: PricedBalance): string => {
   const token = getTokenForPayment(balance);
   return token.isNative()
     ? NATIVE_TOKEN_CODE
@@ -258,15 +262,6 @@ export const useSwapStore = create<SwapState>((set) => ({
           }
         } else {
           outageReported = false;
-          if (swapQuotes.routes.some((r) => r.source === "classic")) {
-            // A classic route was quoted but selectSwapRoute rejected it
-            // (no hops): a backend bug, not a pair without liquidity.
-            logger.error(
-              "SwapStore",
-              "Malformed classic route",
-              swapQuotes.routes,
-            );
-          }
         }
         // The receive card renders destinationAmount directly: the previous
         // quote's amount stays while a new quote is in flight (as designed)
@@ -284,7 +279,7 @@ export const useSwapStore = create<SwapState>((set) => ({
       const pathResult: SwapPathResult = {
         sourceAmount,
         destinationAmount: route.toAmount,
-        path: swapRouteIntermediateAssets(route),
+        route,
         conversionRate: new BigNumber(route.toAmount)
           .dividedBy(new BigNumber(sourceAmount))
           .toFixed(7),

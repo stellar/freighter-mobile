@@ -1,31 +1,15 @@
 import { SwapQuotes, SwapRoute } from "config/types";
 import { isApiError } from "services/apiFactory";
 
-/**
- * The route the swap uses. Classic only, not `routes[0]`, while the client
- * still builds the transaction itself and can build only a classic path
- * payment. A classic route with no hops is treated as no route rather than
- * built as a direct payment that can fail on-chain.
- */
+/** The route the swap uses: the backend's best, which `/swap/tx` builds. */
 export const selectSwapRoute = (quotes: SwapQuotes): SwapRoute | null =>
-  quotes.routes.find(
-    (route) =>
-      route.source === "classic" && (route.paths[0]?.hops.length ?? 0) > 0,
-  ) ?? null;
-
-/**
- * A classic route's path-payment `path`: the assets between the sold and the
- * received asset, in the `XLM` / `CODE:ISSUER` form the transaction builder
- * reads. Classic routes have exactly one path.
- */
-export const swapRouteIntermediateAssets = (route: SwapRoute): string[] =>
-  (route.paths[0]?.hops ?? []).slice(0, -1).map((hop) => hop.to);
+  quotes.routes[0] ?? null;
 
 const OUTAGE_REASONS = ["error", "timeout", "rate_limited"];
 
 /**
- * Why `selectSwapRoute` found nothing: an outage of the source it selects, or
- * a pair that source can't quote. Change with `selectSwapRoute`.
+ * Why no source quoted. Only a classic outage reads as "unavailable": the
+ * spec (§8) shows a LI.FI outage as "no quote" for pairs classic can't serve.
  */
 export const missingSwapRouteReason = (
   quotes: SwapQuotes,

@@ -116,7 +116,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     });
   });
 
-  it("builds the path result from the classic route, not the first-ranked route", async () => {
+  it("builds the path result from the first-ranked route, whichever source quoted it", async () => {
     const quotes: SwapQuotes = {
       routes: [lifiRoute, classicRoute],
       unavailable: [],
@@ -130,12 +130,12 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(state.isLoadingPath).toBe(false);
     expect(state.pathResult).toEqual({
       sourceAmount: "10",
-      destinationAmount: "2.0000000",
-      path: [AQUA],
-      conversionRate: "0.2000000",
+      destinationAmount: "2.1000000",
+      route: lifiRoute,
+      conversionRate: "0.2100000",
       quoteKey: swapQuoteKey(inputs("10")),
     });
-    expect(state.destinationAmount).toBe("2.0000000");
+    expect(state.destinationAmount).toBe("2.1000000");
     expect(state.swapQuotes).toEqual(quotes);
   });
 
@@ -181,32 +181,6 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(state.pathError).toBe("swapScreen.errors.noPathFound");
     expect(state.pathErrorQuoteKey).toBe(swapQuoteKey(inputs("10")));
     expect(state.swapQuotes).toEqual(quotes);
-  });
-
-  it("shows no path for a classic route with no hops", async () => {
-    mockFetchSwapQuotes.mockResolvedValue({
-      routes: [{ ...classicRoute, paths: [{ share: "1", hops: [] }] }],
-      unavailable: [],
-    });
-
-    await find();
-
-    const state = useSwapStore.getState();
-    expect(state.pathResult).toBeNull();
-    expect(state.pathError).toBe("swapScreen.errors.noPathFound");
-  });
-
-  it("shows no path when only a non-classic route was quoted", async () => {
-    mockFetchSwapQuotes.mockResolvedValue({
-      routes: [lifiRoute],
-      unavailable: [],
-    });
-
-    await find();
-
-    const state = useSwapStore.getState();
-    expect(state.pathResult).toBeNull();
-    expect(state.pathError).toBe("swapScreen.errors.noPathFound");
   });
 
   it("treats a 400 as bad input (no path), not as an outage", async () => {
@@ -341,20 +315,6 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(logger.error).toHaveBeenCalledTimes(2);
   });
 
-  it("reports a hopless classic route as a backend fault, shown as no path", async () => {
-    mockFetchSwapQuotes.mockResolvedValue({
-      routes: [{ ...classicRoute, paths: [{ share: "1", hops: [] }] }],
-      unavailable: [],
-    });
-
-    await find();
-
-    expect(useSwapStore.getState().pathError).toBe(
-      "swapScreen.errors.noPathFound",
-    );
-    expect(logger.error).toHaveBeenCalledTimes(1);
-  });
-
   it("reports again on the next screen visit", async () => {
     mockFetchSwapQuotes.mockRejectedValue(apiError(503));
     await find("10");
@@ -367,7 +327,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     "shows swaps temporarily unavailable and reports when classic is unavailable with %s",
     async (reason) => {
       mockFetchSwapQuotes.mockResolvedValue({
-        routes: [lifiRoute],
+        routes: [],
         unavailable: [{ source: "classic", reason }],
       });
 

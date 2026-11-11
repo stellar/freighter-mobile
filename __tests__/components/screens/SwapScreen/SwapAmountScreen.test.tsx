@@ -4,13 +4,17 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
+import { SwapSetupAnswerError } from "components/screens/SwapScreen/helpers/quoteErrors";
+import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
 import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { Token } from "config/types";
 import { useSwapStore } from "ducks/swap";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 // mockBalances isn't typed as Balance[], so the token shapes below are cast
 // to line up with this predicate's signature.
 import { isNativeToken } from "helpers/assetIdentity";
@@ -214,18 +218,34 @@ jest.mock("hooks/useNetworkFees", () => ({
   }),
   clearNetworkFeesCache: jest.fn(),
 }));
+const defaultSwapTransaction = () => ({
+  isProcessing: false,
+  executeSwap: mockExecuteSwap,
+  setupSwapTransaction: mockSetupSwapTransaction,
+  handleProcessingScreenClose: jest.fn(),
+  sourceToken: "XLM",
+  destinationToken: "USDC",
+  transactionScanResult: {},
+  scannedTransactionXDR: undefined,
+  sourceAmount: "10",
+});
 jest.mock("components/screens/SwapScreen/hooks/useSwapTransaction", () => ({
-  useSwapTransaction: jest.fn(() => ({
-    isProcessing: false,
-    executeSwap: mockExecuteSwap,
-    setupSwapTransaction: mockSetupSwapTransaction,
-    handleProcessingScreenClose: jest.fn(),
-    sourceToken: "XLM",
-    destinationToken: "USDC",
-    transactionScanResult: {},
-    sourceAmount: "10",
-  })),
+  useSwapTransaction: jest.fn(() => defaultSwapTransaction()),
 }));
+// Records each useSwapFooter call (a plain function, so mock resets keep it).
+const mockFooterCalls: { transactionXDR?: string }[] = [];
+jest.mock("components/screens/SwapScreen/hooks/useSwapFooter", () => {
+  const actual = jest.requireActual(
+    "components/screens/SwapScreen/hooks/useSwapFooter",
+  );
+  return {
+    ...actual,
+    useSwapFooter: (args: { transactionXDR?: string }) => {
+      mockFooterCalls.push(args);
+      return actual.useSwapFooter(args);
+    },
+  };
+});
 jest.mock("hooks/useBalancesList");
 
 // Single-token scan used to stamp the seeded default destination with a real
@@ -1044,6 +1064,137 @@ describe("SwapAmountScreen", () => {
       // Analytics reserve event must NOT fire on the happy path.
       expect(analytics.track).not.toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+      );
+    });
+
+    it("does not confirm from the security sheet before a transaction is built", () => {
+      // Scanned tokens, so the sheet's proceed action confirms rather than
+      // opening review.
+      setSwapStoreState({
+        sourceTokenId: "XLM",
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+        destinationToken: {
+          id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          tokenCode: "FTT",
+          issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          requiresTrustline: true,
+          securityLevel: "SAFE",
+        } as never,
+      });
+      mockBalancesListReturn({
+        "FTT-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
+          result_type: "Benign",
+        },
+      });
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      // The transaction security sheet is the first with a proceed action.
+      // eslint-disable-next-line no-underscore-dangle
+      const securitySheet = globalThis.__mockSheetRefs.find(
+        (sheet) =>
+          (sheet.customContent?.props as { onProceedAnyway?: () => void })
+            ?.onProceedAnyway,
+      );
+      const { onProceedAnyway } = securitySheet?.customContent?.props as {
+        onProceedAnyway: () => void;
+      };
+      act(() => {
+        onProceedAnyway();
+      });
+
+      expect(securitySheet).toBeDefined();
+      expect(mockExecuteSwap).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["does not report", new SwapSetupAnswerError("quote expired"), false],
+      ["reports", new Error("boom"), true],
+    ])("%s a setup failure to Sentry: %s", async (_, failure, reported) => {
+      const errorSpy = jest.spyOn(logger, "error").mockImplementation();
+      mockSetupSwapTransaction.mockRejectedValueOnce(failure);
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      const calls = errorSpy.mock.calls.filter(
+        ([tag]) => tag === "SwapAmountScreen",
+      );
+      errorSpy.mockRestore();
+      expect(calls.length > 0).toBe(reported);
+    });
+
+    it.each([
+      ["keeps Confirm disabled", "old-xdr", undefined],
+      ["enables Confirm", "new-xdr", "new-xdr"],
+    ])(
+      "%s until the scan for the stored transaction is in (scanned %s)",
+      (_, scannedXdr, footerXdr) => {
+        (useTransactionBuilderStore as unknown as jest.Mock).mockReturnValue({
+          isBuilding: false,
+          transactionXDR: "new-xdr",
+          resetTransaction: mockResetTransaction,
+        });
+        (useSwapTransaction as jest.Mock).mockReturnValue({
+          ...defaultSwapTransaction(),
+          scannedTransactionXDR: scannedXdr,
+        });
+
+        try {
+          renderWithProviders(
+            <SwapAmountScreen
+              navigation={makeNavigation()}
+              route={makeRoute()}
+            />,
+          );
+
+          expect(mockFooterCalls.at(-1)?.transactionXDR).toBe(footerXdr);
+        } finally {
+          (useTransactionBuilderStore as unknown as jest.Mock).mockReturnValue({
+            isBuilding: false,
+            resetTransaction: mockResetTransaction,
+          });
+          (useSwapTransaction as jest.Mock).mockReturnValue(
+            defaultSwapTransaction(),
+          );
+        }
+      },
+    );
+
+    it("opens no sheet when the build was superseded while it ran", async () => {
+      mockSetupSwapTransaction.mockResolvedValueOnce({ superseded: true });
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      expect(mockSetupSwapTransaction).toHaveBeenCalled();
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs.forEach((sheet) =>
+        expect(sheet.present).not.toHaveBeenCalled(),
       );
     });
 
