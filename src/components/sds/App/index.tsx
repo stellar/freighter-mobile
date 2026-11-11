@@ -71,7 +71,7 @@ const AppInitials: React.FC<{
     }}
   >
     <Text sm bold color={color}>
-      {appName.slice(0, 2)}
+      {String(appName ?? "").slice(0, 2)}
     </Text>
   </View>
 );

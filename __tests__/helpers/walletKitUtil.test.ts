@@ -1,8 +1,180 @@
-import { StellarRpcMethods } from "ducks/walletKit";
+import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import {
+  ActiveSessions,
+  StellarRpcChains,
+  StellarRpcMethods,
+  WalletKitSessionProposal,
+} from "ducks/walletKit";
+import {
+  approveSessionProposal,
+  createWalletKit,
+  getActiveSessions,
   isDappRequestUndisplayable,
+  partitionAccountSessions,
   resolveDappRejectionEvent,
 } from "helpers/walletKitUtil";
+import { TFunction } from "i18next";
+
+// A stand-in WalletKit client, installed through createWalletKit.
+const mockWalletKit = {
+  getActiveSessions: jest.fn(),
+  disconnectSession: jest.fn(() => Promise.resolve()),
+  approveSession: jest.fn(),
+  rejectSession: jest.fn(() => Promise.resolve()),
+};
+jest.mock("@walletconnect/core", () => ({ Core: jest.fn() }));
+jest.mock("@reown/walletkit", () => ({
+  WalletKit: { init: jest.fn(() => Promise.resolve(mockWalletKit)) },
+}));
+
+const PUBLIC_KEY = "GDVEU3DD4KOFECV66VIHWEZOYX4ZKR3WV27L464SIIPOU2IUI3JCZA57";
+const TESTNET_ACCOUNT = `${StellarRpcChains.TESTNET}:${PUBLIC_KEY}`;
+const OTHER_ACCOUNT = `${StellarRpcChains.TESTNET}:GOTHER`;
+
+/** A stored session whose stellar namespace lists `accounts`. */
+const sessionWithAccounts = (accounts: unknown) => ({
+  namespaces: { stellar: { accounts } },
+});
+
+describe("partitionAccountSessions", () => {
+  it("keeps the account's sessions and flags the ones without Stellar accounts", () => {
+    const all = {
+      mine: sessionWithAccounts([TESTNET_ACCOUNT]),
+      other: sessionWithAccounts([OTHER_ACCOUNT]),
+      noStellar: { namespaces: {} },
+      notAnArray: sessionWithAccounts("not-an-array"),
+      noNamespaces: {},
+      nonString: sessionWithAccounts([7, TESTNET_ACCOUNT]),
+    } as unknown as ActiveSessions;
+
+    const { accountSessions, malformedTopics } = partitionAccountSessions(
+      all,
+      TESTNET_ACCOUNT,
+    );
+
+    expect(Object.keys(accountSessions)).toEqual(["mine"]);
+    expect(malformedTopics).toEqual([
+      "noStellar",
+      "notAnArray",
+      "noNamespaces",
+      "nonString",
+    ]);
+  });
+});
+
+describe("getActiveSessions", () => {
+  beforeAll(async () => {
+    await createWalletKit();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("returns the account's sessions and disconnects the malformed ones", () => {
+    mockWalletKit.getActiveSessions.mockReturnValue({
+      mine: sessionWithAccounts([TESTNET_ACCOUNT]),
+      noStellar: { namespaces: {} },
+    });
+
+    const sessions = getActiveSessions(PUBLIC_KEY, NETWORKS.TESTNET);
+
+    expect(Object.keys(sessions)).toEqual(["mine"]);
+    expect(mockWalletKit.disconnectSession).toHaveBeenCalledTimes(1);
+    expect(mockWalletKit.disconnectSession).toHaveBeenCalledWith(
+      expect.objectContaining({ topic: "noStellar" }),
+    );
+    expect(logger.warn).toHaveBeenCalledWith(
+      "getActiveSessions",
+      "Skipped sessions without Stellar accounts",
+      { count: 1 },
+    );
+  });
+
+  it("disconnects nothing when every session is well formed", () => {
+    mockWalletKit.getActiveSessions.mockReturnValue({
+      mine: sessionWithAccounts([TESTNET_ACCOUNT]),
+      other: sessionWithAccounts([OTHER_ACCOUNT]),
+    });
+
+    expect(
+      Object.keys(getActiveSessions(PUBLIC_KEY, NETWORKS.TESTNET)),
+    ).toEqual(["mine"]);
+    expect(mockWalletKit.disconnectSession).not.toHaveBeenCalled();
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+});
+
+describe("approveSessionProposal toasts", () => {
+  const ACTIVE_CHAIN = "stellar:testnet";
+  const DAPP_URL = "https://dapp.example";
+
+  /** Renders a key with its dApp name, so the test can read what was shown. */
+  const t = ((key: string, options?: { dappName?: unknown }) =>
+    options && "dappName" in options
+      ? `${key}(${String(options.dappName)})`
+      : key) as unknown as TFunction<"translations", undefined>;
+
+  const proposal = (metadata: unknown) =>
+    ({
+      id: 1,
+      params: {
+        id: 1,
+        proposer: { publicKey: "proposer", metadata },
+        requiredNamespaces: {},
+        optionalNamespaces: {
+          stellar: { chains: [ACTIVE_CHAIN], methods: [], events: [] },
+        },
+      },
+    }) as unknown as WalletKitSessionProposal;
+
+  const approve = (metadata: unknown, showToast: jest.Mock) =>
+    approveSessionProposal({
+      sessionProposal: proposal(metadata),
+      activeChain: ACTIVE_CHAIN,
+      activeAccount: `${ACTIVE_CHAIN}:${PUBLIC_KEY}`,
+      showToast,
+      t,
+    });
+
+  beforeAll(async () => {
+    await createWalletKit();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("names the dApp by its normalized name when the connection succeeds", async () => {
+    const metadata = { name: 7, url: DAPP_URL };
+    mockWalletKit.approveSession.mockResolvedValue({ peer: { metadata } });
+    const showToast = jest.fn();
+
+    await approve(metadata, showToast);
+
+    expect(showToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "walletKit.connectionSuccessfull(dapp.example)",
+        variant: "success",
+      }),
+    );
+  });
+
+  it("names the dApp by its normalized name when the connection fails", async () => {
+    mockWalletKit.approveSession.mockRejectedValue(new Error("relay down"));
+    const showToast = jest.fn();
+
+    await approve({ name: "n".repeat(500), url: DAPP_URL }, showToast);
+
+    expect(showToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: `walletKit.errorConnecting(${"n".repeat(100)})`,
+        variant: "error",
+      }),
+    );
+  });
+});
 
 describe("resolveDappRejectionEvent (dApp-request teardown → signing.*_rejected)", () => {
   const base = {
