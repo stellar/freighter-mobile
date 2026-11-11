@@ -33,6 +33,22 @@ describe("selectSwapRoute", () => {
     ).toBeNull();
   });
 
+  // Building a direct payment from a hopless route could fail on-chain with
+  // the user paying the fee.
+  it("returns null for a classic route with no hops", () => {
+    const noHops: SwapRoute = {
+      ...route("classic", "17"),
+      paths: [{ share: "1", hops: [] }],
+    };
+    expect(selectSwapRoute({ routes: [noHops], unavailable: [] })).toBeNull();
+    expect(
+      selectSwapRoute({
+        routes: [{ ...route("classic", "17"), paths: [] }],
+        unavailable: [],
+      }),
+    ).toBeNull();
+  });
+
   it("returns null for empty routes", () => {
     expect(
       selectSwapRoute({

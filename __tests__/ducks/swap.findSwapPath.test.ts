@@ -155,6 +155,19 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(state.swapQuotes).toEqual(quotes);
   });
 
+  it("shows no path for a classic route with no hops", async () => {
+    mockFetchSwapQuotes.mockResolvedValue({
+      routes: [{ ...classicRoute, paths: [{ share: "1", hops: [] }] }],
+      unavailable: [],
+    });
+
+    await find();
+
+    const state = useSwapStore.getState();
+    expect(state.pathResult).toBeNull();
+    expect(state.pathError).toBe("swapScreen.errors.noPathFound");
+  });
+
   it("shows no path when only a non-classic route was quoted", async () => {
     mockFetchSwapQuotes.mockResolvedValue({
       routes: [lifiRoute],

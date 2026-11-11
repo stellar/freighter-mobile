@@ -4,10 +4,14 @@ import { isApiError } from "services/apiFactory";
 /**
  * The route the swap uses. Classic only, not `routes[0]`, while the client
  * still builds the transaction itself and can build only a classic path
- * payment.
+ * payment. A classic route with no hops is treated as no route rather than
+ * built as a direct payment that can fail on-chain.
  */
 export const selectSwapRoute = (quotes: SwapQuotes): SwapRoute | null =>
-  quotes.routes.find((route) => route.source === "classic") ?? null;
+  quotes.routes.find(
+    (route) =>
+      route.source === "classic" && (route.paths[0]?.hops.length ?? 0) > 0,
+  ) ?? null;
 
 /**
  * A classic route's path-payment `path`: the assets between the sold and the
