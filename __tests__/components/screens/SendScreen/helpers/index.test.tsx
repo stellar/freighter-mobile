@@ -1,5 +1,6 @@
 import Blockaid from "@blockaid/client";
 import { renderHook } from "@testing-library/react-native";
+import { MUXED_CONTRACT_ID_0 } from "__tests__/support/muxedContractFixtures";
 import {
   useSendBannerContent,
   getTransactionSecurity,
@@ -348,6 +349,7 @@ describe("SendScreen Helpers", () => {
         }),
       ).toEqual({
         assetCode: "XLM",
+        isNativeAsset: true,
         isDestinationFunded: false,
         canCreateAccountWithAmount: true,
         isClassicAsset: true,
@@ -367,6 +369,7 @@ describe("SendScreen Helpers", () => {
         }),
       ).toEqual({
         assetCode: "XLM",
+        isNativeAsset: true,
         isDestinationFunded: false,
         canCreateAccountWithAmount: false,
         isClassicAsset: true,
@@ -388,6 +391,23 @@ describe("SendScreen Helpers", () => {
         }),
       ).toMatchObject({
         assetCode: "USDC",
+        isClassicAsset: true,
+        isContractDestination: true,
+      });
+    });
+
+    it("flags a muxed contract (W...) recipient as a contract destination", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenCode: "XLM",
+            tokenType: TokenTypeWithCustomToken.NATIVE,
+          },
+          isDestinationFunded: false,
+          tokenAmount: "0.5",
+          recipientAddress: MUXED_CONTRACT_ID_0,
+        }),
+      ).toMatchObject({
         isClassicAsset: true,
         isContractDestination: true,
       });
@@ -486,6 +506,36 @@ describe("SendScreen Helpers", () => {
           tokenAmount: "1",
         }),
       ).toMatchObject({ assetCode: "unknown", isClassicAsset: false });
+    });
+  });
+
+  describe("buildUnfundedContext — isNativeAsset", () => {
+    it("marks only the NATIVE tokenType as native, regardless of code", () => {
+      const nonNative = buildUnfundedContext({
+        selectedBalance: {
+          tokenCode: "XLM",
+          tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+        },
+        isDestinationFunded: false,
+        tokenAmount: "5",
+        recipientAddress:
+          "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO",
+      });
+      expect(nonNative?.isNativeAsset).toBe(false);
+      expect(nonNative?.canCreateAccountWithAmount).toBeUndefined();
+
+      const native = buildUnfundedContext({
+        selectedBalance: {
+          tokenCode: "XLM",
+          tokenType: TokenTypeWithCustomToken.NATIVE,
+        },
+        isDestinationFunded: false,
+        tokenAmount: "5",
+        recipientAddress:
+          "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO",
+      });
+      expect(native?.isNativeAsset).toBe(true);
+      expect(native?.canCreateAccountWithAmount).toBe(true);
     });
   });
 });

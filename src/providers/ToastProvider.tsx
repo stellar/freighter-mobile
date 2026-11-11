@@ -176,17 +176,26 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
 
   return (
     <ToastContext.Provider value={contextValue}>
-      <ToastContainer>
-        <ToastWrapper $insets={insets}>
-          {visibleToasts.map((toast) => (
-            <Toast
-              key={toast.toastId}
-              {...toast}
-              onDismiss={() => dismissToast(toast.toastId)}
-            />
-          ))}
-        </ToastWrapper>
-      </ToastContainer>
+      {/* Mounted only while a toast shows: the layer spans the top of the
+          screen, inset included, over the navigation header's back and
+          close buttons. Its empty space lets touches through even then. */}
+      {visibleToasts.length > 0 && (
+        <ToastContainer testID="toast-layer" pointerEvents="box-none">
+          <ToastWrapper
+            testID="toast-stack"
+            pointerEvents="box-none"
+            $insets={insets}
+          >
+            {visibleToasts.map((toast) => (
+              <Toast
+                key={toast.toastId}
+                {...toast}
+                onDismiss={() => dismissToast(toast.toastId)}
+              />
+            ))}
+          </ToastWrapper>
+        </ToastContainer>
+      )}
       {children}
     </ToastContext.Provider>
   );

@@ -1,3 +1,12 @@
+import {
+  BASE_CONTRACT,
+  G_ACCOUNT,
+  M_ACCOUNT_ID_1234,
+  MUXED_CONTRACT_ID_0,
+  MUXED_CONTRACT_ID_1234,
+  MUXED_CONTRACT_ID_U64_MAX,
+  U64_MAX,
+} from "__tests__/support/muxedContractFixtures";
 import { AssetBalanceChange } from "components/screens/HistoryScreen/types";
 import {
   TESTNET_NETWORK_DETAILS,
@@ -5,6 +14,7 @@ import {
   DEFAULT_DECIMALS,
   NETWORKS,
 } from "config/constants";
+import { logger } from "config/logger";
 import {
   processAssetBalanceChanges,
   normalizePaymentToAssetDiffs,
@@ -381,6 +391,154 @@ describe("processAssetBalanceChanges", () => {
       );
 
       expect(result[0].destination).toBeUndefined();
+    });
+  });
+
+  describe("muxed contract (W) destinations", () => {
+    // Horizon reports a SAC transfer to a W with the base contract in `to`
+    // and the mux id in `destination_muxed_id`.
+    const sentToContract = (
+      fields: Partial<AssetBalanceChange> = {},
+    ): AssetBalanceChange => ({
+      asset_type: "native",
+      type: "transfer",
+      from: mockPublicKey,
+      to: BASE_CONTRACT,
+      amount: "5.0000000",
+      ...fields,
+    });
+    const processOne = (change: AssetBalanceChange) =>
+      processAssetBalanceChanges(
+        { asset_balance_changes: [change] } as any,
+        mockPublicKey,
+        TESTNET_NETWORK_DETAILS,
+      );
+
+    it.each([
+      ["0", MUXED_CONTRACT_ID_0],
+      ["1234", MUXED_CONTRACT_ID_1234],
+      [U64_MAX, MUXED_CONTRACT_ID_U64_MAX],
+    ])(
+      "shows a debit to a C with mux id %s as the W address",
+      async (id, w) => {
+        const [diff] = await processOne(
+          sentToContract({ destination_muxed_id: id }),
+        );
+        expect(diff.isCredit).toBe(false);
+        expect(diff.destination).toBe(w);
+      },
+    );
+
+    it("shows a debit to a C without a mux id as the C", async () => {
+      const [diff] = await processOne(sentToContract());
+      expect(diff.destination).toBe(BASE_CONTRACT);
+      // The common case: no id means nothing to rebuild, and nothing to log.
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it.each(["", "abc", "-1", "0x10", "18446744073709551616"])(
+      "keeps the change and shows the C for mux id %j",
+      async (id) => {
+        const result = await processOne(
+          sentToContract({ destination_muxed_id: id }),
+        );
+        expect(result).toHaveLength(1);
+        expect(result[0].amount).toBe("5.0000000");
+        expect(result[0].destination).toBe(BASE_CONTRACT);
+      },
+    );
+
+    it("logs an invalid mux id once, but not an empty one (absent, not invalid)", async () => {
+      await processOne(sentToContract({ destination_muxed_id: "" }));
+      expect(logger.error).not.toHaveBeenCalled();
+
+      await processOne(sentToContract({ destination_muxed_id: "abc" }));
+      expect(logger.error).toHaveBeenCalledTimes(1);
+      expect(logger.error).toHaveBeenCalledWith(
+        "getDebitDestination",
+        "Invalid destination_muxed_id",
+        expect.any(Error),
+      );
+    });
+
+    it("doesn't rebuild on a credit, where the mux id is on the user's side", async () => {
+      const [diff] = await processOne(
+        sentToContract({
+          from: BASE_CONTRACT,
+          to: mockPublicKey,
+          destination_muxed_id: "1234",
+        }),
+      );
+      expect(diff.isCredit).toBe(true);
+      expect(diff.destination).toBe(BASE_CONTRACT);
+    });
+  });
+
+  describe("muxed account (M) destinations", () => {
+    // Horizon reports a transfer to an M the same way as one to a W: the base
+    // account in `to` and the mux id in `destination_muxed_id`.
+    const sentToAccount = (
+      fields: Partial<AssetBalanceChange> = {},
+    ): AssetBalanceChange => ({
+      asset_type: "native",
+      type: "transfer",
+      from: mockPublicKey,
+      to: G_ACCOUNT,
+      amount: "5.0000000",
+      ...fields,
+    });
+    const processOne = (change: AssetBalanceChange) =>
+      processAssetBalanceChanges(
+        { asset_balance_changes: [change] } as any,
+        mockPublicKey,
+        TESTNET_NETWORK_DETAILS,
+      );
+
+    it("shows a debit to a G with a mux id as the M address", async () => {
+      const [diff] = await processOne(
+        sentToAccount({ destination_muxed_id: "1234" }),
+      );
+      expect(diff.isCredit).toBe(false);
+      expect(diff.destination).toBe(M_ACCOUNT_ID_1234);
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it("shows a debit to a G without a mux id as the G", async () => {
+      const [diff] = await processOne(sentToAccount());
+      expect(diff.destination).toBe(G_ACCOUNT);
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it.each(["", "abc", "-1", "0x10", "18446744073709551616"])(
+      "keeps the change and shows the G for mux id %j",
+      async (id) => {
+        const result = await processOne(
+          sentToAccount({ destination_muxed_id: id }),
+        );
+        expect(result).toHaveLength(1);
+        expect(result[0].amount).toBe("5.0000000");
+        expect(result[0].destination).toBe(G_ACCOUNT);
+      },
+    );
+
+    it("logs an invalid mux id once, but not an empty one (absent, not invalid)", async () => {
+      await processOne(sentToAccount({ destination_muxed_id: "" }));
+      expect(logger.error).not.toHaveBeenCalled();
+
+      await processOne(sentToAccount({ destination_muxed_id: "abc" }));
+      expect(logger.error).toHaveBeenCalledTimes(1);
+    });
+
+    it("doesn't rebuild on a credit, where the mux id is on the user's side", async () => {
+      const [diff] = await processOne(
+        sentToAccount({
+          from: G_ACCOUNT,
+          to: mockPublicKey,
+          destination_muxed_id: "1234",
+        }),
+      );
+      expect(diff.isCredit).toBe(true);
+      expect(diff.destination).toBe(G_ACCOUNT);
     });
   });
 

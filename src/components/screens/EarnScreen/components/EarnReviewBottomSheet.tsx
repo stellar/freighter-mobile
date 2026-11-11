@@ -10,7 +10,9 @@ import {
   projectCurrentEarnings,
   projectEarnings,
 } from "components/screens/EarnScreen/helpers";
-import SignTransactionDetailsBottomSheet from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
+import SignTransactionDetailsBottomSheet, {
+  SignTransactionDetailsHeader,
+} from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
@@ -108,6 +110,19 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
     xdr: transactionXDR || "",
   });
   const transactionDetailsSheetRef = useRef<BottomSheetModal>(null);
+
+  const handleDismissTransactionDetails = useCallback(() => {
+    transactionDetailsSheetRef.current?.dismiss();
+  }, []);
+
+  const renderTransactionDetailsHeader = useCallback(
+    () => (
+      <SignTransactionDetailsHeader
+        onDismiss={handleDismissTransactionDetails}
+      />
+    ),
+    [handleDismissTransactionDetails],
+  );
 
   const networkDetails = useMemo(
     () => mapNetworkToNetworkDetails(network),
@@ -474,17 +489,12 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
       {transactionDetails && (
         <BottomSheet
           modalRef={transactionDetailsSheetRef}
-          handleCloseModal={() => transactionDetailsSheetRef.current?.dismiss()}
-          enableDynamicSizing={false}
-          useInsetsBottomPadding={false}
+          scrollable
           enablePanDownToClose={false}
           analyticsEvent={AnalyticsEvent.VIEW_EARN_TRANSACTION_DETAILS}
-          snapPoints={["90%"]}
+          scrollViewHeaderComponent={renderTransactionDetailsHeader}
           customContent={
-            <SignTransactionDetailsBottomSheet
-              data={transactionDetails}
-              onDismiss={() => transactionDetailsSheetRef.current?.dismiss()}
-            />
+            <SignTransactionDetailsBottomSheet data={transactionDetails} />
           }
         />
       )}

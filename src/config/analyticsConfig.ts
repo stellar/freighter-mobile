@@ -1,5 +1,8 @@
 import { ALL_ROUTES_OBJECT } from "config/routes";
 
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
 /**
  * Analytics Event Definitions
  *
@@ -20,9 +23,7 @@ export enum AnalyticsEvent {
   // Screen Navigation Events (Auto-generated from routes)
   VIEW_WELCOME = "welcome",
   VIEW_CHOOSE_PASSWORD = "account_creator",
-  VIEW_RECOVERY_PHRASE_ALERT = "mnemonic_phrase_alert",
   VIEW_RECOVERY_PHRASE = "mnemonic_phrase",
-  VIEW_VALIDATE_RECOVERY_PHRASE = "confirm_mnemonic_phrase",
   VIEW_IMPORT_WALLET = "recover_account",
   VIEW_LOCK_SCREEN = "unlock_account",
   VIEW_HOME = "account",
@@ -46,21 +47,16 @@ export enum AnalyticsEvent {
   VIEW_SIGN_DAPP_AUTH_ENTRY_DETAILS = "sign_auth_entry",
   VIEW_SEND_SEARCH_CONTACTS = "send_payment_to",
   VIEW_SEND_AMOUNT = "send_payment_amount",
-  VIEW_SEND_MEMO = "send_payment_settings",
-  VIEW_SEND_FEE = "send_payment_fee",
-  VIEW_SEND_TIMEOUT = "send_payment_timeout",
   VIEW_SEND_CONFIRM = "send_payment_confirm",
   VIEW_SEND_TRANSACTION_DETAILS = "send_transaction_details",
   VIEW_SEND_PROCESSING = "send_payment_processing",
   VIEW_SEND_SUCCESS = "send_payment_success",
   VIEW_SWAP = "swap",
   VIEW_SWAP_AMOUNT = "swap_amount",
-  VIEW_SWAP_FEE = "swap_fee",
-  VIEW_SWAP_SLIPPAGE = "swap_slippage",
-  VIEW_SWAP_TIMEOUT = "swap_timeout",
-  VIEW_SWAP_SETTINGS = "swap_settings",
   VIEW_SWAP_CONFIRM = "swap_confirm",
   VIEW_SWAP_TRANSACTION_DETAILS = "swap_transaction_details",
+  VIEW_SWAP_PROCESSING = "swap_processing",
+  VIEW_SWAP_SUCCESS = "swap_success",
   VIEW_SETTINGS = "settings",
   VIEW_PREFERENCES = "preferences",
   VIEW_CHANGE_NETWORK = "manage_network",
@@ -114,10 +110,6 @@ export enum AnalyticsEvent {
   // carries reason_code
   CREATE_PASSWORD_FAIL = "onboarding.password_create_failed",
   VIEWED_RECOVERY_PHRASE = "onboarding.recovery_phrase_viewed",
-  CONFIRM_RECOVERY_PHRASE_SUCCESS = "onboarding.recovery_phrase_confirmed",
-  // carries reason_code
-  CONFIRM_RECOVERY_PHRASE_FAIL = "onboarding.recovery_phrase_confirm_failed",
-  ACCOUNT_CREATOR_CONFIRM_MNEMONIC_BACK = "onboarding.recovery_phrase_back_clicked",
   // Fires once from the signUp store action's success path (create-account
   // terminal point) — NOT from the recovery-phrase / biometrics UI screens.
   // The import/recover flow emits account_recovery.completed instead, matching
@@ -192,6 +184,10 @@ export enum AnalyticsEvent {
   GRANT_DAPP_ACCESS_BLOCKED = "dapp_access.blocked",
   SIGN_TRANSACTION_SUCCESS = "signing.transaction_approved",
   SIGN_TRANSACTION_FAIL = "signing.transaction_rejected",
+  // Signing threw for a reason the user did not choose. Kept distinct from
+  // SIGN_TRANSACTION_FAIL, which is the user declining. Mirrors the message
+  // and auth-entry families, which have carried both halves from the start.
+  SIGN_TRANSACTION_FAILED = "signing.transaction_failed",
   // signing.transaction_blocked (memo_required): NOT emitted on mobile — the
   // memo-required state is a passive UI gate (disabled confirm button), not a
   // reachable block/refuse branch. Extension emits it; kept for a shared catalog.
@@ -265,6 +261,19 @@ export enum AnalyticsEvent {
   // both platforms (e.g. transaction.submitted, dapp_access.blocked).
   BLOCKAID_WARNING_REPORTED = "blockaid.warning_reported",
 
+  // Token price chart (design §7.5) — FROZEN cross-platform wire strings,
+  // identical on the extension from day one. token_chart.loaded is an
+  // OUTCOME event fired when the history fetch resolves (has_data: false on
+  // empty) — deliberately NOT a screen view: screen.viewed (asset_detail)
+  // already covers the detail-view open, and a chart-view event would
+  // duplicate it one-for-one.
+  TOKEN_CHART_LOADED = "token_chart.loaded",
+  /** Per-range VIEW (cache hits included), unlike loaded's per-network-fetch. */
+  TOKEN_CHART_VIEWED = "token_chart.viewed",
+  TOKEN_CHART_RANGE_CHANGED = "token_chart.range_changed",
+  /** Once per drag-to-inspect activation, never per move (§7.5, Phase 3). */
+  TOKEN_CHART_BRUSHED = "token_chart.brushed",
+
   // Onramp
   COINBASE_ONRAMP_OPENED = "onramp.coinbase_opened",
 
@@ -276,6 +285,11 @@ export enum AnalyticsEvent {
   DISCOVER_TAB_CLOSED = "discover.tab_closed",
   DISCOVER_ALL_TABS_CLOSED = "discover.all_tabs_closed",
   DISCOVER_WELCOME_MODAL_VIEWED = "discover.welcome_modal_viewed",
+
+  // Rebrand announcement (existing users only)
+  REBRAND_ANNOUNCEMENT_VIEWED = "rebrand.announcement_viewed",
+  // carries source (close | continue | back)
+  REBRAND_ANNOUNCEMENT_DISMISSED = "rebrand.announcement_dismissed",
 
   // Platform-only events (retained; renamed to the shared grammar)
   QR_SCAN_SUCCESS = "qr_scan.completed",
@@ -385,13 +399,7 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_CHOOSE_PASSWORD]: {
     flow: AnalyticsFlow.ONBOARDING,
   },
-  [AnalyticsEvent.VIEW_RECOVERY_PHRASE_ALERT]: {
-    flow: AnalyticsFlow.ONBOARDING,
-  },
   [AnalyticsEvent.VIEW_RECOVERY_PHRASE]: {
-    flow: AnalyticsFlow.ONBOARDING,
-  },
-  [AnalyticsEvent.VIEW_VALIDATE_RECOVERY_PHRASE]: {
     flow: AnalyticsFlow.ONBOARDING,
   },
   [AnalyticsEvent.VIEW_IMPORT_WALLET]: {
@@ -471,15 +479,6 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_SEND_AMOUNT]: {
     flow: AnalyticsFlow.SEND,
   },
-  [AnalyticsEvent.VIEW_SEND_MEMO]: {
-    flow: AnalyticsFlow.SEND,
-  },
-  [AnalyticsEvent.VIEW_SEND_FEE]: {
-    flow: AnalyticsFlow.SEND,
-  },
-  [AnalyticsEvent.VIEW_SEND_TIMEOUT]: {
-    flow: AnalyticsFlow.SEND,
-  },
   [AnalyticsEvent.VIEW_SEND_CONFIRM]: {
     flow: AnalyticsFlow.SEND,
     step: "confirm",
@@ -500,24 +499,20 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_SWAP_AMOUNT]: {
     flow: AnalyticsFlow.SWAP,
   },
-  [AnalyticsEvent.VIEW_SWAP_FEE]: {
-    flow: AnalyticsFlow.SWAP,
-  },
-  [AnalyticsEvent.VIEW_SWAP_SLIPPAGE]: {
-    flow: AnalyticsFlow.SWAP,
-  },
-  [AnalyticsEvent.VIEW_SWAP_TIMEOUT]: {
-    flow: AnalyticsFlow.SWAP,
-  },
-  [AnalyticsEvent.VIEW_SWAP_SETTINGS]: {
-    flow: AnalyticsFlow.SWAP,
-  },
   [AnalyticsEvent.VIEW_SWAP_CONFIRM]: {
     flow: AnalyticsFlow.SWAP,
     step: "confirm",
   },
   [AnalyticsEvent.VIEW_SWAP_TRANSACTION_DETAILS]: {
     flow: AnalyticsFlow.SWAP,
+  },
+  [AnalyticsEvent.VIEW_SWAP_PROCESSING]: {
+    flow: AnalyticsFlow.SWAP,
+    step: "processing",
+  },
+  [AnalyticsEvent.VIEW_SWAP_SUCCESS]: {
+    flow: AnalyticsFlow.SWAP,
+    step: "success",
   },
   // Settings
   [AnalyticsEvent.VIEW_SETTINGS]: {
@@ -661,9 +656,7 @@ export const ROUTES_WITHOUT_ANALYTICS = getRoutesWithoutAnalytics();
 export const CUSTOM_ROUTE_MAPPINGS: Record<string, AnalyticsEvent> = {
   // Auth flow overrides (extension uses different names)
   ChoosePasswordScreen: AnalyticsEvent.VIEW_CHOOSE_PASSWORD,
-  RecoveryPhraseAlertScreen: AnalyticsEvent.VIEW_RECOVERY_PHRASE_ALERT,
   RecoveryPhraseScreen: AnalyticsEvent.VIEW_RECOVERY_PHRASE,
-  ValidateRecoveryPhraseScreen: AnalyticsEvent.VIEW_VALIDATE_RECOVERY_PHRASE,
   ImportWalletScreen: AnalyticsEvent.VIEW_IMPORT_WALLET,
   LockScreen: AnalyticsEvent.VIEW_LOCK_SCREEN,
 
@@ -678,9 +671,6 @@ export const CUSTOM_ROUTE_MAPPINGS: Record<string, AnalyticsEvent> = {
   // Send payment overrides (extension uses different names)
   SendSearchContactsScreen: AnalyticsEvent.VIEW_SEND_SEARCH_CONTACTS,
   TransactionAmountScreen: AnalyticsEvent.VIEW_SEND_AMOUNT,
-  TransactionMemoScreen: AnalyticsEvent.VIEW_SEND_MEMO,
-  TransactionFeeScreen: AnalyticsEvent.VIEW_SEND_FEE,
-  TransactionTimeoutScreen: AnalyticsEvent.VIEW_SEND_TIMEOUT,
 
   // Settings overrides
   ChangeNetworkScreen: AnalyticsEvent.VIEW_CHANGE_NETWORK,

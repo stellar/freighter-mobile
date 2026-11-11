@@ -3,6 +3,7 @@ import { Address, Operation, OperationRecord, xdr } from "@stellar/stellar-sdk";
 import { List, ListItemProps } from "components/List";
 import Spinner from "components/Spinner";
 import {
+  ContractSpecNote,
   InlinePublicKeyRow,
   KeyValueListItem,
   KeyValueSigner,
@@ -11,6 +12,7 @@ import {
   KeyValueInvokeHostFn,
   KeyValueSignerKeyOptions,
   KeyValueInvokeHostFnArgs,
+  useContractArgNames,
 } from "components/screens/SignTransactionDetails/components/KeyVal";
 import Avatar from "components/sds/Avatar";
 import { Badge } from "components/sds/Badge";
@@ -26,7 +28,11 @@ import {
 import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import { formatTokenForDisplay } from "helpers/formatAmount";
-import { getCreateContractArgs } from "helpers/soroban";
+import {
+  getCreateContractArgs,
+  xdrStringToDisplay,
+  xdrStringToRaw,
+} from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -87,7 +93,7 @@ const RenderOperationByType = ({
           themeColor="gray"
           onPress={() => copyToClipboard(issuer)}
         />
-        <Text>{truncateAddress(issuer)}</Text>
+        <Text medium>{truncateAddress(issuer)}</Text>
       </View>
     ),
     titleColor: themeColors.text.secondary,
@@ -162,7 +168,7 @@ const RenderOperationByType = ({
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
               <Avatar publicAddress={destination} size="sm" hasDarkBackground />
-              <Text>{truncateAddress(destination)}</Text>
+              <Text medium>{truncateAddress(destination)}</Text>
             </View>
           ),
           titleColor: themeColors.text.secondary,
@@ -170,7 +176,7 @@ const RenderOperationByType = ({
         {
           title: t("signTransactionDetails.operations.startingBalance"),
           trailingContent: (
-            <Text>
+            <Text medium>
               {formatTokenForDisplay(startingBalance, NATIVE_TOKEN_CODE)}
             </Text>
           ),
@@ -189,21 +195,21 @@ const RenderOperationByType = ({
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
               <Avatar publicAddress={destination} size="sm" hasDarkBackground />
-              <Text>{truncateAddress(destination)}</Text>
+              <Text medium>{truncateAddress(destination)}</Text>
             </View>
           ),
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.tokenCode"),
-          trailingContent: <Text>{asset.code}</Text>,
+          trailingContent: <Text medium>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(asset.issuer ? [issuerListItem(asset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.amount"),
           trailingContent: (
-            <Text>{formatTokenForDisplay(amount, asset.code)}</Text>
+            <Text medium>{formatTokenForDisplay(amount, asset.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -218,14 +224,14 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.tokenCode"),
-          trailingContent: <Text>{sendAsset.code}</Text>,
+          trailingContent: <Text medium>{sendAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(sendAsset.issuer ? [issuerListItem(sendAsset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.sendMax"),
           trailingContent: (
-            <Text>{formatTokenForDisplay(sendMax, sendAsset.code)}</Text>
+            <Text medium>{formatTokenForDisplay(sendMax, sendAsset.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -234,21 +240,23 @@ const RenderOperationByType = ({
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
               <Avatar publicAddress={destination} size="sm" hasDarkBackground />
-              <Text>{truncateAddress(destination)}</Text>
+              <Text medium>{truncateAddress(destination)}</Text>
             </View>
           ),
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.destinationToken"),
-          trailingContent: <Text>{destAsset.code}</Text>,
+          trailingContent: <Text medium>{destAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(destAsset.issuer ? [issuerListItem(destAsset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.destinationAmount"),
           trailingContent: (
-            <Text>{formatTokenForDisplay(destAmount, destAsset.code)}</Text>
+            <Text medium>
+              {formatTokenForDisplay(destAmount, destAsset.code)}
+            </Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -269,14 +277,16 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.tokenCode"),
-          trailingContent: <Text>{sendAsset.code}</Text>,
+          trailingContent: <Text medium>{sendAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(sendAsset.issuer ? [issuerListItem(sendAsset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.sendAmount"),
           trailingContent: (
-            <Text>{formatTokenForDisplay(sendAmount, sendAsset.code)}</Text>
+            <Text medium>
+              {formatTokenForDisplay(sendAmount, sendAsset.code)}
+            </Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -285,21 +295,21 @@ const RenderOperationByType = ({
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
               <Avatar publicAddress={destination} size="sm" hasDarkBackground />
-              <Text>{truncateAddress(destination)}</Text>
+              <Text medium>{truncateAddress(destination)}</Text>
             </View>
           ),
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.destinationToken"),
-          trailingContent: <Text>{destAsset.code}</Text>,
+          trailingContent: <Text medium>{destAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(destAsset.issuer ? [issuerListItem(destAsset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.destinationMinimum"),
           trailingContent: (
-            <Text>{formatTokenForDisplay(destMin, destAsset.code)}</Text>
+            <Text medium>{formatTokenForDisplay(destMin, destAsset.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -319,27 +329,27 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.selling"),
-          trailingContent: <Text>{selling.code}</Text>,
+          trailingContent: <Text medium>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(selling.issuer ? [issuerListItem(selling.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.sellingAmount"),
           trailingContent: (
-            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
+            <Text medium>{formatTokenForDisplay(amount, selling.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.buying"),
-          trailingContent: <Text>{buying.code}</Text>,
+          trailingContent: <Text medium>{buying.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(buying.issuer ? [issuerListItem(buying.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.price"),
           trailingContent: (
-            <Text>
+            <Text medium>
               {formatOfferPriceRatio(price, buying.code, selling.code)}
             </Text>
           ),
@@ -355,32 +365,32 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.offerId"),
-          trailingContent: <Text>{offerId}</Text>,
+          trailingContent: <Text medium>{offerId}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.selling"),
-          trailingContent: <Text>{selling.code}</Text>,
+          trailingContent: <Text medium>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(selling.issuer ? [issuerListItem(selling.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.sellingAmount"),
           trailingContent: (
-            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
+            <Text medium>{formatTokenForDisplay(amount, selling.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.buying"),
-          trailingContent: <Text>{buying.code}</Text>,
+          trailingContent: <Text medium>{buying.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(buying.issuer ? [issuerListItem(buying.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.price"),
           trailingContent: (
-            <Text>
+            <Text medium>
               {formatOfferPriceRatio(price, buying.code, selling.code)}
             </Text>
           ),
@@ -396,32 +406,32 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.offerId"),
-          trailingContent: <Text>{offerId}</Text>,
+          trailingContent: <Text medium>{offerId}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.buying"),
-          trailingContent: <Text>{buying.code}</Text>,
+          trailingContent: <Text medium>{buying.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(buying.issuer ? [issuerListItem(buying.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.buyingAmount"),
           trailingContent: (
-            <Text>{formatTokenForDisplay(buyAmount, buying.code)}</Text>
+            <Text medium>{formatTokenForDisplay(buyAmount, buying.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.selling"),
-          trailingContent: <Text>{selling.code}</Text>,
+          trailingContent: <Text medium>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(selling.issuer ? [issuerListItem(selling.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.price"),
           trailingContent: (
-            <Text>
+            <Text medium>
               {formatOfferPriceRatio(price, selling.code, buying.code)}
             </Text>
           ),
@@ -485,7 +495,7 @@ const RenderOperationByType = ({
                 size="sm"
                 hasDarkBackground
               />
-              <Text>{truncateAddress(inflationDest)}</Text>
+              <Text medium>{truncateAddress(inflationDest)}</Text>
             </View>
           ),
           titleColor: themeColors.text.secondary,
@@ -501,7 +511,7 @@ const RenderOperationByType = ({
                 {t("signTransactionDetails.operations.cleared")}
               </Badge>
             ) : (
-              <Text>{homeDomain}</Text>
+              <Text medium>{homeDomain}</Text>
             ),
           titleColor: themeColors.text.secondary,
         });
@@ -515,7 +525,7 @@ const RenderOperationByType = ({
       if (highThreshold !== undefined && highThreshold !== null) {
         items.push({
           title: t("signTransactionDetails.operations.highThreshold"),
-          trailingContent: <Text>{highThreshold.toString()}</Text>,
+          trailingContent: <Text medium>{highThreshold.toString()}</Text>,
           titleColor: themeColors.text.secondary,
         });
       }
@@ -523,7 +533,7 @@ const RenderOperationByType = ({
       if (medThreshold !== undefined && medThreshold !== null) {
         items.push({
           title: t("signTransactionDetails.operations.mediumThreshold"),
-          trailingContent: <Text>{medThreshold.toString()}</Text>,
+          trailingContent: <Text medium>{medThreshold.toString()}</Text>,
           titleColor: themeColors.text.secondary,
         });
       }
@@ -531,7 +541,7 @@ const RenderOperationByType = ({
       if (lowThreshold !== undefined && lowThreshold !== null) {
         items.push({
           title: t("signTransactionDetails.operations.lowThreshold"),
-          trailingContent: <Text>{lowThreshold.toString()}</Text>,
+          trailingContent: <Text medium>{lowThreshold.toString()}</Text>,
           titleColor: themeColors.text.secondary,
         });
       }
@@ -539,7 +549,7 @@ const RenderOperationByType = ({
       if (masterWeight !== undefined && masterWeight !== null) {
         items.push({
           title: t("signTransactionDetails.operations.masterWeight"),
-          trailingContent: <Text>{masterWeight.toString()}</Text>,
+          trailingContent: <Text medium>{masterWeight.toString()}</Text>,
           titleColor: themeColors.text.secondary,
         });
       }
@@ -572,17 +582,17 @@ const RenderOperationByType = ({
         items.push(
           {
             title: t("signTransactionDetails.operations.tokenA"),
-            trailingContent: <Text>{line.assetA.getCode()}</Text>,
+            trailingContent: <Text medium>{line.assetA.getCode()}</Text>,
             titleColor: themeColors.text.secondary,
           },
           {
             title: t("signTransactionDetails.operations.tokenB"),
-            trailingContent: <Text>{line.assetB.getCode()}</Text>,
+            trailingContent: <Text medium>{line.assetB.getCode()}</Text>,
             titleColor: themeColors.text.secondary,
           },
           {
             title: t("signTransactionDetails.operations.fee"),
-            trailingContent: <Text>{line.fee}</Text>,
+            trailingContent: <Text medium>{line.fee}</Text>,
             titleColor: themeColors.text.secondary,
           },
         );
@@ -590,7 +600,7 @@ const RenderOperationByType = ({
         items.push(
           {
             title: t("signTransactionDetails.operations.tokenCode"),
-            trailingContent: <Text>{line.code}</Text>,
+            trailingContent: <Text medium>{line.code}</Text>,
             titleColor: themeColors.text.secondary,
           },
           {
@@ -602,7 +612,7 @@ const RenderOperationByType = ({
                   themeColor="gray"
                   onPress={() => copyToClipboard(line.issuer ?? "")}
                 />
-                <Text>{truncateAddress(line.issuer ?? "")}</Text>
+                <Text medium>{truncateAddress(line.issuer ?? "")}</Text>
               </View>
             ),
             titleColor: themeColors.text.secondary,
@@ -612,12 +622,12 @@ const RenderOperationByType = ({
 
       items.push({
         title: t("signTransactionDetails.operations.type"),
-        trailingContent: <Text>{type}</Text>,
+        trailingContent: <Text medium>{type}</Text>,
         titleColor: themeColors.text.secondary,
       });
       items.push({
         title: t("signTransactionDetails.operations.limit"),
-        trailingContent: <Text>{limit}</Text>,
+        trailingContent: <Text medium>{limit}</Text>,
         titleColor: themeColors.text.secondary,
       });
 
@@ -632,19 +642,19 @@ const RenderOperationByType = ({
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
               <Avatar publicAddress={trustor} size="sm" hasDarkBackground />
-              <Text>{truncateAddress(trustor)}</Text>
+              <Text medium>{truncateAddress(trustor)}</Text>
             </View>
           ),
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.tokenCode"),
-          trailingContent: <Text>{assetCode}</Text>,
+          trailingContent: <Text medium>{assetCode}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.authorize"),
-          trailingContent: <Text>{String(authorize)}</Text>,
+          trailingContent: <Text medium>{String(authorize)}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -660,7 +670,7 @@ const RenderOperationByType = ({
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
               <Avatar publicAddress={destination} size="sm" hasDarkBackground />
-              <Text>{truncateAddress(destination)}</Text>
+              <Text medium>{truncateAddress(destination)}</Text>
             </View>
           ),
           titleColor: themeColors.text.secondary,
@@ -699,7 +709,7 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.bumpTo"),
-          trailingContent: <Text>{bumpTo}</Text>,
+          trailingContent: <Text medium>{bumpTo}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -712,14 +722,14 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.tokenCode"),
-          trailingContent: <Text>{asset.code}</Text>,
+          trailingContent: <Text medium>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(asset.issuer ? [issuerListItem(asset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.amount"),
           trailingContent: (
-            <Text>{formatTokenForDisplay(amount, asset.code)}</Text>
+            <Text medium>{formatTokenForDisplay(amount, asset.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -738,7 +748,7 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.balanceId"),
-          trailingContent: <Text>{truncateAddress(balanceId)}</Text>,
+          trailingContent: <Text medium>{truncateAddress(balanceId)}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -751,7 +761,7 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.sponsoredId"),
-          trailingContent: <Text>{truncateAddress(sponsoredId)}</Text>,
+          trailingContent: <Text medium>{truncateAddress(sponsoredId)}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -762,7 +772,7 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.type"),
-          trailingContent: <Text>{type}</Text>,
+          trailingContent: <Text medium>{type}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -775,14 +785,14 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.tokenCode"),
-          trailingContent: <Text>{asset.code}</Text>,
+          trailingContent: <Text medium>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(asset.issuer ? [issuerListItem(asset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.amount"),
           trailingContent: (
-            <Text>{formatTokenForDisplay(amount, asset.code)}</Text>
+            <Text medium>{formatTokenForDisplay(amount, asset.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -791,7 +801,7 @@ const RenderOperationByType = ({
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
               <Avatar publicAddress={from} size="sm" hasDarkBackground />
-              <Text>{truncateAddress(from)}</Text>
+              <Text medium>{truncateAddress(from)}</Text>
             </View>
           ),
           titleColor: themeColors.text.secondary,
@@ -806,7 +816,7 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.balanceId"),
-          trailingContent: <Text>{truncateAddress(balanceId)}</Text>,
+          trailingContent: <Text medium>{truncateAddress(balanceId)}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -822,14 +832,14 @@ const RenderOperationByType = ({
           trailingContent: (
             <View className="flex-row items-center gap-[4px]">
               <Avatar publicAddress={trustor} size="sm" hasDarkBackground />
-              <Text>{truncateAddress(trustor)}</Text>
+              <Text medium>{truncateAddress(trustor)}</Text>
             </View>
           ),
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.tokenCode"),
-          trailingContent: <Text>{asset.code}</Text>,
+          trailingContent: <Text medium>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         ...(asset.issuer ? [issuerListItem(asset.issuer)] : []),
@@ -839,7 +849,7 @@ const RenderOperationByType = ({
         items.push({
           title: t("signTransactionDetails.operations.flags.authorized"),
           trailingContent: (
-            <Text>
+            <Text medium>
               {flags.authorized
                 ? t("signTransactionDetails.operations.enabled")
                 : t("signTransactionDetails.operations.disabled")}
@@ -855,7 +865,7 @@ const RenderOperationByType = ({
             "signTransactionDetails.operations.flags.authorizedToMaintainLiabilities",
           ),
           trailingContent: (
-            <Text>
+            <Text medium>
               {flags.authorizedToMaintainLiabilities
                 ? t("signTransactionDetails.operations.enabled")
                 : t("signTransactionDetails.operations.disabled")}
@@ -869,7 +879,7 @@ const RenderOperationByType = ({
         items.push({
           title: t("signTransactionDetails.operations.flags.clawbackEnabled"),
           trailingContent: (
-            <Text>
+            <Text medium>
               {flags.clawbackEnabled
                 ? t("signTransactionDetails.operations.enabled")
                 : t("signTransactionDetails.operations.disabled")}
@@ -888,26 +898,28 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.liquidityPoolId"),
-          trailingContent: <Text>{truncateAddress(liquidityPoolId)}</Text>,
+          trailingContent: (
+            <Text medium>{truncateAddress(liquidityPoolId)}</Text>
+          ),
         },
         {
           title: t("signTransactionDetails.operations.maxAmountA"),
-          trailingContent: <Text>{maxAmountA}</Text>,
+          trailingContent: <Text medium>{maxAmountA}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.maxAmountB"),
-          trailingContent: <Text>{maxAmountB}</Text>,
+          trailingContent: <Text medium>{maxAmountB}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.maxPrice"),
-          trailingContent: <Text>{maxPrice}</Text>,
+          trailingContent: <Text medium>{maxPrice}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.minPrice"),
-          trailingContent: <Text>{minPrice}</Text>,
+          trailingContent: <Text medium>{minPrice}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -920,22 +932,24 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.liquidityPoolId"),
-          trailingContent: <Text>{truncateAddress(liquidityPoolId)}</Text>,
+          trailingContent: (
+            <Text medium>{truncateAddress(liquidityPoolId)}</Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.minAmountA"),
-          trailingContent: <Text>{minAmountA}</Text>,
+          trailingContent: <Text medium>{minAmountA}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.minAmountB"),
-          trailingContent: <Text>{minAmountB}</Text>,
+          trailingContent: <Text medium>{minAmountB}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.amount"),
-          trailingContent: <Text>{amount}</Text>,
+          trailingContent: <Text medium>{amount}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -947,7 +961,7 @@ const RenderOperationByType = ({
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.extendTo"),
-          trailingContent: <Text>{extendTo}</Text>,
+          trailingContent: <Text medium>{extendTo}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -956,19 +970,21 @@ const RenderOperationByType = ({
     }
     case "invokeHostFunction": {
       const { func } = operation;
-      switch (func.switch()) {
-        case xdr.HostFunctionType.hostFunctionTypeInvokeContract(): {
-          const invocation = func.invokeContract();
+      switch (func.type) {
+        case "hostFunctionTypeInvokeContract": {
+          const invocation = func.invokeContract;
           const contractId = Address.fromScAddress(
-            invocation.contractAddress(),
+            invocation.contractAddress,
           ).toString();
-          const functionName = invocation.functionName().toString();
+          const functionName = xdrStringToDisplay(invocation.functionName);
 
           const items: ListItemProps[] = [
             {
               title: t("signTransactionDetails.operations.type"),
               trailingContent: (
-                <Text>{t("signTransactionDetails.authorizations.invoke")}</Text>
+                <Text medium>
+                  {t("signTransactionDetails.authorizations.invoke")}
+                </Text>
               ),
               titleColor: themeColors.text.secondary,
             },
@@ -981,26 +997,26 @@ const RenderOperationByType = ({
                     themeColor="gray"
                     onPress={() => copyToClipboard(contractId)}
                   />
-                  <Text>{truncateAddress(contractId, 10, 0)}</Text>
+                  <Text medium>{truncateAddress(contractId, 10, 0)}</Text>
                 </View>
               ),
               titleColor: themeColors.text.secondary,
             },
             {
               title: t("signTransactionDetails.operations.functionName"),
-              trailingContent: <Text>{functionName}</Text>,
+              trailingContent: <Text medium>{functionName}</Text>,
               titleColor: themeColors.text.secondary,
             },
           ];
 
           return <List variant="secondary" items={items} />;
         }
-        case xdr.HostFunctionType.hostFunctionTypeUploadContractWasm(): {
+        case "hostFunctionTypeUploadContractWasm": {
           const items: ListItemProps[] = [
             {
               title: t("signTransactionDetails.operations.type"),
               trailingContent: (
-                <Text>
+                <Text medium>
                   {t("signTransactionDetails.operations.uploadContractWasm")}
                 </Text>
               ),
@@ -1010,8 +1026,8 @@ const RenderOperationByType = ({
 
           return <List variant="secondary" items={items} />;
         }
-        case xdr.HostFunctionType.hostFunctionTypeCreateContractV2():
-        case xdr.HostFunctionType.hostFunctionTypeCreateContract(): {
+        case "hostFunctionTypeCreateContractV2":
+        case "hostFunctionTypeCreateContract": {
           // Fall back to existing detailed component for complex create contract rendering
           return <KeyValueInvokeHostFn operation={operation} />;
         }
@@ -1036,7 +1052,7 @@ const RenderOperationByType = ({
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
                 <Avatar publicAddress={account} size="sm" hasDarkBackground />
-                <Text>{truncateAddress(account)}</Text>
+                <Text medium>{truncateAddress(account)}</Text>
               </View>
             ),
             titleColor: themeColors.text.secondary,
@@ -1047,7 +1063,9 @@ const RenderOperationByType = ({
           items.push({
             title: t("signTransactionDetails.operations.liquidityPoolId"),
             trailingContent: (
-              <Text>{truncateAddress(asset.liquidityPoolId, 10, 0)}</Text>
+              <Text medium>
+                {truncateAddress(asset.liquidityPoolId, 10, 0)}
+              </Text>
             ),
             titleColor: themeColors.text.secondary,
           });
@@ -1056,7 +1074,7 @@ const RenderOperationByType = ({
         if ("code" in asset) {
           items.push({
             title: t("signTransactionDetails.operations.tokenCode"),
-            trailingContent: <Text>{asset.code}</Text>,
+            trailingContent: <Text medium>{asset.code}</Text>,
             titleColor: themeColors.text.secondary,
           });
           // Disclose the issuer so the revoked trustline's asset is
@@ -1079,7 +1097,7 @@ const RenderOperationByType = ({
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
                 <Avatar publicAddress={account} size="sm" hasDarkBackground />
-                <Text>{truncateAddress(account)}</Text>
+                <Text medium>{truncateAddress(account)}</Text>
               </View>
             ),
             titleColor: themeColors.text.secondary,
@@ -1099,14 +1117,14 @@ const RenderOperationByType = ({
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
                 <Avatar publicAddress={seller} size="sm" hasDarkBackground />
-                <Text>{truncateAddress(seller)}</Text>
+                <Text medium>{truncateAddress(seller)}</Text>
               </View>
             ),
             titleColor: themeColors.text.secondary,
           },
           {
             title: t("signTransactionDetails.operations.offerId"),
-            trailingContent: <Text>{offerId}</Text>,
+            trailingContent: <Text medium>{offerId}</Text>,
             titleColor: themeColors.text.secondary,
           },
         ];
@@ -1124,14 +1142,14 @@ const RenderOperationByType = ({
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
                 <Avatar publicAddress={account} size="sm" hasDarkBackground />
-                <Text>{truncateAddress(account)}</Text>
+                <Text medium>{truncateAddress(account)}</Text>
               </View>
             ),
             titleColor: themeColors.text.secondary,
           },
           {
             title: t("signTransactionDetails.operations.name"),
-            trailingContent: <Text>{name}</Text>,
+            trailingContent: <Text medium>{name}</Text>,
             titleColor: themeColors.text.secondary,
           },
         ];
@@ -1146,7 +1164,7 @@ const RenderOperationByType = ({
         const items: ListItemProps[] = [
           {
             title: t("signTransactionDetails.operations.balanceId"),
-            trailingContent: <Text>{truncateAddress(balanceId)}</Text>,
+            trailingContent: <Text medium>{truncateAddress(balanceId)}</Text>,
             titleColor: themeColors.text.secondary,
           },
         ];
@@ -1164,7 +1182,7 @@ const RenderOperationByType = ({
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
                 <Avatar publicAddress={account} size="sm" hasDarkBackground />
-                <Text>{truncateAddress(account)}</Text>
+                <Text medium>{truncateAddress(account)}</Text>
               </View>
             ),
             titleColor: themeColors.text.secondary,
@@ -1186,8 +1204,14 @@ const RenderOperationByType = ({
 
 const RenderOperationArgsByType = ({
   operation,
+  argNames = null,
+  isLoadingArgNames = false,
 }: {
   operation: OperationRecord;
+  // Resolved once by OperationParametersSection below, which needs them to
+  // decide whether the spec note belongs beside the heading.
+  argNames?: string[] | null;
+  isLoadingArgNames?: boolean;
 }) => {
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
@@ -1248,9 +1272,9 @@ const RenderOperationArgsByType = ({
       const { func } = operation;
 
       const renderDetails = () => {
-        switch (func.switch()) {
-          case xdr.HostFunctionType.hostFunctionTypeCreateContractV2():
-          case xdr.HostFunctionType.hostFunctionTypeCreateContract(): {
+        switch (func.type) {
+          case "hostFunctionTypeCreateContractV2":
+          case "hostFunctionTypeCreateContract": {
             const createContractArgs = getCreateContractArgs(func);
             const createV2Args = createContractArgs.constructorArgs;
 
@@ -1264,27 +1288,24 @@ const RenderOperationArgsByType = ({
             );
           }
 
-          case xdr.HostFunctionType.hostFunctionTypeInvokeContract(): {
-            const invocation = func.invokeContract();
-            const contractId = Address.fromScAddress(
-              invocation.contractAddress(),
-            ).toString();
-            const functionName = invocation.functionName().toString();
-            const args = invocation.args();
+          case "hostFunctionTypeInvokeContract": {
+            const { args } = func.invokeContract;
 
             return (
               <KeyValueInvokeHostFnArgs
                 args={args}
-                contractId={contractId}
-                fnName={functionName}
+                argNames={argNames}
+                isLoadingArgNames={isLoadingArgNames}
                 showHeader={false}
                 variant="tertiary"
               />
             );
           }
 
-          case xdr.HostFunctionType.hostFunctionTypeUploadContractWasm(): {
-            const wasm = func.wasm().toString();
+          case "hostFunctionTypeUploadContractWasm": {
+            // v17: `wasm` is a Uint8Array, whose `toString()` would render
+            // comma-joined decimals — encode it explicitly.
+            const wasm = xdr.encodeBytes(func.wasm, "hex");
 
             return (
               <KeyValueListItem
@@ -1307,6 +1328,56 @@ const RenderOperationArgsByType = ({
   }
 };
 
+/**
+ * The parameters section of an invoke-host-function operation: the heading,
+ * the note qualifying spec-derived names, and the rows. The note sits between
+ * the heading and the rows, so the spec lookup happens here and the names it
+ * resolves are handed down to the rows -- one lookup for both.
+ */
+const OperationParametersSection = ({
+  operation,
+}: {
+  operation: OperationRecord;
+}) => {
+  const { t } = useAppTranslation();
+  // Only a contract invocation has declared parameters to name; every other
+  // host function renders its args unlabelled, so it has nothing to qualify.
+  const invocation =
+    operation.type === "invokeHostFunction" &&
+    operation.func.type === "hostFunctionTypeInvokeContract"
+      ? operation.func.invokeContract
+      : undefined;
+  const { argNames, isLoading } = useContractArgNames({
+    contractId: invocation
+      ? Address.fromScAddress(invocation.contractAddress).toString()
+      : undefined,
+    // The raw signed name, not `toString()`: that decode replaces every
+    // invalid byte with U+FFFD, and a lossily decoded name is not a key any
+    // contract spec defines.
+    specFnName: invocation && xdrStringToRaw(invocation.functionName),
+    argCount: invocation?.args.length ?? 0,
+  });
+
+  return (
+    <>
+      <View className="flex-row items-center gap-[8px]">
+        <Icon.BracketsEllipses size={16} themeColor="gray" />
+        <Text medium secondary>
+          {t("signTransactionDetails.operations.parameters")}
+        </Text>
+      </View>
+      {!!argNames?.length && <ContractSpecNote />}
+      <View>
+        <RenderOperationArgsByType
+          operation={operation}
+          argNames={argNames}
+          isLoadingArgNames={isLoading}
+        />
+      </View>
+    </>
+  );
+};
+
 const Operations = ({ operations }: OperationsProps) => {
   const { t } = useAppTranslation();
   const [isReady, setIsReady] = useState(false);
@@ -1326,7 +1397,7 @@ const Operations = ({ operations }: OperationsProps) => {
   }
 
   return (
-    <View>
+    <View className="gap-[16px]">
       {operations.map((operation, index: number) => {
         const { source, type } = operation;
         return (
@@ -1334,13 +1405,10 @@ const Operations = ({ operations }: OperationsProps) => {
             className="flex-1 gap-[12px]"
             key={`operation-${index}-${type}-${source || "no-source"}`}
           >
-            <View className="flex-row items-center gap-[8px]">
-              <Icon.Cube02 size={16} themeColor="gray" />
-              <Text secondary>
-                {OPERATION_TYPES[type as keyof typeof OPERATION_TYPES] || type}
-              </Text>
-            </View>
-            <View className="gap-[16px] mb-4">
+            <Text sm medium secondary>
+              {OPERATION_TYPES[type as keyof typeof OPERATION_TYPES] || type}
+            </Text>
+            <View className="gap-[16px]">
               {source && (
                 <InlinePublicKeyRow
                   operationKey={t("signTransactionDetails.operations.source")}
@@ -1350,17 +1418,11 @@ const Operations = ({ operations }: OperationsProps) => {
               <RenderOperationByType operation={operation} />
             </View>
             {type === "invokeHostFunction" && (
-              <>
-                <View className="flex-row items-center gap-[8px]">
-                  <Icon.BracketsEllipses size={16} themeColor="gray" />
-                  <Text secondary>
-                    {t("signTransactionDetails.operations.parameters")}
-                  </Text>
-                </View>
-                <View>
-                  <RenderOperationArgsByType operation={operation} />
-                </View>
-              </>
+              // The section renders several siblings, so keep their 12pt gap
+              // and add the extra space that separates it from the rows.
+              <View className="mt-4 gap-[12px]">
+                <OperationParametersSection operation={operation} />
+              </View>
             )}
           </View>
         );

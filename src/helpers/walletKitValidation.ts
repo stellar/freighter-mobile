@@ -2,7 +2,8 @@
  * Shared validation helpers for WalletKit sign requests.
  * Used by both WalletKitProvider (pre-UI validation) and walletKitUtil (approval-time validation).
  */
-import { hash, StrKey, xdr } from "@stellar/stellar-sdk";
+import { hash, xdr } from "@stellar/stellar-sdk";
+import { addressToString } from "helpers/soroban";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Error Keys (full i18n translation key paths)
@@ -90,7 +91,7 @@ export function parseAuthEntryPreimage(
   entryXdr: string,
 ): ValidationResult<xdr.HashIdPreimage> {
   try {
-    const preimage = xdr.HashIdPreimage.fromXDR(entryXdr, "base64");
+    const preimage = xdr.HashIdPreimage.fromXdr(entryXdr, "base64");
     return { valid: true, value: preimage };
   } catch (e) {
     return { valid: false, errorKey: ValidationErrorKeys.INVALID_AUTH_ENTRY };
@@ -104,7 +105,8 @@ export function parseAuthEntryPreimage(
  * signer address in addition to the legacy fields.
  */
 export interface NormalizedAuthPreimage {
-  networkId: Buffer;
+  /** v17: an `xdr.Hash` wrapper (not raw bytes) — compare via `.equals()`. */
+  networkId: xdr.Hash;
   invocation: xdr.SorobanAuthorizedInvocation;
   /** Present only for envelopeTypeSorobanAuthorizationWithAddress (CAP-71 ADDRESS_V2). */
   address?: xdr.ScAddress;
@@ -118,17 +120,17 @@ export function normalizeAuthPreimage(
   preimage: xdr.HashIdPreimage,
 ): NormalizedAuthPreimage | null {
   try {
-    switch (preimage.switch()) {
-      case xdr.EnvelopeType.envelopeTypeSorobanAuthorization(): {
-        const auth = preimage.sorobanAuthorization();
-        return { networkId: auth.networkId(), invocation: auth.invocation() };
+    switch (preimage.type) {
+      case "envelopeTypeSorobanAuthorization": {
+        const auth = preimage.sorobanAuthorization;
+        return { networkId: auth.networkId, invocation: auth.invocation };
       }
-      case xdr.EnvelopeType.envelopeTypeSorobanAuthorizationWithAddress(): {
-        const auth = preimage.sorobanAuthorizationWithAddress();
+      case "envelopeTypeSorobanAuthorizationWithAddress": {
+        const auth = preimage.sorobanAuthorizationWithAddress;
         return {
-          networkId: auth.networkId(),
-          invocation: auth.invocation(),
-          address: auth.address(),
+          networkId: auth.networkId,
+          invocation: auth.invocation,
+          address: auth.address,
         };
       }
       default:
@@ -157,7 +159,10 @@ export function validateAuthEntryNetwork(
     return { valid: false, errorKey: ValidationErrorKeys.INVALID_AUTH_ENTRY };
   }
 
-  const expectedNetworkId = hash(Buffer.from(networkPassphrase));
+  // v17: `networkId` is an `xdr.Hash` wrapper, so compare via its structural
+  // `equals` against an equally-wrapped expected hash (a wrapper's `equals`
+  // returns false for raw bytes rather than comparing them).
+  const expectedNetworkId = new xdr.Hash(hash(Buffer.from(networkPassphrase)));
   if (!normalized.networkId.equals(expectedNetworkId)) {
     return {
       valid: false,
@@ -170,12 +175,17 @@ export function validateAuthEntryNetwork(
 
 /**
  * Validates that a CAP-71 (ADDRESS_V2) preimage is bound to the active wallet
- * account. The withAddress preimage embeds the signer address; if it is an
- * account address that differs from the wallet, signing would produce a
- * signature bound to someone else — reject it.
+ * account. The withAddress preimage embeds the address the signature is bound
+ * to; if it differs from the wallet, signing would produce an authorization on
+ * behalf of someone else — reject it, whatever the address arm.
  *
- * Legacy preimages (no bound address) and contract-bound addresses (which a
- * wallet account key can't match — e.g. delegate/contract signers) pass through.
+ * Only legacy preimages (which carry no bound address) pass through. Under
+ * CAP-71-01 a delegate signs a payload bound to the DELEGATOR's address, so a
+ * non-matching bound address — including a contract-bound one — is precisely
+ * the shape of a delegated-authorization request, not evidence the check is
+ * inapplicable. Freighter Mobile does not support delegated signing (tracked
+ * in stellar/freighter-mobile#894) — reject it the same way the browser
+ * extension does, rather than signing it silently.
  */
 export function validateAuthEntryAddress(
   preimage: xdr.HashIdPreimage,
@@ -191,14 +201,14 @@ export function validateAuthEntryAddress(
     return { valid: true, value: true };
   }
 
-  // Only enforce for account-type bound addresses.
-  if (normalized.address.switch().name !== "scAddressTypeAccount") {
-    return { valid: true, value: true };
+  let boundAddress: string;
+  try {
+    boundAddress = addressToString(normalized.address);
+  } catch {
+    // Unrenderable address arm — fail closed rather than let it through.
+    return { valid: false, errorKey: ValidationErrorKeys.INVALID_AUTH_ENTRY };
   }
 
-  const boundAddress = StrKey.encodeEd25519PublicKey(
-    normalized.address.accountId().ed25519(),
-  );
   if (boundAddress !== walletPublicKey) {
     return {
       valid: false,

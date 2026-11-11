@@ -4,13 +4,13 @@ import { Text } from "components/sds/Typography";
 import {
   CIRCLE_USDC_ISSUER,
   CIRCLE_USDC_CONTRACT,
-  NATIVE_TOKEN_CODE,
   USDC_CODE,
 } from "config/constants";
-import { THEME } from "config/theme";
 import { useTokenIconsStore } from "ducks/tokenIcons";
+import { isNativeAssetPair } from "helpers/assetIdentity";
 import { px } from "helpers/dimensions";
 import { ICON_VALIDATION_TIMEOUT } from "helpers/validateIconUrl";
+import useTheme from "hooks/useTheme";
 import React, { useEffect } from "react";
 import { ImageSourcePropType, StyleSheet, View } from "react-native";
 import Animated, {
@@ -336,6 +336,8 @@ interface TokenImageContainerProps {
   $variant: TokenVariant;
   $isSecond?: boolean;
   $backgroundColor?: string;
+  $fallbackBackgroundColor: string;
+  $borderColor: string;
   testID?: string;
 }
 
@@ -349,10 +351,12 @@ const TokenImageContainer = styled.View<TokenImageContainerProps>`
     getTokenHeight(props.$size, props.$variant, props.$isSecond)};
   border-radius: ${(props: TokenImageContainerProps) =>
     getBorderRadius(props.$size, props.$variant, props.$isSecond)};
-  background-color: ${({ $backgroundColor }: TokenImageContainerProps) =>
-    $backgroundColor || THEME.colors.background.default};
+  background-color: ${({
+    $backgroundColor,
+    $fallbackBackgroundColor,
+  }: TokenImageContainerProps) => $backgroundColor || $fallbackBackgroundColor};
   border-width: ${px(1)};
-  border-color: ${THEME.colors.border.default};
+  border-color: ${({ $borderColor }: TokenImageContainerProps) => $borderColor};
   overflow: hidden;
 
   ${(props: TokenImageContainerProps) =>
@@ -365,6 +369,7 @@ const TokenImage = styled(FastImage)`
 `;
 
 const TokenLoader: React.FC = () => {
+  const theme = useTheme();
   const opacity = useSharedValue(0.4);
 
   useEffect(() => {
@@ -387,7 +392,7 @@ const TokenLoader: React.FC = () => {
       style={[
         {
           ...StyleSheet.absoluteFillObject,
-          backgroundColor: THEME.colors.border.default,
+          backgroundColor: theme.colors.border.default,
         },
         style,
       ]}
@@ -594,7 +599,6 @@ const ImageWithFallback: React.FC<{
     React.useCallback(
       (storeState) => {
         if (!tokenCode || !tokenIssuer) return null;
-        if (tokenCode === NATIVE_TOKEN_CODE) return null;
         return storeState.icons[`${tokenCode}:${tokenIssuer}`];
       },
       [tokenCode, tokenIssuer],
@@ -607,7 +611,6 @@ const ImageWithFallback: React.FC<{
 
   useEffect(() => {
     if (!tokenCode || !tokenIssuer || icon === null) return;
-    if (tokenCode === NATIVE_TOKEN_CODE) return;
     if (icon && icon.isValidated !== true && icon.isValid !== false) {
       validateIconOnAccess(`${tokenCode}:${tokenIssuer}`);
     }
@@ -617,7 +620,10 @@ const ImageWithFallback: React.FC<{
   // -------------------------------------------------------------------------
 
   // Resolve the final image URL from props or the store.
-  const isNativeToken = tokenCode === NATIVE_TOKEN_CODE;
+  // The native asset normally reaches this component through `source.image`
+  // (see TokenIcon's native branch); a token passed here with the native
+  // code and no issuer is the remaining native shape.
+  const isNativeToken = isNativeAssetPair(tokenCode, tokenIssuer);
   const isUSDC =
     tokenCode === USDC_CODE &&
     (tokenIssuer === CIRCLE_USDC_ISSUER ||
@@ -933,12 +939,16 @@ export const Token: React.FC<TokenProps> = React.memo(
     sourceTwo,
     testID = "token",
   }: TokenProps) => {
+    const theme = useTheme();
+
     const renderImage = (source: TokenSource, isSecond = false) => (
       <TokenImageContainer
         $size={size}
         $variant={variant}
         $isSecond={isSecond}
         $backgroundColor={source.backgroundColor}
+        $fallbackBackgroundColor={theme.colors.background.default}
+        $borderColor={theme.colors.border.default}
         testID={`${testID}-image-${isSecond ? "two" : "one"}`}
       >
         <ImageWithFallback source={source} />

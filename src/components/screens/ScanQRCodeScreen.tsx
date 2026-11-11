@@ -54,9 +54,11 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({
     >
       <CameraNavigationHeader
         headerTitle={state.title}
+        // Opened over Send, it closes back to it with an X, as it slides up
+        // from the bottom (getScanQRCodeScreenOptions).
         headerLeft={() => (
           <CustomHeaderButton
-            icon={Icon.X}
+            variant="close"
             onPress={handlers.handleHeaderLeft}
           />
         )}

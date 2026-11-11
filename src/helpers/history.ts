@@ -1,13 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 import { Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
-import { NATIVE_TOKEN_CODE, NetworkDetails } from "config/constants";
+import { NetworkDetails } from "config/constants";
+import {
+  getNativeContractId,
+  isNativeAssetId,
+  isNativeAssetPair,
+} from "helpers/assetIdentity";
 import {
   SorobanTokenInterface,
   getAttrsFromSorobanHorizonOp,
   getTokenSacAddress,
   isContractId,
-  getNativeContractDetails,
 } from "helpers/soroban";
 
 type OperationWithSpamCheckAttr = Horizon.ServerApi.OperationRecord & {
@@ -33,7 +37,7 @@ export const getIsDustPayment = (
 ) =>
   getIsPayment(operation.type) &&
   "asset_type" in operation &&
-  operation.asset_type === "native" &&
+  isNativeAssetId(operation.asset_type) &&
   "to" in operation &&
   operation.to === publicKey &&
   "amount" in operation &&
@@ -90,7 +94,7 @@ export const getIsSupportedSorobanOp = (
  *   - { code: string, issuer: string, contractId: undefined } for classic tokens (CODE:ISSUER format)
  */
 export const getTokenFromTokenId = (tokenId: string) => {
-  if (tokenId === "native") {
+  if (isNativeAssetId(tokenId)) {
     return { code: "XLM", issuer: undefined, contractId: undefined };
   }
 
@@ -136,17 +140,22 @@ export const operationInvolvesToken = (
     return false;
   }
 
-  // Handle native XLM operations (both classic and Soroban)
-  if (targetToken.code === NATIVE_TOKEN_CODE && !targetToken.contractId) {
+  // Handle native XLM operations (both classic and Soroban), identified by
+  // the bare "XLM"/"native" identifier; issuer-bound identifiers are
+  // handled by the classic arm below.
+  if (
+    isNativeAssetPair(targetToken.code, targetToken.issuer) &&
+    !targetToken.contractId
+  ) {
     // Check for classic payment operations
     if (getIsPayment(operation.type)) {
-      if ("asset_type" in operation && operation.asset_type === "native") {
+      if ("asset_type" in operation && isNativeAssetId(operation.asset_type)) {
         return true;
       }
 
       if (
         "source_asset_type" in operation &&
-        operation.source_asset_type === "native"
+        isNativeAssetId(operation.source_asset_type)
       ) {
         return true;
       }
@@ -158,11 +167,11 @@ export const operationInvolvesToken = (
 
       if (attrs && typeof attrs === "object" && "contractId" in attrs) {
         const typedAttrs = attrs as { contractId: string };
-        const nativeContractDetails = getNativeContractDetails(
-          networkDetails.network,
-        );
 
-        return typedAttrs.contractId === nativeContractDetails.contract;
+        return (
+          typedAttrs.contractId ===
+          getNativeContractId(networkDetails.networkPassphrase)
+        );
       }
     }
 

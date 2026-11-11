@@ -172,7 +172,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
       <BottomSheet
         modalRef={deleteAccountModalRef}
-        handleCloseModal={cancelDeleteAccount}
         customContent={
           <DeleteAccountBottomSheet
             onCancel={cancelDeleteAccount}

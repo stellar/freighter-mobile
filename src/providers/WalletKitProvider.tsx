@@ -5,10 +5,10 @@ import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSh
 import BottomSheet from "components/BottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
-import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
+import { getDisplayableDetails } from "components/screens/SignTransactionDetails/helpers/detailsState";
+import { useSignTransactionDetailsState } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
-import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
@@ -23,13 +23,16 @@ import {
   WalletKitSessionRequest,
   StellarRpcChains,
   StellarRpcMethods,
+  StellarSignAuthEntryParams,
   StellarSignXDRParams,
 } from "ducks/walletKit";
 import { isE2ETest } from "helpers/isEnv";
 import { getHostname } from "helpers/protocols";
+import { isAuthEntryDisplayable } from "helpers/signingDisplay";
 import {
   approveSessionProposal,
   approveSessionRequest,
+  isDappRequestUndisplayable,
   rejectSessionRequest,
   rejectSessionProposal,
   resolveDappRejectionEvent,
@@ -45,7 +48,6 @@ import {
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import { getDappMetadataFromEvent } from "hooks/useDappMetadata";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
@@ -99,7 +101,6 @@ interface WalletKitProviderProps {
 export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   children,
 }) => {
-  const { themeColors } = useColors();
   const { network, authStatus } = useAuthenticationStore();
   const { account, signTransaction, signMessage, signAuthEntry } =
     useGetActiveAccount();
@@ -266,7 +267,52 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     !isSignAuthEntryRequest &&
     transactionSecurityAssessment.isUnableToScan;
 
-  const signTransactionDetails = useSignTransactionDetails({ xdr });
+  const signTransactionDetailsState = useSignTransactionDetailsState({ xdr });
+  const signTransactionDetails = getDisplayableDetails(
+    signTransactionDetailsState,
+  );
+
+  // The preimage a stellar_signAuthEntry request asks to sign, or "" when the
+  // request carries no string entryXdr.
+  const authEntryXdr = useMemo(() => {
+    const entryParam = (
+      requestEvent?.params.request.params as StellarSignAuthEntryParams
+    )?.entryXdr;
+
+    return typeof entryParam === "string" ? entryParam : "";
+  }, [requestEvent]);
+
+  // Parsed once per auth-entry request; other requests have no entry to show.
+  const isAuthEntryDisplayableValue = useMemo(
+    () => !isSignAuthEntryRequest || isAuthEntryDisplayable(authEntryXdr),
+    [isSignAuthEntryRequest, authEntryXdr],
+  );
+
+  // Set when the request's details trip their error boundary, so the request
+  // fails closed even though its display data was built. Cleared only with the
+  // request itself, in handleClearDappRequest's deferred reset.
+  const [hasDetailsRenderError, setHasDetailsRenderError] = useState(false);
+
+  /**
+   * Fails the current request closed. The details sheet's error boundary calls
+   * it, through the request sheet's `onDetailsRenderError`, when the details
+   * throw while rendering.
+   * @function handleDetailsRenderError
+   * @returns {void}
+   */
+  const handleDetailsRenderError = useCallback(
+    () => setHasDetailsRenderError(true),
+    [],
+  );
+
+  // A request whose details can't be displayed can only be rejected: the sheet
+  // offers only Cancel, and handleDappRequest refuses to approve it.
+  const isRequestUndisplayable = isDappRequestUndisplayable({
+    requestMethod: requestMethod as StellarRpcMethods | undefined,
+    signTransactionDetailsStatus: signTransactionDetailsState.status,
+    isAuthEntryDisplayable: isAuthEntryDisplayableValue,
+    hasDetailsRenderError,
+  });
 
   /**
    * Security warnings extracted from scan result
@@ -435,6 +481,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   /**
    * Clears the dApp request bottom sheet and resets signing state
    * Also rejects the current request to prevent it from reappearing
+   *
+   * The deferred reset clears `hasDetailsRenderError` in the same update that
+   * clears `requestEvent`, so a request that failed closed stays that way
+   * while it shows, and the next request starts without the flag.
    * @function handleClearDappRequest
    * @returns {void}
    */
@@ -480,6 +530,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     setTimeout(() => {
       setIsSigning(false);
       setRequestEvent(null);
+      setHasDetailsRenderError(false);
       setTransactionScanResult(undefined);
       setSiteScanResult(undefined);
       setSecurityWarningContext(SecurityContext.SITE);
@@ -559,11 +610,26 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   /**
    * Handles dApp transaction request approval
    * Signs the transaction and sends the response back to the dApp
+   *
+   * Refuses a request whose details can't be displayed (see
+   * `isDappRequestUndisplayable`): it reports the attempt and returns without
+   * signing, leaving the request to be rejected. Every approval goes through
+   * here, the request sheet's Confirm and the Blockaid sheet's "Confirm anyway"
+   * (`handleProceedAnyway`) alike, so this one check covers both.
    * @function handleDappRequest
    * @returns {void}
    */
   const handleDappRequest = () => {
     if (!requestEvent) {
+      return;
+    }
+
+    if (isRequestUndisplayable) {
+      logger.error(
+        "WalletKitProvider",
+        "Blocked approval of a request whose details can't be displayed",
+        new Error("Undisplayable dApp request approval blocked"),
+      );
       return;
     }
 
@@ -1224,7 +1290,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       {/* Bottom sheet for dApp connection requests */}
       <BottomSheet
         modalRef={dappConnectionBottomSheetModalRef}
-        handleCloseModal={handleClearDappConnection}
         analyticsEvent={AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS}
         bottomSheetModalProps={{
           onDismiss: handleClearDappConnection,
@@ -1247,11 +1312,18 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         }
       />
 
-      {/* Bottom sheet for dApp transaction requests */}
+      {/* Bottom sheet for dApp transaction requests.
+
+          sign_message and sign_auth_entry render the payload in a capped,
+          inner-scrolling box. The sheet wraps its content in a pan gesture and
+          on Android that pan cancels the nested ScrollView's scroll, so
+          dragging the payload moves the whole sheet instead of scrolling the
+          text. Disabling the content pan for those requests leaves the drag
+          handle (and the Cancel button) to dismiss the sheet. */}
       <BottomSheet
         modalRef={dappRequestBottomSheetModalRef}
-        handleCloseModal={handleClearDappRequest}
         analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION}
+        enableContentPanningGesture={!isNonTransactionRequest}
         bottomSheetModalProps={{
           onDismiss: handleClearDappRequest,
           enableDynamicSizing: true,
@@ -1277,6 +1349,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             }
             signTransactionDetails={signTransactionDetails}
             isMemoMissing={isMemoMissing}
+            isUndisplayable={isRequestUndisplayable}
+            onDetailsRenderError={handleDetailsRenderError}
           />
         }
       />
@@ -1284,7 +1358,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       {/* Bottom sheet for explaining why a memo is required for a dApp transaction request */}
       <BottomSheet
         modalRef={addMemoExplanationBottomSheetModalRef}
-        handleCloseModal={onCancelAddMemo}
         customContent={
           <AddMemoExplanationBottomSheet onClose={onCancelAddMemo} />
         }
@@ -1293,7 +1366,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       {/* generic Bottom sheet for security warnings - site and transaction */}
       <BottomSheet
         modalRef={siteSecurityWarningBottomSheetModalRef}
-        handleCloseModal={handleCancelSecurityWarning}
         customContent={
           <SecurityDetailBottomSheet
             warnings={getWarnings()}
@@ -1310,7 +1382,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       {/* Bottom sheet for explaining why a domain should be verified for a dApp connection request */}
       <BottomSheet
         modalRef={verifyDomainBottomSheetModalRef}
-        handleCloseModal={handleCloseVerifyDomain}
         customContent={
           <InformationBottomSheet
             title={t("dappConnectionBottomSheetContent.verifyDomainTitle")}
@@ -1322,11 +1393,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
                 ),
               },
             ]}
-            headerElement={
-              <View className="p-2 rounded-[8px] bg-background-tertiary">
-                <Icon.InfoCircle color={themeColors.foreground.primary} />
-              </View>
-            }
             onClose={handleCloseVerifyDomain}
             onConfirm={handleCloseVerifyDomain}
             confirmLabel={t(

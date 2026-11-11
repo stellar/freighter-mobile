@@ -12,17 +12,25 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 import Spinner from "components/Spinner";
+import { ScValDisplay } from "components/screens/SignTransactionDetails/components/ScValDisplay";
 import Avatar from "components/sds/Avatar";
+import { Banner } from "components/sds/Banner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { CLAIM_PREDICATES, mapNetworkToNetworkDetails } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
-import { getCreateContractArgs, scValByType } from "helpers/soroban";
+import {
+  addressToString,
+  getContractFnArgNames,
+  getCreateContractArgs,
+  scValToDisplayValue,
+  xdrStringToDisplay,
+} from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { t } from "i18next";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
 import { getContractSpecs } from "services/backend";
 
@@ -36,12 +44,20 @@ type SignerKeyOptions = Extract<
   { type: "revokeSignerSponsorship" }
 >["signer"];
 
-// Signer hash fields (sha256Hash / preAuthTx) parse to a Buffer at runtime but
-// are typed `Buffer | string`; render either as an uppercase hex string.
-const signerKeyToHex = (value: Buffer | string): string =>
-  typeof value === "string"
+/**
+ * Renders a signer hash (sha256Hash / preAuthTx) as uppercase hex.
+ *
+ * Accepts a string as well as bytes because the SDK is inconsistent: the
+ * `revokeSponsorship` signer arm returns these fields as already-hex strings
+ * (`convertXdrSignerKeyToObject`), while `setOptions` returns real
+ * `Uint8Array`s. A string is passed through rather than re-encoded -- encoding
+ * it again would hex the ASCII of the hex.
+ */
+const signerKeyToHex = (value: Uint8Array | string): string =>
+  (typeof value === "string"
     ? value
-    : Buffer.from(value).toString("hex").toUpperCase();
+    : xdr.encodeBytes(value, "hex")
+  ).toUpperCase();
 
 interface KeyValueListItemProps {
   operationKey: string;
@@ -54,61 +70,182 @@ export const KeyValueListItem = ({
 }: KeyValueListItemProps) => (
   <View className="bg-background-secondary rounded-[16px] p-[16px] gap-[12px]">
     <View className="flex-row items-center gap-[8px]">
-      <Text>{operationKey}</Text>
+      <Text medium>{operationKey}</Text>
     </View>
     <View className="h-[1px] bg-background-tertiary" />
     {typeof operationValue === "string" ||
     typeof operationValue === "number" ? (
-      <Text>{operationValue}</Text>
+      <Text medium>{operationValue}</Text>
     ) : (
       operationValue
     )}
   </View>
 );
 
+/**
+ * Resolves an invocation's parameter names from the contract spec.
+ *
+ * A hook so that a caller rendering the "Parameters" heading itself can look
+ * the names up once -- it owns the spec note that belongs beside that heading,
+ * and hands the same names to the rows below.
+ */
+export const useContractArgNames = ({
+  contractId,
+  specFnName,
+  argCount,
+  isAuthEntry = false,
+}: {
+  contractId?: string;
+  /**
+   * The raw signed function name. Deliberately not the displayed name: that
+   * one is escaped for the screen, and an escaped string is not a name any
+   * spec defines. `undefined` when the signed bytes are not text, which skips
+   * the lookup rather than keying it off something no contract declared.
+   */
+  specFnName?: string;
+  argCount: number;
+  isAuthEntry?: boolean;
+}) => {
+  const { network } = useAuthenticationStore();
+  const networkDetails = mapNetworkToNetworkDetails(network);
+
+  // An auth entry is never labelled from the contract spec. Its args are not
+  // the function's declared parameters: `require_auth_for_args` substitutes
+  // an arbitrary list under the same contract and function name, and the
+  // arity can match, so the length check in `getContractFnArgNames` does not
+  // catch it. Those rows render unlabelled. See stellar/freighter#2196.
+  const shouldResolve = !!contractId && !!specFnName && !isAuthEntry;
+  const invocationKey = `${contractId ?? ""}|${specFnName ?? ""}|${argCount}|${network}`;
+
+  const [resolved, setResolved] = useState<{
+    invocationKey: string;
+    argNames: string[] | null;
+  } | null>(null);
+
+  // A name resolved for one invocation must never label another, so the stored
+  // result carries the key it was fetched for and that key is compared here,
+  // during render. Dropping the names in the effect instead would let the
+  // commit that first shows a new invocation carry the previous one's names.
+  // The loading flag comes from the same comparison rather than from its own
+  // state: absent names on their own read as "resolved to nothing", not "in
+  // flight", so the rows would render unlabelled instead of showing a spinner.
+  // `shouldResolve` gates the read as well as the fetch: an invocation this
+  // hook will not resolve has no names, whatever it resolved for a previous
+  // one, and `isAuthEntry` is not part of the key that would otherwise drop
+  // them.
+  const isFresh =
+    shouldResolve &&
+    resolved !== null &&
+    resolved.invocationKey === invocationKey;
+  const argNames = isFresh ? resolved.argNames : null;
+  const isLoading = shouldResolve && !isFresh;
+
+  useEffect(() => {
+    if (!shouldResolve) {
+      return undefined;
+    }
+
+    // A response that arrives after the inputs moved on is dropped rather than
+    // stored: the key check alone would not stop it clobbering a newer result
+    // once the inputs return to a value already seen.
+    let isCurrent = true;
+
+    const getSpec = async () => {
+      try {
+        const spec = await getContractSpecs({ contractId, networkDetails });
+
+        if (isCurrent) {
+          setResolved({
+            invocationKey,
+            argNames: getContractFnArgNames(spec, specFnName, argCount),
+          });
+        }
+      } catch (error) {
+        // A failed lookup settles on unlabelled rows rather than keeping the
+        // names it already had -- those were resolved for another invocation.
+        if (isCurrent) {
+          setResolved({ invocationKey, argNames: null });
+        }
+      }
+    };
+
+    getSpec();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [
+    contractId,
+    specFnName,
+    argCount,
+    networkDetails,
+    shouldResolve,
+    invocationKey,
+  ]);
+
+  return { argNames, isLoading };
+};
+
+/**
+ * Qualifies spec-derived parameter names: the spec is author-controlled wasm
+ * metadata that nothing validates against the implementation, so a name is the
+ * contract's claim about its own parameter, not a verified fact. It renders
+ * with the "Parameters" heading, above the rows it annotates.
+ */
+export const ContractSpecNote = () => (
+  <Text sm secondary testID="ContractSpecNote">
+    {t("signTransactionDetails.operations.contractSpecNote")}
+  </Text>
+);
+
 interface KeyValueInvokeHostFnArgsProps {
   args: xdr.ScVal[];
   contractId?: string;
-  fnName?: string;
+  /**
+   * The raw signed function name, used only as a key into the contract spec.
+   * Deliberately not the displayed name: that one is escaped for the screen,
+   * and an escaped string is not a name any spec defines. `undefined` when the
+   * signed bytes are not text, which skips the lookup.
+   */
+  specFnName?: string;
   showHeader?: boolean;
   variant?: "secondary" | "tertiary";
+  isAuthEntry?: boolean;
+  // A caller that renders the heading itself resolves the names (it owns the
+  // spec note beside that heading) and passes them here instead of the
+  // contract id, so the spec is fetched once for the section.
+  argNames?: string[] | null;
+  isLoadingArgNames?: boolean;
 }
 
 export const KeyValueInvokeHostFnArgs = ({
   args,
   contractId,
-  fnName,
+  specFnName,
   showHeader = true,
   variant = "secondary",
+  isAuthEntry = false,
+  argNames: resolvedArgNames,
+  isLoadingArgNames = false,
 }: KeyValueInvokeHostFnArgsProps) => {
-  const { network } = useAuthenticationStore();
-  const networkDetails = mapNetworkToNetworkDetails(network);
-  const [isLoading, setIsLoading] = useState(true);
-  const [argNames, setArgNames] = useState([] as string[]);
   const { copyToClipboard } = useClipboard();
+  const ownSpec = useContractArgNames({
+    contractId,
+    specFnName,
+    argCount: args.length,
+    isAuthEntry,
+  });
+  const argNames = resolvedArgNames ?? ownSpec.argNames;
+  const isLoading = isLoadingArgNames || ownSpec.isLoading;
 
-  useEffect(() => {
-    const getSpec = async (id: string, name: string) => {
-      try {
-        const spec = await getContractSpecs({ contractId: id, networkDetails });
-        const { definitions } = spec;
-        const invocationSpec = definitions[name];
-        const argNamesPositional = invocationSpec.properties?.args
-          ?.required as string[];
-
-        setArgNames(argNamesPositional);
-        setIsLoading(false);
-      } catch (error) {
-        setIsLoading(false);
-      }
-    };
-
-    if (contractId && fnName) {
-      getSpec(contractId, fnName);
-    } else {
-      setIsLoading(false);
-    }
-  }, [contractId, fnName, networkDetails]);
+  // One revealed token per parameter block, which is what this component is.
+  // Tapping the revealed token again, or any other one, moves or clears it.
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const handleTokenPress = useCallback(
+    (key: string) =>
+      setRevealedKey((current) => (current === key ? null : key)),
+    [],
+  );
 
   const renderContent = () => {
     if (isLoading) {
@@ -123,16 +260,19 @@ export const KeyValueInvokeHostFnArgs = ({
           <>
             <View className="flex-row items-center gap-[8px]">
               <Icon.BracketsEllipses size={16} themeColor="gray" />
-              <Text>
+              <Text medium>
                 {t("signTransactionDetails.authorizations.parameters")}
               </Text>
             </View>
+            {/* No spec note here: the only caller that resolves names owns
+            the heading itself (showHeader={false}) and renders the note
+            beside it, so nothing this component headers is ever labelled. */}
             <View className="h-[1px] bg-background-tertiary" />
           </>
         )}
         {args.map((arg, index) => {
-          const xdrString = arg.toXDR().toString();
-          const contextKey = `${contractId || "no-contract"}-${fnName || "no-fn"}`;
+          const xdrString = arg.toXdr("base64");
+          const contextKey = `${contractId || "no-contract"}-${specFnName || "no-fn"}`;
 
           return (
             <View
@@ -140,14 +280,25 @@ export const KeyValueInvokeHostFnArgs = ({
               className="gap-[8px]"
             >
               <View className="flex-row items-center gap-[4px]">
-                <Text secondary>{argNames[index] && argNames[index]}</Text>
+                <Text medium secondary testID="ParameterKey">
+                  {argNames?.[index]}
+                </Text>
                 <Icon.Copy01
                   size={14}
                   themeColor="gray"
-                  onPress={() => copyToClipboard(scValByType(arg) as string)}
+                  testID={`ScValCopy-${index}`}
+                  // The copied string is the same token stream that is drawn,
+                  // so what lands on the clipboard is what was on the screen.
+                  onPress={() => copyToClipboard(scValToDisplayValue(arg))}
                 />
               </View>
-              <Text>{scValByType(arg)}</Text>
+              <ScValDisplay
+                scVal={arg}
+                tokenKeyPrefix={String(index)}
+                revealedKey={revealedKey}
+                onTokenPress={handleTokenPress}
+                testID="ParameterValue"
+              />
             </View>
           );
         })}
@@ -168,10 +319,10 @@ export const InlinePublicKeyRow = ({
   operationValue,
 }: KeyValueWithPublicKeyProps) => (
   <View className="bg-background-secondary rounded-[16px] px-[16px] py-[14px] flex-row items-center justify-between gap-[12px]">
-    <Text>{operationKey}</Text>
+    <Text medium>{operationKey}</Text>
     <View className="flex-1 flex-row items-center justify-end gap-[8px]">
       <Avatar publicAddress={operationValue} size="sm" hasDarkBackground />
-      <Text>{truncateAddress(operationValue)}</Text>
+      <Text medium>{truncateAddress(operationValue)}</Text>
     </View>
   </View>
 );
@@ -186,9 +337,9 @@ export const InlineHashRow = ({
   operationValue,
 }: InlineHashRowProps) => (
   <View className="bg-background-secondary rounded-[16px] px-[16px] py-[14px] flex-row items-center justify-between gap-[12px]">
-    <Text>{operationKey}</Text>
+    <Text medium>{operationKey}</Text>
     <View className="flex-1 flex-row items-center justify-end">
-      <Text>{truncateAddress(operationValue)}</Text>
+      <Text medium>{truncateAddress(operationValue)}</Text>
     </View>
   </View>
 );
@@ -202,7 +353,7 @@ export const KeyValueWithPublicKey = ({
     operationValue={
       <View className="flex-row items-center gap-[16px]">
         <Avatar publicAddress={operationValue} size="sm" hasDarkBackground />
-        <Text>{truncateAddress(operationValue)}</Text>
+        <Text medium>{truncateAddress(operationValue)}</Text>
       </View>
     }
   />
@@ -218,7 +369,9 @@ export const PathList = ({ paths }: PathListProps) => {
     <View>
       <View className="flex-row items-center gap-[8px]">
         <Icon.Shuffle01 size={16} themeColor="gray" />
-        <Text secondary>{t("signTransactionDetails.operations.path")} </Text>
+        <Text medium secondary>
+          {t("signTransactionDetails.operations.path")}{" "}
+        </Text>
       </View>
       <View className="gap-[12px] mt-[8px]">
         {paths.map(({ code, issuer }, index) => (
@@ -233,22 +386,22 @@ export const PathList = ({ paths }: PathListProps) => {
             </View>
 
             <View className="flex-row justify-between items-center">
-              <Text secondary>
+              <Text medium secondary>
                 {t("signTransactionDetails.operations.token")}
               </Text>
               {issuer && (
-                <Text secondary>
+                <Text medium secondary>
                   {t("signTransactionDetails.operations.issuer")}
                 </Text>
               )}
             </View>
 
             <View className="flex-row justify-between items-center">
-              <Text>{code}</Text>
+              <Text medium>{code}</Text>
               {issuer && (
                 <View className="flex-row items-center gap-[8px]">
                   <Avatar publicAddress={issuer} size="sm" hasDarkBackground />
-                  <Text>{truncateAddress(issuer, 4, 4)}</Text>
+                  <Text medium>{truncateAddress(issuer, 4, 4)}</Text>
                 </View>
               )}
             </View>
@@ -309,9 +462,11 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
       {renderSignerType()}
       <View className="h-[1px] mx-4 bg-border-primary" />
       <View className="rounded-[16px] px-[16px] py-[14px] flex-row items-center justify-between gap-[12px]">
-        <Text>{t("signTransactionDetails.operations.signerWeight")}</Text>
+        <Text medium>
+          {t("signTransactionDetails.operations.signerWeight")}
+        </Text>
         <View className="flex-1 flex-row items-center justify-end gap-[8px]">
-          <Text>{signer.weight}</Text>
+          <Text medium>{signer.weight}</Text>
         </View>
       </View>
     </View>
@@ -364,14 +519,14 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
     predicate,
     hideKey = false,
   }: ClaimPredicateValueProps): React.ReactNode => {
-    switch (predicate.switch().name) {
+    switch (predicate.type) {
       case "claimPredicateUnconditional": {
         return (
           <KeyValueListItem
             operationKey={
               hideKey ? "" : t("signTransactionDetails.operations.predicate")
             }
-            operationValue={CLAIM_PREDICATES[predicate.switch().name]}
+            operationValue={CLAIM_PREDICATES[predicate.type]}
           />
         );
       }
@@ -383,11 +538,11 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
               operationKey={
                 hideKey ? "" : t("signTransactionDetails.operations.predicate")
               }
-              operationValue={CLAIM_PREDICATES[predicate.switch().name]}
+              operationValue={CLAIM_PREDICATES[predicate.type]}
             />
-            {predicate
-              .andPredicates()
-              .map((p) => claimPredicateValue({ predicate: p, hideKey: true }))}
+            {predicate.andPredicates.map((p) =>
+              claimPredicateValue({ predicate: p, hideKey: true }),
+            )}
           </>
         );
       }
@@ -399,11 +554,11 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
               operationKey={
                 hideKey ? "" : t("signTransactionDetails.operations.predicate")
               }
-              operationValue={CLAIM_PREDICATES[predicate.switch().name]}
+              operationValue={CLAIM_PREDICATES[predicate.type]}
             />
             <KeyValueListItem
               operationKey=""
-              operationValue={predicate.absBefore().toString()}
+              operationValue={predicate.absBefore.toString()}
             />
           </>
         );
@@ -416,18 +571,18 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
               operationKey={
                 hideKey ? "" : t("signTransactionDetails.operations.predicate")
               }
-              operationValue={CLAIM_PREDICATES[predicate.switch().name]}
+              operationValue={CLAIM_PREDICATES[predicate.type]}
             />
             <KeyValueListItem
               operationKey=""
-              operationValue={predicate.relBefore().toString()}
+              operationValue={predicate.relBefore.toString()}
             />
           </>
         );
       }
 
       case "claimPredicateNot": {
-        const notPredicate = predicate.notPredicate();
+        const { notPredicate } = predicate;
 
         if (notPredicate) {
           return (
@@ -438,7 +593,7 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
                     ? ""
                     : t("signTransactionDetails.operations.predicate")
                 }
-                operationValue={CLAIM_PREDICATES[predicate.switch().name]}
+                operationValue={CLAIM_PREDICATES[predicate.type]}
               />
               {claimPredicateValue({ predicate: notPredicate, hideKey: true })}
             </>
@@ -455,11 +610,11 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
               operationKey={
                 hideKey ? "" : t("signTransactionDetails.operations.predicate")
               }
-              operationValue={CLAIM_PREDICATES[predicate.switch().name]}
+              operationValue={CLAIM_PREDICATES[predicate.type]}
             />
-            {predicate
-              .orPredicates()
-              .map((p) => claimPredicateValue({ predicate: p, hideKey: true }))}
+            {predicate.orPredicates.map((p) =>
+              claimPredicateValue({ predicate: p, hideKey: true }),
+            )}
           </>
         );
       }
@@ -473,7 +628,7 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
   return (
     <>
       {claimants.map((claimant, index) => (
-        <View key={claimant.destination + claimant.predicate.switch().name}>
+        <View key={claimant.destination + claimant.predicate.type}>
           <KeyValueWithPublicKey
             operationKey={t(
               "signTransactionDetails.operations.destinationWithNumber",
@@ -493,6 +648,93 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
   );
 };
 
+/**
+ * Explains that a CAP-85 externally managed executable is not pinned by the
+ * transaction being signed: the owner can change the code the reference
+ * resolves to after this transaction is signed.
+ */
+export const ExternalExecutableNote = () => (
+  <Banner
+    variant="warning"
+    showChevron={false}
+    testID="ExternalExecutableNote"
+    text={t("signTransactionDetails.authorizations.executableNote")}
+  />
+);
+
+/**
+ * Renders the executable of a contract-creation host function. CAP-85
+ * (Protocol 28) adds a third arm whose code lives behind a reference into
+ * another contract's storage -- we show the owner and tag that identify the
+ * reference, and deliberately no wasm hash, because the owner can change the
+ * code the reference resolves to after this transaction is signed.
+ */
+interface ExecutableDetailsProps {
+  executable: xdr.ContractExecutable;
+}
+
+export const ExecutableDetails = ({ executable }: ExecutableDetailsProps) => {
+  const { copyToClipboard } = useClipboard();
+
+  // v17: `wasmHash` is an xdr.Hash wrapper on the wasm arm only; render it as
+  // hex (Uint8Array.toString would give comma-joined decimals).
+  const wasmHash =
+    executable.type === "contractExecutableWasm"
+      ? xdr.encodeBytes(executable.wasmHash.toBytes(), "hex")
+      : null;
+  const externalRef =
+    executable.type === "contractExecutableExternalRef"
+      ? executable.externalRef
+      : null;
+  const externalRefOwner = externalRef
+    ? addressToString(externalRef.executableOwner)
+    : null;
+
+  return (
+    <>
+      <KeyValueListItem
+        operationKey={t("signTransactionDetails.operations.executableType")}
+        operationValue={executable.type}
+      />
+      {wasmHash && (
+        <KeyValueListItem
+          operationKey={t(
+            "signTransactionDetails.operations.executableWasmHash",
+          )}
+          operationValue={
+            <View className="flex-row items-center gap-[4px]">
+              <Text medium>{truncateAddress(wasmHash)}</Text>
+              <Icon.Copy01
+                size={14}
+                themeColor="gray"
+                onPress={() => copyToClipboard(wasmHash)}
+              />
+            </View>
+          }
+        />
+      )}
+      {externalRef && externalRefOwner && (
+        <>
+          <KeyValueWithPublicKey
+            operationKey={t(
+              "signTransactionDetails.authorizations.executableOwner",
+            )}
+            operationValue={externalRefOwner}
+          />
+          <KeyValueListItem
+            operationKey={t(
+              "signTransactionDetails.authorizations.executableTag",
+            )}
+            // SEP-51 form: reversible for non-UTF-8 bytes, plain text otherwise.
+            operationValue={xdrStringToDisplay(externalRef.tag)}
+          />
+          <ExternalExecutableNote />
+        </>
+      )}
+    </>
+  );
+};
+
 interface KeyValueInvokeHostFnProps {
   operation: Operation.InvokeHostFunction;
 }
@@ -504,25 +746,25 @@ export const KeyValueInvokeHostFn = ({
   const { copyToClipboard } = useClipboard();
 
   const renderDetails = () => {
-    switch (hostfn.switch()) {
-      case xdr.HostFunctionType.hostFunctionTypeCreateContractV2():
-      case xdr.HostFunctionType.hostFunctionTypeCreateContract(): {
+    switch (hostfn.type) {
+      case "hostFunctionTypeCreateContractV2":
+      case "hostFunctionTypeCreateContract": {
         const createContractArgs = getCreateContractArgs(hostfn);
         const preimage = createContractArgs.contractIdPreimage;
         const { executable } = createContractArgs;
         const createV2Args = createContractArgs.constructorArgs;
-        const executableType = executable.switch().name;
-        const wasmHash = executable.wasmHash();
 
-        if (preimage.switch().name === "contractIdPreimageFromAddress") {
-          const preimageFromAddress = preimage.fromAddress();
-          const address = preimageFromAddress.address();
-          const salt = preimageFromAddress.salt().toString("hex");
-          const addressType = address.switch();
+        if (preimage.type === "contractIdPreimageFromAddress") {
+          const preimageFromAddress = preimage.fromAddress;
+          const { address } = preimageFromAddress;
+          const salt = xdr.encodeBytes(
+            preimageFromAddress.salt.toBytes(),
+            "hex",
+          );
 
-          if (addressType.name === "scAddressTypeAccount") {
+          if (address.type === "scAddressTypeAccount") {
             const accountId = StrKey.encodeEd25519PublicKey(
-              address.accountId().ed25519(),
+              address.accountId.ed25519.toBytes(),
             );
 
             return (
@@ -543,7 +785,7 @@ export const KeyValueInvokeHostFn = ({
                   operationKey={t("signTransactionDetails.operations.salt")}
                   operationValue={
                     <View className="flex-row items-center gap-[4px]">
-                      <Text>{truncateAddress(salt)}</Text>
+                      <Text medium>{truncateAddress(salt)}</Text>
                       <Icon.Copy01
                         size={14}
                         themeColor="gray"
@@ -552,31 +794,7 @@ export const KeyValueInvokeHostFn = ({
                     </View>
                   }
                 />
-                <KeyValueListItem
-                  operationKey={t(
-                    "signTransactionDetails.operations.executableType",
-                  )}
-                  operationValue={executableType}
-                />
-                {executable.wasmHash() && (
-                  <KeyValueListItem
-                    operationKey={t(
-                      "signTransactionDetails.operations.executableWasmHash",
-                    )}
-                    operationValue={
-                      <View className="flex-row items-center gap-[4px]">
-                        <Text>{truncateAddress(wasmHash.toString("hex"))}</Text>
-                        <Icon.Copy01
-                          size={14}
-                          themeColor="gray"
-                          onPress={() =>
-                            copyToClipboard(wasmHash.toString("hex"))
-                          }
-                        />
-                      </View>
-                    }
-                  />
-                )}
+                <ExecutableDetails executable={executable} />
               </>
             );
           }
@@ -599,7 +817,7 @@ export const KeyValueInvokeHostFn = ({
                 operationKey={t("signTransactionDetails.operations.salt")}
                 operationValue={
                   <View className="flex-row items-center gap-[4px]">
-                    <Text>{truncateAddress(salt)}</Text>
+                    <Text medium>{truncateAddress(salt)}</Text>
                     <Icon.Copy01
                       size={14}
                       themeColor="gray"
@@ -608,39 +826,15 @@ export const KeyValueInvokeHostFn = ({
                   </View>
                 }
               />
-              <KeyValueListItem
-                operationKey={t(
-                  "signTransactionDetails.operations.executableType",
-                )}
-                operationValue={executableType}
-              />
-              {executable.wasmHash() && (
-                <KeyValueListItem
-                  operationKey={t(
-                    "signTransactionDetails.operations.executableWasmHash",
-                  )}
-                  operationValue={
-                    <View className="flex-row items-center gap-[4px]">
-                      <Text>{truncateAddress(wasmHash.toString("hex"))}</Text>
-                      <Icon.Copy01
-                        size={14}
-                        themeColor="gray"
-                        onPress={() =>
-                          copyToClipboard(wasmHash.toString("hex"))
-                        }
-                      />
-                    </View>
-                  }
-                />
-              )}
+              <ExecutableDetails executable={executable} />
               {createV2Args && <KeyValueInvokeHostFnArgs args={createV2Args} />}
             </>
           );
         }
 
         // contractIdPreimageFromAsset
-        const preimageFromAsset = preimage.fromAsset();
-        const preimageValue = preimageFromAsset.value();
+        const preimageFromAsset = preimage.fromAsset;
+        const preimageValue = preimageFromAsset.value;
 
         return (
           <>
@@ -650,27 +844,31 @@ export const KeyValueInvokeHostFn = ({
                 "signTransactionDetails.operations.createContract",
               )}
             />
-            {preimageFromAsset.switch().name === "assetTypeCreditAlphanum4" ||
-            preimageFromAsset.switch().name === "assetTypeCreditAlphanum12" ? (
+            {preimageFromAsset.type === "assetTypeCreditAlphanum4" ||
+            preimageFromAsset.type === "assetTypeCreditAlphanum12" ? (
               <>
                 <KeyValueListItem
                   operationKey={t(
                     "signTransactionDetails.operations.tokenCode",
                   )}
-                  operationValue={(preimageValue as xdr.AlphaNum12)
-                    .assetCode()
-                    .toString()}
+                  operationValue={
+                    // v17: BytesValue.toString() base64-encodes; toJson()
+                    // yields the trimmed ASCII asset code.
+                    (
+                      preimageValue as xdr.AlphaNum12
+                    ).assetCode.toJson() as string
+                  }
                 />
                 <KeyValueListItem
                   operationKey={t("signTransactionDetails.operations.issuer")}
                   operationValue={
                     <View className="flex-row items-center gap-[4px]">
-                      <Text>
+                      <Text medium>
                         {truncateAddress(
                           StrKey.encodeEd25519PublicKey(
-                            (preimageValue as xdr.AlphaNum12)
-                              .issuer()
-                              .ed25519(),
+                            (
+                              preimageValue as xdr.AlphaNum12
+                            ).issuer.ed25519.toBytes(),
                           ),
                         )}
                       </Text>
@@ -680,9 +878,9 @@ export const KeyValueInvokeHostFn = ({
                         onPress={() =>
                           copyToClipboard(
                             StrKey.encodeEd25519PublicKey(
-                              (preimageValue as xdr.AlphaNum12)
-                                .issuer()
-                                .ed25519(),
+                              (
+                                preimageValue as xdr.AlphaNum12
+                              ).issuer.ed25519.toBytes(),
                             ),
                           )
                         }
@@ -693,40 +891,18 @@ export const KeyValueInvokeHostFn = ({
               </>
             ) : null}
 
-            <KeyValueListItem
-              operationKey={t(
-                "signTransactionDetails.operations.executableType",
-              )}
-              operationValue={executableType}
-            />
-            {executable.wasmHash() && (
-              <KeyValueListItem
-                operationKey={t(
-                  "signTransactionDetails.operations.executableWasmHash",
-                )}
-                operationValue={
-                  <View className="flex-row items-center gap-[4px]">
-                    <Text>{truncateAddress(wasmHash.toString("hex"))}</Text>
-                    <Icon.Copy01
-                      size={14}
-                      themeColor="gray"
-                      onPress={() => copyToClipboard(wasmHash.toString("hex"))}
-                    />
-                  </View>
-                }
-              />
-            )}
+            <ExecutableDetails executable={executable} />
             {createV2Args && <KeyValueInvokeHostFnArgs args={createV2Args} />}
           </>
         );
       }
 
-      case xdr.HostFunctionType.hostFunctionTypeInvokeContract(): {
-        const invocation = hostfn.invokeContract();
+      case "hostFunctionTypeInvokeContract": {
+        const invocation = hostfn.invokeContract;
         const contractId = Address.fromScAddress(
-          invocation.contractAddress(),
+          invocation.contractAddress,
         ).toString();
-        const functionName = invocation.functionName().toString();
+        const functionName = xdrStringToDisplay(invocation.functionName);
 
         return (
           <>
@@ -740,7 +916,7 @@ export const KeyValueInvokeHostFn = ({
               operationKey={t("signTransactionDetails.operations.contractId")}
               operationValue={
                 <View className="flex-row items-center gap-[4px]">
-                  <Text>{truncateAddress(contractId)}</Text>
+                  <Text medium>{truncateAddress(contractId)}</Text>
                   <Icon.Copy01
                     size={14}
                     themeColor="gray"
@@ -757,7 +933,7 @@ export const KeyValueInvokeHostFn = ({
         );
       }
 
-      case xdr.HostFunctionType.hostFunctionTypeUploadContractWasm(): {
+      case "hostFunctionTypeUploadContractWasm": {
         return (
           <KeyValueListItem
             operationKey={t("signTransactionDetails.operations.type")}

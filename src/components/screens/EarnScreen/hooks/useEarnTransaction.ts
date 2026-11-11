@@ -2,7 +2,10 @@ import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { ActiveAccount } from "ducks/auth";
 import { useEarnStore } from "ducks/earn";
-import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import {
+  SubmitResultCodes,
+  useTransactionBuilderStore,
+} from "ducks/transactionBuilder";
 import { isWalletUnlocked } from "hooks/useGetActiveAccount";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "services/analytics";
@@ -162,15 +165,20 @@ export const useEarnTransaction = ({
         throw new Error(signingError || "Failed to sign transaction");
       }
 
-      // submitTransaction throws directly for the debug forced-failure
-      // override, and returns null for every other recorded failure — both
-      // land in this catch block. On null, read the real reason (and result
-      // codes) off the store rather than inventing a message.
-      const hash = await submitTransaction({ network });
+      // submitTransaction throws only for the debug forced-failure override;
+      // otherwise it resolves with this attempt's own outcome. Read the
+      // reason and result codes off that outcome, never off the store: a
+      // mid-submit Close resets the store, so it may not hold this attempt's
+      // result. The codes ride the thrown error into the catch block below.
+      const submitOutcome = await submitTransaction({ network });
+      const { hash } = submitOutcome;
 
       if (!hash) {
-        const { error: submitError } = useTransactionBuilderStore.getState();
-        throw new Error(submitError || "Failed to submit transaction");
+        const submitFailure = new Error(
+          submitOutcome.error || "Failed to submit transaction",
+        ) as Error & { resultCodes?: SubmitResultCodes | null };
+        submitFailure.resultCodes = submitOutcome.resultCodes;
+        throw submitFailure;
       }
 
       // The `await` above is the abandonment window: the user may have
@@ -206,21 +214,23 @@ export const useEarnTransaction = ({
       setSubmitFailed(true);
       setStatus("error");
 
-      // `submitErrorResultCodes` isn't threaded through this hook's own
-      // return shape (see the hook doc), so read it directly off the store,
-      // same as the sign/submit failure branches above. Null for a signing
-      // failure (there's no Horizon result yet) -- reason_code falls back to
-      // "unknown" in that case, same as trackTransactionError elsewhere.
+      // Result codes come off this attempt's own submit outcome, carried on
+      // the thrown error. Absent for a signing failure (there's no Horizon
+      // result yet) -- reason_code falls back to "unknown" in that case, same
+      // as trackTransactionError elsewhere.
+      const submitResultCodes =
+        err instanceof Error
+          ? (err as Error & { resultCodes?: SubmitResultCodes | null })
+              .resultCodes
+          : undefined;
       const { pool, selectedAssetCode, selectedAssetApy } =
         useEarnStore.getState();
-      const { submitErrorResultCodes } = useTransactionBuilderStore.getState();
       analytics.trackEarnDepositFail({
         assetCode: selectedAssetCode,
         poolId: pool?.id,
         apy: selectedAssetApy,
         errorCode:
-          submitErrorResultCodes?.operations?.[0] ||
-          submitErrorResultCodes?.transaction,
+          submitResultCodes?.operations?.[0] || submitResultCodes?.transaction,
       });
     }
   }, [account, network, signTransaction, submitTransaction, setSubmitFailed]);

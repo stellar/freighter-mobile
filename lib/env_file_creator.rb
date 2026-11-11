@@ -2,7 +2,8 @@
 
 module EnvFileCreator
   # Read environment variable names from .env.example file.
-  # KEYSTORE keys are excluded (not needed in app .env). E2E_TEST keys are optional.
+  # KEYSTORE keys are excluded (not needed in app .env).
+  # E2E_TEST and PREVIEW keys are optional.
   def self.load_env_vars_from_example
     example_file = ".env.example"
     return { required: [], optional: [] } unless File.exist?(example_file)
@@ -14,8 +15,11 @@ module EnvFileCreator
                .compact
                .reject(&:empty?)
 
-    required = keys.reject { |k| k.include?("KEYSTORE") || k.include?("E2E_TEST") }.sort.freeze
-    optional = keys.select { |k| k.include?("E2E_TEST") }.sort.freeze
+    # PREVIEW keys are optional for the same reason as E2E_TEST keys: only the
+    # PR Preview workflows set them, and making them required would fail every
+    # other build path and every local .env that predates them.
+    required = keys.reject { |k| k.include?("KEYSTORE") || k.include?("E2E_TEST") || k.include?("PREVIEW") }.sort.freeze
+    optional = keys.select { |k| k.include?("E2E_TEST") || k.include?("PREVIEW") }.sort.freeze
     { required: required, optional: optional }
   end
 

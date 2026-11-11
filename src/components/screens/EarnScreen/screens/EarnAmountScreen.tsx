@@ -51,6 +51,7 @@ import { useDebugStore } from "ducks/debug";
 import { useEarnStore } from "ducks/earn";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { isNativeBalance } from "helpers/assetIdentity";
 import {
   calculateSpendableAmount,
   getBalanceByContractId,
@@ -132,11 +133,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   );
 
   const isXlm = useMemo(
-    () =>
-      !!depositBalance &&
-      "token" in depositBalance &&
-      "type" in depositBalance.token &&
-      depositBalance.token.type === "native",
+    () => !!depositBalance && isNativeBalance(depositBalance),
     [depositBalance],
   );
 
@@ -756,9 +753,6 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
 
       <BottomSheet
         modalRef={networkFeeBottomSheetModalRef}
-        handleCloseModal={() =>
-          networkFeeBottomSheetModalRef.current?.dismiss()
-        }
         customContent={
           <XlmFeeShortfallBottomSheet
             bottomSheetModalRef={networkFeeBottomSheetModalRef}
@@ -770,9 +764,6 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
 
       <BottomSheet
         modalRef={earnReviewBottomSheetModalRef}
-        handleCloseModal={() =>
-          earnReviewBottomSheetModalRef.current?.dismiss()
-        }
         analyticsEvent={AnalyticsEvent.VIEW_EARN_REVIEW}
         customContent={
           <EarnReviewBottomSheet
@@ -789,7 +780,6 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={transactionSettingsBottomSheetModalRef}
-        handleCloseModal={handleCancelTransactionSettings}
         customContent={
           <TransactionSettingsBottomSheet
             context={TransactionContext.Send}
@@ -801,7 +791,6 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}
-        handleCloseModal={handleCancelSecurityWarning}
         customContent={
           <SecurityDetailBottomSheet
             warnings={securityWarnings}
@@ -819,9 +808,6 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={poolDetailsBottomSheetModalRef}
-        handleCloseModal={() =>
-          poolDetailsBottomSheetModalRef.current?.dismiss()
-        }
         customContent={
           <PoolDetailsBottomSheet
             pool={pool}
@@ -831,9 +817,6 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={receiveFundsBottomSheetModalRef}
-        handleCloseModal={() =>
-          receiveFundsBottomSheetModalRef.current?.dismiss()
-        }
         customContent={
           <ReceiveFundsBottomSheet
             bottomSheetModalRef={receiveFundsBottomSheetModalRef}

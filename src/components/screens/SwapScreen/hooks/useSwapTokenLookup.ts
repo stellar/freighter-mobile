@@ -18,10 +18,12 @@ import {
   HookStatus,
   TokenTypeWithCustomToken,
 } from "config/types";
+import { useBalancesStore } from "ducks/balances";
 import { useBlockaidTokenScansStore } from "ducks/blockaidTokenScans";
 import { useDebugStore } from "ducks/debug";
 import { useStellarExpertTopTokensStore } from "ducks/stellarExpertTopTokens";
 import { useVerifiedTokensStore } from "ducks/verifiedTokens";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatTokenIdentifier, getTokenType } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
 import { splitVerifiedTokens } from "helpers/splitVerifiedTokens";
@@ -243,7 +245,7 @@ export const useSwapTokenLookup = ({
     () =>
       balanceItems
         .map((b) => {
-          if (b.id === "native") return NATIVE_TOKEN_CODE; // XLM
+          if (isNativeAssetId(b.id)) return NATIVE_TOKEN_CODE; // XLM
           const { tokenCode, issuer } = formatTokenIdentifier(b.id);
           return canonicalId(tokenCode, issuer ?? "");
         })
@@ -264,6 +266,31 @@ export const useSwapTokenLookup = ({
     (tokenCode: string, issuer: string): boolean =>
       heldIdsSet.has(canonicalId(tokenCode, issuer)),
     [heldIdsSet],
+  );
+
+  // Tokens the user hid. `balanceItems` already leaves them out, so a hidden
+  // token they hold would otherwise look new here and picking it would add a
+  // trustline the account already has. Hidden tokens are dropped from every
+  // list below; the user unhides one from Add token to swap into it.
+  const hiddenTokenIds = useBalancesStore((state) => state.hiddenTokenIds);
+  const hiddenIdsSet = useMemo(
+    () =>
+      new Set(
+        hiddenTokenIds.map((id) => {
+          const { tokenCode, issuer } = formatTokenIdentifier(id);
+          return canonicalId(tokenCode, issuer ?? "");
+        }),
+      ),
+    [hiddenTokenIds],
+  );
+  const withoutHidden = useCallback(
+    (tokens: FormattedSearchTokenRecord[]) =>
+      hiddenIdsSet.size === 0
+        ? tokens
+        : tokens.filter(
+            (t) => !hiddenIdsSet.has(canonicalId(t.tokenCode, t.issuer)),
+          ),
+    [hiddenIdsSet],
   );
 
   // -- Idle surface ---------------------------------------------------------
@@ -451,7 +478,7 @@ export const useSwapTokenLookup = ({
             domain: "",
             hasTrustline: true,
             issuer: resolvedIssuer,
-            isNative: b.id === "native",
+            isNative: isNativeAssetId(b.id),
             tokenType: resolvedIssuer
               ? getTokenType(`${tokenCode}:${resolvedIssuer}`)
               : TokenTypeWithCustomToken.NATIVE,
@@ -505,7 +532,7 @@ export const useSwapTokenLookup = ({
       const classicRecords = rawRecords.filter((r) => {
         if (isSorobanRecord(r)) return false;
         const [tokenCode, issuer] = r.asset.split("-");
-        if (!issuer && r.asset !== NATIVE_TOKEN_CODE) return false;
+        if (!issuer && !isNativeAssetId(r.asset)) return false;
         const tokenType = getTokenType(
           issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
         );
@@ -710,35 +737,49 @@ export const useSwapTokenLookup = ({
   // Liquidity pool shares and Soroban custom tokens are not swappable and
   // should never surface in the Swap-To picker's "Your tokens" section.
   // getTokenType expects either NATIVE_TOKEN_CODE ("XLM") or a "CODE:ISSUER"
-  // string. Balance.id is "native" for XLM in this codebase, so normalize
-  // first — otherwise the catch-all classifies it as LIQUIDITY_POOL_SHARES
-  // and filters it out.
+  // string. Balance.id can carry the raw "native" spelling for XLM, so
+  // normalize first via the shared predicate — otherwise the catch-all
+  // classifies it as LIQUIDITY_POOL_SHARES and filters it out.
   const yourTokens = useMemo(
     () =>
       balanceItems.filter((b) =>
         isClassicTokenType(
-          getTokenType(b.id === "native" ? NATIVE_TOKEN_CODE : b.id),
+          getTokenType(isNativeAssetId(b.id) ? NATIVE_TOKEN_CODE : b.id),
         ),
       ),
     [balanceItems],
+  );
+  // Filtered here rather than in the fetch pipeline, so unhiding a token
+  // brings it back straight away without refetching.
+  const visibleTrendingTokens = useMemo(
+    () => withoutHidden(trendingTokens),
+    [withoutHidden, trendingTokens],
   );
   // popularTokens is the same verified intersection as trendingTokens,
   // additionally EXCLUDING held tokens for the picker.
   const popularTokens = useMemo(
     () =>
-      trendingTokens.filter(
+      visibleTrendingTokens.filter(
         (t) => !hasExistingTrustline(t.tokenCode, t.issuer),
       ),
-    [trendingTokens, hasExistingTrustline],
+    [visibleTrendingTokens, hasExistingTrustline],
+  );
+  const verifiedSearchMatches = useMemo(
+    () => withoutHidden(searchPartition.verified),
+    [withoutHidden, searchPartition.verified],
+  );
+  const unverifiedSearchMatches = useMemo(
+    () => withoutHidden(searchPartition.unverified),
+    [withoutHidden, searchPartition.unverified],
   );
 
   return {
     yourTokens,
     popularTokens,
-    trendingTokens,
+    trendingTokens: visibleTrendingTokens,
     heldSearchMatches: searchTerm ? searchPartition.held : [],
-    verifiedSearchMatches: searchTerm ? searchPartition.verified : [],
-    unverifiedSearchMatches: searchTerm ? searchPartition.unverified : [],
+    verifiedSearchMatches: searchTerm ? verifiedSearchMatches : [],
+    unverifiedSearchMatches: searchTerm ? unverifiedSearchMatches : [],
     hadSorobanMatches: searchTerm ? hadSorobanMatches : false,
     stellarExpertDown,
     status,

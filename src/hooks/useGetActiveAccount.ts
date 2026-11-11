@@ -62,7 +62,7 @@ const useGetActiveAccount = () => {
 
       transaction.sign(keyPair);
 
-      return transaction.toXDR();
+      return transaction.toXdr();
     },
     [account],
   );

@@ -16,7 +16,13 @@
 /* eslint-disable arrow-body-style */
 import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
-import { NATIVE_TOKEN_CODE, NetworkDetails, NETWORKS } from "config/constants";
+import BigNumber from "bignumber.js";
+import {
+  mapNetworkToNetworkDetails,
+  NATIVE_TOKEN_CODE,
+  NetworkDetails,
+  NETWORKS,
+} from "config/constants";
 import { BackendEnvConfig } from "config/envConfig";
 import { logger, normalizeError } from "config/logger";
 import {
@@ -25,19 +31,35 @@ import {
   FormattedSearchTokenRecord,
   GetTokenDetailsParams,
   DiscoverProtocol,
+  PriceHistoryRange,
   TokenDetailsResponse,
   TokenIdentifier,
+  TokenPriceHistory,
+  TokenPriceHistoryResponse,
   TokenPricesMap,
+  TokenStats,
+  TokenStatsResponse,
 } from "config/types";
+import { addBlockaidScanResults } from "helpers/addBlockaidScanResults";
+import { isNativeContract } from "helpers/assetIdentity";
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
-import { getNativeContractDetails } from "helpers/soroban";
+import { injectLocalTokenBalances } from "helpers/injectLocalTokenBalances";
+import {
+  mapAccountBalancesV2,
+  V2AccountBalances,
+} from "helpers/mapAccountBalancesV2";
+import { ContractSpecSchema, getNativeContractDetails } from "helpers/soroban";
+import { classifyToken, isNativeKind } from "helpers/tokenClassification";
 import {
   createApiService,
   isRequestCanceled,
   logApiError,
 } from "services/apiFactory";
 import { attachAuthInterceptors } from "services/auth/attachAuth";
+
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
 
 // Create dedicated API services for backend operations
 export const freighterBackendV1 = createApiService({
@@ -54,13 +76,16 @@ export const freighterBackendV2 = createApiService({
   configureInstance: attachAuthInterceptors,
 });
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Fetches the Soroban contract specification (JSON Schema) from the backend.
  *
  * The returned object contains a `definitions` map for contract functions and types.
- * Function entries expose an `args` object with a positional `required` array that we
- * use to label parameters in the UI. Some specs may also include a top-level
+ * A function entry's parameter list is the keys of `properties.args.properties`, in
+ * declaration order -- that is what labels parameters in the UI. It is never
+ * `properties.args.required`: the payload is a JSON Schema, so `required` lists only
+ * the parameters that must be present and omits every `Option<T>` one, which shifts
+ * later names onto the wrong values. See `getContractFnArgNames` in `helpers/soroban`
+ * for the guards that key order needs. Some specs may also include a top-level
  * `$schema` field; we forward the backend payload as-is.
  *
  * @async
@@ -68,18 +93,23 @@ export const freighterBackendV2 = createApiService({
  * @param {Object} params - Request parameters
  * @param {string} params.contractId - Soroban contract ID (hex-encoded)
  * @param {NetworkDetails} params.networkDetails - Target network details
- * @returns {Promise<Record<string, any>>} Contract spec JSON schema
+ * @returns {Promise<ContractSpecSchema>} Contract spec JSON schema
  * @throws {Error} If the backend responds with an error or an invalid payload
  *
  * @example
  * // Access positional argument names for a function
  * const spec = await getContractSpecs({ contractId: "CC...", networkDetails });
- * const argNames = spec.definitions["transfer"].properties.args.required; // ["from", "to", "amount"]
+ * const argNames = Object.keys(
+ *   spec.definitions["transfer"].properties.args.properties,
+ * ); // ["from", "to", "amount"]
  *
  * @example
  * // Pool contract function (e.g., swap_chained)
- * const required = spec.definitions["swap_chained"].properties.args.required;
+ * const argNames = Object.keys(
+ *   spec.definitions["swap_chained"].properties.args.properties,
+ * );
  * // ["user", "swaps_chain", "token_in", "in_amount", "out_min"]
+ * // `properties.args.required` would drop any `Option<T>` parameter here.
  *
  * @example
  * // Sample (trimmed) response for a token-like contract
@@ -124,8 +154,8 @@ export const getContractSpecs = async ({
 }: {
   contractId: string;
   networkDetails: NetworkDetails;
-}): Promise<Record<string, any>> => {
-  const response = await freighterBackendV1.get<{ data: Record<string, any> }>(
+}): Promise<ContractSpecSchema> => {
+  const response = await freighterBackendV1.get<{ data: ContractSpecSchema }>(
     `/contract-spec/${contractId}`,
     {
       params: {
@@ -166,19 +196,7 @@ export const checkContractSupportsMuxed = async ({
     const spec = await getContractSpecs({ contractId, networkDetails });
 
     // Check if transfer function exists
-    const definitions = spec.definitions as
-      | {
-          transfer?: {
-            properties?: {
-              args?: {
-                properties?: Record<string, unknown>;
-                required?: string[];
-              };
-            };
-          };
-        }
-      | undefined;
-    const transferDef = definitions?.transfer;
+    const transferDef = spec.definitions?.transfer;
     if (!transferDef) {
       return false;
     }
@@ -204,7 +222,6 @@ export const checkContractSupportsMuxed = async ({
     return false;
   }
 };
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
  * Response type for account balance fetching
@@ -223,6 +240,12 @@ export type FetchBalancesResponse = {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   error?: { horizon: any; soroban: any };
   /* eslint-enable @typescript-eslint/no-explicit-any */
+  /**
+   * Contract IDs present in `balances` only because they are in the user's
+   * locally saved custom-token list. The only contract tokens that may be
+   * removed from the balances view — see `MappedAccountBalances`.
+   */
+  localOnlyTokenIds?: string[];
 };
 
 /**
@@ -231,13 +254,108 @@ export type FetchBalancesResponse = {
  * @property {string} publicKey - The public key of the account
  * @property {NETWORKS} network - The network to query (mainnet/testnet)
  * @property {string[]} [contractIds] - Optional contract IDs to include in balance calculation
+ * @property {boolean} useV2 - Whether to hit the v2 balances endpoint (remote-config gated)
  * @property {boolean} [shouldSkipScan] - Skip Blockaid asset scanning (faster; for list views that don't render scan results)
  */
 type FetchBalancesParams = {
   publicKey: string;
   network: NETWORKS;
   contractIds?: string[];
+  useV2: boolean;
   shouldSkipScan?: boolean;
+};
+
+/**
+ * Fetches account balances from the freighter-backend-v2
+ * `POST /accounts/balances` endpoint and normalizes the response to the same
+ * shape `fetchBalances` returns on the v1 path.
+ *
+ * Multi-address fan-out endpoint; the app fetches one account at a time.
+ * Addresses travel in the POST body, so the URL carries no G-address. The v2
+ * response covers every token the account *holds* — trustlines, SACs, SEP-41
+ * contract balances, and pool shares — so unlike v1 there is no `contract_ids`
+ * param.
+ *
+ * "Holds" is the catch: the indexer only knows about tokens an account has a
+ * balance for, so a zero-balance SEP-41 token the user added by hand never
+ * comes back and would silently disappear. `contractIds` (the locally saved
+ * custom-token list) is therefore merged back in client-side by
+ * `injectLocalTokenBalances`, which is what v1 did server-side with its
+ * `contract_ids` hints. Skipped for an unfunded account: the not-funded UI
+ * renders in place of balances, so resolving tokens would only burn requests.
+ *
+ * The backend contract guarantees one result per requested address — an
+ * unfunded account comes back as a matching entry with `is_funded: false`,
+ * never as an omission. A 200 missing the requested account is therefore a
+ * malformed/partial response and is rejected rather than rendered as
+ * unfunded, which would wrongly replace a funded user's balances with the
+ * unfunded UI.
+ *
+ * The v2 response has no Blockaid data yet — `addBlockaidScanResults`
+ * replicates the v1 backend's scan-and-merge client-side so both paths return
+ * the same payload. It runs after the local merge so locally added tokens get
+ * Blockaid verdicts too, as they did on v1. `shouldSkipScan` bypasses it for
+ * callers that never render scan results, mirroring the `should_skip_scan`
+ * param the v1 path forwards to the backend.
+ */
+export const fetchBalancesV2 = async ({
+  publicKey,
+  network,
+  contractIds,
+  shouldSkipScan,
+}: {
+  publicKey: string;
+  network: NETWORKS;
+  contractIds?: string[];
+  shouldSkipScan?: boolean;
+}): Promise<FetchBalancesResponse> => {
+  const { data } = await freighterBackendV2.post<{
+    data: V2AccountBalances[];
+  }>("/accounts/balances", { addresses: [publicKey] }, { params: { network } });
+
+  const account = (data?.data || []).find(
+    (accountBalances) => accountBalances.address === publicKey,
+  );
+
+  if (!account) {
+    // The public key stays out of this message deliberately: it becomes the
+    // Sentry issue title verbatim, which bypasses sanitizeLogData (that walk
+    // is key-based and returns an Error's `message` untouched) and would ship
+    // the key regardless of the analytics opt-in. Callers pass it as a
+    // structured extra instead. Keeping the message constant also keeps every
+    // occurrence grouped under one Sentry issue rather than one per account.
+    throw new Error("v2 balances response is missing the requested account");
+  }
+
+  const mappedBalances = mapAccountBalancesV2(account);
+  const mergedBalances = account.is_funded
+    ? await injectLocalTokenBalances({
+        accountBalances: mappedBalances,
+        backendTokenIds: new Set(
+          (account.balances || []).map((balance) => balance.token_id),
+        ),
+        localTokenIds: contractIds,
+        networkPassphrase:
+          mapNetworkToNetworkDetails(network).networkPassphrase,
+        // getTokenDetails is defined further down this module. Safe: this
+        // closure only runs once a caller invokes the fetcher, long after the
+        // module has finished evaluating.
+        fetchTokenDetails: (contractId) =>
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          getTokenDetails({
+            contractId,
+            publicKey,
+            network,
+            shouldFetchBalance: true,
+          }),
+      })
+    : mappedBalances;
+
+  if (shouldSkipScan) {
+    return mergedBalances;
+  }
+
+  return addBlockaidScanResults(mergedBalances, network);
 };
 
 /**
@@ -247,11 +365,14 @@ type FetchBalancesParams = {
  * @param {FetchBalancesParams} params - Parameters for balance fetching
  * @param {string} params.publicKey - The public key of the account
  * @param {NETWORKS} params.network - The network to query (mainnet/testnet)
- * @param {string[]} [params.contractIds] - Optional contract IDs to include
+ * @param {string[]} [params.contractIds] - Optional contract IDs to include (v1 path only)
+ * @param {boolean} params.useV2 - Whether to hit the v2 endpoint (remote-config gated)
  * @returns {Promise<FetchBalancesResponse>} Promise resolving to account balance data
  *
  * @description
- * Fetches account balances from the backend and transforms the response:
+ * When `useV2` is true and the network is pubnet/testnet, delegates to
+ * `fetchBalancesV2` (same response shape). Otherwise fetches account balances
+ * from the v1 backend and transforms the response:
  * - Converts numeric values to BigNumber for precision
  * - Handles native balance conversion (native → XLM)
  * - Supports optional contract ID filtering
@@ -264,7 +385,8 @@ type FetchBalancesParams = {
  * const balances = await fetchBalances({
  *   publicKey: "GABC...",
  *   network: NETWORKS.PUBLIC,
- *   contractIds: ["contract123"]
+ *   contractIds: ["contract123"],
+ *   useV2: true,
  * });
  * ```
  */
@@ -272,8 +394,19 @@ export const fetchBalances = async ({
   publicKey,
   network,
   contractIds,
+  useV2,
   shouldSkipScan,
 }: FetchBalancesParams): Promise<FetchBalancesResponse> => {
+  // The v2 balances endpoint only supports pubnet and testnet; Futurenet
+  // stays on v1 regardless of the flag. v2 sends no contract_ids — indexed
+  // contract-token balances come back on their own — but it still needs the
+  // local list to merge back the zero-balance tokens the indexer never returns.
+  const isV2SupportedNetwork =
+    network === NETWORKS.PUBLIC || network === NETWORKS.TESTNET;
+  if (useV2 && isV2SupportedNetwork) {
+    return fetchBalancesV2({ publicKey, network, contractIds, shouldSkipScan });
+  }
+
   const params = new URLSearchParams({
     network,
   });
@@ -318,6 +451,9 @@ export const fetchBalances = async ({
   return {
     ...data,
     balances: bigizedBalances,
+    // v1 returns a contract-token balance only for an ID it was handed, so
+    // every locally saved contract is removable from the balances view.
+    localOnlyTokenIds: contractIds ?? [],
   };
 };
 
@@ -340,6 +476,12 @@ export interface FetchTokenPricesParams {
   network: NETWORKS;
   /** Whether to hit the network-scoped v2 endpoint (remote-config gated) */
   useV2: boolean;
+  /**
+   * Cancels the request when the caller no longer needs the answer (e.g. the
+   * confirmation price snapshot's terminal-status deadline). Forwarded
+   * straight to axios, which aborts the underlying HTTP request.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -362,19 +504,37 @@ const PRICE_NETWORK_PARAMS: Partial<Record<NETWORKS, string>> = {
 const V2_NATIVE_PRICE_ID = "native";
 
 /**
+ * The wire identity for the price endpoints. They key the native asset as
+ * "native", and nativeness is a RESOLVED type, not a shape: XLM's own Stellar
+ * Asset Contract reaches this layer as `XLM:<contract id>` (contract balances
+ * canonicalize `symbol:contractId`), which `isNativeAssetId` does not match.
+ * Left unresolved, the About card reads "Native" while the request asks for a
+ * Soroban contract — a different asset to the backend. `classifyToken` is the
+ * one place that resolves this, so it decides here too.
+ */
+const toWireToken = (tokenId: TokenIdentifier, network: NETWORKS): string =>
+  isNativeKind(classifyToken(tokenId, network).kind)
+    ? V2_NATIVE_PRICE_ID
+    : tokenId;
+
+/**
  * Fetches the current USD prices and 24h percentage changes for the given tokens.
  *
  * When `useV2` is true, hits the network-scoped v2 endpoint, passing the active
  * network as a `network` query param; networks the endpoint doesn't serve (e.g.
  * Futurenet) are skipped and return null prices. When false, falls back to the
- * v1 endpoint. LP shares and custom tokens are always filtered out before the
- * request, and any requested token without a returned price is filled with null.
+ * v1 endpoint. LP shares are always filtered out before the request; custom
+ * (SEP-41 contract) tokens are filtered only on the legacy v1 path, since the
+ * v2 backend prices them. Any requested token without a returned price is
+ * filled with null.
  *
- * @param params Tokens to price, the active network, and the v2 flag
+ * @param params Tokens to price, the active network, the v2 flag, and an
+ * optional `AbortSignal` to cancel the request
  * @returns Promise resolving to a map of token identifiers to their price information
  *
  * @example
  * // Fetch prices for XLM and USDC on mainnet via v2
+ * const controller = new AbortController();
  * const prices = await fetchTokenPrices({
  *   tokens: [
  *     "XLM",
@@ -382,6 +542,7 @@ const V2_NATIVE_PRICE_ID = "native";
  *   ],
  *   network: NETWORKS.PUBLIC,
  *   useV2: true,
+ *   signal: controller.signal,
  * });
  *
  * // Access individual token prices
@@ -392,14 +553,32 @@ export const fetchTokenPrices = async ({
   tokens,
   network,
   useV2,
+  signal,
 }: FetchTokenPricesParams): Promise<TokenPricesMap> => {
-  // NOTE: API does not accept LP IDs or custom tokens
+  // The old single exclusion predicate is SPLIT, not moved (token price
+  // graphs design §4.1, Phase 1 item 5):
+  // - LP shares filter out unconditionally on BOTH paths — they are never
+  //   priceable, and an LP id reaching the batch endpoint fails parsing.
+  // - Custom (SEP-41 contract) tokens filter out only on the legacy v1
+  //   rollback path, whose Node backend errors on them. The Go v2 backend
+  //   prices contract tokens, so v2 requests include them — without this, a
+  //   priced SEP-41 token would show a live chart under a "--" price.
   const filteredTokens = tokens.filter((tokenId) => {
-    const token = getTokenType(tokenId);
-    return (
-      token !== TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES &&
-      token !== TokenTypeWithCustomToken.CUSTOM_TOKEN
-    );
+    // Contract-ness comes from `classifyToken`, not `getTokenType`: the latter
+    // splits on the first colon and has no bare-contract-id case, so a bare
+    // `C…` id or a symbol containing a colon would fall into its LP catch-all
+    // (dropped as unpriceable) or read as classic (sent to v1). No network is
+    // passed, so the native SAC stays a contract token here.
+    const isContractToken = classifyToken(tokenId).kind === "soroban";
+
+    if (
+      !isContractToken &&
+      getTokenType(tokenId) === TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES
+    ) {
+      return false;
+    }
+
+    return useV2 || !isContractToken;
   });
 
   // Skip the request entirely — returning empty prices that the loop below
@@ -419,15 +598,27 @@ export const fetchTokenPrices = async ({
         // The v2 endpoint is network-scoped via a `network` query param and keys
         // the native asset as "native", so translate "XLM" -> "native" on the
         // way out (v1, below, is neither network-scoped nor native-translated).
+        // `toWireToken`, not `isNativeAssetId`: XLM's own SAC arrives as
+        // `XLM:<contract id>` and would otherwise be priced as a Soroban
+        // contract — a different asset to the backend — leaving the balance
+        // on "--" beside a chart this PR now correctly resolves as native.
         const v2Tokens = filteredTokens.map((tokenId) =>
-          tokenId === NATIVE_TOKEN_CODE ? V2_NATIVE_PRICE_ID : tokenId,
+          toWireToken(tokenId, network),
         );
         ({ data } = await freighterBackendV2.post<TokenPricesResponse>(
           "/token-prices",
           { tokens: v2Tokens },
-          { params: { network: priceNetwork } },
+          { params: { network: priceNetwork }, signal },
+        ));
+      } else if (signal) {
+        ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
+          "/token-prices",
+          { tokens: filteredTokens },
+          { signal },
         ));
       } else {
+        // No config object when there's no signal to carry — preserves the
+        // exact call shape for callers that don't pass one.
         ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
           "/token-prices",
           { tokens: filteredTokens },
@@ -447,26 +638,50 @@ export const fetchTokenPrices = async ({
       }
       pricesMap = data?.data ?? {};
 
-      // Translate the native price back to the app's "XLM" convention. The
-      // null-fill loop below keys off the original (un-translated) `tokens`, so
-      // remapping here ensures the XLM entry is present and not null-filled.
+      // Translate the native price back to EVERY identifier that resolved to
+      // it — "XLM", "native", and the SAC forms alike. The null-fill loop
+      // below keys off the original (un-translated) `tokens`, so an id left
+      // unaliased here shows "--" even though we hold its price.
       if (useV2 && pricesMap[V2_NATIVE_PRICE_ID]) {
-        pricesMap[NATIVE_TOKEN_CODE] = pricesMap[V2_NATIVE_PRICE_ID];
-        delete pricesMap[V2_NATIVE_PRICE_ID];
+        const nativePrice = pricesMap[V2_NATIVE_PRICE_ID];
+        const nativeOriginals = filteredTokens.filter(
+          (tokenId) => toWireToken(tokenId, network) === V2_NATIVE_PRICE_ID,
+        );
+
+        nativeOriginals.forEach((tokenId) => {
+          pricesMap[tokenId] = nativePrice;
+        });
+        // The app's own convention, kept for callers that key off it.
+        pricesMap[NATIVE_TOKEN_CODE] = nativePrice;
+        // Only drop the wire key when it is not itself one of the ids asked
+        // for ("native" is a legitimate app-side identifier).
+        if (!nativeOriginals.includes(V2_NATIVE_PRICE_ID)) {
+          delete pricesMap[V2_NATIVE_PRICE_ID];
+        }
       }
     } catch (error) {
-      // Without this, the store callers swallow price-fetch failures (keeping
-      // stale prices / a local error string) with no Sentry signal — so a
-      // broadly-failing endpoint (e.g. a bad v2 rollout) would be invisible.
-      // Connectivity failures (offline/DNS/TLS) demote to a warn breadcrumb;
-      // backend 4xx/5xx and timeouts surface as logger.error. Rethrow so the
-      // callers still manage UI state.
-      logApiError(
-        "backendApi.fetchTokenPrices",
-        "Network unreachable while fetching token prices",
-        "Error fetching token prices",
-        error,
-      );
+      // A deliberate abort is not a failure worth reporting. The confirmation
+      // price snapshot cancels its in-flight request on every cached_display
+      // fallback — a routine path — and the interceptor normalizes an axios
+      // cancellation as a network error, so logging it would stamp a
+      // misleading "network unreachable" breadcrumb every time. Same carve-out
+      // getTokenDetails makes below. Still rethrown either way, so the
+      // snapshot's fallback runs.
+      //
+      // Otherwise: without this, the store callers swallow price-fetch
+      // failures (keeping stale prices / a local error string) with no Sentry
+      // signal — so a broadly-failing endpoint (e.g. a bad v2 rollout) would
+      // be invisible. Connectivity failures (offline/DNS/TLS) demote to a warn
+      // breadcrumb; backend 4xx/5xx and timeouts surface as logger.error.
+      // Rethrow so the callers still manage UI state.
+      if (!isRequestCanceled(error)) {
+        logApiError(
+          "backendApi.fetchTokenPrices",
+          "Network unreachable while fetching token prices",
+          "Error fetching token prices",
+          error,
+        );
+      }
       throw error;
     }
   }
@@ -523,6 +738,276 @@ export const fetchTokenPrices = async ({
 };
 
 /**
+ * Request parameters for fetching a token's price-history series
+ */
+export interface FetchTokenPriceHistoryParams {
+  /** App-side token identifier ("XLM", "native", CODE:ISSUER, SYMBOL:CONTRACTID, or a bare contract ID) */
+  tokenId: TokenIdentifier;
+  /** Active network — the endpoint is network-scoped (clients call it on PUBLIC only) */
+  network: NETWORKS;
+  /** Timeframe to fetch */
+  range: PriceHistoryRange;
+}
+
+/**
+ * A decimal string the chart can do arithmetic on — not merely non-empty.
+ * `Number("  ")` is 0, so a whitespace-only price would otherwise pass here
+ * and surface downstream as NaN prices and NaN chart coordinates.
+ */
+const isNumericString = (value: unknown): value is string =>
+  typeof value === "string" &&
+  value.trim() !== "" &&
+  new BigNumber(value).isFinite();
+
+/**
+ * A quantity that cannot be negative — a price, a supply, a holder count.
+ * `formatPriceHistoryLabel` takes `abs()` before formatting, so a negative
+ * close would be plotted against a normalized scale and then LABELLED as a
+ * positive dollar amount: a malformed payload rendered as plausible market
+ * data. A range `change` is the exception and stays on `isNumericString`,
+ * since a fall is legitimately negative.
+ */
+const isNonNegativeNumericString = (value: unknown): value is string =>
+  isNumericString(value) && !new BigNumber(value).isNegative();
+
+/**
+ * Unix seconds `Date` can represent. Finite is not enough: `Date` covers
+ * ±8.64e15 ms and `Intl.DateTimeFormat#format` throws a RangeError beyond
+ * that — during render, where it would take down the screen rather than
+ * degrading to the section's ordinary error state.
+ */
+const isFormattableUnixSeconds = (value: unknown): value is number =>
+  typeof value === "number" &&
+  Number.isFinite(new Date(value * 1000).getTime());
+
+/**
+ * The response must be for the request that asked for it. The backend echoes
+ * the token key and range verbatim; a well-formed body for another asset or
+ * range would otherwise be cached under this key and drawn under this tab.
+ */
+const assertEchoes = <T extends object>(
+  label: string,
+  expected: Partial<Record<keyof T, string>>,
+  data: T,
+) => {
+  (Object.entries(expected) as [keyof T, string][]).forEach(([field, want]) => {
+    const got: unknown = data?.[field];
+    if (got !== want) {
+      throw new Error(
+        `${label}: response ${String(field)} ${String(got)} does not match requested ${want}`,
+      );
+    }
+  });
+};
+
+/**
+ * Rejects a series the chart cannot safely draw, at the API boundary, so a
+ * malformed payload becomes an ordinary fetch failure (reported, rendered as
+ * the error state) instead of NaN geometry or a RangeError thrown in render.
+ * Mirrors the extension's `assertDrawableSeries` field for field.
+ */
+const assertDrawableSeries = (data: TokenPriceHistory) => {
+  if (!Array.isArray(data?.points)) {
+    throw new Error("token price history: points is not an array");
+  }
+  // Added to the last timestamp to label the range end, and the bucket width
+  // every point is plotted at: zero or negative would place a bucket's close
+  // at or before its own start.
+  if (
+    !(Number.isFinite(data?.resolutionSeconds) && data.resolutionSeconds > 0)
+  ) {
+    throw new Error(
+      `token price history: non-positive or non-finite resolutionSeconds (${String(
+        data?.resolutionSeconds,
+      )})`,
+    );
+  }
+  // Every label downstream prints these values with a "$". A payload in
+  // another currency would be cached and displayed as dollars, so the wire
+  // contract's USD is enforced here rather than assumed.
+  if (data?.currency !== "USD") {
+    throw new Error(
+      `token price history: unexpected currency (${String(data?.currency)})`,
+    );
+  }
+  // `null` means "verdict unavailable" and shows a warning; a missing or
+  // stringly value would read as `false` and silence it.
+  if (data?.lowVolume !== null && typeof data?.lowVolume !== "boolean") {
+    throw new Error(
+      `token price history: malformed lowVolume (${String(data?.lowVolume)})`,
+    );
+  }
+  const bad = data.points.findIndex(
+    (point) =>
+      !isFormattableUnixSeconds(point?.t) ||
+      !isNonNegativeNumericString(point?.p),
+  );
+  if (bad !== -1) {
+    throw new Error(
+      `token price history: malformed point at index ${bad} (t=${String(
+        data.points[bad]?.t,
+      )}, p=${String(data.points[bad]?.p)})`,
+    );
+  }
+  // `computeChartGeometry` takes the FIRST bucket end as t0 and normalizes
+  // every x against it, clamping only the last point. A series that goes
+  // backwards — [200, 100, 300] — therefore yields a negative x and a line
+  // that doubles back, and would be cached and drawn rather than failing.
+  // Equal timestamps collapse to one x, which the geometry already handles,
+  // so only a strict decrease is rejected.
+  const outOfOrder = data.points.findIndex(
+    (point, index) => index > 0 && point.t < data.points[index - 1].t,
+  );
+  if (outOfOrder !== -1) {
+    throw new Error(
+      `token price history: points out of chronological order at index ${outOfOrder} (${String(
+        data.points[outOfOrder - 1]?.t,
+      )} then ${String(data.points[outOfOrder]?.t)})`,
+    );
+  }
+  const last = data.points[data.points.length - 1];
+  if (last && !isFormattableUnixSeconds(last.t + data.resolutionSeconds)) {
+    throw new Error(
+      `token price history: range end outside Date range (t=${String(
+        last.t,
+      )}, resolutionSeconds=${String(data.resolutionSeconds)})`,
+    );
+  }
+  // `change` is NULLABLE, not optional: the §6.1 contract has it present on
+  // every payload, `null` when the §4.2 coverage guard rejects the window.
+  // `!= null` would wave through a missing field as though the backend had
+  // deliberately declined to compute a change, and the empty header that
+  // produces is indistinguishable from the legitimate null — cached, and
+  // silently wrong. Same rule the `lowVolume` verdict above is held to.
+  if (data.change === undefined) {
+    throw new Error("token price history: missing change");
+  }
+
+  if (data.change !== null) {
+    if (
+      !isNumericString(data.change.absolute) ||
+      !isNumericString(data.change.percent)
+    ) {
+      throw new Error(
+        `token price history: malformed change (absolute=${String(
+          data.change.absolute,
+        )}, percent=${String(data.change.percent)})`,
+      );
+    }
+    // The header prints ONE sign, taken from the percent, in front of both
+    // halves — the dollar term is rendered by magnitude. So a payload whose
+    // two halves disagree would not be rejected, it would be silently
+    // restated: `absolute: "-1", percent: "2"` reads as "+$1.00 (2.00%)", a
+    // loss shown as a gain. Either may be zero while the other is not, which
+    // is ordinary rounding on a small move.
+    const absoluteChange = new BigNumber(data.change.absolute);
+    const percentChange = new BigNumber(data.change.percent);
+    if (
+      !absoluteChange.isZero() &&
+      !percentChange.isZero() &&
+      absoluteChange.isNegative() !== percentChange.isNegative()
+    ) {
+      throw new Error(
+        `token price history: change halves disagree on sign (absolute=${data.change.absolute}, percent=${data.change.percent})`,
+      );
+    }
+  }
+};
+
+/**
+ * Absent fields are the contract; present ones must be numeric, or the card
+ * renders a literal "NaN" row (BigNumber.DEBUG is unset, so nothing throws).
+ */
+const assertTokenStats = (data: TokenStats) => {
+  if (
+    data?.supplyOnStellar !== undefined &&
+    !isNonNegativeNumericString(data.supplyOnStellar)
+  ) {
+    throw new Error(
+      `token stats: malformed supplyOnStellar (${String(data.supplyOnStellar)})`,
+    );
+  }
+  if (
+    data?.holders !== undefined &&
+    !(Number.isSafeInteger(data.holders) && data.holders >= 0)
+  ) {
+    // A holder count is a whole number of accounts. `formatStatValue` rounds
+    // down, so a fractional 1.9 would render as a plausible "1".
+    throw new Error(`token stats: malformed holders (${String(data.holders)})`);
+  }
+};
+
+/**
+ * The endpoint keys the native asset as "native", so anything resolving to it
+ * is translated here; other identifiers pass through and are echoed back.
+ *
+ * No data is a 200 with `points: []` and `change: null`, never an error; only
+ * transport failures reject, and callers own the reporting.
+ *
+ * @returns the price-history payload (string prices; parse with BigNumber)
+ */
+export const fetchTokenPriceHistory = async ({
+  tokenId,
+  network,
+  range,
+}: FetchTokenPriceHistoryParams): Promise<TokenPriceHistory> => {
+  const wireToken = toWireToken(tokenId, network);
+
+  const { data } = await freighterBackendV2.get<TokenPriceHistoryResponse>(
+    "/token-price-history",
+    { params: { token: wireToken, network, range } },
+  );
+
+  if (!data?.data) {
+    throw new Error("Unexpected token-price-history response shape");
+  }
+
+  assertEchoes("token price history", { token: wireToken, range }, data.data);
+  assertDrawableSeries(data.data);
+
+  return data.data;
+};
+
+/**
+ * Request parameters for fetching a token's stats
+ */
+export interface FetchTokenStatsParams {
+  /** App-side token identifier (same forms as {@link FetchTokenPriceHistoryParams.tokenId}) */
+  tokenId: TokenIdentifier;
+  /** Active network — the endpoint is network-scoped (clients call it on PUBLIC only) */
+  network: NETWORKS;
+}
+
+/**
+ * Fetches the Token Stats payload (supply on Stellar / holders) from the v2
+ * backend. Fields the backend cannot source are absent from the payload
+ * entirely — render only the rows present.
+ *
+ * @param params Token to fetch and the active network
+ * @returns Promise resolving to the stats payload
+ */
+export const fetchTokenStats = async ({
+  tokenId,
+  network,
+}: FetchTokenStatsParams): Promise<TokenStats> => {
+  const wireToken = toWireToken(tokenId, network);
+
+  const { data } = await freighterBackendV2.get<TokenStatsResponse>(
+    "/token-stats",
+    { params: { token: wireToken, network } },
+  );
+
+  if (!data?.data) {
+    throw new Error("Unexpected token-stats response shape");
+  }
+
+  assertEchoes("token stats", { token: wireToken }, data.data);
+  assertTokenStats(data.data);
+
+  return data.data;
+};
+
+/**
  * Fetches detailed information about a specific token contract
  * @async
  * @function getTokenDetails
@@ -551,6 +1036,7 @@ export const getTokenDetails = async ({
   contractId,
   publicKey,
   network,
+  shouldFetchBalance,
   signal,
 }: GetTokenDetailsParams): Promise<TokenDetailsResponse | null> => {
   try {
@@ -562,6 +1048,9 @@ export const getTokenDetails = async ({
         params: {
           pub_key: publicKey,
           network,
+          // Off by default: the balance costs the backend an extra contract
+          // call, and most callers only want the token's metadata.
+          ...(shouldFetchBalance ? { should_fetch_balance: true } : {}),
         },
         signal,
       },
@@ -780,14 +1269,18 @@ export const handleContractLookup = async (
   publicKey?: string,
   signal?: AbortSignal,
 ): Promise<FormattedSearchTokenRecord | null> => {
-  const nativeContractDetails = getNativeContractDetails(network);
+  const { networkPassphrase } = mapNetworkToNetworkDetails(network);
 
-  if (nativeContractDetails.contract === contractId) {
+  if (isNativeContract(contractId, networkPassphrase)) {
+    const nativeContractDetails = getNativeContractDetails(network);
+
     return {
       tokenCode: nativeContractDetails.code,
       domain: nativeContractDetails.domain,
       hasTrustline: true,
-      issuer: nativeContractDetails.issuer,
+      // The native asset has no issuer; matches the stellar.expert path's
+      // native record (`issuer: issuer ?? ""`).
+      issuer: "",
       isNative: true,
       tokenType: TokenTypeWithCustomToken.NATIVE,
     };
@@ -812,7 +1305,8 @@ export const handleContractLookup = async (
 
   return {
     tokenCode: tokenDetails.symbol,
-    domain: "Stellar Network",
+    // No domain is available for a contract token; the UI falls back to "-".
+    domain: "",
     hasTrustline: false,
     issuer,
     isNative: false,
@@ -908,7 +1402,7 @@ export const simulateTokenTransfer = async (
 
   return {
     ...data,
-    preparedTx: TransactionBuilder.fromXDR(
+    preparedTx: TransactionBuilder.fromXdr(
       data.preparedTransaction,
       params.network_passphrase,
     ),
@@ -1018,7 +1512,9 @@ export const submitTransaction = async (body: SubmitTransactionBody) => {
  * @interface ProtocolsResponse
  * @property {Object} data - Response data container
  * @property {Object[]} data.protocols - Array of protocol objects
- * @property {string} data.protocols[].description - Protocol description
+ * @property {string} data.protocols[].description - Protocol description. Rendered via
+ * LinkedText (components/LinkedText): supports markdown-style `[text](https://...)` links
+ * and bare `https://` URLs, which render as tappable links. No other markdown/HTML is parsed.
  * @property {string} data.protocols[].icon_url - Protocol icon URL
  * @property {string} data.protocols[].name - Protocol name
  * @property {string} data.protocols[].website_url - Protocol website URL

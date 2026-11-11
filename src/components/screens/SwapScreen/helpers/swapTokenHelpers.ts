@@ -1,5 +1,5 @@
 import { BigNumber } from "bignumber.js";
-import { isNativeAssetId, NATIVE_TOKEN_CODE } from "config/constants";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import {
   FormattedSearchTokenRecord,
   NativeToken,
@@ -8,6 +8,11 @@ import {
   TokenIdentifier,
   TokenPricesMap,
 } from "config/types";
+import {
+  isNativeAssetId,
+  isNativeBalance,
+  isNativeToken,
+} from "helpers/assetIdentity";
 import { getTokenIdentifier, getTokenPriceFromBalance } from "helpers/balances";
 
 /**
@@ -64,57 +69,34 @@ export const getTokenFromBalance = (
 };
 
 /**
- * Finds a balance item that matches the given token using multiple strategies.
+ * Finds the balance item whose full identity matches the given token.
  */
 export const findBalanceForToken = ({
   token: incomingToken,
   balanceItems,
 }: FindBalanceForTokenParams): PricedBalance | undefined => {
-  // Strategy 1: Use getTokenIdentifier for exact matching
+  // Exact identifier match (code:issuer / symbol:contract / "XLM").
   const tokenIdentifier = getTokenIdentifier(incomingToken);
   if (tokenIdentifier) {
-    const exactMatch = balanceItems.find((item) => {
-      const itemIdentifier = getTokenIdentifier(item);
-      return itemIdentifier === tokenIdentifier;
-    });
+    const exactMatch = balanceItems.find(
+      (item) => getTokenIdentifier(item) === tokenIdentifier,
+    );
     if (exactMatch) return exactMatch;
   }
 
-  // Strategy 2: Match by token code for native tokens
-  if (incomingToken.type === "native") {
-    const nativeMatch = balanceItems.find((item) => {
-      if ("token" in item && item.token.type === "native") {
+  // Native tokens can also be keyed by the raw "native" sentinel.
+  if (isNativeToken(incomingToken)) {
+    return balanceItems.find((item) => {
+      if (isNativeBalance(item)) {
         return true;
       }
       return isNativeAssetId(item.id);
     });
-    if (nativeMatch) return nativeMatch;
   }
 
-  // Strategy 3: Match by code and issuer for tokens
-  if (incomingToken.type !== "native") {
-    const token = incomingToken;
-    const tokenMatch = balanceItems.find((item) => {
-      if ("token" in item && item.token.type !== "native") {
-        const itemToken = item.token;
-        return (
-          itemToken.code === token.code && itemToken.issuer === token.issuer
-        );
-      }
-      return false;
-    });
-    if (tokenMatch) return tokenMatch;
-  }
-
-  // Strategy 4: Fallback to code-only matching (less reliable)
-  const codeMatch = balanceItems.find((item) => {
-    if ("token" in item) {
-      return item.token.code === incomingToken.code;
-    }
-    return item.tokenCode === incomingToken.code;
-  });
-
-  return codeMatch;
+  // A balance that doesn't match by full identity is a different asset, so
+  // there is no looser fallback.
+  return undefined;
 };
 
 /**

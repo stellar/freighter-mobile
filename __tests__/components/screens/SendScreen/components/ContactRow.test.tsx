@@ -12,6 +12,7 @@ jest.mock("components/sds/Avatar", () => ({
 
 jest.mock("components/sds/Icon", () => ({
   DotsHorizontal: () => "MockedDotsIcon",
+  Plus: () => "MockedPlusIcon",
 }));
 
 describe("ContactRow", () => {
@@ -22,6 +23,16 @@ describe("ContactRow", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  // The amount screen's recipient row, before a recipient is chosen. The
+  // Send To screen's title says "Choose recipient", but the row keeps its own
+  // label.
+  it("asks for a recipient when there's no address yet", () => {
+    const { getByText } = renderWithProviders(<ContactRow address="" />);
+
+    expect(getByText("Send to")).toBeTruthy();
+    expect(getByText("Choose recipient")).toBeTruthy();
   });
 
   it("renders correctly with address only", () => {

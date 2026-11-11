@@ -15,7 +15,17 @@ import {
   trackDiscoverWelcomeModalViewed,
 } from "services/analytics/discover";
 import {
+  trackTokenChartLoaded,
+  trackTokenChartViewed,
+  trackTokenChartRangeChanged,
+  trackTokenChartBrushed,
+} from "services/analytics/tokenChart";
+import {
   trackSignedTransaction,
+  trackInternalSignedTransaction,
+  trackInternalSignedTransactionRejected,
+  trackInternalSignedTransactionError,
+  trackSignedTransactionError,
   trackSignedMessage,
   trackSignedAuthEntry,
   trackSignedMessageError,
@@ -65,6 +75,10 @@ export interface AnalyticsInstance {
 
   // Transaction analytics
   readonly trackSignedTransaction: typeof trackSignedTransaction;
+  readonly trackInternalSignedTransaction: typeof trackInternalSignedTransaction;
+  readonly trackInternalSignedTransactionRejected: typeof trackInternalSignedTransactionRejected;
+  readonly trackInternalSignedTransactionError: typeof trackInternalSignedTransactionError;
+  readonly trackSignedTransactionError: typeof trackSignedTransactionError;
   readonly trackSignedMessage: typeof trackSignedMessage;
   readonly trackSignedAuthEntry: typeof trackSignedAuthEntry;
   readonly trackSignedMessageError: typeof trackSignedMessageError;
@@ -100,6 +114,12 @@ export interface AnalyticsInstance {
 
   // History analytics
   readonly trackHistoryOpenItem: typeof trackHistoryOpenItem;
+
+  // Token price chart analytics
+  readonly trackTokenChartLoaded: typeof trackTokenChartLoaded;
+  readonly trackTokenChartViewed: typeof trackTokenChartViewed;
+  readonly trackTokenChartRangeChanged: typeof trackTokenChartRangeChanged;
+  readonly trackTokenChartBrushed: typeof trackTokenChartBrushed;
 
   // Earn (Blend deposit) analytics
   readonly trackEarnDepositSuccess: typeof trackEarnDepositSuccess;
@@ -142,6 +162,10 @@ export const analytics: AnalyticsInstance = {
   trackReAuthSuccess,
   trackReAuthFail,
   trackSignedTransaction,
+  trackInternalSignedTransaction,
+  trackInternalSignedTransactionRejected,
+  trackInternalSignedTransactionError,
+  trackSignedTransactionError,
   trackSignedMessage,
   trackSignedAuthEntry,
   trackSignedMessageError,
@@ -169,6 +193,10 @@ export const analytics: AnalyticsInstance = {
   trackGrantAccessFail,
   trackGrantAccessBlocked,
   trackHistoryOpenItem,
+  trackTokenChartLoaded,
+  trackTokenChartViewed,
+  trackTokenChartRangeChanged,
+  trackTokenChartBrushed,
   trackEarnDepositSuccess,
   trackEarnDepositFail,
   trackDiscoverProtocolOpened,

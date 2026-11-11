@@ -36,6 +36,10 @@ declare module "react-native-config" {
 
     MP_COLLECTIONS_ADDRESSES: string;
 
+    // Optional, like the E2E_TEST keys: only the PR Preview workflows set it,
+    // so it is absent from .env in every other build.
+    IS_PREVIEW_BUILD: string;
+
     IS_E2E_TEST: string;
     E2E_TEST_RECOVERY_PHRASE: string;
     E2E_TEST_FUNDED_RECOVERY_PHRASE: string;

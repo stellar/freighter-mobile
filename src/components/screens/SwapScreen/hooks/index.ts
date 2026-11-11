@@ -1,3 +1,4 @@
+export { useDefaultSwapDestination } from "./useDefaultSwapDestination";
 export { useSwapAmountError, SWAP_TOAST_IDS } from "./useSwapAmountError";
 export { useSwapBalances } from "./useSwapBalances";
 export { useSwapCtaState, type SwapCtaState } from "./useSwapCtaState";

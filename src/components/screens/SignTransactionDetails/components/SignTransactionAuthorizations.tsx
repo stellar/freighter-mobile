@@ -1,17 +1,21 @@
 /* eslint-disable react/no-array-index-key */
 import CollapsibleSection from "components/CollapsibleSection";
 import {
+  ExternalExecutableNote,
   KeyValueListItem,
   KeyValueInvokeHostFnArgs,
 } from "components/screens/SignTransactionDetails/components/KeyVal";
 import { AuthEntryDisplay } from "components/screens/SignTransactionDetails/types";
+import { Banner } from "components/sds/Banner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
   getInvocationDetails,
   InvocationArgs,
+  INVOCATION_TYPE_EXTERNAL_REF,
   INVOCATION_TYPE_INVOKE,
   INVOCATION_TYPE_SAC,
+  INVOCATION_TYPE_UNRECOGNIZED,
   INVOCATION_TYPE_WASM,
 } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
@@ -35,8 +39,14 @@ const SignTransactionAuthorizations = ({
         return detail.fnName;
       }
       case INVOCATION_TYPE_SAC:
-      case INVOCATION_TYPE_WASM: {
+      case INVOCATION_TYPE_WASM:
+      case INVOCATION_TYPE_EXTERNAL_REF: {
         return t("signTransactionDetails.authorizations.contractCreation");
+      }
+      case INVOCATION_TYPE_UNRECOGNIZED: {
+        return t(
+          "signTransactionDetails.authorizations.unrecognizedInvocation",
+        );
       }
       default: {
         return null;
@@ -53,6 +63,10 @@ const SignTransactionAuthorizations = ({
         return `${detail.type}-${detail.asset}`;
       case INVOCATION_TYPE_WASM:
         return `${detail.type}-${detail.hash}`;
+      case INVOCATION_TYPE_EXTERNAL_REF:
+        return `${detail.type}-${detail.owner}-${detail.tag}`;
+      case INVOCATION_TYPE_UNRECOGNIZED:
+        return detail.type;
       default:
         return `unknown-${JSON.stringify(detail)}`;
     }
@@ -66,7 +80,7 @@ const SignTransactionAuthorizations = ({
             <View className="bg-background-secondary rounded-[16px] p-[16px] gap-[12px]">
               <View className="gap-[8px]">
                 <View className="flex-row items-center gap-[4px]">
-                  <Text secondary>
+                  <Text medium secondary>
                     {t("signTransactionDetails.authorizations.contractId")}
                   </Text>
                   <Icon.Copy01
@@ -75,11 +89,11 @@ const SignTransactionAuthorizations = ({
                     onPress={() => copyToClipboard(detail.contractId)}
                   />
                 </View>
-                <Text>{detail.contractId}</Text>
+                <Text medium>{detail.contractId}</Text>
               </View>
               <View className="gap-[8px]">
                 <View className="flex-row items-center gap-[4px]">
-                  <Text secondary>
+                  <Text medium secondary>
                     {t("signTransactionDetails.authorizations.functionName")}
                   </Text>
                   <Icon.Copy01
@@ -88,13 +102,17 @@ const SignTransactionAuthorizations = ({
                     onPress={() => copyToClipboard(detail.fnName)}
                   />
                 </View>
-                <Text>{detail.fnName}</Text>
+                <Text medium>{detail.fnName}</Text>
               </View>
             </View>
+            {/* isAuthEntry suppresses contract-spec labels: an auth's args
+            need not be the function's declared parameters. See
+            stellar/freighter#2196. */}
             <KeyValueInvokeHostFnArgs
               args={detail.args}
               contractId={detail.contractId}
-              fnName={detail.fnName}
+              specFnName={detail.fnNameRaw}
+              isAuthEntry
             />
           </View>
         );
@@ -106,7 +124,7 @@ const SignTransactionAuthorizations = ({
               <View className="gap-[8px]">
                 <View className="flex-row items-center gap-[4px]">
                   <Icon.CodeSnippet01 size={14} themeColor="gray" />
-                  <Text secondary>
+                  <Text medium secondary>
                     {t(
                       "signTransactionDetails.authorizations.contractCreation",
                     )}
@@ -129,7 +147,7 @@ const SignTransactionAuthorizations = ({
               <View className="gap-[8px]">
                 <View className="flex-row items-center gap-[4px]">
                   <Icon.CodeSnippet01 size={14} themeColor="gray" />
-                  <Text secondary>
+                  <Text medium secondary>
                     {t(
                       "signTransactionDetails.authorizations.contractCreation",
                     )}
@@ -143,7 +161,7 @@ const SignTransactionAuthorizations = ({
               )}
               operationValue={
                 <View className="flex-row items-center gap-[4px]">
-                  <Text>{truncateAddress(detail.address)}</Text>
+                  <Text medium>{truncateAddress(detail.address)}</Text>
                   <Icon.Copy01
                     size={14}
                     themeColor="gray"
@@ -164,6 +182,80 @@ const SignTransactionAuthorizations = ({
           </View>
         );
       }
+      // CAP-85 (Protocol 28): contract created from an external executable
+      // reference (owner contract + tag) instead of a Wasm hash.
+      case INVOCATION_TYPE_EXTERNAL_REF: {
+        return (
+          <View className="gap-[12px]">
+            <View className="bg-background-secondary rounded-[16px] p-[16px] gap-[12px]">
+              <View className="gap-[8px]">
+                <View className="flex-row items-center gap-[4px]">
+                  <Icon.CodeSnippet01 size={14} themeColor="gray" />
+                  <Text medium secondary>
+                    {t(
+                      "signTransactionDetails.authorizations.contractCreation",
+                    )}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <ExternalExecutableNote />
+            <KeyValueListItem
+              operationKey={t(
+                "signTransactionDetails.authorizations.contractAddress",
+              )}
+              operationValue={
+                <View className="flex-row items-center gap-[4px]">
+                  <Text medium>{truncateAddress(detail.address)}</Text>
+                  <Icon.Copy01
+                    size={14}
+                    themeColor="gray"
+                    onPress={() => copyToClipboard(detail.address)}
+                  />
+                </View>
+              }
+            />
+            <KeyValueListItem
+              operationKey={t(
+                "signTransactionDetails.authorizations.executableOwner",
+              )}
+              operationValue={
+                <View className="flex-row items-center gap-[4px]">
+                  <Text medium>{truncateAddress(detail.owner)}</Text>
+                  <Icon.Copy01
+                    size={14}
+                    themeColor="gray"
+                    onPress={() => copyToClipboard(detail.owner)}
+                  />
+                </View>
+              }
+            />
+            <KeyValueListItem
+              operationKey={t(
+                "signTransactionDetails.authorizations.executableTag",
+              )}
+              operationValue={detail.tag}
+            />
+            <KeyValueListItem
+              operationKey={t("common.salt")}
+              operationValue={truncateAddress(detail.salt)}
+            />
+            {detail.args && <KeyValueInvokeHostFnArgs args={detail.args} />}
+          </View>
+        );
+      }
+      case INVOCATION_TYPE_UNRECOGNIZED: {
+        return (
+          <Banner
+            variant="error"
+            showChevron={false}
+            testID="UnrecognizedInvocationWarning"
+            text={t(
+              "signTransactionDetails.authorizations.unrecognizedInvocationWarning",
+            )}
+          />
+        );
+      }
       default: {
         return null;
       }
@@ -180,7 +272,7 @@ const SignTransactionAuthorizations = ({
             operationKey={t("signTransactionDetails.authorizations.address")}
             operationValue={
               <View className="flex-row items-center gap-[4px]">
-                <Text>{truncateAddress(boundAddress)}</Text>
+                <Text medium>{truncateAddress(boundAddress)}</Text>
                 <Icon.Copy01
                   size={14}
                   themeColor="gray"
@@ -199,7 +291,7 @@ const SignTransactionAuthorizations = ({
               header={
                 <View className="flex-row items-center gap-[8px]">
                   <Icon.CodeCircle01 size={16} themeColor="gray" />
-                  <Text>{getAuthEntryTitle(detail)}</Text>
+                  <Text medium>{getAuthEntryTitle(detail)}</Text>
                 </View>
               }
               testID={`collapsible-auth-${getAuthEntryKey(detail)}-${detailIndex}`}
@@ -214,16 +306,13 @@ const SignTransactionAuthorizations = ({
 
   return (
     <View>
-      <View className="flex-row items-center gap-[8px] mb-[12px]">
-        <Icon.Key02 size={16} themeColor="gray" />
-        <Text secondary>
+      <View className="mb-[12px]">
+        <Text sm medium secondary>
           {t("signTransactionDetails.authorizations.title")}
         </Text>
       </View>
       {authEntries.map((entry, index) => (
-        <View
-          key={`auth-entry-${index}-${entry.invocation.toXDR("raw").toString()}`}
-        >
+        <View key={`auth-entry-${index}-${entry.invocation.toXdr("base64")}`}>
           {renderAuthEntry(entry)}
         </View>
       ))}

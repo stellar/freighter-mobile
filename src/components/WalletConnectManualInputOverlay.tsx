@@ -99,7 +99,7 @@ export const WalletConnectManualInputOverlay: React.FC<
         isLoading={isConnecting}
         disabled={isConnecting || !manualInput.trim()}
         xl
-        tertiary
+        secondary
         onPress={onConnect}
       >
         {t("walletConnect.connect")}

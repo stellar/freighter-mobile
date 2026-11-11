@@ -46,6 +46,41 @@ const mockGetExperimentClient = getExperimentClient as jest.MockedFunction<
   typeof getExperimentClient
 >;
 
+describe("production defaults", () => {
+  it("ships the price-history kill switch ON, like the extension", () => {
+    // One default on both platforms: the chart is on unless Amplitude turns
+    // it off. Clients do not ship before the backend routes are live, so ON
+    // never reaches users while the endpoints 404.
+    // `__DEV__` is a React Native global; jest defines it as true, and the
+    // production branch is what needs asserting.
+    // eslint-disable-next-line no-underscore-dangle
+    const devGlobal = global as unknown as { __DEV__: boolean };
+    // eslint-disable-next-line no-underscore-dangle
+    const previousDev = devGlobal.__DEV__;
+    // eslint-disable-next-line no-underscore-dangle
+    devGlobal.__DEV__ = false;
+
+    try {
+      jest.isolateModules(() => {
+        jest.doMock("helpers/isEnv", () => ({ isDev: false }));
+        // eslint-disable-next-line @typescript-eslint/no-require-imports, global-require, @typescript-eslint/no-var-requires
+        const { useRemoteConfigStore: store } =
+          jest.requireActual<typeof import("ducks/remoteConfig")>(
+            "ducks/remoteConfig",
+          );
+
+        expect(store.getState().use_token_price_history).toBe(true);
+        // Proves the production branch was read: swap is ON in dev and
+        // follows isAndroid (mocked false) in production.
+        expect(store.getState().swap_enabled).toBe(false);
+      });
+    } finally {
+      // eslint-disable-next-line no-underscore-dangle
+      devGlobal.__DEV__ = previousDev;
+    }
+  });
+});
+
 describe("remoteConfig duck", () => {
   beforeEach(() => {
     act(() => {
@@ -80,6 +115,12 @@ describe("remoteConfig duck", () => {
       });
       expect(typeof result.current.fetchFeatureFlags).toBe("function");
       expect(typeof result.current.initFetchFeatureFlagsPoll).toBe("function");
+    });
+
+    it("defaults use_balances_v2 to false", () => {
+      const { result } = renderHook(() => useRemoteConfigStore());
+
+      expect(result.current.use_balances_v2).toBe(false);
     });
   });
 
@@ -164,6 +205,38 @@ describe("remoteConfig duck", () => {
       expect(result.current.swap_enabled).toBe(false);
       expect(result.current.discover_enabled).toBe(false);
       expect(result.current.onramp_enabled).toBe(false);
+    });
+
+    it("turns use_balances_v2 on when the variant is on", async () => {
+      const mockClient = createMockExperimentClient();
+      mockClient.all.mockReturnValue({
+        use_balances_v2: { value: "on" },
+      });
+      mockGetExperimentClient.mockReturnValue(mockClient);
+
+      const { result } = renderHook(() => useRemoteConfigStore());
+
+      await act(async () => {
+        await result.current.fetchFeatureFlags();
+      });
+
+      expect(result.current.use_balances_v2).toBe(true);
+    });
+
+    it("keeps use_balances_v2 off when the variant is off", async () => {
+      const mockClient = createMockExperimentClient();
+      mockClient.all.mockReturnValue({
+        use_balances_v2: { value: "off" },
+      });
+      mockGetExperimentClient.mockReturnValue(mockClient);
+
+      const { result } = renderHook(() => useRemoteConfigStore());
+
+      await act(async () => {
+        await result.current.fetchFeatureFlags();
+      });
+
+      expect(result.current.use_balances_v2).toBe(false);
     });
 
     it("should update only specific flags when variants are returned", async () => {

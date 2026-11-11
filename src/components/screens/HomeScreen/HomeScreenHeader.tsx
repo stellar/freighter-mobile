@@ -1,17 +1,12 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabHeaderProps } from "@react-navigation/bottom-tabs";
 import { NativeStackHeaderProps } from "@react-navigation/native-stack";
-import {
-  CustomHeaderButton,
-  DEFAULT_HEADER_BUTTON_SIZE,
-} from "components/layout/CustomHeaderButton";
+import { NavigationHeaderBar } from "components/layout/CustomNavigationHeader";
+import { HeaderFade } from "components/layout/HeaderFade";
 import MaintenanceBannerBottomSheet from "components/screens/HomeScreen/MaintenanceBannerBottomSheet";
 import { NoticeBanner } from "components/sds/NoticeBanner";
-import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_PADDING } from "config/constants";
 import { logger } from "config/logger";
-import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useAppUpdate } from "hooks/useAppUpdate";
 import useColors from "hooks/useColors";
@@ -20,17 +15,20 @@ import { useMaintenanceMode } from "hooks/useMaintenanceMode";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useRef } from "react";
 import { View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { analytics } from "services/analytics";
 
-const MIN_INSETS_TOP = 34;
-
+/**
+ * Home's header, drawn by the tab navigator: the shared nav bar with the
+ * account switcher and the header buttons `useHomeHeaders` passes as
+ * `headerLeft` and `headerRight`, on the header fade so Home's content
+ * scrolls up under it. An update or maintenance banner shows under the bar,
+ * and the header then stays solid.
+ */
 const HomeScreenHeader = (
   props: NativeStackHeaderProps | BottomTabHeaderProps,
 ) => {
   const { navigation, options = {} } = props;
   const { themeColors } = useColors();
-  const insets = useSafeAreaInsets();
   const { t } = useAppTranslation();
   const { showToast } = useToast();
   const { showBannerUpdateNotice, updateMessage, openAppStore } =
@@ -95,10 +93,12 @@ const HomeScreenHeader = (
     maintenanceModalRef.current?.dismiss();
   }, []);
 
-  // In case insets.top is not available, let's ensure at least 34px of top
-  // padding to avoid touching issues related to the notch and the status bar
-  const insetsTop = insets.top || pxValue(MIN_INSETS_TOP - DEFAULT_PADDING);
-  const paddingTop = insetsTop + pxValue(DEFAULT_PADDING);
+  const buttonProps = {
+    canGoBack: navigation.canGoBack(),
+    tintColor: baseColor,
+    pressColor: baseColor,
+    pressOpacity: 0.5,
+  };
 
   const hasMaintenanceBannerAction = !!(
     bannerContent.url || bannerContent.modal
@@ -134,42 +134,25 @@ const HomeScreenHeader = (
     handleBannerPress,
   ]);
 
-  return (
-    <View className="bg-background-primary">
-      {/* Main header */}
-      <View
-        className="flex-row justify-between items-center px-6 pb-4"
-        style={{ paddingTop }}
-      >
-        {options.headerLeft ? (
-          options.headerLeft({
-            canGoBack: navigation.canGoBack(),
-            tintColor: baseColor,
-            pressColor: baseColor,
-            pressOpacity: 0.5,
-          })
-        ) : (
-          <CustomHeaderButton position="left" />
-        )}
-        {typeof options.headerTitle === "string" && (
-          <Text md primary semiBold>
-            {options.headerTitle}
-          </Text>
-        )}
-        {options.headerRight ? (
-          options.headerRight({
-            canGoBack: navigation.canGoBack(),
-            tintColor: baseColor,
-            pressColor: baseColor,
-            pressOpacity: 0.5,
-          })
-        ) : (
-          // Need to leave this empty view here to maintain the correct alignment of the header title
-          <View className={DEFAULT_HEADER_BUTTON_SIZE} />
-        )}
-      </View>
+  const bannerContentNode = renderBannerContent();
+  // Home's content scrolls up under the header and fades out below the row.
+  // A banner is opaque, so with one the header stays solid instead of
+  // showing content through the gap between the row and the banner.
+  const hasFade = !bannerContentNode;
 
-      {renderBannerContent()}
+  return (
+    <View className={hasFade ? undefined : "bg-base-0"}>
+      {hasFade && <HeaderFade />}
+
+      {/* Main header: the nav bar every other screen's header is drawn with,
+          so Home's row lines up with theirs when the tabs switch */}
+      <NavigationHeaderBar
+        left={options.headerLeft?.(buttonProps)}
+        right={options.headerRight?.(buttonProps)}
+        isTransparent={hasFade}
+      />
+
+      {bannerContentNode}
 
       {/* Maintenance bottom sheet modal - shown when banner tapped with no URL */}
       {showMaintenanceBanner && bannerContent.modal && (
@@ -177,7 +160,6 @@ const HomeScreenHeader = (
           modalRef={maintenanceModalRef}
           title={bannerContent.modal.title}
           body={bannerContent.modal.body}
-          variant={bannerContent.theme}
           onDismiss={handleModalDismiss}
         />
       )}

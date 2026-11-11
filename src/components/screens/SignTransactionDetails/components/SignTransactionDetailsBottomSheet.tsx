@@ -1,80 +1,76 @@
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import BottomSheetAdaptiveContainer from "components/primitives/BottomSheetAdaptiveContainer";
+import { PinnedBottomSheetHeader } from "components/BottomSheetHeader";
+import { ErrorBoundary } from "components/ErrorBoundary";
 import SignTransactionAuthorizations from "components/screens/SignTransactionDetails/components/SignTransactionAuthorizations";
 import SignTransactionOperationDetails from "components/screens/SignTransactionDetails/components/SignTransactionOperationDetails";
 import SignTransactionSummary from "components/screens/SignTransactionDetails/components/SignTransactionSummary";
+import { UnreadableTransactionNotice } from "components/screens/SignTransactionDetails/components/UnreadableTransactionNotice";
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
-import Icon from "components/sds/Icon";
-import { Text } from "components/sds/Typography";
-import {
-  BOTTOM_SHEET_CONTENT_BOTTOM_PADDING,
-  DEFAULT_PADDING,
-} from "config/constants";
-import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import { View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface SignTransactionDetailsBottomSheetProps {
   data: SignTransactionDetailsInterface;
-  onDismiss: () => void;
+  /**
+   * Called once when the details throw while rendering, after the error is
+   * reported. A dApp request uses it to fail closed. Send and swap pass
+   * nothing, so for them the notice is all that changes.
+   */
+  onRenderError?: () => void;
 }
 
-const SignTransactionDetailsBottomSheet = ({
-  data,
-  onDismiss,
-}: SignTransactionDetailsBottomSheetProps) => {
+/**
+ * Title row for the transaction details sheet. Hosts pass it as the wrapper's
+ * `scrollViewHeaderComponent`, so it stays pinned while the details scroll;
+ * the opaque background covers the content scrolling underneath.
+ */
+export const SignTransactionDetailsHeader: React.FC<{
+  onDismiss: () => void;
+}> = ({ onDismiss }) => {
   const { t } = useAppTranslation();
-  const insets = useSafeAreaInsets();
 
   return (
-    <View className="flex-1 gap-[16px] w-full pb-[64px]">
-      {/* Header */}
-      <BottomSheetAdaptiveContainer
-        header={
-          <View className="w-full gap-[16px]">
-            <View className="flex-row items-center justify-between">
-              <View className="bg-lilac-3 p-[7px] rounded-[8px]">
-                <Icon.List size={25} themeColor="lilac" />
-              </View>
-              <Icon.XClose
-                size={20}
-                themeColor="gray"
-                onPress={onDismiss}
-                withBackground
-              />
-            </View>
-            <Text xl>{t("signTransactionDetails.title")}</Text>
-          </View>
-        }
-      >
-        <BottomSheetScrollView
-          className="w-full"
-          showsVerticalScrollIndicator={false}
-          alwaysBounceVertical={false}
-          contentContainerStyle={{
-            gap: pxValue(16),
-            // insets.bottom + DEFAULT_PADDING keeps the scroll tail clear of
-            // navigation bars that overlap the sheet under edge-to-edge
-            // (host sheets opt out of the wrapper's inset padding).
-            paddingBottom:
-              pxValue(BOTTOM_SHEET_CONTENT_BOTTOM_PADDING) +
-              insets.bottom +
-              pxValue(DEFAULT_PADDING),
-          }}
-        >
-          <SignTransactionSummary summary={data.summary} />
-          {data.authEntries.length > 0 && (
-            <SignTransactionAuthorizations authEntries={data.authEntries} />
-          )}
-          {data.operations.length > 0 && (
-            <SignTransactionOperationDetails operations={data.operations} />
-          )}
-        </BottomSheetScrollView>
-      </BottomSheetAdaptiveContainer>
-    </View>
+    <PinnedBottomSheetHeader
+      title={t("signTransactionDetails.title")}
+      layout="centered"
+      onClose={onDismiss}
+      closeTestID="sign-transaction-details-close-button"
+    />
   );
 };
+
+/**
+ * The body of the transaction details sheet: the summary, the authorizations
+ * and the operations.
+ *
+ * The three sections render behind one error boundary. If any of them throws
+ * while rendering, the boundary reports the error, shows the unreadable notice
+ * in place of all three and calls `onRenderError`. It renders them again once
+ * the transaction (`data.summary.xdr`) changes.
+ */
+const SignTransactionDetailsBottomSheet = ({
+  data,
+  onRenderError,
+}: SignTransactionDetailsBottomSheetProps) => (
+  // The host renders this in the wrapper's scrollable mode, below the pinned
+  // header: the sheet sizes to this content and scrolls once it reaches its
+  // maximum height.
+  <View className="w-full gap-[16px]">
+    <ErrorBoundary
+      name="SignTransactionDetails"
+      fallback={<UnreadableTransactionNotice />}
+      onError={onRenderError}
+      resetKey={data.summary.xdr}
+    >
+      <SignTransactionSummary summary={data.summary} />
+      {data.authEntries.length > 0 && (
+        <SignTransactionAuthorizations authEntries={data.authEntries} />
+      )}
+      {data.operations.length > 0 && (
+        <SignTransactionOperationDetails operations={data.operations} />
+      )}
+    </ErrorBoundary>
+  </View>
+);
 
 export default SignTransactionDetailsBottomSheet;

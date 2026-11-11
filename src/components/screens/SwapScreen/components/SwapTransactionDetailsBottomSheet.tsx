@@ -11,7 +11,6 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { logger } from "config/logger";
-import { THEME } from "config/theme";
 import { NonNativeToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { usePricesForNetwork } from "ducks/prices";
@@ -188,7 +187,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
         </View>
       </View>
 
-      <View className="bg-background-secondary rounded-[16px] p-[24px] gap-[12px]">
+      <View className="bg-background-tertiary rounded-[16px] p-[24px] gap-[12px]">
         <View className="flex-row items-center">
           <TokenIcon token={sourceToken} size="lg" />
           <View className="ml-[16px]">
@@ -235,7 +234,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               />
             ),
             titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
+              <Text md secondary>
                 {t("transactionDetailsBottomSheet.status")}
               </Text>
             ),
@@ -250,7 +249,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               <Icon.Divide03 size={16} color={themeColors.foreground.primary} />
             ),
             titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
+              <Text md secondary>
                 {t("swapScreen.review.rate")}
               </Text>
             ),
@@ -269,7 +268,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               <Icon.Shield01 size={16} color={themeColors.foreground.primary} />
             ),
             titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
+              <Text md secondary>
                 {t("swapScreen.review.minimum")}
               </Text>
             ),
@@ -284,13 +283,17 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               <Icon.Route size={16} color={themeColors.foreground.primary} />
             ),
             titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
+              <Text md secondary>
                 {t("swapScreen.review.fee")}
               </Text>
             ),
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
-                <StellarLogo width={16} height={16} />
+                <StellarLogo
+                  width={16}
+                  height={16}
+                  color={themeColors.text.primary}
+                />
                 <Text md medium>
                   {formatTokenForDisplay(actualFee, NATIVE_TOKEN_CODE)}
                 </Text>
@@ -305,7 +308,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
               />
             ),
             titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
+              <Text md secondary>
                 {t("swapScreen.review.xdr")}
               </Text>
             ),
@@ -328,14 +331,9 @@ const SwapTransactionDetailsBottomSheet: React.FC<
 
       {transactionHash && (
         <Button
-          tertiary
+          secondary
           onPress={handleViewOnExplorer}
-          icon={
-            <Icon.LinkExternal01
-              size={16}
-              color={themeColors.foreground.primary}
-            />
-          }
+          icon={<Icon.LinkExternal01 size={16} />}
           iconPosition={IconPosition.RIGHT}
         >
           {t("transactionDetailsBottomSheet.viewOnExpert")}

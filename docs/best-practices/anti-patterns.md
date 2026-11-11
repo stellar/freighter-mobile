@@ -148,6 +148,49 @@ try {
 }
 ```
 
+## Identifying Assets by Code
+
+An asset's identity is the pair `(code, issuer)` — or, for a contract token, its
+contract id. Asset codes are not unique: more than one asset can share a code,
+so a bare code comparison never establishes that two assets are the same asset,
+or that an asset is the native lumen.
+
+```tsx
+// Wrong - a code alone doesn't identify the asset
+if (token.code === "XLM") { ... }
+
+// Correct - use the predicate for what you're holding
+if (isNativeToken(token)) { ... }
+```
+
+Use the predicate that matches what you're holding:
+
+| What you hold                                        | Use                                               |
+| ---------------------------------------------------- | ------------------------------------------------- |
+| a `Token` object                                     | `isNativeToken(token)`                            |
+| a `Balance` object                                   | `isNativeBalance(balance)`                        |
+| a canonical identifier, or a Horizon `asset_type`    | `isNativeAssetId(id)`                             |
+| a contract id                                        | `isNativeContract(contractId, networkPassphrase)` |
+| the native contract id itself                        | `getNativeContractId(networkPassphrase)`          |
+| a raw code and issuer, with nothing better available | `isNativeAssetPair(code, issuer)`                 |
+
+All of these live in `src/helpers/assetIdentity.ts`.
+
+For anything other than nativeness — equality, map keys, list membership, or
+user-visible labels — use the full identifier from `getTokenIdentifier()` (in
+`src/helpers/balances.ts`), not a bare code.
+
+### ESLint Enforcement
+
+The custom ESLint plugin at `src/eslint-plugin-asset-identity/` enforces this:
+
+- **Rule**: `asset-identity/no-asset-code-comparison` (error level)
+- **What it does**: Reports a `===`/`!==` comparison between one of the native
+  sentinels (`"XLM"`, `"native"`, `NATIVE_TOKEN_CODE`,
+  `HORIZON_NATIVE_ASSET_TYPE`) and anything else. It can't tell which predicate
+  a given shape actually needs, so choosing the wrong one still passes lint —
+  treat it as a safety net, not a guarantee.
+
 ## Hardcoding Test Data
 
 Never hardcode recovery phrases, private keys, or test passwords in source code.

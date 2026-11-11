@@ -66,7 +66,7 @@ const config = {
 
       const resolved = context.resolveRequest(context, moduleName, platform);
 
-      // bignumber.js v11 (pulled in by @stellar/stellar-sdk 16.x) ships a valid
+      // bignumber.js v11 (pulled in by @stellar/stellar-sdk 16.x+) ships a valid
       // CommonJS entry at dist/bignumber.cjs, but its package.json "react-native"
       // field redirects it to dist/bignumber.js — a browser-globals UMD build
       // that sets no module.exports. Metro honors that field, so

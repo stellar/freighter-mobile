@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 import { Linking } from "react-native";
 import { getBundleId, getVersion } from "react-native-device-info";
 
-const IOS_APP_STORE_URL = "https://apps.apple.com/app/freighter/id6743947720";
+const IOS_APP_STORE_URL = "https://apps.apple.com/app/varial/id6743947720";
 const ANDROID_APP_STORE_URL = `https://play.google.com/store/apps/details?id=${getBundleId()}`;
 
 const APP_STORE_URL = isIOS ? IOS_APP_STORE_URL : ANDROID_APP_STORE_URL;

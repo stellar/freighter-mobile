@@ -19,7 +19,7 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatTokenForDisplay } from "helpers/formatAmount";
-import { isContractId } from "helpers/soroban";
+import { isContractDestination } from "helpers/muxedContract";
 import { isSameAccount, truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -88,7 +88,8 @@ const TransactionProcessingScreen: React.FC<
   );
   const hasEmittedSuccess = useRef(false);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const isContractAddress = isContractId(recipientAddress);
+  // A contract (`C…`) or a muxed contract (`W…`) recipient.
+  const isContractAddress = isContractDestination(recipientAddress);
 
   // Emit the canonical screen.viewed for the in-flight submission stage. This
   // screen is the mobile analog of the extension's PENDING state (stellar/
@@ -285,7 +286,7 @@ const TransactionProcessingScreen: React.FC<
         {status === TransactionStatus.SENT ? (
           <View className="gap-[12px] pb-[8px]">
             <Button
-              secondary
+              tertiary
               xl
               onPress={handleViewTransaction}
               testID="send-processing-view-transaction-button"
@@ -293,7 +294,7 @@ const TransactionProcessingScreen: React.FC<
               {t("transactionProcessingScreen.viewTransaction")}
             </Button>
             <Button
-              tertiary
+              secondary
               xl
               onPress={handleClose}
               testID="send-processing-done-button"
@@ -307,7 +308,7 @@ const TransactionProcessingScreen: React.FC<
               {t("transactionProcessingScreen.closeMessage")}
             </Text>
             <Button
-              secondary
+              tertiary
               xl
               onPress={handleClose}
               testID="send-processing-close-button"
@@ -320,7 +321,6 @@ const TransactionProcessingScreen: React.FC<
 
       <BottomSheet
         modalRef={bottomSheetModalRef}
-        handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
         customContent={
           <TransactionDetailsBottomSheet
             type={type}

@@ -1,7 +1,11 @@
-import { NETWORKS, NATIVE_TOKEN_CODE } from "config/constants";
+import { NETWORKS } from "config/constants";
 import { FormattedSearchTokenRecord } from "config/types";
 import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { getNativeContractDetails } from "helpers/soroban";
+import {
+  buildVerifiedTokenIds,
+  isTokenInVerifiedIds,
+} from "helpers/verifiedTokenIds";
 
 /**
  * Splits tokens into verified and unverified based on verified token lists
@@ -22,38 +26,26 @@ export const splitVerifiedTokens = async ({
   const { getVerifiedTokens } = useVerifiedTokensStore.getState();
   const verifiedTokens = await getVerifiedTokens({ network });
 
-  // Create a set of verified issuer and contract IDs
-  const verifiedIds = new Set<string>();
-  verifiedTokens.forEach((verifiedToken) => {
-    if (verifiedToken.issuer) {
-      verifiedIds.add(verifiedToken.issuer.toLowerCase());
-    }
-    if (verifiedToken.contract) {
-      verifiedIds.add(verifiedToken.contract.toLowerCase());
-    }
-  });
-
-  // Always add native token contract to verified list
+  // Always add the native token's identities to the verified set.
   const nativeContractDetails = getNativeContractDetails(network);
-  verifiedIds.add(nativeContractDetails.contract.toLowerCase());
-  if (nativeContractDetails.issuer) {
-    verifiedIds.add(nativeContractDetails.issuer.toLowerCase());
-  }
+  const verifiedIds = buildVerifiedTokenIds([
+    ...verifiedTokens,
+    nativeContractDetails,
+  ]);
 
   // Split tokens into verified and unverified
   const [verified, unverified] = tokens.reduce<
     [FormattedSearchTokenRecord[], FormattedSearchTokenRecord[]]
   >(
     ([verifiedList, unverifiedList], token) => {
-      // Check if token's issuer matches any verified issuer or contract
-      const tokenIssuer = token.issuer?.toLowerCase();
-      if (tokenIssuer && verifiedIds.has(tokenIssuer)) {
+      // Check if the token's code and issuer, or its contract, is verified
+      if (isTokenInVerifiedIds(verifiedIds, token)) {
         verifiedList.push(token);
         return [verifiedList, unverifiedList];
       }
 
-      // For native tokens, always consider verified
-      if (token.isNative || token.tokenCode === NATIVE_TOKEN_CODE) {
+      // Native is always verified.
+      if (token.isNative) {
         verifiedList.push(token);
         return [verifiedList, unverifiedList];
       }

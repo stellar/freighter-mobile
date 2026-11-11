@@ -25,14 +25,21 @@ jest.mock("assets/logos", () => ({
   },
 }));
 
-// Mock the balances helper
-jest.mock("helpers/balances", () => ({
-  getTokenIdentifier: (token: NonNativeToken | NativeToken) => {
-    if (token.type === "native") return "XLM";
-    return `${token.code}:${token.issuer.key}`;
-  },
-  isLiquidityPool: (balance: Balance) => "liquidityPoolId" in balance,
-}));
+// Mock the balances helper. jest.mock factories are hoisted above the
+// module's own imports, so the predicate is pulled in lazily via require
+// here rather than a top-level import (which would be out of scope by the
+// time this factory runs).
+jest.mock("helpers/balances", () => {
+  const { isNativeToken } =
+    require("helpers/assetIdentity") as typeof import("helpers/assetIdentity");
+  return {
+    getTokenIdentifier: (token: NonNativeToken | NativeToken) => {
+      if (isNativeToken(token)) return "XLM";
+      return `${token.code}:${token.issuer.key}`;
+    },
+    isLiquidityPool: (balance: Balance) => "liquidityPoolId" in balance,
+  };
+});
 
 // Mock react-i18next
 jest.mock("react-i18next", () => ({

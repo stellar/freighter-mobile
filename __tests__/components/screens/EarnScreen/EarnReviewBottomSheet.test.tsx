@@ -8,10 +8,8 @@ import React from "react";
 import { SecurityLevel } from "services/blockaid/constants";
 import { createSecurityAssessment } from "services/blockaid/helper";
 
-import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
 import { mockUseColors } from "../../../../__mocks__/use-colors";
 
-mockGestureHandler();
 mockUseColors();
 
 // A `contractId` field matches `getBalanceByContractId`'s first (Soroban)

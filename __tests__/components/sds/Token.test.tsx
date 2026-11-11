@@ -3,8 +3,24 @@
 import { act, fireEvent, render } from "@testing-library/react-native";
 import { Token } from "components/sds/Token";
 import { Text } from "components/sds/Typography";
+import { useTokenIconsStore } from "ducks/tokenIcons";
 import { ICON_VALIDATION_TIMEOUT } from "helpers/validateIconUrl";
 import React from "react";
+
+// Mock the token icons store so `source.token` resolution can be driven
+// deterministically per test.
+jest.mock("ducks/tokenIcons", () => ({
+  useTokenIconsStore: jest.fn(),
+}));
+
+// Mock the bundled logo assets so tests can assert on a stable sentinel
+// rather than the real image module.
+jest.mock("assets/logos", () => ({
+  logos: {
+    stellar: "stellar-logo-url",
+    usdc: "usdc-logo-url",
+  },
+}));
 
 /**
  * Tests for the Token component
@@ -435,6 +451,117 @@ describe("Token", () => {
 
       // Container should still be rendered
       expect(getByTestId("token")).toBeTruthy();
+    });
+  });
+
+  describe("source.token resolution", () => {
+    const mockUseTokenIconsStore = useTokenIconsStore as jest.MockedFunction<
+      typeof useTokenIconsStore
+    >;
+
+    const mockValidateIconOnAccess = jest.fn();
+    let mockState: any;
+
+    const classicXlmCodedAsset = {
+      code: "XLM",
+      issuer: "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO",
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockState = {
+        icons: {},
+        validateIconOnAccess: mockValidateIconOnAccess,
+      };
+
+      mockUseTokenIconsStore.mockImplementation((selector: any) => {
+        if (typeof selector === "function") {
+          return selector(mockState);
+        }
+        return mockState;
+      });
+    });
+
+    it("does not render the bundled Stellar logo for an XLM-coded classic asset", () => {
+      const { getByTestId, queryByLabelText } = render(
+        <Token
+          variant="single"
+          size="md"
+          sourceOne={{
+            altText: "Classic asset with XLM code",
+            token: classicXlmCodedAsset,
+          }}
+        />,
+      );
+
+      // The bundled Stellar logo (mocked sentinel) is not used for this asset.
+      const image = queryByLabelText("Classic asset with XLM code");
+      expect(image?.props.source?.uri).not.toBe("stellar-logo-url");
+
+      // No icon in the store and no source.image: the fallback container
+      // is what's shown.
+      expect(getByTestId("token")).toBeTruthy();
+    });
+
+    it("consults the icon store for an XLM-coded classic asset", () => {
+      const identifier = `${classicXlmCodedAsset.code}:${classicXlmCodedAsset.issuer}`;
+      mockState.icons[identifier] = {
+        imageUrl: "https://example.com/classic-xlm-coded-icon.png",
+        isValidated: true,
+        isValid: true,
+      };
+
+      const { getByLabelText } = render(
+        <Token
+          variant="single"
+          size="md"
+          sourceOne={{
+            altText: "Classic asset with XLM code",
+            token: classicXlmCodedAsset,
+          }}
+        />,
+      );
+
+      const image = getByLabelText("Classic asset with XLM code");
+      expect(image.props.source).toMatchObject({
+        uri: "https://example.com/classic-xlm-coded-icon.png",
+      });
+    });
+
+    it("still renders the bundled Stellar logo for a native-coded token with an empty issuer", () => {
+      const { getByLabelText } = render(
+        <Token
+          variant="single"
+          size="md"
+          sourceOne={{
+            altText: "Native token",
+            token: { code: "XLM", issuer: "" },
+          }}
+        />,
+      );
+
+      const image = getByLabelText("Native token");
+      expect(image.props.source).toMatchObject({
+        uri: "stellar-logo-url",
+      });
+    });
+
+    it("still renders the bundled Stellar logo when only source.image is provided (no token prop)", () => {
+      const { getByLabelText } = render(
+        <Token
+          variant="single"
+          size="md"
+          sourceOne={{
+            altText: "Native token",
+            image: "stellar-logo-url",
+          }}
+        />,
+      );
+
+      const image = getByLabelText("Native token");
+      expect(image.props.source).toMatchObject({
+        uri: "stellar-logo-url",
+      });
     });
   });
 });

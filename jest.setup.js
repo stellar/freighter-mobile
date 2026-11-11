@@ -2,7 +2,6 @@
 /* eslint-disable import/extensions */
 import mockClipboard from "@react-native-clipboard/clipboard/jest/clipboard-mock.js";
 import mockRNDeviceInfo from "react-native-device-info/jest/react-native-device-info-mock";
-import mockGestureHandler from "react-native-gesture-handler/jestSetup";
 import { TextEncoder, TextDecoder } from "util";
 
 // Ensure TextEncoder/TextDecoder are available for libs that expect Web APIs
@@ -209,7 +208,9 @@ jest.mock("@react-navigation/bottom-tabs", () => ({
 
 jest.mock("react-native-device-info", () => mockRNDeviceInfo);
 
-jest.mock("react-native-gesture-handler", () => mockGestureHandler);
+// `react-native-gesture-handler/jestSetup` is a side-effect script that mocks
+// the native module; require it, never `jest.mock` the package with it.
+require("react-native-gesture-handler/jestSetup");
 
 jest.mock("@gorhom/bottom-sheet", () => {
   const mockBottomSheet = {
@@ -279,6 +280,10 @@ jest.mock("services/analytics", () => ({
     trackReAuthSuccess: jest.fn(),
     trackReAuthFail: jest.fn(),
     trackSignedTransaction: jest.fn(),
+    trackSignedTransactionError: jest.fn(),
+    trackInternalSignedTransaction: jest.fn(),
+    trackInternalSignedTransactionRejected: jest.fn(),
+    trackInternalSignedTransactionError: jest.fn(),
     trackSimulationError: jest.fn(),
     trackCopyPublicKey: jest.fn(),
     trackSendPaymentSuccess: jest.fn(),
@@ -290,6 +295,10 @@ jest.mock("services/analytics", () => ({
     trackCopyBackupPhrase: jest.fn(),
     trackQRScanSuccess: jest.fn(),
     trackQRScanError: jest.fn(),
+    trackTokenChartLoaded: jest.fn(),
+    trackTokenChartViewed: jest.fn(),
+    trackTokenChartRangeChanged: jest.fn(),
+    trackTokenChartBrushed: jest.fn(),
   },
   TransactionType: {
     Classic: "classic",
@@ -490,6 +499,7 @@ jest.mock("react-native-keyboard-controller", () =>
 jest.mock("hooks/useBalancesList", () => ({
   useBalancesList: jest.fn(() => ({
     balanceItems: [],
+    hiddenBalanceItems: [],
     scanResults: {},
     isLoading: false,
     error: null,
@@ -497,13 +507,6 @@ jest.mock("hooks/useBalancesList", () => ({
     isRefreshing: false,
     isFunded: false,
     handleRefresh: jest.fn(),
-  })),
-}));
-
-jest.mock("hooks/useWelcomeBanner", () => ({
-  useWelcomeBanner: jest.fn(() => ({
-    welcomeBannerBottomSheetModalRef: { current: null },
-    handleWelcomeBannerDismiss: jest.fn(),
   })),
 }));
 

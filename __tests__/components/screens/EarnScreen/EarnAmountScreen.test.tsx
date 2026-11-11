@@ -13,10 +13,8 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import React from "react";
 
-import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
 import { mockUseColors } from "../../../../__mocks__/use-colors";
 
-mockGestureHandler();
 mockUseColors();
 
 // This is the screen the final whole-branch review flagged as untested

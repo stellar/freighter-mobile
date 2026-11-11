@@ -16,6 +16,7 @@ import {
 } from "config/types";
 import { useDebugStore } from "ducks/debug";
 import { Icon } from "ducks/tokenIcons";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import {
   formatTokenIdentifier,
   getTokenIdentifier,
@@ -42,6 +43,68 @@ interface UseTokenLookupProps {
   })[];
 }
 
+// The native asset is trusted by default and isn't a scannable Blockaid
+// address (it's excluded from the bulk-scan address list), so it's assessed
+// as benign directly rather than looked up in the scan response.
+const NATIVE_BENIGN_SCAN_RESULT = {
+  result_type: "Benign",
+} as Blockaid.TokenScanResponse;
+
+// Resolves the bulk-scan result to assess a search record with: the native
+// record is always benign, an issuer-bearing record is looked up by its
+// tokenCode-issuer pair, and any other record (no issuer, not native) is
+// honestly unable to be scanned.
+const getBulkScanResultForToken = (
+  token: FormattedSearchTokenRecord,
+  scanResults: Blockaid.TokenBulkScanResponse,
+): Blockaid.TokenScanResponse | undefined => {
+  if (token.isNative) {
+    return NATIVE_BENIGN_SCAN_RESULT;
+  }
+
+  if (!token.issuer) {
+    return undefined;
+  }
+
+  return scanResults.results?.[`${token.tokenCode}-${token.issuer}`];
+};
+
+// Fallback security fields applied when the bulk scan request itself fails:
+// the native record stays safe (it's never actually sent to the scanner),
+// while every other record is conservatively marked suspicious.
+const getFallbackSecurityFields = (
+  token: FormattedSearchTokenRecord,
+): Pick<
+  FormattedSearchTokenRecord,
+  "isSuspicious" | "isMalicious" | "securityLevel"
+> => {
+  if (token.isNative) {
+    return {
+      isSuspicious: false,
+      isMalicious: false,
+      securityLevel: SecurityLevel.SAFE,
+    };
+  }
+
+  return {
+    isSuspicious: true,
+    isMalicious: false,
+    securityLevel: SecurityLevel.SUSPICIOUS,
+  };
+};
+
+// True when Blockaid gave no verdict for any scannable record, i.e. the scan
+// as a whole failed. A few unscanned records don't count: each one warns on
+// its own when the user picks it. The native record is never scanned.
+const hasNoScanVerdicts = (tokens: FormattedSearchTokenRecord[]): boolean => {
+  const scannableTokens = tokens.filter((token) => !token.isNative);
+
+  return (
+    scannableTokens.length > 0 &&
+    scannableTokens.every((token) => token.isUnableToScan)
+  );
+};
+
 export const useTokenLookup = ({
   network,
   publicKey,
@@ -59,6 +122,7 @@ export const useTokenLookup = ({
     FormattedSearchTokenRecord[]
   >([]);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
+  const [hasScanFailed, setHasScanFailed] = useState(false);
   const { overriddenBlockaidResponse } = useDebugStore();
 
   // Group tokens by security level while preserving stellar.expert's original order
@@ -98,11 +162,7 @@ export const useTokenLookup = ({
     scanResults: Blockaid.TokenBulkScanResponse,
   ): FormattedSearchTokenRecord[] =>
     tokens.map((token) => {
-      const tokenIdentifier = token.issuer
-        ? `${token.tokenCode}-${token.issuer}`
-        : token.tokenCode;
-
-      const scanResult = scanResults.results?.[tokenIdentifier];
+      const scanResult = getBulkScanResultForToken(token, scanResults);
       const securityInfo = assessTokenSecurity(
         scanResult,
         overriddenBlockaidResponse,
@@ -171,11 +231,17 @@ export const useTokenLookup = ({
         return {
           ...result,
           iconUrl,
-          hasTrustline: hasExistingTrustline(
-            userBalances,
-            result.tokenCode,
-            result.issuer,
-          ),
+          // An explicitly native record already knows it's held (the native
+          // asset always has a trustline); only recompute for everything
+          // else, so a future issuer value on the native record can't
+          // resurrect a stale trustline check here.
+          hasTrustline: result.isNative
+            ? result.hasTrustline
+            : hasExistingTrustline(
+                userBalances,
+                result.tokenCode,
+                result.issuer,
+              ),
         };
       }
 
@@ -226,14 +292,21 @@ export const useTokenLookup = ({
       });
       const iconUrl = icons[tokenIdentifier]?.imageUrl;
 
+      const isNative = isNativeAssetId(result.asset);
       return {
         tokenCode,
         domain: result.domain ?? "",
-        hasTrustline: hasExistingTrustline(userBalances, tokenCode, issuer),
+        hasTrustline: hasExistingTrustline(
+          userBalances,
+          tokenCode,
+          issuer ?? "",
+        ),
         iconUrl,
         issuer: issuer ?? "",
-        isNative: result.asset === NATIVE_TOKEN_CODE,
-        tokenType: getTokenType(`${tokenCode}:${issuer}`),
+        isNative,
+        tokenType: isNative
+          ? getTokenType(NATIVE_TOKEN_CODE)
+          : getTokenType(`${tokenCode}:${issuer}`),
       };
     });
 
@@ -262,6 +335,7 @@ export const useTokenLookup = ({
       setSearchResults([]);
       setVerifiedTokens([]);
       setUnverifiedTokens([]);
+      setHasScanFailed(false);
       return;
     }
 
@@ -359,14 +433,13 @@ export const useTokenLookup = ({
 
         if (signal.aborted) return;
         setSearchResults(groupedSearchResults);
+        setHasScanFailed(hasNoScanVerdicts(enhancedSearchResults));
         await categorizeTokens(groupedSearchResults);
       } catch (error) {
         const fallbackSearchResults: FormattedSearchTokenRecord[] =
           formattedRecords.map((token) => ({
             ...token,
-            isSuspicious: true,
-            isMalicious: false,
-            securityLevel: SecurityLevel.SUSPICIOUS,
+            ...getFallbackSecurityFields(token),
           }));
 
         const groupedFallbackResults = groupTokensBySecurityLevel(
@@ -375,6 +448,7 @@ export const useTokenLookup = ({
 
         if (signal.aborted) return;
         setSearchResults(groupedFallbackResults);
+        setHasScanFailed(true);
         await categorizeTokens(groupedFallbackResults);
       }
     } else {
@@ -390,6 +464,7 @@ export const useTokenLookup = ({
         groupTokensBySecurityLevel(defaultSearchResults);
 
       setSearchResults(groupedDefaultResults);
+      setHasScanFailed(false);
       await categorizeTokens(groupedDefaultResults);
     }
 
@@ -408,12 +483,14 @@ export const useTokenLookup = ({
     setSearchResults([]);
     setVerifiedTokens([]);
     setUnverifiedTokens([]);
+    setHasScanFailed(false);
   };
 
   return {
     searchResults,
     verifiedTokens,
     unverifiedTokens,
+    hasScanFailed,
     status,
     handleSearch,
     resetSearch,

@@ -8,7 +8,7 @@ import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { useDebugStore } from "ducks/debug";
 import { stroopToXlm } from "helpers/formatAmount";
-import { isContractId } from "helpers/soroban";
+import { isContractDestination, isMuxedContract } from "helpers/muxedContract";
 import { isMuxedAccount } from "helpers/stellar";
 import { t } from "i18next";
 import { SimulationTransactionType } from "services/analytics/types";
@@ -39,6 +39,46 @@ const extractErrorMessage = (error: unknown): string => {
     return (error as { message: string }).message;
   }
   return String(error);
+};
+
+/** Horizon `result_codes` extras, as the submit error carries them. */
+export interface SubmitResultCodes {
+  transaction?: string;
+  operations?: string[];
+}
+
+/**
+ * The outcome of ONE submit attempt, returned to the caller that awaited it.
+ *
+ * The store keeps only what the UI renders (`transactionHash`, `error`,
+ * `submitErrorResultCodes`), and writes it only while the attempt is still
+ * the current one (`requestId`) so a late response cannot repaint a newer
+ * transaction. That guard means the store is empty for an attempt whose flow
+ * was closed mid-submit, so anything that must describe the attempt itself —
+ * telemetry above all — reads it from here instead.
+ */
+export interface SubmitTransactionOutcome {
+  /** Transaction hash on success; `null` when the submit failed. */
+  hash: string | null;
+  /** Horizon `result_xdr` from a successful submit. */
+  resultXdr: string | null;
+  /** Error message when the submit failed. */
+  error: string | null;
+  /** Horizon `result_codes` from a 4xx protocol rejection. */
+  resultCodes: SubmitResultCodes | null;
+  /** HTTP status of a failed submit, when the error carried one. */
+  httpStatus: number | null;
+  /** Whether a failed submit carried a genuine Horizon problem+json body. */
+  isProtocolAnswer: boolean;
+}
+
+const FAILED_SUBMIT_OUTCOME: SubmitTransactionOutcome = {
+  hash: null,
+  resultXdr: null,
+  error: null,
+  resultCodes: null,
+  httpStatus: null,
+  isProtocolAnswer: false,
 };
 
 interface TransactionBuilderState {
@@ -111,7 +151,9 @@ interface TransactionBuilderState {
     network: NETWORKS;
   }) => string | null;
 
-  submitTransaction: (params: { network: NETWORKS }) => Promise<string | null>;
+  submitTransaction: (params: {
+    network: NETWORKS;
+  }) => Promise<SubmitTransactionOutcome>;
 
   resetTransaction: () => void;
 }
@@ -147,6 +189,39 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
   (set, get) => ({
     ...initialState,
 
+    /**
+     * Builds the transaction for a token send and, for a Soroban send,
+     * simulates it to get the prepared XDR and the fees.
+     *
+     * A send is Soroban when the token is a custom token or the recipient is a
+     * contract destination (`C...` or muxed contract `W...`). The flag is set
+     * before the build, so the fee label is right while it runs.
+     *
+     * Which simulate endpoint a Soroban send uses:
+     * - Amount 0 (fee estimation): `/simulate-tx`, with the XDR built on the
+     *   device (`simulateCollectibleTransfer`). `/simulate-token-transfer`
+     *   rejects amount 0 because it rebuilds the transaction server-side.
+     * - A real amount: `/simulate-token-transfer`, where the backend builds and
+     *   simulates the transfer (`simulateContractTransfer`).
+     *
+     * The memo sent to `/simulate-token-transfer` is empty when the final
+     * destination is an `M...` or a `W...`, because the mux id is already in
+     * the address. For any other destination it is the user's memo.
+     *
+     * DEV stub: in a debug build (`__DEV__`), with the debug store's
+     * `stubMuxedContractSimulation` on and a `W...` final destination, neither
+     * endpoint is called and the device-built XDR is kept as is, with no
+     * resource fee. That transaction can't be submitted. Any other destination
+     * still simulates. The stub only ever applies in a debug build: a release
+     * build simulates a `W...` as normal, even a dev-bundle one, such as a PR
+     * preview, that kept the flag from an earlier debug build.
+     *
+     * @returns The XDR to sign (prepared for a Soroban send; the device-built
+     * one when the DEV stub applies), or `null` when the build or the
+     * simulation fails. The store only takes the result while this is still
+     * the latest request: a stale request returns `null` without storing its
+     * error, and a stale success returns its XDR without storing it.
+     */
     buildTransaction: async (params) => {
       const newRequestId = createRequestId();
 
@@ -157,7 +232,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         (params.selectedBalance &&
           "contractId" in params.selectedBalance &&
           params.selectedBalance.contractId) ||
-          (params.recipientAddress && isContractId(params.recipientAddress)),
+          (params.recipientAddress &&
+            isContractDestination(params.recipientAddress)),
       );
 
       // Mark new cycle and reset flags (clear stale Soroban fees so UI doesn't
@@ -192,7 +268,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         let sorobanResourceFeeXlm: string | null = null;
         let sorobanInclusionFeeXlm: string | null = null;
         const isRecipientContract =
-          params.recipientAddress && isContractId(params.recipientAddress);
+          params.recipientAddress &&
+          isContractDestination(params.recipientAddress);
 
         // Check if this is a custom token (SorobanBalance with contractId)
         const isCustomToken =
@@ -208,13 +285,32 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         if (shouldSimulate && params.network && params.senderAddress) {
           const networkDetails = mapNetworkToNetworkDetails(params.network);
           const isFeeEstimation = Number(params.tokenAmount) === 0;
+          const finalDestination =
+            builtTxResult.finalDestination || params.recipientAddress!;
 
           let simulateResult: {
             preparedTransaction: string;
             minResourceFee?: string;
           };
 
-          if (isFeeEstimation) {
+          if (
+            __DEV__ &&
+            useDebugStore.getState().stubMuxedContractSimulation &&
+            isMuxedContract(finalDestination)
+          ) {
+            // The debug store's stub, which only ever applies in a debug
+            // build. `__DEV__` is checked first because a dev-bundle release
+            // build, such as a PR preview, keeps any value an earlier debug
+            // build persisted on the same install, and has no debug sheet to
+            // turn it off. It keeps the device-built XDR, which has no
+            // resources or footprint, so the network rejects it if it's ever
+            // submitted.
+            simulateResult = { preparedTransaction: builtTxResult.xdr };
+            logger.warn(
+              "TransactionBuilderStore",
+              "DEV: stubbed simulation for a muxed contract destination",
+            );
+          } else if (isFeeEstimation) {
             // Fee estimation with amount 0: use /simulate-tx with the
             // locally-built XDR. The /simulate-token-transfer endpoint
             // rejects amount 0 because it rebuilds the tx server-side.
@@ -226,9 +322,9 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           } else {
             // Real amount: use /simulate-token-transfer matching the
             // extension's flow (backend builds + simulates the tx).
-            const finalDestination =
-              builtTxResult.finalDestination || params.recipientAddress!;
-            const isDestinationMuxed = isMuxedAccount(finalDestination);
+            const isDestinationMuxed =
+              isMuxedAccount(finalDestination) ||
+              isMuxedContract(finalDestination);
             const memoForSimulation = isDestinationMuxed
               ? ""
               : params.transactionMemo || "";
@@ -417,7 +513,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         // The transaction XDR already contains the muxed address (if applicable) from buildSendCollectibleTransaction
         // which checks contract muxed support and creates muxed addresses according to the behavior matrix
         const simulateResult = await simulateCollectibleTransfer({
-          transactionXdr: builtTxResult.tx.toXDR(),
+          transactionXdr: builtTxResult.tx.toXdr(),
           networkDetails,
         });
 
@@ -619,7 +715,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           network: params.network,
         });
 
-        const { hash } = result;
+        const { hash, result_xdr: resultXdr } = result;
 
         // Only update with success if this submit is still the latest one.
         // Guards against late responses from previous submits showing wrong hash.
@@ -630,7 +726,14 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           });
         }
 
-        return hash;
+        // Returned per-attempt, not read back from the store: the writes above
+        // are skipped when the flow was closed mid-submit (requestId reset),
+        // and telemetry still needs this attempt's settled result.
+        return {
+          ...FAILED_SUBMIT_OUTCOME,
+          hash,
+          resultXdr: resultXdr ?? null,
+        };
       } catch (error) {
         const errorMessage = extractErrorMessage(error);
 
@@ -661,6 +764,31 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             : undefined;
         /* eslint-enable @typescript-eslint/no-unsafe-member-access */
         /* eslint-enable @typescript-eslint/no-explicit-any */
+
+        // Volume telemetry's failure_category needs to distinguish "Horizon
+        // answered with a verdict" from "we never got a definitive outcome"
+        // (network/fetch exception, or a 5xx/408/429/403 that never reached
+        // the transaction itself) — independent of whether that answer was a
+        // 4xx result-codes payload. `isProtocolAnswer` checks the same
+        // problem+json markers as `horizon4xxResultCodes` above but across
+        // any status, not just 4xx.
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+        const submitErrorHttpStatus = isHorizonError(error)
+          ? error.response.status
+          : null;
+        const responseData = isHorizonError(error)
+          ? (error as any).response.data
+          : undefined;
+        const submitErrorIsProtocolAnswer =
+          !!responseData &&
+          typeof responseData === "object" &&
+          ("extras" in responseData ||
+            "status" in responseData ||
+            "title" in responseData);
+        /* eslint-enable @typescript-eslint/no-unsafe-member-access */
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+
         if (horizon4xxResultCodes) {
           const horizonStatus = (error as { response: { status: number } })
             .response.status;
@@ -684,13 +812,22 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             error: errorMessage,
             isSubmitting: false,
             submitErrorResultCodes:
-              (horizon4xxResultCodes as
-                | { transaction?: string; operations?: string[] }
-                | undefined) ?? null,
+              (horizon4xxResultCodes as SubmitResultCodes | undefined) ?? null,
           });
         }
 
-        return null;
+        // As on the success path: returned per-attempt so a flow closed
+        // mid-submit still classifies its own failure instead of falling back
+        // to the reset store's "unknown" / "transport".
+        return {
+          hash: null,
+          resultXdr: null,
+          error: errorMessage,
+          resultCodes:
+            (horizon4xxResultCodes as SubmitResultCodes | undefined) ?? null,
+          httpStatus: submitErrorHttpStatus,
+          isProtocolAnswer: submitErrorIsProtocolAnswer,
+        };
       }
     },
 

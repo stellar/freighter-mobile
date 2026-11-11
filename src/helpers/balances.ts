@@ -1,4 +1,4 @@
-import { Asset as SdkToken, StrKey } from "@stellar/stellar-sdk";
+import { Asset as SdkToken, Networks, StrKey } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import {
   NATIVE_TOKEN_CODE,
@@ -19,6 +19,11 @@ import {
   NonNativeToken,
   Token,
 } from "config/types";
+import {
+  isNativeAssetId,
+  isNativeBalance,
+  isNativeToken,
+} from "helpers/assetIdentity";
 import { formatFiatAmount, NO_FIAT_VALUE } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 
@@ -159,8 +164,10 @@ export const getTokenIdentifier = (
     token = item;
   }
 
-  // Native token
-  if ("type" in token && token.type === "native") {
+  // Native token. `isLiquidityPool` returns a boolean rather than a type
+  // predicate, so the early return above doesn't narrow `token` — the `in`
+  // check is what rules out the LP shape for the type system.
+  if ("type" in token && isNativeToken(token)) {
     return NATIVE_TOKEN_CODE;
   }
 
@@ -189,6 +196,26 @@ export const getTokenIdentifier = (
  * const tokenIds = getTokenIdentifiersFromBalances(balances);
  * // tokenIds might be ["XLM", "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"]
  */
+/**
+ * Drops the hidden tokens from a balances map. Returns the same map instance
+ * when nothing is hidden, so memoized consumers don't re-render for nothing.
+ *
+ * @param balances - A map keyed by balance identifier
+ * @param hiddenTokenIds - The identifiers to leave out
+ */
+export const omitHiddenBalances = <T>(
+  balances: Record<string, T>,
+  hiddenTokenIds: string[] | undefined,
+): Record<string, T> => {
+  if (!hiddenTokenIds?.length) {
+    return balances;
+  }
+
+  return Object.fromEntries(
+    Object.entries(balances).filter(([id]) => !hiddenTokenIds.includes(id)),
+  );
+};
+
 export const getTokenIdentifiersFromBalances = (
   balances: Record<string, Balance>,
 ): TokenIdentifier[] => {
@@ -323,7 +350,7 @@ export const formatTokenIdentifier = (tokenIdentifier: string) => {
 export const getTokenType = (
   tokenIdentifier: string,
 ): TokenTypeWithCustomToken => {
-  if (tokenIdentifier === NATIVE_TOKEN_CODE) {
+  if (isNativeAssetId(tokenIdentifier)) {
     return TokenTypeWithCustomToken.NATIVE;
   }
 
@@ -378,7 +405,7 @@ export const calculateSpendableAmount = ({
   }
 
   // For non-native tokens, return available balance or total balance
-  if ("token" in balance && balance.token.type !== "native") {
+  if (!isNativeBalance(balance)) {
     // Use available balance if present
     const availableBalance =
       "available" in balance ? new BigNumber(balance.available) : totalBalance;
@@ -387,13 +414,20 @@ export const calculateSpendableAmount = ({
   }
 
   // For XLM (native asset), consider minimum balance requirements and transaction fee
-  if ("token" in balance && balance.token.type === "native") {
+  if (isNativeBalance(balance)) {
     const fee = new BigNumber(transactionFee);
 
-    // Calculate minimum balance: (2 + subentryCount) * BASE_RESERVE
-    const minBalance = new BigNumber(2 + subentryCount).multipliedBy(
-      BASE_RESERVE,
-    );
+    // Prefer the server-derived `minimumBalance`. Both balance paths define it
+    // as base reserve + selling liabilities, so it accounts for XLM locked by
+    // open sell offers — which the local formula below cannot see — and it
+    // also reflects sponsorship netting the local formula ignores. Falling
+    // back to the local `(2 + subentryCount) * BASE_RESERVE` keeps a
+    // reserve-safe floor if the field is ever missing (e.g. a balance cached
+    // before this mapping landed), rather than treating the reserve as zero.
+    const minBalance =
+      "minimumBalance" in balance && balance.minimumBalance
+        ? new BigNumber(balance.minimumBalance)
+        : new BigNumber(2 + subentryCount).multipliedBy(BASE_RESERVE);
 
     // Calculate spendable: total - minimum balance - transaction fee
     const spendableAmount = totalBalance.minus(minBalance).minus(fee);
@@ -470,15 +504,34 @@ export const calculateSwapRate = (
   return rate.toString();
 };
 
-export function isSacContract(name: string): boolean {
-  if (!name || typeof name !== "string") return false;
+/**
+ * Answers whether `contractId` is the Stellar Asset Contract for the classic
+ * asset named `name` (a canonical `CODE:ISSUER` string).
+ *
+ * The SAC address is derived from the asset and compared to the contract in
+ * hand, so a false positive would require a genuine SAC.
+ *
+ * Used to dedupe a locally added SAC against the classic trustline for the
+ * same asset: the two are the same holding under different identities, and a
+ * classic balance is keyed by `CODE:ISSUER` rather than by contract ID.
+ */
+export function isSacContractForAsset(
+  name: string,
+  contractId: string,
+  networkPassphrase: Networks,
+): boolean {
+  if (!name || !name.includes(":")) {
+    return false;
+  }
+
   const [code, issuer] = name.split(":");
-  if (!code || !issuer) return false;
+
   try {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const token = new SdkToken(code, issuer);
-    return true;
+    return (
+      new SdkToken(code, issuer).contractId(networkPassphrase) === contractId
+    );
   } catch {
+    // `name` is not a valid classic asset (bad code or issuer).
     return false;
   }
 }
@@ -504,9 +557,7 @@ export const hasXLMForFees = (
   transactionFee: string = MIN_TRANSACTION_FEE,
 ): boolean => {
   // Find XLM balance
-  const xlmBalance = balanceItems.find(
-    (item) => "token" in item && item.token.type === "native",
-  );
+  const xlmBalance = balanceItems.find((item) => isNativeBalance(item));
 
   if (!xlmBalance) {
     return false;
@@ -627,7 +678,7 @@ export const getBalanceByContractId = (
     }
 
     try {
-      if ("type" in balance.token && balance.token.type === "native") {
+      if (isNativeToken(balance.token)) {
         return (
           SdkToken.native().contractId(networkDetails.networkPassphrase) ===
           contractId

@@ -1,35 +1,53 @@
 import {
+  Account,
   Asset,
   Keypair,
+  MuxedAccount,
   Networks,
   TransactionBuilder,
   Address,
   Transaction,
   Operation,
   XdrLargeInt,
+  xdr,
 } from "@stellar/stellar-sdk";
-import BigNumber from "bignumber.js";
+import {
+  MUXED_CONTRACT_ID_0,
+  MUXED_CONTRACT_ID_1234,
+} from "__tests__/support/muxedContractFixtures";
+import { BigNumber } from "bignumber.js";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
+import { TokenTypeWithCustomToken, type PricedBalance } from "config/types";
 import { BlendRequestType } from "helpers/blend";
 import { analytics } from "services/analytics";
 import * as backend from "services/backend";
 import {
   buildBlendDepositTransaction,
+  buildPaymentTransaction,
   buildSendCollectibleTransaction,
   BuildSendCollectibleParams,
   buildSwapTransaction,
+  getContractIdForNativeToken,
+  getTokenForPayment,
   simulateCollectibleTransfer,
   validateSendCollectibleTransactionParams,
 } from "services/transactionService";
 
+// Hoisted so it can be reconfigured per test (e.g. to simulate an unfunded
+// destination) while defaulting to the always-succeed behavior the rest of
+// this file's tests rely on.
+const mockLoadAccount = jest.fn((publicKey: string) =>
+  Promise.resolve({
+    accountId: () => publicKey,
+    sequenceNumber: () => "1000",
+    incrementSequenceNumber: jest.fn(),
+  }),
+);
+
 jest.mock("services/stellar", () => ({
   ...jest.requireActual("services/stellar"),
   stellarSdkServer: jest.fn(() => ({
-    loadAccount: jest.fn((publicKey: string) => ({
-      accountId: () => publicKey,
-      sequenceNumber: () => "1000",
-      incrementSequenceNumber: jest.fn(),
-    })),
+    loadAccount: mockLoadAccount,
     fetchTimebounds: jest.fn(() => ({
       minTime: 0,
       maxTime: Math.floor(Date.now() / 1000) + 300,
@@ -51,6 +69,316 @@ jest.mock("services/backend", () => ({
   simulateTransaction: jest.fn(),
   checkContractSupportsMuxed: jest.fn().mockResolvedValue(false),
 }));
+
+const CLASSIC_XLM_ISSUER =
+  "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO";
+
+// Fixture pair: identical tokenCode "XLM", differing only in token type and
+// issuer.
+const nativeXlmBalance = {
+  id: "native",
+  token: { type: "native", code: "XLM" },
+  total: new BigNumber("100"),
+  available: new BigNumber("99"),
+  minimumBalance: new BigNumber("1"),
+  buyingLiabilities: "0",
+  sellingLiabilities: "0",
+  tokenCode: "XLM",
+} as unknown as PricedBalance;
+
+const nonNativeXlmBalance = {
+  id: `XLM:${CLASSIC_XLM_ISSUER}`,
+  token: {
+    type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+    code: "XLM",
+    issuer: { key: CLASSIC_XLM_ISSUER },
+  },
+  total: new BigNumber("100"),
+  available: new BigNumber("100"),
+  limit: new BigNumber("1000"),
+  buyingLiabilities: "0",
+  sellingLiabilities: "0",
+  tokenCode: "XLM",
+} as unknown as PricedBalance;
+
+describe("getTokenForPayment", () => {
+  it("returns the native asset only for a native-typed balance", () => {
+    const token = getTokenForPayment(nativeXlmBalance);
+    expect(token.isNative()).toBe(true);
+  });
+
+  it("returns the classic asset for an XLM-coded non-native balance", () => {
+    const token = getTokenForPayment(nonNativeXlmBalance);
+    expect(token.isNative()).toBe(false);
+    expect(token.getCode()).toBe("XLM");
+    expect(token.getIssuer()).toBe(CLASSIC_XLM_ISSUER);
+  });
+});
+
+describe("getContractIdForNativeToken", () => {
+  it("derives the native contract for every network without throwing", () => {
+    expect(getContractIdForNativeToken(NETWORKS.PUBLIC)).toBe(
+      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+    );
+    expect(getContractIdForNativeToken(NETWORKS.TESTNET)).toBe(
+      "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+    );
+    // Networks without a hardcoded entry must still derive a real id.
+    expect(getContractIdForNativeToken(NETWORKS.FUTURENET)).toMatch(
+      /^C[A-Z2-7]{55}$/,
+    );
+  });
+});
+
+describe("buildPaymentTransaction asset resolution", () => {
+  const sender = Keypair.random().publicKey();
+  const fundedRecipient = Keypair.random().publicKey();
+
+  const baseParams = {
+    tokenAmount: "5",
+    recipientAddress: fundedRecipient,
+    transactionFee: "0.00001",
+    transactionTimeout: 300,
+    network: NETWORKS.TESTNET,
+    senderAddress: sender,
+  };
+
+  it("builds a payment carrying the classic asset for an XLM-coded non-native balance", async () => {
+    const result = await buildPaymentTransaction({
+      ...baseParams,
+      selectedBalance: nonNativeXlmBalance,
+    });
+    const tx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.TESTNET,
+    ) as Transaction;
+    const op = tx.operations[0] as Operation.Payment;
+    expect(op.type).toBe("payment");
+    expect(op.asset.getCode()).toBe("XLM");
+    expect(op.asset.getIssuer()).toBe(CLASSIC_XLM_ISSUER);
+    expect(op.asset.isNative()).toBe(false);
+  });
+
+  it("still builds a native payment for the native balance", async () => {
+    const result = await buildPaymentTransaction({
+      ...baseParams,
+      selectedBalance: nativeXlmBalance,
+    });
+    const tx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.TESTNET,
+    ) as Transaction;
+    const op = tx.operations[0] as Operation.Payment;
+    expect(op.asset.isNative()).toBe(true);
+  });
+});
+
+describe("buildPaymentTransaction unfunded destination", () => {
+  // loadAccount: succeeds for the sender, 404s for the destination —
+  // configure via the overridable mock from the module factory.
+  const sender = Keypair.random().publicKey();
+  const unfundedRecipient = Keypair.random().publicKey();
+
+  const baseParams = {
+    tokenAmount: "5", // >= MINIMUM_CREATE_ACCOUNT_XLM
+    recipientAddress: unfundedRecipient,
+    transactionFee: "0.00001",
+    transactionTimeout: 300,
+    network: NETWORKS.TESTNET,
+    senderAddress: sender,
+  };
+
+  beforeEach(() => {
+    mockLoadAccount.mockImplementation((publicKey: string) => {
+      if (publicKey === unfundedRecipient) {
+        const notFound = new Error("Not Found") as Error & {
+          response: { status: number };
+        };
+        notFound.response = { status: 404 };
+        return Promise.reject(notFound);
+      }
+      return Promise.resolve({
+        accountId: () => publicKey,
+        sequenceNumber: () => "1000",
+        incrementSequenceNumber: jest.fn(),
+      });
+    });
+  });
+
+  afterEach(() => {
+    // Restore the file-wide always-succeed default so later describes are
+    // unaffected by this block's per-destination override.
+    mockLoadAccount.mockImplementation((publicKey: string) =>
+      Promise.resolve({
+        accountId: () => publicKey,
+        sequenceNumber: () => "1000",
+        incrementSequenceNumber: jest.fn(),
+      }),
+    );
+  });
+
+  it("creates the account only for the native balance", async () => {
+    const result = await buildPaymentTransaction({
+      ...baseParams,
+      selectedBalance: nativeXlmBalance,
+    });
+    const tx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.TESTNET,
+    ) as Transaction;
+    expect(tx.operations[0].type).toBe("createAccount");
+  });
+
+  it("builds a classic-asset payment (not createAccount) for an XLM-coded non-native balance", async () => {
+    const result = await buildPaymentTransaction({
+      ...baseParams,
+      selectedBalance: nonNativeXlmBalance,
+    });
+    const tx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.TESTNET,
+    ) as Transaction;
+    const op = tx.operations[0] as Operation.Payment;
+    expect(op.type).toBe("payment");
+    expect(op.asset.getIssuer()).toBe(CLASSIC_XLM_ISSUER);
+  });
+});
+
+const customTokenContract =
+  "CBOVW5CXOPHYWGLJPWBQMGX2F3REBY2ZTZX3N47RTYWWHZV2BXCIIGTL";
+
+const customTokenBalance = {
+  token: { code: "WETH", issuer: { key: customTokenContract } },
+  contractId: customTokenContract,
+  total: new BigNumber("1000"),
+  available: new BigNumber("1000"),
+  name: "Wrapped Ether",
+  symbol: "WETH",
+  decimals: 18,
+  tokenCode: "WETH",
+} as unknown as PricedBalance;
+
+describe("buildPaymentTransaction muxed contract (W) destination", () => {
+  const sender = Keypair.random().publicKey();
+
+  const baseParams = {
+    tokenAmount: "1",
+    transactionFee: "0.001",
+    transactionTimeout: 300,
+    network: NETWORKS.TESTNET,
+    senderAddress: sender,
+  };
+
+  it("loads only the sender for a W destination", async () => {
+    mockLoadAccount.mockClear();
+
+    await buildPaymentTransaction({
+      ...baseParams,
+      selectedBalance: nativeXlmBalance,
+      recipientAddress: MUXED_CONTRACT_ID_1234,
+    } as never);
+
+    expect(mockLoadAccount.mock.calls).toEqual([[sender]]);
+  });
+
+  it.each([
+    [
+      "a custom token",
+      customTokenBalance,
+      undefined,
+      "transaction.errors.muxedContractNotSupported",
+    ],
+    [
+      "a memo",
+      nativeXlmBalance,
+      "hello",
+      "transactionSettings.memoInfo.memoDisabledForTransaction",
+    ],
+  ])(
+    "refuses a W destination with %s before any network call",
+    async (_label, selectedBalance, transactionMemo, errorKey) => {
+      mockLoadAccount.mockClear();
+
+      await expect(
+        buildPaymentTransaction({
+          ...baseParams,
+          selectedBalance,
+          recipientAddress: MUXED_CONTRACT_ID_0,
+          transactionMemo,
+        } as never),
+      ).rejects.toThrow(errorKey);
+      expect(mockLoadAccount).not.toHaveBeenCalled();
+    },
+  );
+});
+
+// checkContractSupportsMuxed answers false here: the token doesn't support
+// muxed addresses.
+describe("buildPaymentTransaction custom token to an M, or with a memo", () => {
+  const recipient = Keypair.random().publicKey();
+
+  const baseParams = {
+    tokenAmount: "1",
+    selectedBalance: customTokenBalance,
+    transactionFee: "0.001",
+    transactionTimeout: 300,
+    network: NETWORKS.TESTNET,
+    senderAddress: Keypair.random().publicKey(),
+  };
+
+  it("refuses an M the token doesn't support, instead of sending to its base G", async () => {
+    await expect(
+      buildPaymentTransaction({
+        ...baseParams,
+        recipientAddress: new MuxedAccount(
+          new Account(recipient, "0"),
+          "7",
+        ).accountId(),
+      } as never),
+    ).rejects.toThrow("transaction.errors.muxedAddressNotSupported");
+  });
+
+  it("refuses a memo the token can't carry, instead of building without it", async () => {
+    await expect(
+      buildPaymentTransaction({
+        ...baseParams,
+        recipientAddress: recipient,
+        transactionMemo: "1234",
+      } as never),
+    ).rejects.toThrow(
+      "transactionSettings.memoInfo.memoNotSupportedForOperation",
+    );
+  });
+});
+
+describe("buildSwapTransaction asset resolution", () => {
+  // Mirrors the params/mocks used by the existing buildSwapTransaction —
+  // includeTrustline tests below; asserts on the built pathPaymentStrictSend op.
+  it("carries the classic asset as sendAsset for an XLM-coded non-native source", async () => {
+    const senderAddress = Keypair.random().publicKey();
+
+    const result = await buildSwapTransaction({
+      sourceBalance: nonNativeXlmBalance,
+      destinationBalance: nativeXlmBalance,
+      sourceAmount: "5",
+      destinationAmount: "5",
+      destinationAmountMin: "4.9",
+      path: [],
+      transactionFee: "0.00001",
+      transactionTimeout: 300,
+      network: NETWORKS.TESTNET,
+      senderAddress,
+    });
+    const tx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.TESTNET,
+    ) as Transaction;
+    const op = tx.operations[0] as Operation.PathPaymentStrictSend;
+    expect(op.sendAsset.isNative()).toBe(false);
+    expect(op.sendAsset.getIssuer()).toBe(CLASSIC_XLM_ISSUER);
+    expect(op.destAsset.isNative()).toBe(true);
+  });
+});
 
 describe("buildSendCollectibleTransaction", () => {
   const mockSenderKeypair = Keypair.random();
@@ -77,10 +405,94 @@ describe("buildSendCollectibleTransaction", () => {
     expect(typeof result.xdr).toBe("string");
   });
 
+  it("refuses a W recipient before any network call: a collectible never goes to a W", async () => {
+    mockLoadAccount.mockClear();
+    (backend.checkContractSupportsMuxed as jest.Mock).mockClear();
+
+    await expect(
+      buildSendCollectibleTransaction({
+        ...baseParams,
+        recipientAddress: MUXED_CONTRACT_ID_0,
+      }),
+    ).rejects.toThrow("transaction.errors.muxedContractNotSupported");
+    expect(mockLoadAccount).not.toHaveBeenCalled();
+    expect(backend.checkContractSupportsMuxed).not.toHaveBeenCalled();
+  });
+
+  describe("memo and M recipients", () => {
+    const recipientWithId1234 = new MuxedAccount(
+      new Account(mockRecipientKeypair.publicKey(), "0"),
+      "1234",
+    ).accountId();
+
+    const transferRecipient = (transactionXdr: string) => {
+      const parsedTx = TransactionBuilder.fromXdr(
+        transactionXdr,
+        Networks.TESTNET,
+      ) as Transaction;
+      const operation = parsedTx.operations[0] as Operation.InvokeHostFunction;
+      const { args } = xdr.expectUnionVariant(
+        operation.func,
+        "hostFunctionTypeInvokeContract",
+      ).invokeContract;
+
+      return Address.fromScVal(args[1]).toString();
+    };
+
+    it("sends a decimal memo as the id of an M when the collection supports muxed addresses", async () => {
+      (backend.checkContractSupportsMuxed as jest.Mock).mockResolvedValueOnce(
+        true,
+      );
+
+      const result = await buildSendCollectibleTransaction({
+        ...baseParams,
+        transactionMemo: "1234",
+      });
+
+      expect(result.finalDestination).toBe(recipientWithId1234);
+      expect(transferRecipient(result.xdr)).toBe(recipientWithId1234);
+    });
+
+    it.each([
+      [
+        "the collection doesn't support muxed addresses",
+        false,
+        "1234",
+        "transactionSettings.memoInfo.memoNotSupportedForOperation",
+      ],
+      [
+        "it isn't a decimal id",
+        true,
+        "AB12CD",
+        "transaction.errors.nonNumericMemoNotSupported",
+      ],
+    ])(
+      "refuses a memo when %s, instead of sending without it",
+      async (_label, supportsMuxed, transactionMemo, errorKey) => {
+        (backend.checkContractSupportsMuxed as jest.Mock).mockResolvedValueOnce(
+          supportsMuxed,
+        );
+
+        await expect(
+          buildSendCollectibleTransaction({ ...baseParams, transactionMemo }),
+        ).rejects.toThrow(errorKey);
+      },
+    );
+
+    it("refuses an M the collection doesn't support, instead of sending to its base G", async () => {
+      await expect(
+        buildSendCollectibleTransaction({
+          ...baseParams,
+          recipientAddress: recipientWithId1234,
+        }),
+      ).rejects.toThrow("transaction.errors.muxedAddressNotSupported");
+    });
+  });
+
   it("should create transaction with correct sender address from parsed XDR", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
@@ -91,7 +503,7 @@ describe("buildSendCollectibleTransaction", () => {
   it("should include invoke host function operation with transfer call", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
@@ -103,7 +515,7 @@ describe("buildSendCollectibleTransaction", () => {
   it("should encode correct contract address in operation", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
@@ -111,10 +523,13 @@ describe("buildSendCollectibleTransaction", () => {
     const operation = parsedTx.operations[0] as Operation.InvokeHostFunction;
     const hostFunction = operation.func;
 
-    expect(hostFunction.switch().name).toBe("hostFunctionTypeInvokeContract");
+    expect(hostFunction.type).toBe("hostFunctionTypeInvokeContract");
 
-    const invokeContractArgs = hostFunction.invokeContract();
-    const contractAddress = invokeContractArgs.contractAddress();
+    const invokeContractArgs = xdr.expectUnionVariant(
+      hostFunction,
+      "hostFunctionTypeInvokeContract",
+    ).invokeContract;
+    const { contractAddress } = invokeContractArgs;
     const addressFromXdr = Address.fromScAddress(contractAddress);
 
     expect(addressFromXdr.toString()).toBe(mockCollectionAddress);
@@ -123,15 +538,18 @@ describe("buildSendCollectibleTransaction", () => {
   it("should call transfer function in the contract", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
 
     const operation = parsedTx.operations[0] as Operation.InvokeHostFunction;
     const hostFunction = operation.func;
-    const invokeContractArgs = hostFunction.invokeContract();
-    const functionName = invokeContractArgs.functionName().toString();
+    const invokeContractArgs = xdr.expectUnionVariant(
+      hostFunction,
+      "hostFunctionTypeInvokeContract",
+    ).invokeContract;
+    const functionName = invokeContractArgs.functionName.toString();
 
     expect(functionName).toBe("transfer");
   });
@@ -139,15 +557,18 @@ describe("buildSendCollectibleTransaction", () => {
   it("should encode correct transfer parameters: from, to, token_id", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
 
     const operation = parsedTx.operations[0] as Operation.InvokeHostFunction;
     const hostFunction = operation.func;
-    const invokeContractArgs = hostFunction.invokeContract();
-    const args = invokeContractArgs.args();
+    const invokeContractArgs = xdr.expectUnionVariant(
+      hostFunction,
+      "hostFunctionTypeInvokeContract",
+    ).invokeContract;
+    const { args } = invokeContractArgs;
 
     // Should have 3 arguments: from, to, token_id
     expect(args).toHaveLength(3);
@@ -162,8 +583,8 @@ describe("buildSendCollectibleTransaction", () => {
 
     // Third argument should be token_id as u32
     const tokenIdScVal = args[2];
-    expect(tokenIdScVal.switch().name).toBe("scvU32");
-    const tokenIdValue = tokenIdScVal.u32();
+    expect(tokenIdScVal.type).toBe("scvU32");
+    const tokenIdValue = xdr.expectUnionVariant(tokenIdScVal, "scvU32").u32;
     expect(tokenIdValue.toString()).toBe("12345");
   });
 
@@ -173,7 +594,7 @@ describe("buildSendCollectibleTransaction", () => {
 
     const result = await buildSendCollectibleTransaction(params);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
@@ -190,7 +611,7 @@ describe("buildSendCollectibleTransaction", () => {
 
     const result = await buildSendCollectibleTransaction(mainnetParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.PUBLIC,
     ) as Transaction;
@@ -245,7 +666,7 @@ describe("buildSendCollectibleTransaction", () => {
   it("should create transaction with correct sequence number", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
@@ -258,16 +679,16 @@ describe("buildSendCollectibleTransaction", () => {
   it("should create XDR that can be successfully parsed and rebuilt", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(result.xdr, Networks.TESTNET);
+    const parsedTx = TransactionBuilder.fromXdr(result.xdr, Networks.TESTNET);
 
-    const reExportedXdr = parsedTx.toXDR();
+    const reExportedXdr = parsedTx.toXdr();
     expect(reExportedXdr).toBe(result.xdr);
   });
 
   it("should set correct timebounds", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
@@ -486,7 +907,7 @@ describe("buildSwapTransaction — includeTrustline", () => {
   };
 
   it("prepends a changeTrust op when includeTrustline is provided", async () => {
-    const { xdr } = await buildSwapTransaction({
+    const { xdr: swapXdr } = await buildSwapTransaction({
       ...baseParams,
       includeTrustline: {
         tokenCode: "USDC",
@@ -494,7 +915,10 @@ describe("buildSwapTransaction — includeTrustline", () => {
       },
     });
 
-    const tx = TransactionBuilder.fromXDR(xdr, Networks.PUBLIC) as Transaction;
+    const tx = TransactionBuilder.fromXdr(
+      swapXdr,
+      Networks.PUBLIC,
+    ) as Transaction;
 
     expect(tx.operations).toHaveLength(2);
     expect(tx.operations[0].type).toBe("changeTrust");
@@ -514,9 +938,12 @@ describe("buildSwapTransaction — includeTrustline", () => {
   });
 
   it("builds a single pathPaymentStrictSend op when includeTrustline is omitted (regression)", async () => {
-    const { xdr } = await buildSwapTransaction(baseParams);
+    const { xdr: swapXdr } = await buildSwapTransaction(baseParams);
 
-    const tx = TransactionBuilder.fromXDR(xdr, Networks.PUBLIC) as Transaction;
+    const tx = TransactionBuilder.fromXdr(
+      swapXdr,
+      Networks.PUBLIC,
+    ) as Transaction;
 
     expect(tx.operations).toHaveLength(1);
     expect(tx.operations[0].type).toBe("pathPaymentStrictSend");
@@ -585,21 +1012,30 @@ describe("buildBlendDepositTransaction", () => {
 
     const operation = parsedTx.operations[0] as Operation.InvokeHostFunction;
     const hostFunction = operation.func;
-    expect(hostFunction.switch().name).toBe("hostFunctionTypeInvokeContract");
+    expect(hostFunction.type).toBe("hostFunctionTypeInvokeContract");
 
-    const invocation = hostFunction.invokeContract();
-    expect(invocation.functionName().toString()).toBe("submit");
-    expect(Address.fromScAddress(invocation.contractAddress()).toString()).toBe(
+    const invocation = xdr.expectUnionVariant(
+      hostFunction,
+      "hostFunctionTypeInvokeContract",
+    ).invokeContract;
+    expect(invocation.functionName.toString()).toBe("submit");
+    expect(Address.fromScAddress(invocation.contractAddress).toString()).toBe(
       POOL_ID,
     );
 
     // submit(from, spender, to, requests) — requests is a vec of one Request map.
-    const requestScVal = invocation.args()[3].vec()![0];
-    const requestEntries = requestScVal.map()!;
+    const requestScVal = xdr.expectUnionVariant(invocation.args[3], "scvVec")
+      .vec![0];
+    const requestEntries = xdr.expectUnionVariant(requestScVal, "scvMap").map!;
     const byKey = (name: string) =>
-      requestEntries.find((e) => e.key().sym().toString() === name)!.val();
+      requestEntries.find(
+        (e) =>
+          xdr.expectUnionVariant(e.key, "scvSymbol").sym.toString() === name,
+      )!.val;
 
-    expect(byKey("request_type").u32()).toBe(BlendRequestType.SupplyCollateral);
+    expect(xdr.expectUnionVariant(byKey("request_type"), "scvU32").u32).toBe(
+      BlendRequestType.SupplyCollateral,
+    );
     expect(byKey("amount").toXDR("base64")).toBe(
       new XdrLargeInt("i128", "5000000000").toI128().toXDR("base64"),
     );

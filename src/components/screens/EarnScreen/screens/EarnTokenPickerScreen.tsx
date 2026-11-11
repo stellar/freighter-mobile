@@ -608,7 +608,6 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       </BaseLayout>
       <BottomSheet
         modalRef={notEnoughBottomSheetModalRef}
-        handleCloseModal={handleCloseNotEnoughSheet}
         customContent={
           <NotEnoughTokenBottomSheet
             variant={notEnoughVariant}
@@ -623,7 +622,6 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       />
       <BottomSheet
         modalRef={swapBottomSheetModalRef}
-        handleCloseModal={() => swapBottomSheetModalRef.current?.dismiss()}
         enableDynamicSizing={false}
         snapPoints={["90%"]}
         analyticsEvent={AnalyticsEvent.VIEW_EARN_SWAP}
@@ -657,9 +655,6 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       />
       <BottomSheet
         modalRef={swapReviewBottomSheetModalRef}
-        handleCloseModal={() =>
-          swapReviewBottomSheetModalRef.current?.dismiss()
-        }
         scrollable
         analyticsEvent={AnalyticsEvent.VIEW_EARN_SWAP_REVIEW}
         scrollViewFooterComponent={renderSwapReviewFooter}
@@ -677,7 +672,6 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       />
       <BottomSheet
         modalRef={swapFromBottomSheetModalRef}
-        handleCloseModal={() => swapFromBottomSheetModalRef.current?.dismiss()}
         enableDynamicSizing={false}
         snapPoints={["90%"]}
         customContent={
@@ -692,9 +686,6 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       />
       <BottomSheet
         modalRef={receiveFundsBottomSheetModalRef}
-        handleCloseModal={() =>
-          receiveFundsBottomSheetModalRef.current?.dismiss()
-        }
         customContent={
           <ReceiveFundsBottomSheet
             bottomSheetModalRef={receiveFundsBottomSheetModalRef}

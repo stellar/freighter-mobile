@@ -1,14 +1,15 @@
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { Text } from "components/sds/Typography";
-import { THEME } from "config/theme";
 import { isAndroid } from "helpers/device";
 import { fsValue } from "helpers/dimensions";
 import { useClipboard } from "hooks/useClipboard";
+import useTheme from "hooks/useTheme";
 import { t } from "i18next";
 import React, { useState, useMemo } from "react";
 import {
   TouchableOpacity,
   TextInput,
+  TextInputProps,
   View,
   ViewStyle,
   TextStyle,
@@ -18,12 +19,16 @@ import {
 /**
  * Size variants for input components.
  *
- * @typedef {"sm" | "md" | "lg"} InputSize
+ * @typedef {"sm" | "md" | "lg" | "xl"} InputSize
  * @property {"sm"} sm - Small size (30px height)
  * @property {"md"} md - Medium size (38px height)
  * @property {"lg"} lg - Large size (48px height)
+ * @property {"xl"} xl - Extra large size (60px height). This one follows the
+ * Varial field rather than the SDS: an outline with no fill, a 16px radius
+ * and 18px medium text. The smaller sizes keep the SDS look until inputs are
+ * restyled app-wide.
  */
-export type InputSize = "sm" | "md" | "lg";
+export type InputSize = "sm" | "md" | "lg" | "xl";
 
 type ClassNameMap = Record<InputSize, string>;
 
@@ -31,49 +36,74 @@ const CONTAINER_HEIGHT_MAP: ClassNameMap = {
   sm: "h-[30px]",
   md: "h-[38px]",
   lg: "h-[48px]",
+  xl: "h-[60px]",
 };
 
 const VERTICAL_PADDING_MAP: ClassNameMap = {
   sm: "py-1", // paddingVertical(4)
   md: "py-1.5", // paddingVertical(6)
   lg: "py-2", // paddingVertical(8)
+  xl: "py-[8px]",
 };
 
 const HORIZONTAL_PADDING_MAP: ClassNameMap = {
   sm: "pl-[10px] pr-[10px]",
   md: "pl-[12px] pr-[12px]",
   lg: "pl-[12px] pr-[12px]",
+  xl: "pl-[14px] pr-[14px]",
 };
 
 const GAP_MAP: ClassNameMap = {
   sm: "gap-1.5",
   md: "gap-1.5",
   lg: "gap-2",
+  xl: "gap-2",
 };
 
 const FONT_SIZE_MAP = {
   sm: fsValue(12),
   md: fsValue(14),
   lg: fsValue(16),
+  xl: fsValue(18),
 } as const;
+
+// The SDS sizes set their text in regular and the Varial xl field in medium.
+// Android picks a weight by font file, iOS by number on the variable font.
+const FONT_WEIGHT_MAP = {
+  sm: { androidFontFamily: "Inter-Regular", iosFontWeight: "400" },
+  md: { androidFontFamily: "Inter-Regular", iosFontWeight: "400" },
+  lg: { androidFontFamily: "Inter-Regular", iosFontWeight: "400" },
+  xl: { androidFontFamily: "Inter-Medium", iosFontWeight: "500" },
+} as const;
+
+// The SDS sizes sit on a fill; the Varial xl field is an outline only.
+const ENABLED_BACKGROUND_MAP: ClassNameMap = {
+  sm: "bg-background-primary",
+  md: "bg-background-primary",
+  lg: "bg-background-primary",
+  xl: "bg-transparent",
+};
 
 // Border radius maps
 const BORDER_RADIUS_MAP: ClassNameMap = {
   sm: "rounded",
   md: "rounded-md",
   lg: "rounded-lg",
+  xl: "rounded-[16px]",
 };
 
 const BORDER_RADIUS_LEFT_MAP: ClassNameMap = {
   sm: "rounded-l",
   md: "rounded-l-md",
   lg: "rounded-l-lg",
+  xl: "rounded-l-[16px]",
 };
 
 const BORDER_RADIUS_RIGHT_MAP: ClassNameMap = {
   sm: "rounded-r",
   md: "rounded-r-md",
   lg: "rounded-r-lg",
+  xl: "rounded-r-[16px]",
 };
 
 // Label size mapping - direct mapping to Text component props
@@ -81,6 +111,7 @@ const LABEL_SIZE_MAP = {
   sm: "xs",
   md: "sm",
   lg: "md",
+  xl: "lg",
 } as const;
 
 // Container padding maps
@@ -88,12 +119,23 @@ const CONTAINER_PADDING_LEFT_MAP: ClassNameMap = {
   sm: "pl-[10px]",
   md: "pl-[12px]",
   lg: "pl-[14px]",
+  xl: "pl-[14px]",
 };
 
 const CONTAINER_PADDING_RIGHT_MAP: ClassNameMap = {
   sm: "pr-[10px]",
   md: "pr-[12px]",
   lg: "pr-[14px]",
+  xl: "pr-[14px]",
+};
+
+// The SDS sizes nudge side elements 2px down; the Varial xl field centers its
+// icons on the field.
+const SIDE_ELEMENT_OFFSET_MAP: ClassNameMap = {
+  sm: "mt-[2px]",
+  md: "mt-[2px]",
+  lg: "mt-[2px]",
+  xl: "",
 };
 
 const getInputContainerClasses = (
@@ -105,7 +147,7 @@ const getInputContainerClasses = (
   const baseClasses = "flex-row items-center";
   const backgroundColor = isDisabled
     ? "bg-background-secondary"
-    : "bg-background-primary";
+    : ENABLED_BACKGROUND_MAP[fieldSize];
 
   const borderColor = isError ? "border-status-error" : "border-border-primary";
 
@@ -136,7 +178,7 @@ const getInputStyles = (fieldSize: InputSize) => {
   if (isAndroid) {
     return {
       ...baseStyles,
-      fontFamily: "Inter-Regular",
+      fontFamily: FONT_WEIGHT_MAP[fieldSize].androidFontFamily,
       fontWeight: "400" as const,
       textAlignVertical: "center" as const,
       paddingVertical: 0,
@@ -148,12 +190,12 @@ const getInputStyles = (fieldSize: InputSize) => {
   return {
     ...baseStyles,
     fontFamily: "Inter-Variable",
-    fontWeight: "400" as const,
+    fontWeight: FONT_WEIGHT_MAP[fieldSize].iosFontWeight,
   };
 };
 
 const getSideElementClasses = (fieldSize: InputSize) =>
-  `${CONTAINER_HEIGHT_MAP[fieldSize]} justify-center items-center mt-[2px]`;
+  `${CONTAINER_HEIGHT_MAP[fieldSize]} justify-center items-center ${SIDE_ELEMENT_OFFSET_MAP[fieldSize]}`;
 
 const getFieldNoteWrapperClasses = () => "mt-1";
 
@@ -188,9 +230,9 @@ const getSuffixContainerClasses = (fieldSize: InputSize) => {
  * @param {InputSize} fieldSize - The size variant of the input field
  * @returns {Object} Style object for suffix text elements
  */
-const getSuffixTextStyles = (fieldSize: InputSize) => ({
+const getSuffixTextStyles = (fieldSize: InputSize, color: string) => ({
   fontSize: FONT_SIZE_MAP[fieldSize],
-  color: THEME.colors.text.primary,
+  color,
   fontFamily: Platform.select({
     ios: "Inter-Variable",
     android: "Inter-Regular",
@@ -373,6 +415,8 @@ interface InputProps {
   spellCheck?: boolean;
   textContentType?: "none" | "URL" | "emailAddress" | "password" | "username";
   inputAccessoryViewID?: string;
+  returnKeyType?: TextInputProps["returnKeyType"];
+  submitBehavior?: TextInputProps["submitBehavior"];
 }
 
 /**
@@ -433,6 +477,8 @@ type TextInputComponentProps = Pick<
   | "spellCheck"
   | "textContentType"
   | "inputAccessoryViewID"
+  | "returnKeyType"
+  | "submitBehavior"
 > & {
   className?: string;
   ref: React.Ref<InputRef>;
@@ -464,7 +510,7 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
       value,
       onChangeText,
       placeholder,
-      placeholderTextColor = THEME.colors.text.secondary,
+      placeholderTextColor,
       secureTextEntry = false,
       editable = true,
       autoCorrect = true,
@@ -477,6 +523,10 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
     },
     ref,
   ) => {
+    const theme = useTheme();
+    // Resolved here rather than as a parameter default, which cannot call a hook.
+    const resolvedPlaceholderColor =
+      placeholderTextColor ?? theme.colors.text.secondary;
     const inputClasses = useMemo(() => getInputClasses(!editable), [editable]);
 
     const inputStyles = useMemo(() => getInputStyles(fieldSize), [fieldSize]);
@@ -489,7 +539,7 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
           }
           testID={testID}
           placeholder={placeholder}
-          placeholderTextColor={placeholderTextColor}
+          placeholderTextColor={resolvedPlaceholderColor}
           value={value}
           onChangeText={onChangeText}
           editable={editable}
@@ -508,7 +558,7 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
         ref={ref as React.Ref<TextInput>}
         testID={testID}
         placeholder={placeholder}
-        placeholderTextColor={placeholderTextColor}
+        placeholderTextColor={resolvedPlaceholderColor}
         value={value}
         onChangeText={onChangeText}
         editable={editable}
@@ -585,6 +635,8 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
     },
     ref,
   ) => {
+    const theme = useTheme();
+
     // Use the common hook
     const {
       renderCopyButton,
@@ -604,7 +656,7 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
       ref,
       testID,
       placeholder,
-      placeholderTextColor: THEME.colors.text.secondary,
+      placeholderTextColor: theme.colors.text.secondary,
       value,
       onChangeText,
       editable,
@@ -618,10 +670,10 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
     return (
       <View className={containerClasses}>
         {label && (
-          <Text {...getLabelSize()} sm color={THEME.colors.text.secondary}>
+          <Text {...getLabelSize()} sm color={theme.colors.text.secondary}>
             {isLabelUppercase ? label.toString().toUpperCase() : label}
             {labelSuffix && (
-              <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+              <Text {...getLabelSize()} color={theme.colors.text.secondary}>
                 {" "}
                 {labelSuffix}
               </Text>
@@ -643,10 +695,20 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
               <View
                 className={`flex-1 flex-row items-center ${centered ? "justify-center" : "justify-start"} ${value ? "flex" : "hidden"}`}
               >
-                <Text style={getSuffixTextStyles(fieldSize)}>
+                <Text
+                  style={getSuffixTextStyles(
+                    fieldSize,
+                    theme.colors.text.primary,
+                  )}
+                >
                   {value || ""}
                 </Text>
-                <Text style={getSuffixTextStyles(fieldSize)}>
+                <Text
+                  style={getSuffixTextStyles(
+                    fieldSize,
+                    theme.colors.text.primary,
+                  )}
+                >
                   {inputSuffixDisplay}
                 </Text>
               </View>
@@ -684,7 +746,7 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
                 style={{
                   backgroundColor:
                     endButton.backgroundColor ||
-                    THEME.colors.background.default,
+                    theme.colors.background.default,
                 }}
               >
                 {typeof endButton.content === "string" ? (
@@ -706,21 +768,21 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
 
         {note && (
           <View className={fieldNoteClasses}>
-            <Text sm color={THEME.colors.text.secondary}>
+            <Text sm color={theme.colors.text.secondary}>
               {note}
             </Text>
           </View>
         )}
         {error && (
           <View className={fieldNoteClasses}>
-            <Text sm color={THEME.colors.status.error}>
+            <Text sm color={theme.colors.status.error}>
               {error}
             </Text>
           </View>
         )}
         {success && (
           <View className={fieldNoteClasses}>
-            <Text sm color={THEME.colors.status.success}>
+            <Text sm color={theme.colors.status.success}>
               {success}
             </Text>
           </View>
@@ -799,7 +861,7 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
  * ```
  *
  * @param {InputProps} props - The component props
- * @param {string} [props.fieldSize="lg"] - Size variant of the input field ("sm" | "md" | "lg")
+ * @param {string} [props.fieldSize="lg"] - Size variant of the input field ("sm" | "md" | "lg" | "xl")
  * @param {string | ReactNode} [props.label] - Label text or component to display above the input
  * @param {string | ReactNode} [props.labelSuffix] - Additional text to display after the label
  * @param {boolean} [props.isLabelUppercase] - Whether to transform the label text to uppercase
@@ -881,6 +943,8 @@ export const Input = React.forwardRef<InputRef, InputProps>(
   ) => {
     const [showPassword] = useState(false);
 
+    const theme = useTheme();
+
     // Use the common hook
     const {
       renderCopyButton,
@@ -931,10 +995,10 @@ export const Input = React.forwardRef<InputRef, InputProps>(
     return (
       <View className={containerClasses}>
         {label && (
-          <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+          <Text {...getLabelSize()} color={theme.colors.text.secondary}>
             {isLabelUppercase ? label.toString().toUpperCase() : label}
             {labelSuffix && (
-              <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+              <Text {...getLabelSize()} color={theme.colors.text.secondary}>
                 {" "}
                 {labelSuffix}
               </Text>
@@ -958,7 +1022,7 @@ export const Input = React.forwardRef<InputRef, InputProps>(
               value={value}
               onChangeText={onChangeText}
               placeholder={placeholder}
-              placeholderTextColor={THEME.colors.text.secondary}
+              placeholderTextColor={theme.colors.text.secondary}
               secureTextEntry={isPassword && !showPassword}
               editable={editable}
               autoCorrect={autoCorrect}
@@ -987,7 +1051,7 @@ export const Input = React.forwardRef<InputRef, InputProps>(
                 style={{
                   backgroundColor:
                     endButton.backgroundColor ||
-                    THEME.colors.background.default,
+                    theme.colors.background.default,
                 }}
               >
                 {typeof endButton.content === "string" ? (
@@ -1009,21 +1073,21 @@ export const Input = React.forwardRef<InputRef, InputProps>(
 
         {note && (
           <View className={fieldNoteClasses}>
-            <Text sm color={THEME.colors.text.secondary}>
+            <Text sm color={theme.colors.text.secondary}>
               {note}
             </Text>
           </View>
         )}
         {error && (
           <View className={fieldNoteClasses}>
-            <Text sm color={THEME.colors.status.error}>
+            <Text sm color={theme.colors.status.error}>
               {error}
             </Text>
           </View>
         )}
         {success && (
           <View className={fieldNoteClasses}>
-            <Text sm color={THEME.colors.status.success}>
+            <Text sm color={theme.colors.status.success}>
               {success}
             </Text>
           </View>

@@ -5,12 +5,14 @@ import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import {
   NativeBalance,
   ClassicBalance,
+  SorobanBalance,
   TokenPricesMap,
   TokenTypeWithCustomToken,
   BalanceMap,
 } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { fetchBalances } from "services/backend";
 import { dataStorage } from "services/storage/storageFactory";
 
@@ -24,6 +26,7 @@ jest.mock("services/backend", () => ({
 jest.mock("services/storage/storageFactory", () => ({
   dataStorage: {
     getItem: jest.fn(),
+    setItem: jest.fn(),
   },
 }));
 
@@ -145,6 +148,9 @@ describe("balances duck", () => {
         isLoading: false,
         error: null,
       });
+      // The duck reads use_balances_v2 from the real remote-config store at
+      // call time; pin it off so flag-ON tests must opt in explicitly.
+      useRemoteConfigStore.setState({ use_balances_v2: false });
     });
 
     // Reset all mocks
@@ -155,6 +161,257 @@ describe("balances duck", () => {
 
     // Set up default storage mock
     jest.spyOn(dataStorage, "getItem").mockImplementation(mockGetItem);
+  });
+
+  describe("hidden tokens", () => {
+    const USDC_ID =
+      "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+    beforeEach(() => {
+      act(() => {
+        // hideToken / unhideToken only touch the in-memory list when the
+        // store's snapshot is for the account they were called for.
+        useBalancesStore.setState({
+          hiddenTokenIds: [],
+          fetchedPublicKey: mockParams.publicKey,
+          fetchedNetwork: mockParams.network,
+        });
+      });
+      (dataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    });
+
+    it("writes storage but leaves the list alone when the store belongs to another account", async () => {
+      // The account switched while the write was in flight: clearAccountData
+      // reset the store, so the completion must not append to the new list.
+      act(() => {
+        useBalancesStore.setState({
+          fetchedPublicKey: "GOTHERACCOUNT",
+          hiddenTokenIds: [],
+        });
+      });
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.hideToken({
+          publicKey: mockParams.publicKey,
+          network: mockParams.network,
+          tokenId: USDC_ID,
+        });
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([]);
+      expect(dataStorage.setItem).toHaveBeenCalledWith(
+        STORAGE_KEYS.HIDDEN_TOKEN_LIST,
+        expect.any(String),
+      );
+    });
+
+    it("unhideToken also leaves the list alone for another account's store", async () => {
+      mockGetItem.mockImplementation((key: STORAGE_KEYS) =>
+        Promise.resolve(
+          key === STORAGE_KEYS.HIDDEN_TOKEN_LIST
+            ? JSON.stringify({
+                [mockParams.publicKey]: { [mockParams.network]: [USDC_ID] },
+              })
+            : null,
+        ),
+      );
+      act(() => {
+        useBalancesStore.setState({
+          fetchedPublicKey: "GOTHERACCOUNT",
+          hiddenTokenIds: [USDC_ID],
+        });
+      });
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.unhideToken({
+          publicKey: mockParams.publicKey,
+          network: mockParams.network,
+          tokenId: USDC_ID,
+        });
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([USDC_ID]);
+    });
+
+    it("loads the account's hidden tokens alongside the balances", async () => {
+      // First load: no snapshot yet, so the stored list applies
+      act(() => {
+        useBalancesStore.setState({
+          fetchedPublicKey: null,
+          fetchedNetwork: null,
+        });
+      });
+      mockGetItem.mockImplementation((key: STORAGE_KEYS) =>
+        Promise.resolve(
+          key === STORAGE_KEYS.HIDDEN_TOKEN_LIST
+            ? JSON.stringify({
+                [mockParams.publicKey]: { [mockParams.network]: [USDC_ID] },
+              })
+            : null,
+        ),
+      );
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([USDC_ID]);
+      // The balances themselves still carry the hidden token.
+      expect(result.current.balances[USDC_ID]).toBeDefined();
+    });
+
+    it("keeps the in-memory hidden list when a refresh for the same account lands", async () => {
+      // Storage still says "nothing hidden" (snapshot taken before the fetch),
+      // but the user hid USDC while the fetch was in flight.
+      mockGetItem.mockResolvedValue(null);
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+      act(() => {
+        useBalancesStore.setState({
+          fetchedPublicKey: mockParams.publicKey,
+          fetchedNetwork: mockParams.network,
+          hiddenTokenIds: [USDC_ID],
+        });
+      });
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([USDC_ID]);
+    });
+
+    it("applies the stored hidden list when the account or network changes", async () => {
+      mockGetItem.mockImplementation((key: STORAGE_KEYS) =>
+        Promise.resolve(
+          key === STORAGE_KEYS.HIDDEN_TOKEN_LIST
+            ? JSON.stringify({
+                [mockParams.publicKey]: { [mockParams.network]: [USDC_ID] },
+              })
+            : null,
+        ),
+      );
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+      act(() => {
+        useBalancesStore.setState({
+          fetchedPublicKey: "GOTHERACCOUNT",
+          fetchedNetwork: mockParams.network,
+          hiddenTokenIds: ["STALE:GSTALE"],
+        });
+      });
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([USDC_ID]);
+    });
+
+    it("hideToken persists the token and updates the store", async () => {
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.hideToken({
+          publicKey: mockParams.publicKey,
+          network: mockParams.network,
+          tokenId: USDC_ID,
+        });
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([USDC_ID]);
+      expect(dataStorage.setItem).toHaveBeenCalledWith(
+        STORAGE_KEYS.HIDDEN_TOKEN_LIST,
+        JSON.stringify({
+          [mockParams.publicKey]: { [mockParams.network]: [USDC_ID] },
+        }),
+      );
+    });
+
+    it("never hides XLM", async () => {
+      const { result } = renderHook(() => useBalancesStore());
+      (dataStorage.setItem as jest.Mock).mockClear();
+
+      await act(async () => {
+        await result.current.hideToken({
+          publicKey: mockParams.publicKey,
+          network: mockParams.network,
+          tokenId: "XLM",
+        });
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([]);
+      expect(dataStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it("unhideToken removes the token from storage and the store", async () => {
+      mockGetItem.mockImplementation((key: STORAGE_KEYS) =>
+        Promise.resolve(
+          key === STORAGE_KEYS.HIDDEN_TOKEN_LIST
+            ? JSON.stringify({
+                [mockParams.publicKey]: { [mockParams.network]: [USDC_ID] },
+              })
+            : null,
+        ),
+      );
+      act(() => {
+        useBalancesStore.setState({ hiddenTokenIds: [USDC_ID] });
+      });
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.unhideToken({
+          publicKey: mockParams.publicKey,
+          network: mockParams.network,
+          tokenId: USDC_ID,
+        });
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual([]);
+      expect(dataStorage.setItem).toHaveBeenCalledWith(
+        STORAGE_KEYS.HIDDEN_TOKEN_LIST,
+        JSON.stringify({}),
+      );
+    });
+
+    it("hideToken leaves the store untouched and rethrows when storage fails", async () => {
+      (dataStorage.setItem as jest.Mock).mockRejectedValueOnce(
+        new Error("disk full"),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await expect(
+        act(async () => {
+          await result.current.hideToken({
+            publicKey: mockParams.publicKey,
+            network: mockParams.network,
+            tokenId: USDC_ID,
+          });
+        }),
+      ).rejects.toThrow("disk full");
+
+      expect(result.current.hiddenTokenIds).toEqual([]);
+    });
   });
 
   describe("store state", () => {
@@ -185,7 +442,10 @@ describe("balances duck", () => {
         await result.current.fetchAccountBalances(mockParams);
       });
 
-      expect(mockFetchBalances).toHaveBeenCalledWith(mockParams);
+      expect(mockFetchBalances).toHaveBeenCalledWith({
+        ...mockParams,
+        useV2: false,
+      });
     });
   });
 
@@ -202,7 +462,34 @@ describe("balances duck", () => {
         await result.current.fetchAccountBalances(mockParams);
       });
 
-      expect(mockFetchBalances).toHaveBeenCalledWith(mockParams);
+      expect(mockFetchBalances).toHaveBeenCalledWith({
+        ...mockParams,
+        useV2: false,
+      });
+    });
+
+    it("passes useV2: true when the use_balances_v2 flag is on", async () => {
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      // Flip the flag after render — the duck must read it at call time, not
+      // capture it, so a freshly resolved Amplitude flag isn't missed.
+      act(() => {
+        useRemoteConfigStore.setState({ use_balances_v2: true });
+      });
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      expect(mockFetchBalances).toHaveBeenCalledWith({
+        ...mockParams,
+        useV2: true,
+      });
     });
 
     it("should update balances and pricedBalances state on successful fetch", async () => {
@@ -440,6 +727,91 @@ describe("balances duck", () => {
       );
     });
 
+    describe("SEP-41 balances", () => {
+      const solvBtcId =
+        "SolvBTC:CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";
+      // Raw i128 total: 227 at 8 decimals is 0.00000227 SolvBTC.
+      const solvBtcBalance: SorobanBalance = {
+        token: {
+          code: "SolvBTC",
+          issuer: {
+            key: "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN",
+          },
+        },
+        contractId: "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN",
+        name: "Solv BTC",
+        symbol: "SolvBTC",
+        decimals: 8,
+        total: new BigNumber("227"),
+        available: new BigNumber("227"),
+      };
+      const solvBtcPrice = new BigNumber("81597.03");
+      const expectedFiat = new BigNumber("0.00000227").multipliedBy(
+        solvBtcPrice,
+      );
+
+      it("scales the raw total by decimals when pricing", async () => {
+        mockFetchBalances.mockResolvedValueOnce({
+          balances: { ...mockBalances, [solvBtcId]: solvBtcBalance },
+        });
+        (usePricesStore.getState as jest.Mock).mockReturnValue(
+          createMockPricesStore({
+            prices: {
+              ...mockPrices,
+              [solvBtcId]: {
+                currentPrice: solvBtcPrice,
+                percentagePriceChange24h: null,
+              },
+            },
+          }),
+        );
+
+        const { result } = renderHook(() => useBalancesStore());
+        await act(async () => {
+          await result.current.fetchAccountBalances(mockParams);
+        });
+
+        expect(
+          result.current.pricedBalances[solvBtcId].fiatTotal?.toString(),
+        ).toBe(expectedFiat.toString());
+        // Classic balances are already in whole units.
+        expect(result.current.pricedBalances.XLM.fiatTotal?.toString()).toBe(
+          "50.25",
+        );
+      });
+
+      it("scales the raw total by decimals when recomputing from a carried price", async () => {
+        useBalancesStore.setState({
+          pricedBalances: {
+            [solvBtcId]: {
+              ...solvBtcBalance,
+              tokenCode: "SolvBTC",
+              displayName: "Solv BTC",
+              currentPrice: solvBtcPrice,
+            },
+          },
+        });
+        mockFetchBalances.mockResolvedValueOnce({
+          balances: { [solvBtcId]: solvBtcBalance },
+        });
+        (usePricesStore.getState as jest.Mock).mockReturnValue(
+          createMockPricesStore({
+            prices: {},
+            error: "Failed to fetch token prices",
+          }),
+        );
+
+        const { result } = renderHook(() => useBalancesStore());
+        await act(async () => {
+          await result.current.fetchAccountBalances(mockParams);
+        });
+
+        expect(
+          result.current.pricedBalances[solvBtcId].fiatTotal?.toString(),
+        ).toBe(expectedFiat.toString());
+      });
+    });
+
     it("should extract scanResults from backend balance data", async () => {
       mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
       (usePricesStore.getState as jest.Mock).mockReturnValue(
@@ -546,6 +918,67 @@ describe("balances duck", () => {
       expect(result.current.scanResults).toEqual(expectedScanResults);
       expect(Object.keys(result.current.scanResults)).toHaveLength(5);
       unmount();
+    });
+  });
+
+  describe("extractScanResultsFromBalances (via fetchAccountBalances)", () => {
+    const ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+    // Stellar classic asset codes are case-sensitive alphanumeric, so a
+    // lowercase code is legal and can contain "lp" as a substring (e.g.
+    // "help") without being a liquidity pool.
+    const helpBalance: ClassicBalance = {
+      token: {
+        code: "help",
+        issuer: { key: ISSUER },
+        type: "credit_alphanum4" as TokenTypeWithCustomToken,
+      },
+      total: new BigNumber("10"),
+      available: new BigNumber("10"),
+      limit: new BigNumber("1000"),
+      buyingLiabilities: "0",
+      sellingLiabilities: "0",
+      blockaidData: benignTokenScan,
+    };
+
+    const lpBalance = {
+      total: new BigNumber("1"),
+      limit: new BigNumber("1"),
+      liquidityPoolId:
+        "4ac86c65b9f7b175ae0493da0d36cc5bc88b72677ca69fce8fe374233983d8e7",
+      reserves: [],
+    } as unknown as BalanceMap[string];
+
+    beforeEach(() => {
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+      mockFetchBalances.mockResolvedValue({
+        balances: {
+          XLM: mockNativeBalance,
+          [`help:${ISSUER}`]: helpBalance,
+          "4ac86c65b9f7b175ae0493da0d36cc5bc88b72677ca69fce8fe374233983d8e7:lp":
+            lpBalance,
+        } as BalanceMap,
+      });
+    });
+
+    it("keeps scan results for a classic asset whose lowercase code contains 'lp'", async () => {
+      const { result } = renderHook(() => useBalancesStore());
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+      expect(result.current.scanResults[`help-${ISSUER}`]).toBeDefined();
+    });
+
+    it("skips liquidity-pool balances and the native balance", async () => {
+      const { result } = renderHook(() => useBalancesStore());
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+      const keys = Object.keys(result.current.scanResults);
+      expect(keys.some((k) => k.startsWith("4ac86c65"))).toBe(false);
+      expect(keys).not.toContain("XLM");
     });
   });
 });

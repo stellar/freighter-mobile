@@ -18,11 +18,8 @@ import { useMemo } from "react";
  * ```tsx
  * const { visibleCollectibles, hiddenCollectibles } = useFilteredCollectibles();
  *
- * // Display only visible collectibles (default)
- * <CollectiblesGrid type={CollectibleFilterType.VISIBLE} />
- *
- * // Display only hidden collectibles
- * <CollectiblesGrid type={CollectibleFilterType.HIDDEN} />
+ * // The grid shows visibleCollectibles; the Add collectible screen's
+ * // "Show hidden" sheet lists hiddenCollectibles with an Unhide button.
  * ```
  */
 export const useFilteredCollectibles = (): {

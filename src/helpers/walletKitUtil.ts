@@ -11,6 +11,7 @@ import {
   getSdkError,
   SdkErrorKey,
 } from "@walletconnect/utils";
+import type { SignTransactionDetailsState } from "components/screens/SignTransactionDetails/types";
 import { NETWORK_NAMES, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
@@ -80,6 +81,51 @@ export const resolveDappRejectionEvent = (args: {
       return "transaction";
     default:
       return null;
+  }
+};
+
+/**
+ * Whether a dApp request has to fail closed because the app can't show the
+ * user what they would sign. Such a request is offered only Reject, and its
+ * approval is refused: confirming it would be blind signing. Pure, like
+ * {@link resolveDappRejectionEvent}, so the decision is unit-testable without
+ * rendering the provider.
+ *
+ * A request whose details threw while rendering (`hasDetailsRenderError`)
+ * fails closed, whatever its method. Otherwise it depends on the method:
+ * - `stellar_signXDR` / `stellar_signAndSubmitXDR`: unless the transaction's
+ *   details are `ready`. `empty` fails closed too, since there is then no
+ *   transaction to show.
+ * - `stellar_signAuthEntry`: when its invocation can't be displayed.
+ * - `stellar_signMessage`, or no request at all: never.
+ *
+ * @param args.requestMethod - The request's RPC method, if there is a request.
+ * @param args.signTransactionDetailsStatus - The status of the request's
+ *   transaction details, from `useSignTransactionDetailsState`.
+ * @param args.isAuthEntryDisplayable - Whether an auth-entry request's preimage
+ *   can be displayed (`isAuthEntryDisplayable`); `true` for other methods.
+ * @param args.hasDetailsRenderError - Whether the request's details tripped
+ *   their error boundary.
+ * @returns `true` when the request can only be rejected.
+ */
+export const isDappRequestUndisplayable = (args: {
+  requestMethod?: StellarRpcMethods;
+  signTransactionDetailsStatus: SignTransactionDetailsState["status"];
+  isAuthEntryDisplayable: boolean;
+  hasDetailsRenderError: boolean;
+}): boolean => {
+  if (args.hasDetailsRenderError) {
+    return true;
+  }
+
+  switch (args.requestMethod) {
+    case StellarRpcMethods.SIGN_XDR:
+    case StellarRpcMethods.SIGN_AND_SUBMIT_XDR:
+      return args.signTransactionDetailsStatus !== "ready";
+    case StellarRpcMethods.SIGN_AUTH_ENTRY:
+      return !args.isAuthEntryDisplayable;
+    default:
+      return false;
   }
 };
 
@@ -516,15 +562,29 @@ export const approveSessionRequest = async ({
   // Transaction signing flow (for SIGN_XDR and SIGN_AND_SUBMIT_XDR)
   let transaction: Transaction | FeeBumpTransaction;
   let signedTransaction: string | null;
-  let dappDomain: string | undefined;
+  // Resolved before signing, so a signing failure is still attributable to the
+  // website that asked for it.
+  const { activeSessions } = useWalletKitStore.getState();
+  const dappDomain = getDappMetadataFromEvent(
+    sessionRequest,
+    activeSessions,
+  )?.url;
+  const dappProps = dappDomain ? { dappDomain } : {};
+
   try {
-    transaction = TransactionBuilder.fromXDR(xdr as string, networkPassphrase);
+    transaction = TransactionBuilder.fromXdr(xdr as string, networkPassphrase);
 
     // Always sign the transaction for both supported RPC methods
     signedTransaction = signTransaction(transaction);
 
     if (!signedTransaction) {
       const errorMessage = "Failed to sign transaction";
+      // Signing produced nothing. The user already approved the prompt, so
+      // this is a fault and not a decision.
+      analytics.trackSignedTransactionError({
+        error: errorMessage,
+        ...dappProps,
+      });
       logger.error(
         "approveSessionRequest",
         errorMessage,
@@ -542,22 +602,17 @@ export const approveSessionRequest = async ({
       return;
     }
 
-    // Get dapp metadata for analytics
-    const { activeSessions } = useWalletKitStore.getState();
-    const dappMetadata = getDappMetadataFromEvent(
-      sessionRequest,
-      activeSessions,
-    );
-    dappDomain = dappMetadata?.url;
-
-    analytics.trackSignedTransaction({
-      ...(dappDomain ? { dappDomain } : {}),
-    });
+    analytics.trackSignedTransaction({ ...dappProps });
   } catch (error) {
-    const message = t("common.error", {
-      errorMessage:
-        error instanceof Error ? error.message : t("common.unknownError"),
+    const errorMessage =
+      error instanceof Error ? error.message : t("common.unknownError");
+    // Signing threw. The user already approved the prompt, so this is a fault
+    // and not a decision.
+    analytics.trackSignedTransactionError({
+      error: errorMessage,
+      ...dappProps,
     });
+    const message = t("common.error", { errorMessage });
     showToast({
       title: t("walletKit.errorSigning"),
       message,
@@ -576,9 +631,7 @@ export const approveSessionRequest = async ({
         tx: signedTransaction,
       });
 
-      analytics.trackSubmittedTransaction({
-        ...(dappDomain ? { dappDomain } : {}),
-      });
+      analytics.trackSubmittedTransaction({ ...dappProps });
     } catch (error) {
       const message = t("common.error", {
         errorMessage:

@@ -1,13 +1,15 @@
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { PALETTE, NOTIFICATION_VARIANTS } from "config/theme";
+import { NotificationVariants, SHADOW_COLOR } from "config/theme";
 import { px } from "helpers/dimensions";
+import useNotificationVariants from "hooks/useNotificationVariants";
+import useTheme from "hooks/useTheme";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 import styled from "styled-components/native";
 
 /** Available notification variants */
-export type NotificationVariant = keyof typeof NOTIFICATION_VARIANTS;
+export type NotificationVariant = keyof NotificationVariants;
 
 export interface NotificationProps {
   /** Variant of the notification */
@@ -28,16 +30,10 @@ export interface NotificationProps {
   accessibilityLabel?: string;
 }
 
-const getBackgroundColor = (
-  variant: NotificationVariant,
-  isFilled?: boolean,
-): string =>
-  isFilled
-    ? NOTIFICATION_VARIANTS[variant].backgroundColor
-    : PALETTE.dark.gray["01"];
-
-const getIconColor = (variant: NotificationVariant): string =>
-  NOTIFICATION_VARIANTS[variant].iconColor;
+interface SurfaceProps {
+  $backgroundColor: string;
+  $borderColor: string;
+}
 
 const NotificationContentContainer = styled.View`
   flex-direction: row;
@@ -61,24 +57,15 @@ const NotificationWrapper = styled.View`
   width: 100%;
 `;
 
-const NotificationContainer = styled(View)<{
-  variant: NotificationVariant;
-  isFilled?: boolean;
-}>`
-  background-color: ${({
-    variant,
-    isFilled,
-  }: {
-    variant: NotificationVariant;
-    isFilled?: boolean;
-  }) => getBackgroundColor(variant, isFilled)};
-  border: ${px(1)} solid ${PALETTE.dark.gray["06"]};
+const NotificationContainer = styled(View)<SurfaceProps>`
+  background-color: ${({ $backgroundColor }: SurfaceProps) => $backgroundColor};
+  border: ${px(1)} solid ${({ $borderColor }: SurfaceProps) => $borderColor};
   border-radius: ${px(8)};
   padding: ${px(12)};
   flex-direction: column;
   gap: ${px(8)};
   width: 100%;
-  shadow-color: #000;
+  shadow-color: ${SHADOW_COLOR};
   shadow-offset: 0 ${px(2)};
   shadow-opacity: 0.25;
   shadow-radius: ${px(3.84)};
@@ -125,15 +112,26 @@ export const Notification: React.FC<NotificationProps> = ({
   onPress,
   accessibilityLabel,
 }) => {
+  const variants = useNotificationVariants();
+  const theme = useTheme();
+  const backgroundColor = isFilled
+    ? variants[variant].backgroundColor
+    : theme.colors.background.default;
+
   const computedAccessibilityLabel =
     accessibilityLabel ||
     title ||
     (typeof message === "string" ? message : undefined);
   const content = (
-    <NotificationContainer variant={variant} isFilled={isFilled}>
+    <NotificationContainer
+      $backgroundColor={backgroundColor}
+      $borderColor={theme.colors.border.default}
+    >
       <NotificationContentContainer>
         <IconContainer>
-          {icon || <Icon.InfoCircle size={16} color={getIconColor(variant)} />}
+          {icon || (
+            <Icon.InfoCircle size={16} color={variants[variant].iconColor} />
+          )}
         </IconContainer>
         <CustomContentContainer>
           {customContent || (

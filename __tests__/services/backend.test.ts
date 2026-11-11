@@ -1,16 +1,33 @@
 import { Networks, xdr } from "@stellar/stellar-sdk";
 import { NETWORK_URLS, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
+import { isRequestCanceled } from "services/apiFactory";
 import {
+  fetchBalances,
   fetchCollectibles,
   fetchTokenPrices,
   freighterBackendV1,
   freighterBackendV2,
+  handleContractLookup,
   simulateTransaction,
   submitTransaction,
   SimulateTransactionParams,
   SubmitTransactionBody,
 } from "services/backend";
+import { scanBulkTokens } from "services/blockaid/api";
+import { dataStorage } from "services/storage/storageFactory";
+
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
+// The v2 balances path stamps Blockaid data through the blockaidTokenScans
+// duck's disk-backed cache; mock the raw scan API underneath it (it would
+// otherwise loop back into the mocked freighterBackendV1 client) and the
+// storage the cache reads/writes.
+jest.mock("services/blockaid/api", () => ({
+  scanBulkTokens: jest.fn(),
+}));
+jest.mock("services/storage/storageFactory");
 
 jest.mock("services/apiFactory", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports, global-require
@@ -46,7 +63,7 @@ jest.mock("@stellar/stellar-sdk", () => {
   return {
     ...actual,
     TransactionBuilder: {
-      fromXDR: jest.fn((xdrString: string, networkPassphrase: string) => ({
+      fromXdr: jest.fn((xdrString: string, networkPassphrase: string) => ({
         xdrString,
         networkPassphrase,
         build: jest.fn(),
@@ -837,6 +854,84 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     expect(result.native).toBeUndefined();
   });
 
+  it("prices a BARE contract id on v2 instead of filtering it as an LP share", async () => {
+    // `getTokenType`'s catch-all calls any colonless non-native id a liquidity
+    // pool share, so a bare `C…` token was dropped before the v2 mapping ran
+    // and came back "--" even though v2 prices contract tokens.
+    const bare = "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";
+    mockV2Post.mockResolvedValueOnce({
+      data: {
+        data: { [bare]: { currentPrice: "1.25", percentagePriceChange24h: 0 } },
+      },
+    });
+
+    const result = await fetchTokenPrices({
+      tokens: [bare],
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: [bare] },
+      expect.anything(),
+    );
+    expect(result[bare]?.currentPrice?.toString()).toBe("1.25");
+  });
+
+  it("prices the BARE native SAC as native", async () => {
+    const bareSac = "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+    mockV2Post.mockResolvedValueOnce({
+      data: {
+        data: {
+          native: { currentPrice: "0.5", percentagePriceChange24h: 0.02 },
+        },
+      },
+    });
+
+    const result = await fetchTokenPrices({
+      tokens: [bareSac],
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: ["native"] },
+      expect.anything(),
+    );
+    expect(result[bareSac]?.currentPrice?.toString()).toBe("0.5");
+  });
+
+  it("prices XLM's own SAC as native, and keys the price back to it", async () => {
+    // Contract balances canonicalize `symbol:contractId`, so the native SAC
+    // arrives as `XLM:<contract id>`. Sent as a contract it asks the backend
+    // for a different asset, leaving the balance on "--" beside a chart the
+    // same identifier resolves as native.
+    const sacId =
+      "XLM:CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+    mockV2Post.mockResolvedValueOnce({
+      data: {
+        data: {
+          native: { currentPrice: "0.5", percentagePriceChange24h: 0.02 },
+        },
+      },
+    });
+
+    const result = await fetchTokenPrices({
+      tokens: [sacId],
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: ["native"] },
+      expect.anything(),
+    );
+    expect(result[sacId]?.currentPrice?.toString()).toBe("0.5");
+  });
+
   it("hits the v1 client with the 'XLM' native id and no network param when useV2 is false", async () => {
     await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: false });
 
@@ -861,20 +956,107 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     });
   });
 
-  it("short-circuits when all tokens filter out (custom tokens) without any request", async () => {
-    const customTokens = ["USDC:CUSTOM_CONTRACT_ID"];
-    const result = await fetchTokenPrices({
-      tokens: customTokens,
+  // Phase 1 item 5 (token price graphs design §4.1): the old single
+  // LP+custom-token exclusion predicate is SPLIT, not moved. LP shares stay
+  // filtered unconditionally on both paths (never priceable; an LP id fails
+  // parsing at the batch endpoint), while the custom-token half applies only
+  // on the legacy v1 rollback path — the Go backend prices SEP-41 contract
+  // tokens, so v2 requests include them (header prices ship with the chart).
+  const CUSTOM_TOKEN_ID =
+    "SOLVBTC:CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";
+  const LP_ID =
+    "4ac86c65b9f7b175ae0493da0d36cc5bc88b72677ca69fce8fe374233983d8e7:lp";
+
+  it("includes custom (SEP-41) tokens in the v2 request as SYMBOL:CONTRACTID", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, CUSTOM_TOKEN_ID],
       network: NETWORKS.PUBLIC,
       useV2: true,
     });
 
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: [...v2Tokens, CUSTOM_TOKEN_ID] },
+      { params: { network: "PUBLIC" } },
+    );
+  });
+
+  it("still filters custom tokens on the legacy v1 rollback path", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, CUSTOM_TOKEN_ID],
+      network: NETWORKS.PUBLIC,
+      useV2: false,
+    });
+
+    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
+  });
+
+  it("short-circuits on the legacy path when only custom tokens remain", async () => {
+    const result = await fetchTokenPrices({
+      tokens: [CUSTOM_TOKEN_ID],
+      network: NETWORKS.PUBLIC,
+      useV2: false,
+    });
+
     expect(mockV1Post).not.toHaveBeenCalled();
     expect(mockV2Post).not.toHaveBeenCalled();
-    expect(result["USDC:CUSTOM_CONTRACT_ID"]).toEqual({
+    expect(result[CUSTOM_TOKEN_ID]).toEqual({
       currentPrice: null,
       percentagePriceChange24h: null,
     });
+  });
+
+  // A contract token's symbol may contain a colon; contract-ness is read from
+  // the last one. `THIRTEENCHARS` exceeds 12 chars, the length at which
+  // a first-colon parse types the id as an LP share.
+  const COLON_SYMBOL_TOKEN_ID = `THIRTEENCHARS:x:${CUSTOM_TOKEN_ID.split(":")[1]}`;
+
+  it("includes a contract token whose symbol has a colon in the v2 request", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, COLON_SYMBOL_TOKEN_ID],
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: [...v2Tokens, COLON_SYMBOL_TOKEN_ID] },
+      { params: { network: "PUBLIC" } },
+    );
+  });
+
+  it("filters a contract token whose symbol has a colon on the legacy path", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, `A:B:${CUSTOM_TOKEN_ID.split(":")[1]}`],
+      network: NETWORKS.PUBLIC,
+      useV2: false,
+    });
+
+    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
+  });
+
+  it("filters LP shares unconditionally on the v2 path", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, LP_ID],
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: v2Tokens },
+      { params: { network: "PUBLIC" } },
+    );
+  });
+
+  it("filters LP shares unconditionally on the legacy path", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, LP_ID],
+      network: NETWORKS.PUBLIC,
+      useV2: false,
+    });
+
+    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
   });
 
   it("logs an error to Sentry and rethrows on a backend failure", async () => {
@@ -897,6 +1079,54 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
+  it("does NOT log a deliberate cancellation, but still rejects so the snapshot falls back", async () => {
+    // The confirmation price snapshot aborts its in-flight request on every
+    // cached_display fallback — a routine path, not a failure. The interceptor
+    // normalizes an axios cancellation as a network error, so logging it would
+    // stamp a misleading "network unreachable" breadcrumb on that path.
+    const canceledError = { message: "canceled" };
+    (isRequestCanceled as jest.Mock).mockReturnValue(true);
+    mockV2Post.mockRejectedValueOnce(canceledError);
+
+    await expect(
+      fetchTokenPrices({
+        tokens,
+        network: NETWORKS.PUBLIC,
+        useV2: true,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toEqual(canceledError);
+
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("still logs a genuine connectivity failure when the request was not canceled", async () => {
+    // The cancellation carve-out above must not swallow real failures.
+    const networkError = {
+      message: "Network Error",
+      status: 0,
+      isNetworkError: true,
+    };
+    (isRequestCanceled as jest.Mock).mockReturnValue(false);
+    mockV2Post.mockRejectedValueOnce(networkError);
+
+    await expect(
+      fetchTokenPrices({
+        tokens,
+        network: NETWORKS.PUBLIC,
+        useV2: true,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toEqual(networkError);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "backendApi.fetchTokenPrices",
+      "Network unreachable while fetching token prices",
+      networkError,
+    );
+  });
+
   it("demotes a connectivity failure to a warn breadcrumb (no Sentry error)", async () => {
     const networkError = {
       message: "Network Error",
@@ -915,5 +1145,441 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
       networkError,
     );
     expect(logger.error).not.toHaveBeenCalled();
+  });
+});
+
+const SEP41_CONTRACT =
+  "CDMLFMKMMD7MWZP3FKUBZPVHTUEDLSX4BYGYKH4GCESXYHS3IHQ4EIG4";
+
+describe("Backend Service - fetchBalances v2 routing", () => {
+  let mockV1Get: jest.MockedFunction<any>;
+  let mockV2Post: jest.MockedFunction<any>;
+
+  const publicKey = "GACCOUNT";
+
+  const v2Account = {
+    address: publicKey,
+    is_funded: true,
+    subentry_count: 2,
+    balances: [
+      {
+        token_type: "NATIVE",
+        token_id: "CNATIVE",
+        key: "native",
+        token: { type: "native", code: "XLM" },
+        total: "100",
+        available: "88.5",
+        minimum_balance: "1.5",
+        buying_liabilities: "0",
+        selling_liabilities: "10",
+      },
+      {
+        token_type: "CLASSIC",
+        token_id: "CUSDC",
+        key: "USDC:GISSUER",
+        token: {
+          type: "credit_alphanum4",
+          code: "USDC",
+          issuer: { key: "GISSUER" },
+        },
+        total: "50",
+        available: "45",
+        code: "USDC",
+        issuer: "GISSUER",
+        type: "credit_alphanum4",
+        limit: "1000",
+        buying_liabilities: "0",
+        selling_liabilities: "5",
+        is_authorized: true,
+        is_authorized_to_maintain_liabilities: true,
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockV1Get = freighterBackendV1.get as jest.MockedFunction<any>;
+    mockV2Post = freighterBackendV2.post as jest.MockedFunction<any>;
+    (scanBulkTokens as jest.MockedFunction<any>).mockResolvedValue({
+      results: {},
+    });
+    (dataStorage.getItem as jest.MockedFunction<any>).mockResolvedValue(null);
+    (dataStorage.setItem as jest.MockedFunction<any>).mockResolvedValue(
+      undefined,
+    );
+  });
+
+  it("POSTs the address to the v2 endpoint and maps the response (useV2 on PUBLIC)", async () => {
+    mockV2Post.mockResolvedValueOnce({ data: { data: [v2Account] } });
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/accounts/balances",
+      { addresses: [publicKey] },
+      { params: { network: NETWORKS.PUBLIC } },
+    );
+    expect(mockV1Get).not.toHaveBeenCalled();
+
+    // Native is keyed by the app convention, not the v1 wire key
+    expect(result.balances!.XLM).toBeDefined();
+    expect((result.balances as any).native).toBeUndefined();
+    expect((result.balances!.XLM as any).total.toString()).toBe("100");
+    expect((result.balances!["USDC:GISSUER"] as any).available.toString()).toBe(
+      "45",
+    );
+    expect(result.isFunded).toBe(true);
+    expect(result.subentryCount).toBe(2);
+  });
+
+  it("routes to v2 on testnet too (no Blockaid scan off-mainnet)", async () => {
+    mockV2Post.mockResolvedValueOnce({ data: { data: [v2Account] } });
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.TESTNET,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledTimes(1);
+    expect(mockV1Get).not.toHaveBeenCalled();
+    // Entries still carry the benign default blockaidData stamp
+    expect((result.balances!["USDC:GISSUER"] as any).blockaidData).toEqual({
+      result_type: "Benign",
+    });
+  });
+
+  it("rejects a response missing the requested account (contract violation)", async () => {
+    // The backend returns one entry per requested address — unfunded accounts
+    // arrive as is_funded: false, never as an omission — so an absent entry
+    // is a malformed/partial response, not an unfunded account.
+    mockV2Post.mockResolvedValueOnce({ data: { data: [] } });
+
+    await expect(
+      fetchBalances({
+        publicKey,
+        network: NETWORKS.PUBLIC,
+        useV2: true,
+      }),
+    ).rejects.toThrow("v2 balances response is missing the requested account");
+  });
+
+  it("keeps the public key out of the thrown message (it becomes the Sentry title)", async () => {
+    // The message is used verbatim as the Sentry issue title, which bypasses
+    // sanitizeLogData — that redactor only walks structured `extra.args` and
+    // returns an Error's `message` untouched. Interpolating the key would
+    // also give every account its own issue, breaking grouping.
+    mockV2Post.mockResolvedValueOnce({ data: { data: [] } });
+
+    const error = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    }).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).not.toContain(publicKey);
+  });
+
+  it("propagates a v2 server error without falling back to v1", async () => {
+    // A v2 failure must surface, not silently degrade to v1 — a fallback
+    // would mask indexer outages behind stale-looking v1 data.
+    mockV2Post.mockRejectedValueOnce(
+      Object.assign(new Error("Request failed with status code 500"), {
+        response: { status: 500 },
+      }),
+    );
+
+    await expect(
+      fetchBalances({
+        publicKey,
+        network: NETWORKS.PUBLIC,
+        useV2: true,
+      }),
+    ).rejects.toThrow("500");
+    expect(mockV1Get).not.toHaveBeenCalled();
+  });
+
+  it("routes to v1 when the flag is off", async () => {
+    mockV1Get.mockResolvedValueOnce({
+      data: { balances: {}, isFunded: true, subentryCount: 0 },
+    });
+
+    await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      useV2: false,
+    });
+
+    expect(mockV2Post).not.toHaveBeenCalled();
+    expect(mockV1Get).toHaveBeenCalledWith(
+      expect.stringContaining(`/account-balances/${publicKey}`),
+    );
+  });
+
+  it("routes to v1 on Futurenet even with the flag on", async () => {
+    mockV1Get.mockResolvedValueOnce({
+      data: { balances: {}, isFunded: true, subentryCount: 0 },
+    });
+
+    await fetchBalances({
+      publicKey,
+      network: NETWORKS.FUTURENET,
+      useV2: true,
+    });
+
+    expect(mockV2Post).not.toHaveBeenCalled();
+    expect(mockV1Get).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports every local contract id as removable on the v1 path", async () => {
+    // v1 returns a contract-token balance only for an ID it was handed, so the
+    // whole local list is local-only by construction.
+    mockV1Get.mockResolvedValueOnce({
+      data: { balances: {}, isFunded: true, subentryCount: 0 },
+    });
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      contractIds: [SEP41_CONTRACT],
+      useV2: false,
+    });
+
+    expect(result.localOnlyTokenIds).toEqual([SEP41_CONTRACT]);
+  });
+});
+
+describe("Backend Service - fetchBalances v2 local custom-token merge", () => {
+  let mockV1Get: jest.MockedFunction<any>;
+  let mockV2Post: jest.MockedFunction<any>;
+
+  const publicKey = "GACCOUNT";
+
+  const v2Account = (isFunded = true) => ({
+    address: publicKey,
+    is_funded: isFunded,
+    subentry_count: 0,
+    balances: [
+      {
+        token_type: "NATIVE",
+        token_id: "native",
+        key: "native",
+        token: { type: "native", code: "XLM" },
+        total: "100",
+        available: "98",
+        minimum_balance: "1.5",
+        buying_liabilities: "0",
+        selling_liabilities: "0",
+      },
+    ],
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockV1Get = freighterBackendV1.get as jest.MockedFunction<any>;
+    mockV2Post = freighterBackendV2.post as jest.MockedFunction<any>;
+    (scanBulkTokens as jest.MockedFunction<any>).mockResolvedValue({
+      results: {},
+    });
+    (dataStorage.getItem as jest.MockedFunction<any>).mockResolvedValue(null);
+    (dataStorage.setItem as jest.MockedFunction<any>).mockResolvedValue(
+      undefined,
+    );
+  });
+
+  it("merges back a locally saved token the indexer omitted, with its real balance", async () => {
+    mockV2Post.mockResolvedValueOnce({ data: { data: [v2Account()] } });
+    mockV1Get.mockResolvedValueOnce({
+      data: {
+        name: "My Token",
+        symbol: "TKN",
+        decimals: 7,
+        balance: "42",
+      },
+    });
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      contractIds: [SEP41_CONTRACT],
+      useV2: true,
+    });
+
+    // The balance must be requested explicitly — token-details omits it by
+    // default, which would render the merged token as zero.
+    expect(mockV1Get).toHaveBeenCalledWith(
+      `/token-details/${SEP41_CONTRACT}`,
+      expect.objectContaining({
+        params: expect.objectContaining({
+          pub_key: publicKey,
+          network: NETWORKS.PUBLIC,
+          should_fetch_balance: true,
+        }),
+      }),
+    );
+
+    const entry = result.balances![`TKN:${SEP41_CONTRACT}`] as any;
+    expect(entry.total.toString()).toBe("42");
+    expect(result.localOnlyTokenIds).toEqual([SEP41_CONTRACT]);
+    // Merged before the scan, so it carries a Blockaid stamp like v1 did
+    expect(entry.blockaidData).toEqual({ result_type: "Benign" });
+  });
+
+  it("resolves no tokens for an unfunded account", async () => {
+    // The not-funded UI renders in place of balances, so resolving local
+    // tokens would only burn requests.
+    mockV2Post.mockResolvedValueOnce({ data: { data: [v2Account(false)] } });
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      contractIds: [SEP41_CONTRACT],
+      useV2: true,
+    });
+
+    expect(mockV1Get).not.toHaveBeenCalled();
+    expect(result.isFunded).toBe(false);
+    expect(result.localOnlyTokenIds).toBeUndefined();
+  });
+
+  it("does not resolve a local token the indexer already returned", async () => {
+    const account = v2Account();
+    account.balances.push({
+      token_type: "SEP41",
+      token_id: SEP41_CONTRACT,
+      key: `TKN:${SEP41_CONTRACT}`,
+      token: { type: "SEP41", code: "TKN" },
+      total: "7",
+      available: "7",
+    } as any);
+    mockV2Post.mockResolvedValueOnce({ data: { data: [account] } });
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      contractIds: [SEP41_CONTRACT],
+      useV2: true,
+    });
+
+    expect(mockV1Get).not.toHaveBeenCalled();
+    // Backend-owned, so hide-only rather than removable
+    expect(result.localOnlyTokenIds).toEqual([]);
+    expect(
+      (result.balances![`TKN:${SEP41_CONTRACT}`] as any).total.toString(),
+    ).toBe("7");
+  });
+
+  it("still returns backend balances when a local token cannot be resolved", async () => {
+    mockV2Post.mockResolvedValueOnce({ data: { data: [v2Account()] } });
+    mockV1Get.mockRejectedValueOnce(
+      Object.assign(new Error("boom"), { status: 400 }),
+    );
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      contractIds: [SEP41_CONTRACT],
+      useV2: true,
+    });
+
+    expect(result.balances!.XLM).toBeDefined();
+    expect(result.localOnlyTokenIds).toEqual([]);
+  });
+});
+
+describe("Backend Service - handleContractLookup", () => {
+  let mockV1Get: jest.MockedFunction<any>;
+
+  // The native lumen's Stellar Asset Contract id on each network, derived
+  // deterministically from the network passphrase.
+  const PUBNET_NATIVE_CONTRACT =
+    "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+  const TESTNET_NATIVE_CONTRACT =
+    "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockV1Get = freighterBackendV1.get as jest.MockedFunction<any>;
+  });
+
+  it("resolves the pubnet native contract as an already-held native token", async () => {
+    const result = await handleContractLookup(
+      PUBNET_NATIVE_CONTRACT,
+      NETWORKS.PUBLIC,
+    );
+
+    expect(result).toMatchObject({
+      isNative: true,
+      hasTrustline: true,
+      issuer: "",
+      tokenCode: "XLM",
+    });
+    expect(mockV1Get).not.toHaveBeenCalled();
+  });
+
+  it("resolves the testnet native contract identically to the pubnet one", async () => {
+    const result = await handleContractLookup(
+      TESTNET_NATIVE_CONTRACT,
+      NETWORKS.TESTNET,
+    );
+
+    expect(result).toMatchObject({
+      isNative: true,
+      hasTrustline: true,
+      issuer: "",
+      tokenCode: "XLM",
+    });
+    expect(mockV1Get).not.toHaveBeenCalled();
+  });
+
+  it("does not treat the pubnet native contract id as native when looked up on testnet", async () => {
+    mockV1Get.mockImplementation((url: string) => {
+      if (url.startsWith("/token-details/")) {
+        return Promise.resolve({
+          data: { name: "XLM:native", decimals: 7, symbol: "XLM" },
+        });
+      }
+      if (url.startsWith("/is-sac-contract/")) {
+        return Promise.resolve({ data: { isSacContract: true } });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const result = await handleContractLookup(
+      PUBNET_NATIVE_CONTRACT,
+      NETWORKS.TESTNET,
+    );
+
+    expect(result?.isNative).toBe(false);
+    expect(mockV1Get).toHaveBeenCalled();
+  });
+
+  it("returns an empty domain for a non-native contract lookup", async () => {
+    const contractId = "CCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUS";
+
+    mockV1Get.mockImplementation((url: string) => {
+      if (url.startsWith("/token-details/")) {
+        return Promise.resolve({
+          data: { name: "USDC:GISSUER", decimals: 7, symbol: "USDC" },
+        });
+      }
+      if (url.startsWith("/is-sac-contract/")) {
+        return Promise.resolve({ data: { isSacContract: true } });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const result = await handleContractLookup(contractId, NETWORKS.PUBLIC);
+
+    expect(result).toMatchObject({
+      isNative: false,
+      domain: "",
+      tokenCode: "USDC",
+    });
   });
 });

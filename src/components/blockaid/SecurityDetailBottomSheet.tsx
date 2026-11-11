@@ -1,4 +1,5 @@
 import BlockaidLogo from "assets/logos/blockaid-logo.svg";
+import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { List } from "components/List";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -29,8 +30,8 @@ export interface SecurityDetailBottomSheetProps {
  * Used for token, site, and transaction security warnings.
  *
  * Severity defaults to MALICIOUS (the most cautious header) and drives the
- * HEADER copy/icon only. Per-row icons come from each `warning.severity` so
- * a Malicious-level sheet can still show amber Warning-typed rows correctly.
+ * header copy only. Per-row icons come from each `warning.severity` so a
+ * Malicious-level sheet can still show amber Warning-typed rows correctly.
  */
 export const SecurityDetailBottomSheet: React.FC<
   SecurityDetailBottomSheetProps
@@ -54,33 +55,6 @@ export const SecurityDetailBottomSheet: React.FC<
   const isMalicious = severity === SecurityLevel.MALICIOUS;
   const isUnableToScan = severity === SecurityLevel.UNABLE_TO_SCAN;
   const isExpectedToFail = severity === SecurityLevel.EXPECTED_TO_FAIL;
-
-  const getHeaderIcon = () => {
-    const baseClasses =
-      "h-[40px] w-[40px] items-center justify-center rounded-[8px]";
-
-    if (isMalicious) {
-      return (
-        <View className={`${baseClasses} bg-red-3 border border-red-6`}>
-          <Icon.AlertOctagon themeColor="red" />
-        </View>
-      );
-    }
-
-    if (isUnableToScan) {
-      return (
-        <View className={`${baseClasses} bg-amber-3 border border-amber-6`}>
-          <Icon.AlertCircle themeColor="amber" />
-        </View>
-      );
-    }
-
-    return (
-      <View className={`${baseClasses} bg-amber-3 border border-amber-6`}>
-        <Icon.AlertTriangle themeColor="amber" />
-      </View>
-    );
-  };
 
   const getListItems = () =>
     warnings.map((warning) => ({
@@ -108,7 +82,7 @@ export const SecurityDetailBottomSheet: React.FC<
                 xl
                 isFullWidth
                 onPress={onCancel}
-                variant="secondary"
+                variant="tertiary"
                 testID="security-warning-cancel-button"
               >
                 {t("common.cancel")}
@@ -121,7 +95,7 @@ export const SecurityDetailBottomSheet: React.FC<
                 xl
                 isFullWidth
                 onPress={onProceedAnyway}
-                variant="tertiary"
+                variant="secondary"
                 testID="security-warning-proceed-button"
               >
                 {proceedAnywayText}
@@ -197,49 +171,48 @@ export const SecurityDetailBottomSheet: React.FC<
   );
 
   return (
-    <View className="flex-1 gap-[16px]">
-      <View className="flex-row justify-between items-center">
-        {getHeaderIcon()}
-        <View className="bg-background-tertiary rounded-full p-2 h-[32px] w-[32px] items-center justify-center">
-          <Icon.XClose onPress={onClose} size={20} themeColor="gray" />
-        </View>
-      </View>
-      <Text xl primary>
-        {(() => {
+    <View className="flex-1 gap-[24px]">
+      <BottomSheetHeader
+        title={(() => {
           if (isMalicious) return t("securityWarning.doNotProceed");
           if (isUnableToScan) return t("securityWarning.proceedWithCaution");
           if (isExpectedToFail) return t("securityWarning.expectedToFailTitle");
           return t("securityWarning.suspiciousRequest");
         })()}
-      </Text>
-      <Text md secondary regular>
-        {getDescription()}
-      </Text>
+        onClose={onClose}
+      />
+      {/* Header, content and buttons sit 24pt apart; inside the content the
+          description and the warning card keep a tighter 16pt gap. */}
+      <View className="gap-[16px]">
+        <Text md secondary regular>
+          {getDescription()}
+        </Text>
 
-      <View className="bg-background-tertiary rounded-2xl px-[16px] py-[12px] w-full gap-[12px]">
-        <List
-          items={getListItems()}
-          hideDivider
-          compact
-          variant="transparent"
-          className="w-full"
-        />
+        <View className="bg-background-tertiary rounded-2xl px-[16px] py-[12px] w-full gap-[12px]">
+          <List
+            items={getListItems()}
+            hideDivider
+            compact
+            variant="transparent"
+            className="w-full"
+          />
 
-        <View className="w-full border border-border-primary" />
+          <View className="w-full border border-border-primary" />
 
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-[6px]">
-            <Text sm secondary>
-              {t("securityWarning.poweredBy")}
-            </Text>
-            <BlockaidLogo />
-            <Text sm secondary>
-              {t("blockaid.brand")}
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-[6px]">
+              <Text sm secondary>
+                {t("securityWarning.poweredBy")}
+              </Text>
+              <BlockaidLogo />
+              <Text sm secondary>
+                {t("blockaid.brand")}
+              </Text>
+            </View>
+            <Text sm color={themeColors.lilac[11]} onPress={handleFeedback}>
+              {t("securityWarning.feedback")}
             </Text>
           </View>
-          <Text sm color={themeColors.lilac[11]} onPress={handleFeedback}>
-            {t("securityWarning.feedback")}
-          </Text>
         </View>
       </View>
 

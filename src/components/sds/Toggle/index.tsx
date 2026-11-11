@@ -1,4 +1,5 @@
 import { TOGGLE_ANIMATION_DURATION } from "config/constants";
+import { SHADOW_COLOR } from "config/theme";
 import useColors from "hooks/useColors";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -151,7 +152,7 @@ export const Toggle: React.FC<ToggleProps> = ({
       thumbColor: disabled ? themeColors.gray[8] : themeColors.base[0],
       trackColorUnchecked: disabled ? themeColors.gray[5] : themeColors.gray[4],
       trackColorChecked: disabled ? themeColors.gray[5] : themeColors.lilac[9],
-      shadowColor: themeColors.base[1],
+      shadowColor: SHADOW_COLOR,
     }),
     [disabled, themeColors],
   );

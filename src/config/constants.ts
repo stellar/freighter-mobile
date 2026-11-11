@@ -43,17 +43,11 @@ export const NATIVE_TOKEN_CODE = "XLM";
 /**
  * Horizon's wire string for the native (XLM) asset's `asset_type` / `id`.
  * Distinct from `NATIVE_TOKEN_CODE` ("XLM"): raw Horizon responses use
- * "native", but normalized surfaces use "XLM". Prefer the
- * {@link isNativeAssetId} guard over comparing to either sentinel directly.
+ * "native", but normalized surfaces use "XLM". Prefer the native-asset-id
+ * predicate in helpers/assetIdentity over comparing to either sentinel
+ * directly.
  */
 export const HORIZON_NATIVE_ASSET_TYPE = "native";
-
-/**
- * True if `id` refers to native XLM, matching both Horizon's raw "native"
- * sentinel and the normalized NATIVE_TOKEN_CODE ("XLM").
- */
-export const isNativeAssetId = (id: string | undefined | null): boolean =>
-  id === HORIZON_NATIVE_ASSET_TYPE || id === NATIVE_TOKEN_CODE;
 export const MIN_TRANSACTION_FEE = "0.00001";
 export const BASE_RESERVE = BigNumber(0.5);
 export const MINIMUM_CREATE_ACCOUNT_XLM = 1;
@@ -65,6 +59,9 @@ export const CIRCLE_USDC_ISSUER =
 export const USDC_CODE = "USDC";
 export const CIRCLE_USDC_CONTRACT =
   "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+// Circle's testnet USDC issuer (home_domain centre.io), matching the extension
+export const CIRCLE_USDC_TESTNET_ISSUER =
+  "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 
 // Slippage constants
 export const DEFAULT_SLIPPAGE = 2;
@@ -162,11 +159,6 @@ export const AUTO_LOCK_TIMER_MS: Record<AUTO_LOCK_TIMER, number> = {
   [AUTO_LOCK_TIMER.TWENTY_FOUR_HOURS]: 24 * HOUR_IN_MS,
 };
 
-// Recovery phrase validation constants
-export const VALIDATION_WORDS_PER_ROW: number = 3;
-export const VALIDATION_EXTRA_USER_WORDS: number = 2;
-export const VALIDATION_DECOY_WORDS: number = 6;
-
 export const DEFAULT_DECIMALS = 7;
 export const FIAT_DECIMALS = 2;
 
@@ -177,25 +169,31 @@ export const FIAT_DECIMALS = 2;
  */
 export const CLASSIC_TOKEN_MAX_AMOUNT = "922337203685.4775807";
 
-// Bottom sheet layout defaults
-export const BOTTOM_SHEET_MAX_HEIGHT_RATIO = 0.9;
-export const BOTTOM_SHEET_CONTENT_TOP_PADDING = DEFAULT_PADDING;
-export const BOTTOM_SHEET_CONTENT_BOTTOM_PADDING = 64;
-export const BOTTOM_SHEET_CONTENT_GAP = 16;
+// Bottom sheet layout defaults. A scrollable sheet stops at 726pt, or at 83%
+// of the window if that's shorter (726pt on design's 874pt screen).
+export const BOTTOM_SHEET_MAX_HEIGHT = 726;
+export const BOTTOM_SHEET_MAX_HEIGHT_RATIO = 0.83;
+
+// Floating bottom sheet: edge margin and corner radius
+export const BOTTOM_SHEET_FLOATING_MARGIN = 8;
+export const BOTTOM_SHEET_FLOATING_CORNER_RADIUS = 32;
+// Floating bottom sheet: height of the fade where content scrolls under the
+// pinned header or footer, or past the card's edge
+export const BOTTOM_SHEET_EDGE_FADE_HEIGHT = 24;
 
 // settings screen URLs
-export const FREIGHTER_BASE_URL = "https://www.freighter.app";
+export const FREIGHTER_BASE_URL = "https://varialwallet.com";
 export const FREIGHTER_GITHUB_ISSUE_URL =
   "https://github.com/stellar/freighter-mobile/issues";
 export const STELLAR_FOUNDATION_BASE_URL = "https://stellar.org";
-export const FREIGHTER_TERMS_URL = "https://www.freighter.app/terms";
-export const FREIGHTER_PRIVACY_URL = "https://www.freighter.app/privacy";
+export const FREIGHTER_TERMS_URL = "https://varialwallet.com/terms";
+export const FREIGHTER_PRIVACY_URL = "https://varialwallet.com/privacy";
 
 export const CREATE_ACCOUNT_TUTORIAL_URL =
   "https://developers.stellar.org/docs/tutorials/create-account/#create-account";
 
 export const UNFUNDED_ACCOUNT_HELP_URL =
-  "https://help.freighter.app/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet";
+  "https://help.varialwallet.com/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet";
 
 export enum FRIENDBOT_URLS {
   TESTNET = "https://friendbot.stellar.org",
@@ -333,6 +331,17 @@ export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
   TESTNET_NETWORK_DETAILS,
 ];
 
+/**
+ * Default swap destination ("You receive") per network, as a token id
+ * (CODE:ISSUER). Only networks listed here get a default; on others the
+ * picker starts empty. Mirrors the extension's DEFAULT_SWAP_DEST_CANONICAL
+ * (freighter#2914) — keep the issuers in sync across platforms.
+ */
+export const DEFAULT_SWAP_DEST_TOKEN_ID: Partial<Record<NETWORKS, string>> = {
+  [NETWORKS.PUBLIC]: `${USDC_CODE}:${CIRCLE_USDC_ISSUER}`,
+  [NETWORKS.TESTNET]: `${USDC_CODE}:${CIRCLE_USDC_TESTNET_ISSUER}`,
+};
+
 export const STELLAR_EXPERT_URL = "https://stellar.expert/explorer";
 export const STELLAR_EXPERT_API_URL = "https://api.stellar.expert/explorer";
 export const BLOCKAID_FEEDBACK_URL = "https://report.blockaid.io/";
@@ -368,8 +377,15 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  * Formatted as: { [publicKey: string]: { [network: string]: CollectibleContract[] } } @see CollectiblesStorage
  * The HIDDEN_COLLECTIBLES_LIST is not removed during the standard logout process. It is used to keep the hidden collectibles even after the user logs out, since the API does not store hidden collectibles.
  *
+ * HIDDEN_TOKEN_LIST The hidden token list keeps track of the tokens the user chose to hide from the balances list.
+ * Formatted as: { [publicKey: string]: { [network: string]: string[] } } @see HiddenTokenStorage
+ * Each entry is the balance identifier ("CODE:ISSUER" or "SYMBOL:CONTRACT_ID"). Like the other lists it survives logout, since the API does not store hidden tokens.
+ *
  * ACTIVE_NETWORK The active network is the network that is currently being used.
  * RECENT_ADDRESSES The list of recently used addresses for sending payments.
+ *
+ * REBRAND_ANNOUNCEMENT_STATUS Gate for the one-time rebrand announcement: "pending" for wallets that existed
+ * before the first Varial launch, "seen" otherwise or once shown. Survives wallet wipes. @see helpers/rebrandAnnouncement
  *
  * APP_UPDATE_DISMISSED_REQUIRED_VERSION The version that the user has dismissed the app update notice for.
  * This is used to prevent the app update full screen notice from being shown again after the user has dismissed it.
@@ -384,15 +400,16 @@ export enum STORAGE_KEYS {
   CUSTOM_TOKEN_LIST = "customTokenList",
   COLLECTIBLES_LIST = "collectiblesList",
   HIDDEN_COLLECTIBLES_LIST = "hiddenCollectiblesList",
+  HIDDEN_TOKEN_LIST = "hiddenTokenList",
   ACTIVE_NETWORK = "activeNetwork",
   RECENT_ADDRESSES = "recentAddresses",
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
   VERIFIED_TOKENS_PREFIX = "verifiedTokens_",
   STELLAR_EXPERT_TOP_TOKENS_PREFIX = "stellarExpertTopTokens_",
   BLOCKAID_TOKEN_SCANS_PREFIX = "blockaidTokenScans_",
-  WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   HAS_SEEN_DISCOVER_WELCOME = "hasSeenDiscoverWelcome",
+  REBRAND_ANNOUNCEMENT_STATUS = "rebrandAnnouncementStatus",
   APP_UPDATE_DISMISSED_REQUIRED_VERSION = "appUpdateDismissedRequiredVersion",
 }
 

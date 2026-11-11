@@ -153,7 +153,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       <View className="flex-row justify-between w-full gap-3">
         <View className="flex-1">
           <Button
-            secondary
+            tertiary
             icon={cancelButtonIcon}
             iconPosition={cancelButtonIconPosition}
             isFullWidth

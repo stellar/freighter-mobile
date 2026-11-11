@@ -1,5 +1,14 @@
 import { xdr } from "@stellar/stellar-sdk";
-import { KeyValueInvokeHostFnArgs } from "components/screens/SignTransactionDetails/components/KeyVal";
+import { ErrorBoundary } from "components/ErrorBoundary";
+import {
+  ExternalExecutableNote,
+  KeyValueInvokeHostFnArgs,
+} from "components/screens/SignTransactionDetails/components/KeyVal";
+import {
+  UnreadableTransactionNotice,
+  UnreadableTransactionNoticeVariant,
+} from "components/screens/SignTransactionDetails/components/UnreadableTransactionNotice";
+import { Banner } from "components/sds/Banner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { logger } from "config/logger";
@@ -7,7 +16,9 @@ import {
   addressToString,
   getInvocationDetails,
   InvocationArgs,
+  INVOCATION_TYPE_EXTERNAL_REF,
   INVOCATION_TYPE_INVOKE,
+  INVOCATION_TYPE_UNRECOGNIZED,
   INVOCATION_TYPE_WASM,
 } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
@@ -29,6 +40,11 @@ interface DappAuthEntryDisplayProps {
   entryXdr: string;
   /** When true all invocation cards start expanded */
   expandAll?: boolean;
+  /**
+   * Called once when the display throws while rendering, after the error is
+   * reported. A dApp request uses it to fail closed.
+   */
+  onRenderError?: () => void;
 }
 
 /**
@@ -37,10 +53,9 @@ interface DappAuthEntryDisplayProps {
  *
  * Falls back to a scrollable raw-XDR view if parsing fails.
  */
-export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
-  entryXdr,
-  expandAll = false,
-}) => {
+const DappAuthEntryDisplayContent: React.FC<
+  Omit<DappAuthEntryDisplayProps, "onRenderError">
+> = ({ entryXdr, expandAll = false }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
@@ -49,7 +64,7 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
   const normalized = useMemo<NormalizedAuthPreimage | null>(() => {
     try {
       return normalizeAuthPreimage(
-        xdr.HashIdPreimage.fromXDR(entryXdr, "base64"),
+        xdr.HashIdPreimage.fromXdr(entryXdr, "base64"),
       );
     } catch (e) {
       logger.warn("DappAuthEntryDisplay", "Failed to parse auth entry XDR", {
@@ -94,11 +109,16 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
     if (detail.type === INVOCATION_TYPE_INVOKE)
       return `invoke-${detail.contractId}-${detail.fnName}`;
     if (detail.type === INVOCATION_TYPE_WASM) return `wasm-${detail.hash}`;
+    if (detail.type === INVOCATION_TYPE_EXTERNAL_REF)
+      return `externalRef-${detail.owner}-${detail.tag}`;
+    if (detail.type === INVOCATION_TYPE_UNRECOGNIZED) return detail.type;
     return `sac-${detail.asset}`;
   };
 
   const renderDetailTitle = (detail: InvocationArgs): string => {
     if (detail.type === INVOCATION_TYPE_INVOKE) return detail.fnName;
+    if (detail.type === INVOCATION_TYPE_UNRECOGNIZED)
+      return t("signTransactionDetails.authorizations.unrecognizedInvocation");
     return t("signTransactionDetails.authorizations.contractCreation");
   };
 
@@ -137,11 +157,15 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
             </View>
           </View>
           {detail.args.length > 0 && (
+            /* isAuthEntry suppresses contract-spec labels: an auth's args
+            need not be the function's declared parameters. See
+            stellar/freighter#2196. */
             <KeyValueInvokeHostFnArgs
               args={detail.args}
               contractId={detail.contractId}
-              fnName={detail.fnName}
+              specFnName={detail.fnNameRaw}
               variant="tertiary"
+              isAuthEntry
             />
           )}
         </View>
@@ -172,6 +196,78 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
             </Text>
             <Text sm primary>
               {truncateAddress(detail.hash)}
+            </Text>
+          </View>
+          <View className="gap-[4px]">
+            <Text sm secondary>
+              {t("signTransactionDetails.operations.salt")}
+            </Text>
+            <Text sm primary>
+              {truncateAddress(detail.salt)}
+            </Text>
+          </View>
+          {detail.args && detail.args.length > 0 && (
+            <KeyValueInvokeHostFnArgs args={detail.args} variant="tertiary" />
+          )}
+        </View>
+      );
+    }
+
+    if (detail.type === INVOCATION_TYPE_UNRECOGNIZED) {
+      return (
+        <Banner
+          variant="error"
+          showChevron={false}
+          testID="UnrecognizedInvocationWarning"
+          text={t(
+            "signTransactionDetails.authorizations.unrecognizedInvocationWarning",
+          )}
+        />
+      );
+    }
+
+    // CAP-85 (Protocol 28): contract created from an external executable
+    // reference (owner contract + tag) instead of a Wasm hash.
+    if (detail.type === INVOCATION_TYPE_EXTERNAL_REF) {
+      return (
+        <View className="gap-[12px]">
+          <ExternalExecutableNote />
+          <View className="gap-[4px]">
+            <Text sm secondary>
+              {t("signTransactionDetails.authorizations.contractAddress")}
+            </Text>
+            <View className="flex-row items-center gap-[8px]">
+              <Text sm primary style={{ flex: 1 }}>
+                {truncateAddress(detail.address)}
+              </Text>
+              <Icon.Copy01
+                size={14}
+                themeColor="gray"
+                onPress={() => copyToClipboard(detail.address)}
+              />
+            </View>
+          </View>
+          <View className="gap-[4px]">
+            <Text sm secondary>
+              {t("signTransactionDetails.authorizations.executableOwner")}
+            </Text>
+            <View className="flex-row items-center gap-[8px]">
+              <Text sm primary style={{ flex: 1 }}>
+                {truncateAddress(detail.owner)}
+              </Text>
+              <Icon.Copy01
+                size={14}
+                themeColor="gray"
+                onPress={() => copyToClipboard(detail.owner)}
+              />
+            </View>
+          </View>
+          <View className="gap-[4px]">
+            <Text sm secondary>
+              {t("signTransactionDetails.authorizations.executableTag")}
+            </Text>
+            <Text sm primary>
+              {detail.tag}
             </Text>
           </View>
           <View className="gap-[4px]">
@@ -243,7 +339,8 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
           const isExpanded = expandedIndices.has(index);
           return (
             <View
-              key={getDetailKey(detail)}
+              // eslint-disable-next-line react/no-array-index-key --- the list is static per entry and getDetailKey can repeat (e.g. every unrecognized invocation), so the index disambiguates
+              key={`${getDetailKey(detail)}-${index}`}
               className="rounded-[16px] overflow-hidden"
               style={{ backgroundColor: themeColors.background.secondary }}
               testID={`auth-entry-item-${index}`}
@@ -308,3 +405,32 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
     </View>
   );
 };
+
+/**
+ * The auth entry's invocations (see {@link DappAuthEntryDisplayContent}),
+ * behind one error boundary.
+ *
+ * If anything in the display throws while rendering, the boundary reports the
+ * error, shows the unreadable notice, in its auth-entry wording, in place of
+ * the whole display and calls `onRenderError`. The display renders again once
+ * `entryXdr` changes. The boundary sits above the cards, so collapsing one
+ * can't unmount it: a broken entry is reported once.
+ */
+export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
+  entryXdr,
+  expandAll = false,
+  onRenderError,
+}) => (
+  <ErrorBoundary
+    name="DappAuthEntryDisplay"
+    fallback={
+      <UnreadableTransactionNotice
+        variant={UnreadableTransactionNoticeVariant.AuthEntry}
+      />
+    }
+    onError={onRenderError}
+    resetKey={entryXdr}
+  >
+    <DappAuthEntryDisplayContent entryXdr={entryXdr} expandAll={expandAll} />
+  </ErrorBoundary>
+);

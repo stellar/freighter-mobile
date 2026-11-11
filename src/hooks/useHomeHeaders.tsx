@@ -3,9 +3,12 @@ import {
   BottomTabNavigationProp,
 } from "@react-navigation/bottom-tabs";
 import { NativeStackHeaderProps } from "@react-navigation/native-stack";
-import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
+import {
+  CustomHeaderButton,
+  HEADER_BUTTON_BOX,
+} from "components/layout/CustomHeaderButton";
 import HomeScreenHeader from "components/screens/HomeScreen/HomeScreenHeader";
-import Avatar from "components/sds/Avatar";
+import Avatar, { AvatarSizes } from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
@@ -14,7 +17,6 @@ import {
   RootStackParamList,
   MAIN_TAB_ROUTES,
 } from "config/routes";
-import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -22,12 +24,25 @@ import React, { useCallback, useLayoutEffect } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 const HEADER_ICON_SIZE = 24;
-const CHEVRON_SIZE = 20;
+const CHEVRON_SIZE = 16;
+const CHEVRON_STROKE_WIDTH = 2;
 
-// Identical touch tiles for the two header-right buttons: 4px horizontal
-// slop exactly fills the 8px gap between the 40px buttons, so the tap areas
-// are equal-sized and adjacent without overlapping.
-const HEADER_BUTTON_HIT_SLOP = { top: 10, bottom: 10, left: 4, right: 4 };
+// Identical touch tiles for the two header-right buttons: each reaches 6pt
+// into the 12pt gap between them, so the tap areas are equal-sized and meet
+// in the middle of the gap without overlapping.
+const HEADER_BUTTON_HIT_SLOP = { top: 10, bottom: 10, left: 6, right: 6 };
+
+// The account switcher is only the bar's 32pt row tall, so it reaches the same
+// 10pt above and below as the header buttons. The bar pads at least 45pt above
+// the row and 24pt below it inside its own bounds, so on iOS's new
+// architecture, which drops touches outside an ancestor's bounds, the slop
+// still takes taps.
+const ACCOUNT_SWITCHER_HIT_SLOP = { top: 10, bottom: 10 };
+
+// The avatar's box takes the bar's button height, which scales, so the row
+// is as tall as the other tabs'. It has no width of its own, so the fixed
+// 32pt avatar keeps its left edge on the bar's inset at every width.
+const AVATAR_BOX_STYLE = { height: HEADER_BUTTON_BOX.height };
 
 interface UseHomeHeadersProps {
   navigation: BottomTabNavigationProp<
@@ -38,6 +53,12 @@ interface UseHomeHeadersProps {
   onConnectedAppsPress: () => void;
 }
 
+/**
+ * Sets Home's header on the tab navigator: `HomeScreenHeader`, floating over
+ * the screen (`headerTransparent`), with the account switcher on the left
+ * (the avatar, the account name and a chevron; a tap anywhere on it calls
+ * `onAccountPress`) and the Scan and Connected Apps buttons on the right.
+ */
 export const useHomeHeaders = ({
   navigation,
   onAccountPress,
@@ -59,38 +80,42 @@ export const useHomeHeaders = ({
     [],
   );
 
-  // Account switcher: avatar + name/address dropdown that opens the
-  // manage-accounts sheet (Settings and the QR code now live inside it).
+  // Account switcher: avatar, name and chevron that open the manage-accounts
+  // sheet (Settings and the QR code now live inside it).
   const HeaderLeftComponent = useCallback(
     () => (
       <TouchableOpacity
         // flex-1 + the shrink chain below cap the switcher at the space the
         // header row actually has (long names ellipsize instead of pushing
-        // the right-side buttons); mr-3 keeps a gap from the Scan button.
-        className="flex-1 flex-row items-center gap-[12px] mr-3"
+        // the right-side buttons); mr-[12px] keeps a gap from the Scan button.
+        className="flex-1 flex-row items-center gap-[8px] mr-[12px]"
         onPress={onAccountPress}
+        hitSlop={ACCOUNT_SWITCHER_HIT_SLOP}
         accessibilityRole="button"
-        // Without an explicit label the announcement falls back to the child
-        // text, which includes the truncated address gibberish.
+        // The account name is the whole announcement: the avatar and the
+        // chevron have nothing to say.
         accessibilityLabel={accountName}
         testID="home-account-switcher"
       >
-        <Avatar size="lg" publicAddress={publicKey} />
+        {/* The row is as tall as its tallest child. The avatar is a fixed
+            32pt, so it sits vertically centred in a box as tall as the bar's
+            buttons: the row then matches the other tabs' on any screen. */}
+        <View className="justify-center" style={AVATAR_BOX_STYLE}>
+          <Avatar size={AvatarSizes.SMALL_MEDIUM} publicAddress={publicKey} />
+        </View>
         <View className="shrink">
           <View className="flex-row items-center gap-[4px]">
             <View className="shrink">
-              <Text md medium primary numberOfLines={1}>
+              <Text lg semiBold primary numberOfLines={1}>
                 {accountName}
               </Text>
             </View>
-            <Icon.ChevronDownBold
+            <Icon.ChevronDown
               size={CHEVRON_SIZE}
-              color={themeColors.text.primary}
+              strokeWidth={CHEVRON_STROKE_WIDTH}
+              color={themeColors.gray[9]}
             />
           </View>
-          <Text sm medium secondary>
-            {truncateAddress(publicKey)}
-          </Text>
         </View>
       </TouchableOpacity>
     ),
@@ -99,7 +124,7 @@ export const useHomeHeaders = ({
 
   const HeaderRightComponent = useCallback(
     () => (
-      <View className="flex-row items-center gap-[8px]">
+      <View className="flex-row items-center gap-[12px]">
         <CustomHeaderButton
           position="right"
           icon={Icon.ScanCircle}
@@ -134,6 +159,9 @@ export const useHomeHeaders = ({
   useLayoutEffect(() => {
     navigation.setOptions({
       headerShown: true,
+      // Home's content scrolls up under the header's fade (HomeScreenHeader),
+      // and HomeScreen starts it below the header.
+      headerTransparent: true,
       header: HeaderComponent,
       headerLeft: HeaderLeftComponent,
       headerRight: HeaderRightComponent,

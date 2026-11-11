@@ -26,6 +26,7 @@ import {
 } from "components/screens/SwapScreen/helpers";
 import {
   SWAP_TOAST_IDS,
+  useDefaultSwapDestination,
   useSwapAmountError,
   useSwapBalances,
   useSwapCtaState,
@@ -49,7 +50,6 @@ import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
 import {
   BASE_RESERVE,
   DEFAULT_DECIMALS,
-  isNativeAssetId,
   TransactionContext,
 } from "config/constants";
 import { logger } from "config/logger";
@@ -60,6 +60,7 @@ import { useDebugStore } from "ducks/debug";
 import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
 import { formatFiatAmount } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
@@ -91,6 +92,9 @@ import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import { assessTransactionSecurity } from "services/blockaid/helper";
 
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
   typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN
@@ -100,8 +104,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { tokenId: swapFromTokenId, tokenSymbol: swapFromTokenSymbol } =
-    route.params;
+  const {
+    tokenId: swapFromTokenId,
+    tokenSymbol: swapFromTokenSymbol,
+    source: swapEntrySource,
+  } = route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const headerHeight = useHeaderHeight();
@@ -145,6 +152,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     pathError,
     setSourceToken,
     setDestinationToken,
+    setEntrySource,
     setSourceAmount,
     setSourceAmountDisplay,
     resetSwap,
@@ -393,6 +401,27 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setDestinationToken,
   ]);
 
+  // Seeds the Receive side with the network's default token (USDC, or XLM
+  // when swapping from USDC) once a balances snapshot for this
+  // account/network lands, and stamps a non-held default with its own
+  // Blockaid scan. See the hook for the full rationale. Called after the
+  // source-init effect above so it observes the destination that effect
+  // just cleared.
+  useDefaultSwapDestination({
+    network,
+    publicKey: account?.publicKey,
+    swapFromTokenId,
+    destinationTokenDescriptor,
+    setDestinationToken,
+  });
+
+  // Stamp the analytics entry tag every mount/param change (undefined for
+  // non-detail entries), so swap.completed can carry `source` (§7.5). Kept
+  // in the swap store because the success tracking fires screens later.
+  useEffect(() => {
+    setEntrySource(swapEntrySource ?? null);
+  }, [swapEntrySource, setEntrySource]);
+
   // The network fee auto-refreshes every 30s and is paid in XLM, so a fee
   // bump would shrink an XLM source's spendable and flash "Insufficient
   // balance" under an amount the user already committed to (e.g. Max) —
@@ -621,7 +650,31 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ],
   );
 
+  // True while a confirmed swap dismisses the review sheet. See
+  // handleReviewDismiss.
+  const hasApprovedRef = useRef(false);
+
+  /**
+   * Reports a rejection when the user leaves the review sheet without
+   * approving.
+   *
+   * Keyed on the dismissal rather than the Cancel button. The footer's Cancel
+   * dismisses the sheet directly, and the user can also leave by swiping down
+   * or tapping the backdrop, so no button handler sees every decline. The
+   * confirm path sets an approval latch first, so an approval is not reported
+   * as a rejection.
+   */
+  const handleReviewDismiss = useCallback(() => {
+    if (hasApprovedRef.current) {
+      return;
+    }
+    analytics.trackInternalSignedTransactionRejected();
+  }, []);
+
   const handleConfirmSwap = useCallback(() => {
+    // Mark the dismissal below as an approval, so the sheet's dismiss handler
+    // does not report it as a rejection.
+    hasApprovedRef.current = true;
     swapReviewBottomSheetModalRef.current?.dismiss();
 
     // Execute swap without setTimeout - errors are handled in the hook itself
@@ -921,7 +974,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         {/* 16px spacer above the CTA */}
         <View className="h-4" />
         <Button
-          tertiary
+          secondary
           onPress={handleMainButtonPress}
           disabled={isCtaDisabled}
           isLoading={ctaState.kind === "loading"}
@@ -933,17 +986,23 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
       <BottomSheet
         modalRef={swapReviewBottomSheetModalRef}
-        handleCloseModal={() => {
-          swapReviewBottomSheetModalRef.current?.dismiss();
-          setActiveError(null);
-        }}
         scrollable
         bottomSheetModalProps={{
           // Clear the "opening" latch on the sheet's first state change
           // (visible OR dismissed) so the CTA's spinner stops the moment
           // the sheet is on screen, and can never get stuck if the user
           // somehow dismisses before it reaches its snap point.
-          onChange: () => setIsOpeningReviewSheet(false),
+          onChange: (index: number) => {
+            setIsOpeningReviewSheet(false);
+            // Clear the latch as the sheet opens, not as it closes. The
+            // dismiss handler does not always run — it returns early when the
+            // sheet is not present — so clearing there could leave an earlier
+            // approval latched and swallow the next rejection.
+            if (index >= 0) {
+              hasApprovedRef.current = false;
+            }
+          },
+          onDismiss: handleReviewDismiss,
         }}
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
         customContent={
@@ -960,7 +1019,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}
-        handleCloseModal={handleCancelSecurityWarning}
         customContent={
           <SecurityDetailBottomSheet
             warnings={securityWarnings}
@@ -978,7 +1036,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={trendingSecurityWarningBottomSheetModalRef}
-        handleCloseModal={handleCancelTrendingSecurityWarning}
         bottomSheetModalProps={{
           onChange: (index: number) => {
             if (index === -1) clearTrendingSecurityRecord();
@@ -1014,9 +1071,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={transactionSettingsBottomSheetModalRef}
-        handleCloseModal={() =>
-          transactionSettingsBottomSheetModalRef.current?.dismiss()
-        }
         customContent={
           <TransactionSettingsBottomSheet
             context={TransactionContext.Swap}
@@ -1029,7 +1083,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={xlmReserveBottomSheetRef}
-        handleCloseModal={() => xlmReserveBottomSheetRef.current?.dismiss()}
         customContent={
           <XlmReserveBottomSheet
             publicKey={account?.publicKey ?? ""}
@@ -1043,10 +1096,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       {selectedTrendingRecord && (
         <BottomSheet
           modalRef={trendingDetailSheetRef}
-          handleCloseModal={() => {
-            trendingDetailSheetRef.current?.dismiss();
-            clearSelectedTrendingRecord();
-          }}
           // Clear the selected record on every dismiss path — swipe-down,
           // backdrop tap, X tap, programmatic dismiss. onChange(index=-1)
           // fires consistently for all of them. This guarantees the next

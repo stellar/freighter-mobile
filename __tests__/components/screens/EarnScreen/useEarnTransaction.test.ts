@@ -3,6 +3,7 @@ import { renderHook, act } from "@testing-library/react-hooks";
 import { useEarnTransaction } from "components/screens/EarnScreen/hooks/useEarnTransaction";
 import { NETWORKS } from "config/constants";
 import type { ActiveAccount } from "ducks/auth";
+import type { SubmitTransactionOutcome } from "ducks/transactionBuilder";
 
 const mockSignTransaction = jest.fn();
 const mockSubmitTransaction = jest.fn();
@@ -70,6 +71,18 @@ const baseParams: Parameters<typeof useEarnTransaction>[0] = {
   network: NETWORKS.TESTNET,
 };
 
+const submitOutcome = (
+  overrides: Partial<SubmitTransactionOutcome>,
+): SubmitTransactionOutcome => ({
+  hash: null,
+  resultXdr: null,
+  error: null,
+  resultCodes: null,
+  httpStatus: null,
+  isProtocolAnswer: false,
+  ...overrides,
+});
+
 describe("useEarnTransaction", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -123,7 +136,7 @@ describe("useEarnTransaction", () => {
 
   it("sets status to success, records the hash, and calls setSubmitFailed(false) on a clean submit", async () => {
     mockSignTransaction.mockReturnValue("signed-xdr");
-    mockSubmitTransaction.mockResolvedValue("tx-hash");
+    mockSubmitTransaction.mockResolvedValue(submitOutcome({ hash: "tx-hash" }));
 
     const { result } = renderHook(() => useEarnTransaction(baseParams));
 
@@ -167,12 +180,19 @@ describe("useEarnTransaction", () => {
     expect(mockSetSubmitFailed).toHaveBeenCalledWith(true);
   });
 
-  it("sets status to error and calls setSubmitFailed(true), sourcing the message from the store, when submitTransaction returns null", async () => {
+  it("sets status to error and calls setSubmitFailed(true), sourcing the message and result codes from the submit outcome, when submitTransaction resolves without a hash", async () => {
     mockSignTransaction.mockReturnValue("signed-xdr");
-    mockSubmitTransaction.mockResolvedValue(null);
+    mockSubmitTransaction.mockResolvedValue(
+      submitOutcome({
+        error: "op_underfunded",
+        resultCodes: { operations: ["op_underfunded"] },
+      }),
+    );
+    // The store holds a different, stale failure: the hook must read this
+    // attempt's own outcome, never the store, which a mid-submit Close resets.
     mockGetBuilderState.mockReturnValue({
-      error: "op_underfunded",
-      submitErrorResultCodes: { operations: ["op_underfunded"] },
+      error: "stale store error",
+      submitErrorResultCodes: { operations: ["op_stale"] },
     });
 
     const { result } = renderHook(() => useEarnTransaction(baseParams));
@@ -187,9 +207,8 @@ describe("useEarnTransaction", () => {
     expect(mockSetSubmitFailed).toHaveBeenCalledWith(true);
 
     // earn.deposit_failed carries the same identifiers plus reason_code --
-    // sourced from `submitErrorResultCodes` (NOT threaded through this
-    // hook's own return shape), never the free-text error message, and no
-    // amount/fiat value.
+    // sourced from this attempt's own submit outcome, never the free-text
+    // error message, and no amount/fiat value.
     expect(mockTrackEarnDepositFail).toHaveBeenCalledWith({
       assetCode: "USDC",
       poolId: "pool-1",
@@ -262,10 +281,10 @@ describe("useEarnTransaction", () => {
   describe("abandonment guard", () => {
     it("does NOT call setSubmitFailed or write status when a submit resolves successfully AFTER being abandoned", async () => {
       mockSignTransaction.mockReturnValue("signed-xdr");
-      let resolveSubmit: (hash: string) => void = () => {};
+      let resolveSubmit: (outcome: SubmitTransactionOutcome) => void = () => {};
       mockSubmitTransaction.mockImplementation(
         () =>
-          new Promise<string>((resolve) => {
+          new Promise<SubmitTransactionOutcome>((resolve) => {
             resolveSubmit = resolve;
           }),
       );
@@ -287,7 +306,7 @@ describe("useEarnTransaction", () => {
       });
 
       await act(async () => {
-        resolveSubmit("tx-hash");
+        resolveSubmit(submitOutcome({ hash: "tx-hash" }));
         await submitPromise;
       });
 
@@ -306,7 +325,7 @@ describe("useEarnTransaction", () => {
       let rejectSubmit: (error: Error) => void = () => {};
       mockSubmitTransaction.mockImplementation(
         () =>
-          new Promise<string | null>((_resolve, reject) => {
+          new Promise<SubmitTransactionOutcome>((_resolve, reject) => {
             rejectSubmit = reject;
           }),
       );
@@ -335,10 +354,10 @@ describe("useEarnTransaction", () => {
 
     it("reset() is a no-op while status is submitting (hardening against the same bug class)", async () => {
       mockSignTransaction.mockReturnValue("signed-xdr");
-      let resolveSubmit: (hash: string) => void = () => {};
+      let resolveSubmit: (outcome: SubmitTransactionOutcome) => void = () => {};
       mockSubmitTransaction.mockImplementation(
         () =>
-          new Promise<string>((resolve) => {
+          new Promise<SubmitTransactionOutcome>((resolve) => {
             resolveSubmit = resolve;
           }),
       );
@@ -361,7 +380,7 @@ describe("useEarnTransaction", () => {
 
       // Let the submit settle so it doesn't leak into other tests.
       await act(async () => {
-        resolveSubmit("tx-hash");
+        resolveSubmit(submitOutcome({ hash: "tx-hash" }));
         await submitPromise;
       });
     });

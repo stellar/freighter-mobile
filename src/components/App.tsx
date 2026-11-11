@@ -7,14 +7,15 @@ import * as Sentry from "@sentry/react-native";
 import { AuthErrorToastListener } from "components/AuthErrorToastListener";
 import { LockScreenOverlay } from "components/LockScreenOverlay";
 import { initializeSentryLogger } from "config/logger";
-import { NAVIGATION_THEME } from "config/navigationTheme";
 import { RootStackParamList } from "config/routes";
 import { initializeSentry } from "config/sentryConfig";
-import { THEME } from "config/theme";
+import { DEFAULT_COLOR_SCHEME } from "config/theme";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNavigationAnalytics } from "hooks/useNavigationAnalytics";
+import useNavigationTheme from "hooks/useNavigationTheme";
 import { useSentryContext } from "hooks/useSentryContext";
+import useTheme from "hooks/useTheme";
 import i18n from "i18n";
 import { RootNavigator } from "navigators/RootNavigator";
 import { AuthCheckProvider } from "providers/AuthCheckProvider";
@@ -23,7 +24,7 @@ import { ToastProvider } from "providers/ToastProvider";
 import { WalletKitProvider } from "providers/WalletKitProvider";
 import React, { useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
-import { Appearance, StatusBar, View } from "react-native";
+import { StatusBar, View, useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -56,12 +57,11 @@ const SoftLockAccessibilityShield: React.FC<{ children: React.ReactNode }> = ({
 
 export const App = (): React.JSX.Element => {
   const { onStateChange } = useNavigationAnalytics();
+  const navigationTheme = useNavigationTheme();
+  const theme = useTheme();
+  const colorScheme = useColorScheme() ?? DEFAULT_COLOR_SCHEME;
 
   useSentryContext();
-
-  useEffect(() => {
-    Appearance.setColorScheme("dark");
-  }, []);
 
   // initialize sentry here but we enhance the configuration
   // in RootNavigator once the user is authenticated
@@ -115,7 +115,7 @@ export const App = (): React.JSX.Element => {
       {/* Paints the area behind transparent system bars under Android 15+
           enforced edge-to-edge so the status/nav strips match app chrome. */}
       <GestureHandlerRootView
-        style={{ flex: 1, backgroundColor: THEME.colors.background.default }}
+        style={{ flex: 1, backgroundColor: theme.colors.base.primary }}
       >
         <SafeAreaProvider>
           <ToastProvider>
@@ -124,14 +124,32 @@ export const App = (): React.JSX.Element => {
                 <AuthErrorToastListener />
                 <NavigationContainer
                   ref={navigationRef}
-                  theme={NAVIGATION_THEME}
+                  theme={navigationTheme}
                   onStateChange={onStateChange}
                 >
                   <AuthCheckProvider>
                     <NetworkProvider>
                       <StatusBar
-                        backgroundColor={THEME.colors.background.default}
-                        barStyle="light-content"
+                        // Android only:
+                        // Declares that the page draws under the bar. Without
+                        // it, React Native's first sync of this element runs
+                        // statusBarShow(), whose setDecorFitsSystemWindows(true)
+                        // undoes keyboard-controller's edge-to-edge: AppCompat
+                        // insets the content by the bar height and the window
+                        // paints the strip in the color it had at creation --
+                        // which a theme switch never repaints, because uiMode
+                        // is a handled configChange and the Activity survives.
+                        // Translucent makes RN zero the top inset itself, so
+                        // the re-fit is a no-op and the page paints the strip.
+                        translucent
+                        backgroundColor={theme.colors.base.primary}
+                        // Light content is white text, which is invisible on a
+                        // light status bar, so it has to follow the scheme.
+                        barStyle={
+                          colorScheme === "dark"
+                            ? "light-content"
+                            : "dark-content"
+                        }
                       />
                       <WalletKitProvider>
                         <SoftLockAccessibilityShield>

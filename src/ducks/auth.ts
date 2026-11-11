@@ -50,6 +50,7 @@ import {
   encryptDataWithDerivedKey,
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
+import { markRebrandAnnouncementSeen } from "helpers/rebrandAnnouncement";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { scrubStrKeys } from "helpers/stellarStrKey";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
@@ -766,7 +767,7 @@ const getTemporaryStore = async (
 /**
  * Gets the public key of the active account
  *
- * Used on lock screen to display the public key without requiring authentication.
+ * Reads only non-secure storage, so it works without authentication.
  *
  * @returns {Promise<string | null>} The active account's public key or null if not found
  */
@@ -1124,12 +1125,17 @@ const clearAllData = async (): Promise<void> => {
  * prior "None" would otherwise bake a never-expiring hash key. The secure
  * write is awaited so generateHashKey reads the default expiry, and so first
  * install lands on 24h even though the mirror was never written manually.
+ *
+ * It also clears the persisted LOCKED marker. Signing out and auto-lock write
+ * it, and Forgot password wipes the wallet from that locked state; left
+ * behind, it would soft-lock the next wallet as soon as it is set up.
  */
 const resetAutoLockForNewWallet = async (): Promise<void> => {
   usePreferencesStore.setState({ autoLockTimer: DEFAULT_AUTO_LOCK_TIMER });
   await Promise.all([
     persistAutoLockTimer(DEFAULT_AUTO_LOCK_TIMER),
     clearBackgroundedAt(),
+    secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS),
   ]);
 };
 
@@ -1384,6 +1390,8 @@ export function clearAccountData(
     fetchedPublicKey: null,
     fetchedNetwork: null,
     subentryCount: 0,
+    // Account-scoped, so the next account must not inherit it
+    hiddenTokenIds: [],
     error: null,
   });
 
@@ -2203,7 +2211,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             if (navigationRef && navigationRef.isReady()) {
               navigationRef.resetRoot({
                 index: 0,
-                routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
+                routes: [
+                  {
+                    name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN,
+                    params: { autoFocus: true },
+                  },
+                ],
               });
             }
           } else {
@@ -2211,6 +2224,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             // visible before the long async cleanup begins.
             clearDerivedKeyCache();
             clearAuthKeypairCache();
+
+            // A reset leads into onboarding, which must not show the rebrand
+            // announcement. Written first so a failed or interrupted wipe
+            // cannot leave it pending.
+            await markRebrandAnnouncementSeen();
 
             // Capture navigationRef before ...initialState clears it to null
             const { navigationRef: navRef } = get();
@@ -2926,7 +2944,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       // Use resetRoot instead of navigate to avoid warnings with conditional navigators
       navigationRef.resetRoot({
         index: 0,
-        routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
+        routes: [
+          {
+            name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN,
+            params: { autoFocus: true },
+          },
+        ],
       });
     }
   },

@@ -1,1 +1,5 @@
-export { default } from "./SignTransactionDetails";
+export {
+  default,
+  SignTransactionDetailsButton,
+  SignTransactionDetailsSheet,
+} from "./SignTransactionDetails";

@@ -1,6 +1,11 @@
 import Blockaid from "@blockaid/client";
 import BigNumber from "bignumber.js";
 import { TokenIcon } from "components/TokenIcon";
+import {
+  TOKEN_ROW_GAP,
+  TOKEN_ROW_SECONDARY_LINE_STYLE,
+  TOKEN_ROW_VERTICAL_PADDING,
+} from "components/TokenRowStyle";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
@@ -22,26 +27,25 @@ import { TouchableOpacity, View } from "react-native";
 import { assessTokenSecurity } from "services/blockaid/helper";
 import styled from "styled-components/native";
 
-const BalanceRowContainer = styled.View<{ isSingleRow?: boolean }>`
+const BalanceRowContainer = styled.View`
   flex-direction: row;
   width: 100%;
-  height: ${px(44)};
   justify-content: space-between;
   align-items: center;
-  margin-bottom: ${({ isSingleRow }: { isSingleRow?: boolean }) =>
-    isSingleRow ? 0 : px(24)};
+  padding-top: ${px(TOKEN_ROW_VERTICAL_PADDING)};
+  padding-bottom: ${px(TOKEN_ROW_VERTICAL_PADDING)};
 `;
 
 const LeftSection = styled.View`
   flex-direction: row;
   align-items: center;
   flex: 1;
-  margin-right: ${px(16)};
+  margin-right: ${px(TOKEN_ROW_GAP)};
 `;
 
 const TokenTextContainer = styled.View`
   flex-direction: column;
-  margin-left: ${px(16)};
+  margin-left: ${px(TOKEN_ROW_GAP)};
   flex: 1;
 `;
 
@@ -87,7 +91,7 @@ export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
     <RightSection width={width} testID="right-section">
       {balance.fiatTotal ? (
         <>
-          <Text medium numberOfLines={1}>
+          <Text md semiBold numberOfLines={1}>
             {formatFiatAmount(balance.fiatTotal)}
           </Text>
           <Text
@@ -97,9 +101,10 @@ export const DefaultRightContent: React.FC<{ balance: PricedBalance }> = ({
               balance.percentagePriceChange24h?.gte(
                 POSITIVE_PRICE_CHANGE_THRESHOLD,
               )
-                ? themeColors.status.success
+                ? themeColors.green[10]
                 : themeColors.text.secondary
             }
+            style={TOKEN_ROW_SECONDARY_LINE_STYLE}
           >
             {formatPercentageAmount(balance.percentagePriceChange24h)}
           </Text>
@@ -155,7 +160,7 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
     overriddenBlockaidResponse,
   );
   return renderContent(
-    <BalanceRowContainer isSingleRow={isSingleRow}>
+    <BalanceRowContainer>
       <LeftSection>
         <View className="relative z-0">
           <TokenIcon token={balance} />
@@ -171,10 +176,16 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
           )}
         </View>
         <TokenTextContainer>
-          <Text medium numberOfLines={1}>
+          <Text md semiBold numberOfLines={1}>
             {balance.displayName}
           </Text>
-          <Text sm medium secondary numberOfLines={1}>
+          <Text
+            sm
+            medium
+            secondary
+            numberOfLines={1}
+            style={TOKEN_ROW_SECONDARY_LINE_STYLE}
+          >
             {customTextContent ||
               formatBalanceAmount(balance, balance.tokenCode, spendableAmount)}
           </Text>

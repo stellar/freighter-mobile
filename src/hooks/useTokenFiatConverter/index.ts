@@ -1,10 +1,8 @@
 import BigNumber from "bignumber.js";
 import { CLASSIC_TOKEN_MAX_AMOUNT, DEFAULT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
-import {
-  formatBigNumberForDisplay,
-  hasDecimals,
-} from "helpers/formatAmount";
+import { getTokenIdentifier } from "helpers/balances";
+import { formatBigNumberForDisplay, hasDecimals } from "helpers/formatAmount";
 import { recordUserActivity } from "helpers/userActivity";
 import {
   createTokenFiatConverterReducer,
@@ -89,9 +87,9 @@ export const useTokenFiatConverter = ({
 
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Track previous token code to detect token changes
-  const previousTokenCodeRef = useRef<string | undefined>(
-    selectedBalance?.tokenCode,
+  // Track the previous token identity (code:issuer) to detect changes.
+  const previousTokenIdRef = useRef<string | undefined>(
+    selectedBalance ? getTokenIdentifier(selectedBalance) : undefined,
   );
 
   // Reset both amounts when the selected token changes. The new token may
@@ -101,9 +99,11 @@ export const useTokenFiatConverter = ({
   // state the new token's validation would reject. The showFiatAmount mode
   // flag is intentionally preserved.
   useEffect(() => {
-    const currentTokenCode = selectedBalance?.tokenCode;
-    if (previousTokenCodeRef.current !== currentTokenCode) {
-      previousTokenCodeRef.current = currentTokenCode;
+    const currentTokenId = selectedBalance
+      ? getTokenIdentifier(selectedBalance)
+      : undefined;
+    if (previousTokenIdRef.current !== currentTokenId) {
+      previousTokenIdRef.current = currentTokenId;
       dispatch({ type: TokenFiatConverterActionType.RESET_AMOUNTS });
     }
   }, [selectedBalance]);

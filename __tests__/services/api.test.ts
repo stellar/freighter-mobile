@@ -79,7 +79,7 @@ jest.mock("@stellar/stellar-sdk", () => ({
     },
   },
   TransactionBuilder: {
-    fromXDR: jest.fn(),
+    fromXdr: jest.fn(),
   },
 }));
 

@@ -1,54 +1,18 @@
 import { Avatar, AvatarSizes } from "components/sds/Avatar";
+import { MarbleAvatar } from "components/sds/Avatar/MarbleAvatar";
+import { getTheme } from "config/theme";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { StyleSheet } from "react-native";
 
 /* eslint-disable */
-// Mock the Skia canvas functionality with proper React components
-jest.doMock("@shopify/react-native-skia", () => {
-  const React = require("react");
-
-  // Create mock components that actually render
-  const createMockComponent =
-    (name: string) =>
-    ({
-      children,
-      ...props
-    }: {
-      children?: React.ReactNode;
-      [key: string]: any;
-    }) =>
-      React.createElement(
-        "div",
-        {
-          "data-testid": `skia-${name.toLowerCase()}`,
-          ...props,
-        },
-        children,
-      );
-
-  return {
-    Canvas: createMockComponent("Canvas"),
-    Rect: createMockComponent("Rect"),
-    Paint: createMockComponent("Paint"),
-    Fill: createMockComponent("Fill"),
-    Group: createMockComponent("Group"),
-    Circle: createMockComponent("Circle"),
-    Path: createMockComponent("Path"),
-    Skia: {
-      Path: {
-        Make: jest.fn(),
-      },
-    },
-    useValue: jest.fn(() => ({ current: 0 })),
-  };
-});
-
 // Mock the useColors hook
 jest.mock("hooks/useColors", () => ({
   __esModule: true,
   default: () => ({
     themeColors: {
       base: ["#000000", "#FFFFFF"],
+      white: "#ffffff",
       text: {
         secondary: "#666666",
       },
@@ -65,12 +29,14 @@ describe("Avatar", () => {
   describe("Size handling", () => {
     const sizes = [
       AvatarSizes.SMALL,
+      AvatarSizes.SMALL_MEDIUM,
       AvatarSizes.MEDIUM,
       AvatarSizes.LARGE,
       AvatarSizes.EXTRA_LARGE,
     ];
     const sizeClasses = {
       [AvatarSizes.SMALL]: "w-[26px] h-[26px]",
+      [AvatarSizes.SMALL_MEDIUM]: "w-[32px] h-[32px]",
       [AvatarSizes.MEDIUM]: "w-[38px] h-[38px]",
       [AvatarSizes.LARGE]: "w-[40px] h-[40px]",
       [AvatarSizes.EXTRA_LARGE]: "w-[50px] h-[50px]",
@@ -113,6 +79,44 @@ describe("Avatar", () => {
       expect(avatar.props.className).toContain("rounded-full");
     });
 
+    it.each([false, true])(
+      "gives the drawing a canvas 1pt larger, pinned top-left (hasBorder: %s)",
+      (hasBorder) => {
+        // iOS Skia truncates its view to whole points, so a canvas exactly the
+        // drawing's size lost its bottom row at fractional offsets.
+        const { UNSAFE_getByType: getByType } = renderWithProviders(
+          <Avatar
+            size={AvatarSizes.LARGE}
+            publicAddress={TEST_PUBLIC_ADDRESS}
+            hasBorder={hasBorder}
+          />,
+        );
+        const drawingSize = hasBorder ? 38 : 40;
+        const drawing = getByType(MarbleAvatar);
+
+        expect(drawing.props.size).toBe(drawingSize);
+        // Skia's Jest setup renders Canvas as a View, so read it off the parent.
+        expect(drawing.parent?.props.style).toEqual({
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: drawingSize + 1,
+          height: drawingSize + 1,
+        });
+      },
+    );
+
+    it("leaves touches to whatever holds it", () => {
+      // The canvas is a native view that takes a touch for itself, so a
+      // button around the avatar, such as Discover's account switcher next
+      // to the search bar, never got the tap.
+      const { UNSAFE_getByType: getByType } = renderWithProviders(
+        <Avatar size={AvatarSizes.LARGE} publicAddress={TEST_PUBLIC_ADDRESS} />,
+      );
+
+      expect(getByType(MarbleAvatar).parent?.props.pointerEvents).toBe("none");
+    });
+
     it("renders with user name (initials)", () => {
       const { getByTestId, getByText } = renderWithProviders(
         <Avatar
@@ -127,8 +131,30 @@ describe("Avatar", () => {
 
       const initials = getByText("JD");
       expect(initials.props.style).toEqual(
-        expect.objectContaining({ fontWeight: "700", color: "#a0a0a0" }),
+        expect.objectContaining({
+          fontWeight: "700",
+          // Initials render through <Text secondary>, so the color follows the
+          // active scheme; jest reports no device scheme, hence the light one.
+          color: getTheme("light").colors.text.secondary,
+        }),
       );
+    });
+
+    it.each([
+      [AvatarSizes.SMALL, 14],
+      [AvatarSizes.SMALL_MEDIUM, 14],
+      [AvatarSizes.MEDIUM, 16],
+      [AvatarSizes.LARGE, 18],
+      [AvatarSizes.EXTRA_LARGE, 20],
+      [AvatarSizes.DOUBLE_EXTRA_LARGE, 20],
+    ])("sets the initials of a %s avatar in %ipt text", (size, fontSize) => {
+      const { getByText } = renderWithProviders(
+        <Avatar size={size} userName={TEST_USER_NAME} />,
+      );
+
+      expect(StyleSheet.flatten(getByText("JD").props.style)).toMatchObject({
+        fontSize,
+      });
     });
 
     it("renders default icon when no publicAddress or userName provided", () => {
@@ -154,6 +180,27 @@ describe("Avatar", () => {
       expect(queryByTestId("avatar-indicator")).toBeNull();
     });
 
+    it("draws the check in white, which the blue badge needs in both schemes", () => {
+      // The badge is bg-primary in both schemes, so an inverting token put a
+      // black check on blue for anyone on a light device.
+      const { getByTestId } = renderWithProviders(
+        <Avatar size={AvatarSizes.MEDIUM} isSelected testID="avatar" />,
+      );
+
+      const colorsIn = (node: unknown): unknown[] => {
+        if (Array.isArray(node)) return node.flatMap(colorsIn);
+        if (!node || typeof node !== "object") return [];
+        const el = node as { props?: { color?: unknown }; children?: unknown };
+
+        return [
+          ...(el.props?.color === undefined ? [] : [el.props.color]),
+          ...colorsIn(el.children),
+        ];
+      };
+
+      expect(colorsIn(getByTestId("avatar-indicator"))).toContain("#ffffff");
+    });
+
     it("shows indicator when isSelected is true", () => {
       const { getByTestId } = renderWithProviders(
         <Avatar size={AvatarSizes.MEDIUM} isSelected testID="avatar" />,
@@ -172,9 +219,16 @@ describe("Avatar", () => {
     });
 
     it("shows indicator with correct size based on avatar size", () => {
-      const sizes = [AvatarSizes.SMALL, AvatarSizes.MEDIUM, AvatarSizes.LARGE];
+      const sizes = [
+        AvatarSizes.SMALL,
+        AvatarSizes.SMALL_MEDIUM,
+        AvatarSizes.MEDIUM,
+        AvatarSizes.LARGE,
+      ];
       const indicatorSizes = {
         [AvatarSizes.SMALL]: "w-3 h-3",
+        // As the medium avatar's: the size table gives both a 10pt indicator.
+        [AvatarSizes.SMALL_MEDIUM]: "w-4 h-4",
         [AvatarSizes.MEDIUM]: "w-4 h-4",
         [AvatarSizes.LARGE]: "w-5 h-5",
       };

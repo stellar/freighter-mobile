@@ -1,4 +1,4 @@
-import { THEME } from "config/theme";
+import useTheme from "hooks/useTheme";
 import React from "react";
 import { ActivityIndicator } from "react-native";
 
@@ -8,10 +8,14 @@ interface SpinnerProps {
   testID?: string;
 }
 
-const Spinner: React.FC<SpinnerProps> = ({
-  size = "large",
-  color = THEME.colors.secondary,
-  testID,
-}) => <ActivityIndicator size={size} color={color} testID={testID} />;
+const Spinner: React.FC<SpinnerProps> = ({ size = "large", color, testID }) => {
+  const theme = useTheme();
+  // Resolved here rather than as a parameter default, which cannot call a hook.
+  const resolvedColor = color ?? theme.colors.secondary;
+
+  return (
+    <ActivityIndicator size={size} color={resolvedColor} testID={testID} />
+  );
+};
 
 export default Spinner;

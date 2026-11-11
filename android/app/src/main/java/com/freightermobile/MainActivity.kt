@@ -1,6 +1,9 @@
 package org.stellar.freighterwallet
 
 // this import is needed for the onCreate override function
+import android.app.ActivityManager
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle;
 import android.os.Handler
 import android.os.Looper
@@ -20,13 +23,18 @@ import com.zoontek.rnbootsplash.RNBootSplash
 
 class MainActivity : ReactActivity() {
 
-  // Privacy shield: a BootSplash-styled overlay added when the app is
-  // backgrounded (onStop, so it does NOT trigger for the biometric prompt /
-  // transient pauses) and kept up after return until JS finishes the
-  // auto-lock decision and calls PrivacyShield.hide() — so a soft-lock
-  // overlay can mount before the wallet is revealed. A fallback removes it if
-  // JS never calls. (FLAG_SECURE already blanks the recents thumbnail; this
-  // covers the brief on-return flash.)
+  // Privacy shield: a page-coloured overlay carrying the Varial lockup, added
+  // when the app is backgrounded (onStop, so it does NOT trigger for the
+  // biometric prompt / transient pauses) and kept up after return until JS
+  // finishes the auto-lock decision and calls PrivacyShield.hide() — so a
+  // soft-lock overlay can mount before the wallet is revealed. A fallback
+  // removes it if JS never calls. (FLAG_SECURE already blanks the recents
+  // thumbnail; this covers the brief on-return flash.)
+  //
+  // It carries its own colour and drawable rather than the bootsplash ones:
+  // the launch screen is blank so the JS animation owns the sequence,
+  // and the shield must not follow it into being empty. Both have night
+  // variants, so the shield tracks the device scheme.
   private var privacyOverlay: View? = null
   private val privacyHandler = Handler(Looper.getMainLooper())
   // Tracks whether the activity is currently resumed so a JS-triggered hide()
@@ -66,6 +74,42 @@ class MainActivity : ReactActivity() {
       WindowManager.LayoutParams.FLAG_SECURE,
     )
     super.onCreate(null)
+    applyRecentsAppearance()
+  }
+
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    // uiMode is in the manifest's configChanges, so a light/dark switch does
+    // not recreate the activity and the task description would otherwise keep
+    // the scheme it was created in.
+    applyRecentsAppearance()
+  }
+
+  /**
+   * FLAG_SECURE means the system never screenshots this window for the recents
+   * screen. It paints a placeholder from the task description instead, which
+   * otherwise inherits AppCompat's stock colours: a grey card under a status
+   * bar strip in a second, unrelated grey. Give every part of it the page
+   * colour so it reads as a blank page.
+   *
+   * Colours only. The window stays secure, so no content can reach the
+   * thumbnail. The builder is API 33+; below that the card body still follows
+   * android:colorBackground in AppTheme, but the bar strips keep AppCompat's
+   * defaults, since the only other lever (the theme's bar colours) would
+   * repaint the live system bars too.
+   */
+  private fun applyRecentsAppearance() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+    val pageColor = ContextCompat.getColor(this, R.color.app_background)
+
+    setTaskDescription(
+      ActivityManager.TaskDescription.Builder()
+        .setBackgroundColor(pageColor)
+        .setStatusBarColor(pageColor)
+        .setNavigationBarColor(pageColor)
+        .build(),
+    )
   }
 
   override fun onPause() {
@@ -92,7 +136,7 @@ class MainActivity : ReactActivity() {
 
     val overlay = FrameLayout(this).apply {
       setBackgroundColor(
-        ContextCompat.getColor(this@MainActivity, R.color.bootsplash_background),
+        ContextCompat.getColor(this@MainActivity, R.color.privacy_shield_background),
       )
       layoutParams = ViewGroup.LayoutParams(
         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -100,7 +144,7 @@ class MainActivity : ReactActivity() {
       )
     }
     val logo = ImageView(this).apply {
-      setImageResource(R.drawable.bootsplash_logo)
+      setImageResource(R.drawable.privacy_shield_logo)
       layoutParams = FrameLayout.LayoutParams(
         ViewGroup.LayoutParams.WRAP_CONTENT,
         ViewGroup.LayoutParams.WRAP_CONTENT,

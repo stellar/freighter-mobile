@@ -31,7 +31,7 @@ jest.mock("config/logger", () => ({
 
 jest.mock("@stellar/stellar-sdk", () => ({
   TransactionBuilder: {
-    fromXDR: jest.fn((xdr: string) => {
+    fromXdr: jest.fn((xdr: string) => {
       if (
         xdr ===
         "AAAAAgAAAABlgrTOmQt826u8R+HKOeuICKO/worYIyYW8m9U0aSaZgAAAGQDeoz1AAAAvAAAAAEAAAAAAAAAAAAAAABo7RV7AAAAAAAAAAEAAAAAAAAAAQAAAABK9RdfXO7+12qzjvy5REcU2QEoutCIRI30uL/x3hfp5QAAAAAAAAAACePMNwAAAAAAAAAA"

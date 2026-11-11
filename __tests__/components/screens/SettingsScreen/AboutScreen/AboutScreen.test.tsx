@@ -32,9 +32,9 @@ const mockCurrentYear = 2023;
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => {
     const translations: Record<string, string> = {
-      "aboutScreen.freighterDescription": "Freighter is a Stellar wallet.",
+      "aboutScreen.freighterDescription": "Varial is a Stellar wallet.",
       "aboutScreen.listTitle": "Important Links",
-      "aboutScreen.links.freighter": "Freighter Website",
+      "aboutScreen.links.freighter": "Varial Website",
       "aboutScreen.links.stellar": "Stellar Foundation",
       "aboutScreen.links.privacyPolicy": "Privacy Policy",
       "aboutScreen.links.termsOfService": "Terms of Service",
@@ -70,11 +70,11 @@ describe("AboutScreen", () => {
       <AboutScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    expect(screen.getByText("Freighter is a Stellar wallet.")).toBeTruthy();
+    expect(screen.getByText("Varial is a Stellar wallet.")).toBeTruthy();
     expect(screen.getByText("v1.2.3 (42)")).toBeTruthy();
 
     expect(screen.getByText("Important Links")).toBeTruthy();
-    expect(screen.getByText("Freighter Website")).toBeTruthy();
+    expect(screen.getByText("Varial Website")).toBeTruthy();
     expect(screen.getByText("Stellar Foundation")).toBeTruthy();
     expect(screen.getByText("Privacy Policy")).toBeTruthy();
     expect(screen.getByText("Terms of Service")).toBeTruthy();
@@ -84,13 +84,13 @@ describe("AboutScreen", () => {
     ).toBeTruthy();
   });
 
-  it("opens Freighter website link when pressed", () => {
+  it("opens Varial website link when pressed", () => {
     mockOpenInAppBrowser.mockResolvedValue(undefined);
 
     renderWithProviders(
       <AboutScreen navigation={mockNavigation} route={mockRoute} />,
     );
-    fireEvent.press(screen.getByText("Freighter Website"));
+    fireEvent.press(screen.getByText("Varial Website"));
 
     expect(mockOpenInAppBrowser).toHaveBeenCalledWith(FREIGHTER_BASE_URL);
   });

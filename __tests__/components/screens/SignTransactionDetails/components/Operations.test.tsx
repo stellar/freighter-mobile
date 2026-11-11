@@ -2,8 +2,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {
   Account,
+  Address,
   Asset,
   BASE_FEE,
+  nativeToScVal,
   Networks,
   Operation,
   OperationRecord,
@@ -12,9 +14,15 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 import { render } from "@testing-library/react-native";
+import {
+  G_ACCOUNT,
+  MUXED_CONTRACT_ID_1234,
+} from "__tests__/support/muxedContractFixtures";
+import { sacTransferArgs } from "__tests__/support/sacTransferFixtures";
 import Operations from "components/screens/SignTransactionDetails/components/Operations";
 import { truncateAddress } from "helpers/stellar";
 import React from "react";
+import { getContractSpecs } from "services/backend";
 
 // Render i18n keys verbatim so assertions target the value rows, not labels.
 jest.mock("react-i18next", () => ({
@@ -49,6 +57,11 @@ jest.mock("hooks/useClipboard", () => ({
 
 jest.mock("services/blockaid/api", () => ({
   scanToken: jest.fn().mockResolvedValue(undefined),
+}));
+
+// The contract spec is the only source of parameter names; stub it per test.
+jest.mock("services/backend", () => ({
+  getContractSpecs: jest.fn().mockRejectedValue(new Error("no spec")),
 }));
 
 // Use the real number/asset formatting.
@@ -422,5 +435,300 @@ describe("SignTransactionDetails > Operations: asset issuer disclosure", () => {
 
     expect(await findByText(label("tokenCode"), {}, FIND)).toBeTruthy();
     expect(await findByText(label("tokenIssuer"), {}, FIND)).toBeTruthy();
+  });
+});
+
+describe("SignTransactionDetails > Operations: contract creation executables", () => {
+  // KeyVal labels come from i18next's bare `t` (not react-i18next's hook), which
+  // is not initialised here, so these assertions target rendered values.
+  const OWNER_CONTRACT =
+    "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4";
+
+  it("renders the wasm hash for a wasm executable and no external-executable note", async () => {
+    const ops = operationsFor(
+      Operation.createCustomContract({
+        address: new Address(SOURCE),
+        wasmHash: Buffer.alloc(32, 9),
+        salt: Buffer.alloc(32, 1),
+      }),
+    );
+
+    const { findByText, queryByTestId, queryByText } = render(
+      <Operations operations={ops} />,
+    );
+
+    expect(await findByText("contractExecutableWasm", {}, FIND)).toBeTruthy();
+    expect(
+      await findByText(truncateAddress("09".repeat(32)), {}, FIND),
+    ).toBeTruthy();
+    expect(queryByTestId("ExternalExecutableNote")).toBeNull();
+    expect(queryByText(truncateAddress(OWNER_CONTRACT))).toBeNull();
+  });
+
+  it("renders owner, tag and the note for a CAP-85 external executable (Protocol 28), and no wasm hash", async () => {
+    const ops = operationsFor(
+      Operation.createCustomContract({
+        address: new Address(SOURCE),
+        externalRef: { owner: OWNER_CONTRACT, tag: "token-v2" },
+        salt: Buffer.alloc(32, 1),
+      }),
+    );
+
+    const { findByText, findByTestId, queryByText } = render(
+      <Operations operations={ops} />,
+    );
+
+    expect(
+      await findByText("contractExecutableExternalRef", {}, FIND),
+    ).toBeTruthy();
+    expect(
+      await findByText(truncateAddress(OWNER_CONTRACT), {}, FIND),
+    ).toBeTruthy();
+    expect(await findByText("token-v2", {}, FIND)).toBeTruthy();
+    expect(await findByTestId("ExternalExecutableNote", {}, FIND)).toBeTruthy();
+    // An external reference deliberately carries no wasm hash.
+    expect(queryByText("contractExecutableWasm")).toBeNull();
+  });
+});
+
+describe("SignTransactionDetails > Operations: hash-based signer keys", () => {
+  // SDK 17 decodes revokeSignerSponsorship signer hashes to hex *strings* but
+  // setOptions signer hashes to Uint8Arrays; both must render as the same
+  // uppercase hex (and never re-hex the string or throw).
+  const HASH_HEX = "ab".repeat(32);
+  const HASH_UPPER = HASH_HEX.toUpperCase();
+
+  it("revokeSignerSponsorship with a sha256Hash signer renders the hash as uppercase hex", async () => {
+    const ops = operationsFor(
+      Operation.revokeSignerSponsorship({
+        account: SOURCE,
+        signer: { sha256Hash: HASH_HEX },
+      }),
+    );
+
+    const { findByText, queryByText } = render(<Operations operations={ops} />);
+
+    expect(await findByText(HASH_UPPER, {}, FIND)).toBeTruthy();
+    // the old Buffer.from(<hex string>) path rendered the hex of the ASCII
+    expect(queryByText(Buffer.from(HASH_HEX).toString("hex"))).toBeNull();
+  });
+
+  it("revokeSignerSponsorship with a preAuthTx signer renders the hash as uppercase hex", async () => {
+    const ops = operationsFor(
+      Operation.revokeSignerSponsorship({
+        account: SOURCE,
+        signer: { preAuthTx: HASH_HEX },
+      }),
+    );
+
+    const { findByText } = render(<Operations operations={ops} />);
+
+    expect(await findByText(HASH_UPPER, {}, FIND)).toBeTruthy();
+  });
+
+  it("setOptions with a sha256Hash signer (decoded as bytes) renders the same uppercase hex", async () => {
+    const ops = operationsFor(
+      Operation.setOptions({
+        signer: { sha256Hash: Buffer.from(HASH_HEX, "hex"), weight: 1 },
+      }),
+    );
+
+    const { findByText } = render(<Operations operations={ops} />);
+
+    // setOptions renders its signer through the truncating hash row
+    expect(
+      await findByText(truncateAddress(HASH_UPPER), {}, FIND),
+    ).toBeTruthy();
+  });
+});
+
+describe("SignTransactionDetails > Operations: contract argument labels", () => {
+  const CONTRACT = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4";
+  // gauge_schedule_reward(router, distributor, gauge, start_at: Option<u64>,
+  // duration, tps) as `Spec.jsonSchema()` emits it: `required` omits the
+  // Option, so indexing it positionally slid every later label up one row.
+  const GAUGE_SPEC = {
+    definitions: {
+      gauge_schedule_reward: {
+        properties: {
+          args: {
+            properties: {
+              router: {},
+              distributor: {},
+              gauge: {},
+              start_at: {},
+              duration: {},
+              tps: {},
+            },
+            required: ["router", "distributor", "gauge", "duration", "tps"],
+          },
+        },
+      },
+    },
+  };
+  const ALL_OPTIONAL_SPEC = {
+    definitions: {
+      maybe: {
+        properties: { args: { properties: { first: {}, second: {} } } },
+      },
+    },
+  };
+
+  const invokeContract = (fnName: string, args: xdr.ScVal[]) =>
+    operationsFor(
+      Operation.invokeContractFunction({
+        contract: CONTRACT,
+        function: fnName,
+        args,
+      }),
+    );
+
+  const getContractSpecsMock = getContractSpecs as jest.MockedFunction<
+    typeof getContractSpecs
+  >;
+
+  beforeEach(() => {
+    getContractSpecsMock.mockReset();
+  });
+
+  it("keeps every label on its own value when a middle parameter is optional", async () => {
+    const START_AT = "1750000000";
+    const DURATION = "604800";
+    const TPS = "42";
+    getContractSpecsMock.mockResolvedValue(GAUGE_SPEC);
+
+    const { findAllByTestId, getAllByTestId, getByTestId } = render(
+      <Operations
+        operations={invokeContract("gauge_schedule_reward", [
+          new Address(CONTRACT).toScVal(),
+          new Address(SOURCE).toScVal(),
+          new Address(CONTRACT).toScVal(),
+          nativeToScVal(BigInt(START_AT), { type: "u64" }),
+          nativeToScVal(BigInt(DURATION), { type: "u64" }),
+          nativeToScVal(BigInt(TPS), { type: "i128" }),
+        ])}
+      />,
+    );
+
+    await findAllByTestId("ParameterKey", {}, FIND);
+    const keys = getAllByTestId("ParameterKey").map(
+      (node) => node.props.children,
+    );
+    // A parameter renders as a stream of tappable scalars, so its children are
+    // elements rather than one string; the accessibility label carries the
+    // whole rendered value as text.
+    const values = getAllByTestId("ParameterValue").map(
+      (node) => node.props.accessibilityLabel,
+    );
+
+    expect(keys).toEqual([
+      "router",
+      "distributor",
+      "gauge",
+      "start_at",
+      "duration",
+      "tps",
+    ]);
+    // The timestamp must sit under start_at, not under duration.
+    expect(values[3]).toBe(START_AT);
+    expect(values[4]).toBe(DURATION);
+    expect(values[5]).toBe(TPS);
+
+    // Names came from the spec, so they are qualified as the contract's own
+    // claim rather than presented as verified.
+    expect(getByTestId("ContractSpecNote")).toBeTruthy();
+  });
+
+  it("labels a function whose parameters are all optional instead of throwing", async () => {
+    // `required` is absent entirely here -- reading it positionally threw and
+    // took the whole signing view down with it.
+    getContractSpecsMock.mockResolvedValue(ALL_OPTIONAL_SPEC);
+
+    const { findAllByTestId, getAllByTestId } = render(
+      <Operations
+        operations={invokeContract("maybe", [
+          nativeToScVal(1, { type: "u32" }),
+          nativeToScVal(2, { type: "u32" }),
+        ])}
+      />,
+    );
+
+    await findAllByTestId("ParameterKey", {}, FIND);
+    expect(
+      getAllByTestId("ParameterKey").map((node) => node.props.children),
+    ).toEqual(["first", "second"]);
+  });
+
+  it("renders rows unlabelled, and no spec note, when the spec is unavailable", async () => {
+    getContractSpecsMock.mockRejectedValue(new Error("no spec"));
+
+    const { findAllByTestId, getAllByTestId, queryByTestId } = render(
+      <Operations
+        operations={invokeContract("transfer", [
+          new Address(SOURCE).toScVal(),
+          new Address(CONTRACT).toScVal(),
+          nativeToScVal(BigInt(100), { type: "i128" }),
+        ])}
+      />,
+    );
+
+    await findAllByTestId("ParameterValue", {}, FIND);
+    const keys = getAllByTestId("ParameterKey");
+
+    expect(keys).toHaveLength(3);
+    // No spec means no trustworthy names, so rows render unlabelled rather
+    // than borrowing a label from somewhere else.
+    keys.forEach((node) => expect(node.props.children).toBeUndefined());
+    // Nothing was labelled, so there is no claim to disclaim.
+    expect(queryByTestId("ContractSpecNote")).toBeNull();
+  });
+
+  it("renders rows unlabelled when the spec names a different number of parameters", async () => {
+    getContractSpecsMock.mockResolvedValue(GAUGE_SPEC);
+
+    const { findAllByTestId, getAllByTestId, queryByTestId } = render(
+      <Operations
+        operations={invokeContract("gauge_schedule_reward", [
+          new Address(CONTRACT).toScVal(),
+          new Address(SOURCE).toScVal(),
+        ])}
+      />,
+    );
+
+    await findAllByTestId("ParameterValue", {}, FIND);
+
+    getAllByTestId("ParameterKey").forEach((node) =>
+      expect(node.props.children).toBeUndefined(),
+    );
+    expect(queryByTestId("ContractSpecNote")).toBeNull();
+  });
+
+  it("renders a SAC transfer to a W address under the `to` label", async () => {
+    getContractSpecsMock.mockResolvedValue({
+      definitions: {
+        transfer: {
+          properties: {
+            args: {
+              properties: { from: {}, to: {}, amount: {} },
+              required: ["from", "to", "amount"],
+            },
+          },
+        },
+      },
+    });
+
+    const { findAllByTestId, getAllByTestId } = render(
+      <Operations operations={invokeContract("transfer", sacTransferArgs())} />,
+    );
+
+    await findAllByTestId("ParameterKey", {}, FIND);
+    expect(
+      getAllByTestId("ParameterKey").map((node) => node.props.children),
+    ).toEqual(["from", "to", "amount"]);
+    expect(
+      getAllByTestId("ParameterValue").map(
+        (node) => node.props.accessibilityLabel,
+      ),
+    ).toEqual([G_ACCOUNT, MUXED_CONTRACT_ID_1234, "100"]);
   });
 });

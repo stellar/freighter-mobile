@@ -1,7 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { AccountQrDisplay } from "components/AccountQrDisplay";
 import { Button, IconPosition } from "components/sds/Button";
-import { BUTTON_THEME } from "components/sds/Button/theme";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -16,7 +15,7 @@ export interface ReceiveFundsBottomSheetProps {
 }
 
 /**
- * In-flow "Receive funds" sheet (design node `9457:46184`) -- opened from
+ * In-flow "Receive funds" sheet -- opened from
  * "Transfer from another account" on both the token picker's
  * `NotEnoughTokenBottomSheet` and the amount screen's
  * `XlmFeeShortfallBottomSheet`. Previously that action navigated cross-stack
@@ -83,7 +82,7 @@ export const ReceiveFundsBottomSheet: React.FC<
         testID="receive-funds-account-qr"
       />
 
-      {/* Design rhythm (node `9457:46184`): network pill -> 32 -> footnote ->
+      {/* Design rhythm: network pill -> 32 -> footnote ->
           16 -> CTA. `mt-8` (32) and `gap-4` (16) below match that exactly --
           this block isn't shared with `ReceiveTabView` (see
           `AccountQrDisplay`'s doc comment for why the CTA stays
@@ -96,9 +95,7 @@ export const ReceiveFundsBottomSheet: React.FC<
         <Button
           isFullWidth
           tertiary
-          icon={
-            <Icon.Copy01 size={18} color={BUTTON_THEME.colors.tertiary.text} />
-          }
+          icon={<Icon.Copy01 size={18} />}
           iconPosition={IconPosition.LEFT}
           onPress={handleCopy}
           testID="receive-funds-copy-button"

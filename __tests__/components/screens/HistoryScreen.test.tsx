@@ -1,8 +1,12 @@
-import { waitFor } from "@testing-library/react-native";
+import { waitFor, within } from "@testing-library/react-native";
+import { getFloatingTabBarClearance } from "components/FloatingTabBar/geometry";
+import { getNavigationHeaderHeight } from "components/layout/CustomNavigationHeader";
+import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import HistoryScreen from "components/screens/HistoryScreen/HistoryScreen";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { SectionListProps } from "react-native";
+import { SectionList, SectionListProps, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 jest.mock("@react-navigation/native", () => ({
   useFocusEffect: jest.fn((callback) => {
@@ -97,10 +101,80 @@ jest.mock("components/screens/HistoryScreen/HistoryItem", () => {
   };
 });
 
+const NO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
+
 describe("HistoryScreen", () => {
   // Reset the captured getItemLayout before each test
   beforeEach(() => {
     capturedGetItemLayout = null;
+  });
+
+  afterEach(() => {
+    (useSafeAreaInsets as jest.Mock).mockReturnValue(NO_INSETS);
+  });
+
+  // Like Discover's: the shared nav bar with a centred Text/LG/600 title,
+  // floating over the list on the header fade, so rows scroll up under it and
+  // fade out below its row.
+  it("titles the tab Activity in a bar like Discover's, floating on the fade", () => {
+    (useSafeAreaInsets as jest.Mock).mockReturnValue({ ...NO_INSETS, top: 62 });
+
+    const { getByTestId } = renderWithProviders(
+      <HistoryScreen navigation={{} as never} route={{} as never} />,
+    );
+
+    const header = getByTestId("history-header");
+    expect(StyleSheet.flatten(header.props.style)).toMatchObject({
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+    });
+    expect(within(header).getByTestId("header-fade")).toBeTruthy();
+    const bar = within(header).getByTestId("navigation-header");
+    expect(bar.props.className).not.toContain("bg-base-0");
+    // The bar clears the status bar itself: its row starts 8pt below the
+    // 62pt inset, as every other screen's does.
+    expect(StyleSheet.flatten(bar.props.style).paddingTop).toBe(70);
+    // The bar draws the title as it does Discover's (Text/LG/600).
+    expect(within(bar).getByText("Activity")).toBeTruthy();
+  });
+
+  it("starts the list's content and spinners below the bar", () => {
+    (useSafeAreaInsets as jest.Mock).mockReturnValue({ ...NO_INSETS, top: 62 });
+
+    const { UNSAFE_getByType: getByType } = renderWithProviders(
+      <HistoryScreen navigation={{} as never} route={{} as never} />,
+    );
+
+    const list = getByType(HistoryList);
+    // The list runs from the screen's top, under the bar: it takes no
+    // safe-area inset or padding class of its own, and its container pads
+    // nothing.
+    expect(list.props.ignoreTopInset).toBe(true);
+    expect(list.props.className ?? "").not.toMatch(/\bpt-/);
+    expect(list.props.topInset).toBe(getNavigationHeaderHeight(62));
+    expect(StyleSheet.flatten(list.parent?.props.style)?.paddingTop ?? 0).toBe(
+      0,
+    );
+  });
+
+  it("ends its list clear of the floating tab bar", () => {
+    // The iPhone 17 Pro's home indicator, so a clearance that ignored the
+    // inset would show.
+    (useSafeAreaInsets as jest.Mock).mockReturnValue({
+      ...NO_INSETS,
+      bottom: 34,
+    });
+
+    const { UNSAFE_getByType: getByType } = renderWithProviders(
+      <HistoryScreen navigation={{} as never} route={{} as never} />,
+    );
+
+    expect(
+      StyleSheet.flatten(getByType(SectionList).props.contentContainerStyle)
+        .paddingBottom,
+    ).toBe(getFloatingTabBarClearance(34));
   });
 
   it("renders loading state correctly", async () => {

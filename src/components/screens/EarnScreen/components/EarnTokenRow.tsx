@@ -22,14 +22,12 @@ export interface EarnTokenRowProps {
  * Single row for the Earn token picker: icon + display name + balance on the
  * left, the pool's headline APY pill on the right.
  *
- * Card surface: Figma node 8828:19263's row fill resolves to the variable
- * `Default/Background/Tertiary` (#232323), which is an exact hex match for
- * `PALETTE.dark.gray["03"]` -- i.e. this app's `background.tertiary` token,
- * not `background.secondary` (gray["02"]) despite the latter being the more
- * common "card directly on the page" choice elsewhere. Paired with
- * `rounded-2xl` (16px), the same radius already used for other
- * tertiary-background cards sitting directly on the page background (e.g.
- * `AddFundsScreen`, `CollectibleDetailsScreen`).
+ * Card surface: the design's row fill is the `Background/Tertiary` variable,
+ * i.e. this app's `background.tertiary` token, not `background.secondary`
+ * despite the latter being the more common "card directly on the page"
+ * choice elsewhere. Paired with `rounded-2xl` (16px), the same radius already
+ * used for other tertiary-background cards sitting directly on the page
+ * background (e.g. `AddFundsScreen`, `CollectibleDetailsScreen`).
  */
 export const EarnTokenRow: React.FC<EarnTokenRowProps> = ({
   option,

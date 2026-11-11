@@ -147,7 +147,7 @@ export const submitTx = async (
 
   const transaction =
     typeof tx === "string"
-      ? TransactionBuilder.fromXDR(tx, networkPassphrase)
+      ? TransactionBuilder.fromXdr(tx, networkPassphrase)
       : tx;
 
   let submittedTx;
@@ -283,14 +283,14 @@ export const buildChangeTrustTx = async (input: BuildChangeTrustTxParams) => {
     .addOperation(buildChangeTrustOperation({ tokenCode, issuer, isRemove }))
     .setTimeout(DEFAULT_TRANSACTION_TIMEOUT);
 
-  return txBuilder.build().toXDR();
+  return txBuilder.build().toXdr();
 };
 
 export const signTransaction = (input: SignTxParams): string => {
   const { tx, secretKey, network } = input;
   const { networkPassphrase } = mapNetworkToNetworkDetails(network);
-  const transactionXDR = typeof tx === "string" ? tx : tx.toXDR();
-  const transaction = TransactionBuilder.fromXDR(
+  const transactionXDR = typeof tx === "string" ? tx : tx.toXdr();
+  const transaction = TransactionBuilder.fromXdr(
     transactionXDR,
     networkPassphrase,
   );
@@ -298,7 +298,7 @@ export const signTransaction = (input: SignTxParams): string => {
   const keypair = Keypair.fromSecret(secretKey);
   transaction.sign(keypair);
 
-  return transaction.toXDR();
+  return transaction.toXdr();
 };
 
 export const getAccount = async (

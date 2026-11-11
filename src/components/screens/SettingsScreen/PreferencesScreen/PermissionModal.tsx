@@ -42,8 +42,8 @@ const PermissionModal: React.FC<PermissionModalProps> = ({
     const IconComponent =
       action === "enable" ? Icon.ShieldTick : Icon.ShieldOff;
 
-    return <IconComponent size={32} color={themeColors.foreground.primary} />;
-  }, [action, themeColors.foreground.primary]);
+    return <IconComponent size={32} color={themeColors.white} />;
+  }, [action, themeColors.white]);
 
   return (
     <Modal
@@ -53,7 +53,7 @@ const PermissionModal: React.FC<PermissionModalProps> = ({
     >
       <View className="flex">
         <View className="justify-center items-center">
-          <View className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900 justify-center items-center mb-6">
+          <View className="w-16 h-16 rounded-full bg-lilac-8 justify-center items-center mb-6">
             {renderActionIcon()}
           </View>
 
@@ -86,7 +86,7 @@ const PermissionModal: React.FC<PermissionModalProps> = ({
 
         <View className="mt-6 gap-3">
           <Button
-            secondary
+            tertiary
             xl
             isFullWidth
             onPress={handleDismiss}
@@ -97,7 +97,7 @@ const PermissionModal: React.FC<PermissionModalProps> = ({
 
           <Button
             xl
-            tertiary
+            secondary
             isFullWidth
             onPress={handleOpenSettings}
             isLoading={isLoading}

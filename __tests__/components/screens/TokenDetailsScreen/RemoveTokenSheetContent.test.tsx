@@ -1,7 +1,12 @@
 /* eslint-disable global-require, @typescript-eslint/no-var-requires */
 import { render } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
-import { RemoveTokenSheetContent } from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
+import {
+  getRemoveTokenSheetVariant,
+  isTokenRemovable,
+  RemoveTokenSheetContent,
+  RemoveTokenSheetVariant,
+} from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
 import { TokenTypeWithCustomToken } from "config/types";
 import React from "react";
 
@@ -11,7 +16,11 @@ jest.mock(
     const { Text } = require("react-native");
     return {
       __esModule: true,
-      CannotRemoveType: { native: "native", hasBalance: "hasBalance" },
+      CannotRemoveType: {
+        native: "native",
+        hasBalance: "hasBalance",
+        notLocallyAdded: "notLocallyAdded",
+      },
       default: ({ type }: { type: string }) => <Text>{`cannot-${type}`}</Text>,
     };
   },
@@ -27,11 +36,23 @@ jest.mock("components/screens/AddTokenScreen/RemoveTokenBottomSheet", () => {
 
 const baseProps = {
   account: null,
+  localOnlyTokenIds: [],
   onCancel: jest.fn(),
   onRemoveToken: jest.fn(),
   isRemovingToken: false,
   onDismiss: jest.fn(),
 };
+
+const CONTRACT_ID = "CDMLFMKMMD7MWZP3FKUBZPVHTUEDLSX4BYGYKH4GCESXYHS3IHQ4EIG4";
+
+const makeCustomToken = () =>
+  ({
+    id: `TKN:${CONTRACT_ID}`,
+    tokenCode: "TKN",
+    tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+    total: new BigNumber(0),
+    token: { issuer: { key: CONTRACT_ID } },
+  }) as never;
 
 const makeToken = (over: Record<string, unknown>) =>
   ({
@@ -43,13 +64,45 @@ const makeToken = (over: Record<string, unknown>) =>
     ...over,
   }) as never;
 
+describe("isTokenRemovable", () => {
+  it("is false for a contract token the backend reports, whatever its balance", () => {
+    expect(isTokenRemovable(makeCustomToken(), [])).toBe(false);
+    expect(
+      isTokenRemovable(
+        { ...(makeCustomToken() as object), total: new BigNumber(5) } as never,
+        [],
+      ),
+    ).toBe(false);
+  });
+
+  it("is true for a hand-added contract token the backend doesn't report", () => {
+    expect(isTokenRemovable(makeCustomToken(), [CONTRACT_ID])).toBe(true);
+  });
+
+  it("is true for classic trustlines, XLM and no selection", () => {
+    expect(isTokenRemovable(makeToken({}), [])).toBe(true);
+    expect(
+      isTokenRemovable(
+        makeToken({
+          id: "XLM",
+          tokenCode: "XLM",
+          tokenType: TokenTypeWithCustomToken.NATIVE,
+          token: { type: "native", code: "XLM" },
+        }),
+        [],
+      ),
+    ).toBe(true);
+    expect(isTokenRemovable(null, [])).toBe(true);
+  });
+});
+
 describe("RemoveTokenSheetContent", () => {
   it("shows the native cannot-remove sheet for XLM", () => {
     const token = makeToken({
       id: "XLM",
       tokenCode: "XLM",
       tokenType: TokenTypeWithCustomToken.NATIVE,
-      token: {},
+      token: { type: TokenTypeWithCustomToken.NATIVE, code: "XLM" },
     });
     const { getByText } = render(
       <RemoveTokenSheetContent {...baseProps} selectedToken={token} />,
@@ -83,4 +136,95 @@ describe("RemoveTokenSheetContent", () => {
     );
     expect(getByText("remove-content")).toBeTruthy();
   });
+
+  it("shows the notLocallyAdded sheet for a contract token the backend reports itself", () => {
+    // Dropping the local entry would not stop the backend returning it, so the
+    // token would reappear on the next poll — hide-only instead.
+    const { getByText } = render(
+      <RemoveTokenSheetContent
+        {...baseProps}
+        selectedToken={makeCustomToken()}
+        localOnlyTokenIds={[]}
+      />,
+    );
+    expect(getByText("cannot-notLocallyAdded")).toBeTruthy();
+  });
+
+  it("shows the removable content for a locally added contract token", () => {
+    const { getByText } = render(
+      <RemoveTokenSheetContent
+        {...baseProps}
+        selectedToken={makeCustomToken()}
+        localOnlyTokenIds={[CONTRACT_ID]}
+      />,
+    );
+    expect(getByText("remove-content")).toBeTruthy();
+  });
+
+  it("keeps a zero-balance classic trustline removable regardless of the local list", () => {
+    // Removing a trustline is a real changeTrust operation, not a local-list
+    // edit, so the local-only gate must not apply to it.
+    const { getByText } = render(
+      <RemoveTokenSheetContent
+        {...baseProps}
+        selectedToken={makeToken({ total: new BigNumber(0) })}
+        localOnlyTokenIds={[]}
+      />,
+    );
+    expect(getByText("remove-content")).toBeTruthy();
+  });
+});
+
+describe("getRemoveTokenSheetVariant", () => {
+  // Only the confirmation body asks the user to sign. The callers that report
+  // the signing outcome read this function, so a "cannot remove" message must
+  // never report a signing decision.
+  it.each([
+    ["no selection", null, [] as string[], RemoveTokenSheetVariant.none],
+    [
+      "XLM",
+      makeToken({
+        id: "XLM",
+        tokenCode: "XLM",
+        tokenType: TokenTypeWithCustomToken.NATIVE,
+        token: { type: TokenTypeWithCustomToken.NATIVE, code: "XLM" },
+      }),
+      [] as string[],
+      RemoveTokenSheetVariant.cannotRemoveNative,
+    ],
+    [
+      "a token with balance",
+      makeToken({ total: new BigNumber(10) }),
+      [] as string[],
+      RemoveTokenSheetVariant.cannotRemoveHasBalance,
+    ],
+    [
+      "a liquidity-pool share",
+      makeToken({
+        total: new BigNumber(0),
+        tokenType: TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES,
+      }),
+      [] as string[],
+      RemoveTokenSheetVariant.cannotRemoveHasBalance,
+    ],
+    [
+      "a backend-reported contract token",
+      makeCustomToken(),
+      [] as string[],
+      RemoveTokenSheetVariant.cannotRemoveNotLocallyAdded,
+    ],
+    [
+      "a zero-balance trustline",
+      makeToken({ total: new BigNumber(0) }),
+      [] as string[],
+      RemoveTokenSheetVariant.confirm,
+    ],
+  ])(
+    "reports the variant for %s",
+    (_name, token, localOnlyTokenIds, expected) => {
+      expect(getRemoveTokenSheetVariant(token, localOnlyTokenIds)).toBe(
+        expected,
+      );
+    },
+  );
 });

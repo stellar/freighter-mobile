@@ -7,6 +7,10 @@ import {
   hash,
   xdr,
 } from "@stellar/stellar-sdk";
+import {
+  MUXED_CONTRACT_ID_0,
+  MUXED_CONTRACT_ID_U64_MAX,
+} from "__tests__/support/muxedContractFixtures";
 import { logger } from "config/logger";
 import { isContractId } from "helpers/soroban";
 import {
@@ -23,6 +27,7 @@ import {
   signMessage,
   truncateAddress,
   truncateFedAddress,
+  formattedBuffer,
 } from "helpers/stellar";
 
 jest.mock("@stellar/stellar-sdk", () => {
@@ -33,6 +38,17 @@ jest.mock("@stellar/stellar-sdk", () => {
       isValidEd25519PublicKey: jest.fn(),
       isValidMed25519PublicKey: jest.fn(),
       encodeEd25519PublicKey: originalSdk.StrKey.encodeEd25519PublicKey,
+      // Real passthroughs for every StrKey member `helpers/muxedContract`
+      // calls: `helpers/stellar` imports it, and it reads StrKey from this mock.
+      isValidMuxedContract: originalSdk.StrKey.isValidMuxedContract.bind(
+        originalSdk.StrKey,
+      ),
+      isValidContract: originalSdk.StrKey.isValidContract.bind(
+        originalSdk.StrKey,
+      ),
+      decodeMuxedContract: originalSdk.StrKey.decodeMuxedContract.bind(
+        originalSdk.StrKey,
+      ),
     },
     Account: jest.fn().mockImplementation((accountId, sequenceNumber) => ({
       accountId: () => accountId,
@@ -47,7 +63,7 @@ jest.mock("@stellar/stellar-sdk", () => {
         sequenceNumber: () => account.sequenceNumber(),
         incrementSequenceNumber: jest.fn(),
         setId: jest.fn(),
-        toXDRObject: jest.fn(),
+        toXdrObject: jest.fn(),
         equals: jest.fn(),
       })),
       {
@@ -65,7 +81,7 @@ jest.mock("@stellar/stellar-sdk", () => {
             sequenceNumber: () => sequenceNum,
             incrementSequenceNumber: jest.fn(),
             setId: jest.fn(),
-            toXDRObject: jest.fn(),
+            toXdrObject: jest.fn(),
             equals: jest.fn(),
           })),
       },
@@ -75,6 +91,9 @@ jest.mock("@stellar/stellar-sdk", () => {
 
 jest.mock("helpers/soroban", () => ({
   isContractId: jest.fn(),
+  // Real implementation: validateAuthEntryAddress (exercised via signAuthEntry's
+  // defense-in-depth check) needs arm-agnostic address stringification to work.
+  addressToString: jest.requireActual("helpers/soroban").addressToString,
 }));
 
 jest.mock("config/logger", () => ({
@@ -194,6 +213,10 @@ describe("Stellar helpers", () => {
       expect(mockedMuxedAccount.fromAddress).not.toHaveBeenCalled();
     });
 
+    it("returns a W unchanged", () => {
+      expect(getBaseAccount(MUXED_CONTRACT_ID_0)).toBe(MUXED_CONTRACT_ID_0);
+    });
+
     it("should return null and log error if MuxedAccount.fromAddress throws", () => {
       mockedStrKey.isValidMed25519PublicKey.mockReturnValueOnce(true);
       const error = new Error("SDK error");
@@ -252,6 +275,26 @@ describe("Stellar helpers", () => {
       expect(isValidStellarAddress(validFederation)).toBe(true);
     });
 
+    it("accepts a muxed contract (W) address", () => {
+      [MUXED_CONTRACT_ID_0, MUXED_CONTRACT_ID_U64_MAX].forEach((w) =>
+        expect(isValidStellarAddress(w)).toBe(true),
+      );
+    });
+
+    it("rejects a near-miss W", () => {
+      [
+        `${MUXED_CONTRACT_ID_0.slice(0, -1)}D`,
+        MUXED_CONTRACT_ID_0.toLowerCase(),
+        ` ${MUXED_CONTRACT_ID_0}`,
+      ].forEach((w) => expect(isValidStellarAddress(w)).toBe(false));
+    });
+
+    // The W check must not early-return on a "W" prefix the way the C branch
+    // does on "C", or every federation name starting with a W is rejected.
+    it("still accepts a federation address that starts with a W", () => {
+      expect(isValidStellarAddress("Walter*example.com")).toBe(true);
+    });
+
     it("should return false for invalid addresses", () => {
       mockedStrKey.isValidEd25519PublicKey.mockReturnValueOnce(false);
       mockedStrKey.isValidMed25519PublicKey.mockReturnValueOnce(false);
@@ -302,6 +345,25 @@ describe("Stellar helpers", () => {
       expect(truncateAddress("")).toBe("");
       expect(truncateAddress(null as unknown as string)).toBe("");
       expect(truncateAddress(undefined as unknown as string)).toBe("");
+    });
+  });
+
+  describe("formattedBuffer", () => {
+    const bytes = new Uint8Array(32).fill(0xab);
+    const hex = "ab".repeat(32);
+
+    it("renders raw bytes as truncated uppercase hex", () => {
+      expect(formattedBuffer(bytes)).toBe(truncateAddress("AB".repeat(32)));
+    });
+
+    it("passes through a string that is already hex", () => {
+      // SDK 17's revokeSignerSponsorship arm hands us hex strings, not bytes,
+      // for sha256Hash / preAuthTx signer keys.
+      expect(formattedBuffer(hex)).toBe(truncateAddress("AB".repeat(32)));
+    });
+
+    it("renders bytes and their hex string identically", () => {
+      expect(formattedBuffer(hex)).toBe(formattedBuffer(bytes));
     });
   });
 
@@ -433,6 +495,15 @@ describe("Stellar helpers", () => {
         (key) => key === validContract || key === anotherContract,
       );
       expect(isSameAccount(validContract, anotherContract)).toBe(false);
+    });
+
+    // Locks in today's behaviour: a W is a contract destination, never an account.
+    it("never treats a W as the same account", () => {
+      expect(isSameAccount(validEd25519, MUXED_CONTRACT_ID_0)).toBe(false);
+      expect(isSameAccount(MUXED_CONTRACT_ID_0, validEd25519)).toBe(false);
+      expect(isSameAccount(MUXED_CONTRACT_ID_0, MUXED_CONTRACT_ID_0)).toBe(
+        false,
+      );
     });
 
     it("should return false when comparing Federation address with anything else", () => {
@@ -573,7 +644,8 @@ describe("Stellar helpers", () => {
         const message = "Hello, Stellar!";
         const encoded = encodeSep53Message(message);
 
-        expect(encoded).toBeInstanceOf(Buffer);
+        // v17: hash() returns a plain Uint8Array, not a Buffer.
+        expect(encoded).toBeInstanceOf(Uint8Array);
         expect(encoded.length).toBe(32); // SHA-256 hash is 32 bytes
       });
 
@@ -581,7 +653,8 @@ describe("Stellar helpers", () => {
         const message = "";
         const encoded = encodeSep53Message(message);
 
-        expect(encoded).toBeInstanceOf(Buffer);
+        // v17: hash() returns a plain Uint8Array, not a Buffer.
+        expect(encoded).toBeInstanceOf(Uint8Array);
         expect(encoded.length).toBe(32);
       });
 
@@ -589,7 +662,8 @@ describe("Stellar helpers", () => {
         const message = "Hello 世界! 🌟";
         const encoded = encodeSep53Message(message);
 
-        expect(encoded).toBeInstanceOf(Buffer);
+        // v17: hash() returns a plain Uint8Array, not a Buffer.
+        expect(encoded).toBeInstanceOf(Uint8Array);
         expect(encoded.length).toBe(32);
       });
 
@@ -761,11 +835,11 @@ describe("Stellar helpers", () => {
       return xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
         new xdr.HashIdPreimageSorobanAuthorization({
           networkId: hash(Buffer.from(network)),
-          nonce: xdr.Int64.fromString(nonce) as xdr.Int64,
+          nonce: BigInt(nonce),
           signatureExpirationLedger: 999999,
           invocation,
         }),
-      ).toXDR("base64");
+      ).toXdr("base64");
     };
 
     /**
@@ -794,12 +868,12 @@ describe("Stellar helpers", () => {
       return xdr.HashIdPreimage.envelopeTypeSorobanAuthorizationWithAddress(
         new xdr.HashIdPreimageSorobanAuthorizationWithAddress({
           networkId: hash(Buffer.from(network)),
-          nonce: xdr.Int64.fromString(nonce) as xdr.Int64,
+          nonce: BigInt(nonce),
           signatureExpirationLedger: 999999,
           address: new Address(address).toScAddress(),
           invocation,
         }),
-      ).toXDR("base64");
+      ).toXdr("base64");
     };
 
     describe("signAuthEntry", () => {

@@ -182,7 +182,7 @@ describe("buildChangeTrustOperation", () => {
 
   it("returns a changeTrust operation for the requested asset with no explicit limit", () => {
     const op = buildChangeTrustOperation({ tokenCode: "USDC", issuer: ISSUER });
-    const decoded = Operation.fromXDRObject(op);
+    const decoded = Operation.fromXdrObject(op);
 
     expect(decoded.type).toBe("changeTrust");
     expect((decoded as any).line).toBeInstanceOf(SdkToken);
@@ -200,7 +200,7 @@ describe("buildChangeTrustOperation", () => {
       issuer: ISSUER,
       isRemove: true,
     });
-    const decoded = Operation.fromXDRObject(op);
+    const decoded = Operation.fromXdrObject(op);
 
     expect(decoded.type).toBe("changeTrust");
     // The Stellar SDK normalizes the limit to 7 decimal places on decode.

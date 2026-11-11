@@ -33,6 +33,9 @@ const clearNonSensitiveData = async (): Promise<void> => {
         STORAGE_KEYS.CUSTOM_TOKEN_LIST,
         STORAGE_KEYS.COLLECTIBLES_LIST,
         STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN,
+        // Decided once at first launch; clearing it would re-evaluate a
+        // fresh install as an existing user.
+        STORAGE_KEYS.REBRAND_ANNOUNCEMENT_STATUS,
       ].includes(key),
   );
 

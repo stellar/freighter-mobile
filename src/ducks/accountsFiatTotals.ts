@@ -8,7 +8,10 @@ import {
   getTokenIdentifier,
   getTokenIdentifiersFromBalances,
   getTotalUsdLabel,
+  omitHiddenBalances,
 } from "helpers/balances";
+import { getBalanceInWholeUnits } from "helpers/formatAmount";
+import { retrieveHiddenTokens } from "helpers/hiddenTokens";
 import { isMainnet } from "helpers/networks";
 import { fetchBalances } from "services/backend";
 import { create } from "zustand";
@@ -95,9 +98,9 @@ interface AccountsFiatTotalsState {
 }
 
 /**
- * Sums the USD value of every priced token in an account's balances.
- * Tokens without a known price (custom tokens, LP shares, price fetch
- * failures) contribute zero.
+ * Sums the USD value of every priced token in an account's balances, each
+ * valued in whole units. Tokens without a known price (LP shares, unpriced
+ * custom tokens, price fetch failures) contribute zero.
  *
  * Also reports how many tokens actually priced, which is what separates a
  * genuine zero from a total that couldn't be read: a funded account where
@@ -117,7 +120,9 @@ const computeFiatTotal = (
       }
 
       return {
-        total: acc.total.plus(balance.total.multipliedBy(currentPrice)),
+        total: acc.total.plus(
+          getBalanceInWholeUnits(balance).multipliedBy(currentPrice),
+        ),
         pricedCount: acc.pricedCount + 1,
       };
     },
@@ -241,6 +246,7 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
         fetchGeneration += 1;
         const thisGeneration = fetchGeneration;
         const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
+        const useBalancesV2 = useRemoteConfigStore.getState().use_balances_v2;
 
         // The prices store skips identifiers it already holds, so without an
         // occasional forced pass a quote fetched once would price totals for
@@ -275,15 +281,25 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
                   // both v1 and v2, so those balances would contribute $0
                   // to the total either way — the extension's wallets list
                   // makes the same trade-off.
-                  const { balances, isFunded } = await fetchBalances({
-                    publicKey,
-                    network,
-                    shouldSkipScan: true,
-                  });
+                  const [{ balances, isFunded }, hiddenTokenIds] =
+                    await Promise.all([
+                      fetchBalances({
+                        publicKey,
+                        network,
+                        useV2: useBalancesV2,
+                        shouldSkipScan: true,
+                      }),
+                      retrieveHiddenTokens({ publicKey, network }),
+                    ]);
 
                   return {
                     publicKey,
-                    balances: balances ?? {},
+                    // Hidden tokens don't count, matching the Home header and
+                    // the active account's synced row.
+                    balances: omitHiddenBalances(
+                      balances ?? {},
+                      hiddenTokenIds,
+                    ),
                     isFunded: isFunded ?? false,
                   };
                 } catch (error) {

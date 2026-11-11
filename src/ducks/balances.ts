@@ -1,5 +1,5 @@
 import Blockaid from "@blockaid/client";
-import { NATIVE_TOKEN_CODE, NETWORKS, STORAGE_KEYS } from "config/constants";
+import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import {
   BalanceMap,
@@ -9,11 +9,18 @@ import {
 } from "config/types";
 import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { isNativeAssetId, isNativeToken } from "helpers/assetIdentity";
 import {
   getLPShareCode,
   isLiquidityPool,
   sortBalances,
 } from "helpers/balances";
+import { getBalanceInWholeUnits } from "helpers/formatAmount";
+import {
+  addHiddenTokenToStorage,
+  removeHiddenTokenFromStorage,
+  retrieveHiddenTokens,
+} from "helpers/hiddenTokens";
 import { isMainnet } from "helpers/networks";
 import { ApiError, logApiError } from "services/apiFactory";
 import { fetchBalances } from "services/backend";
@@ -38,7 +45,10 @@ import { create } from "zustand";
  * @property {string | null} error - Error message if fetch failed, null otherwise
  * @property {string | null} fetchedPublicKey - The public key the current balances snapshot was fetched for, null before the first fetch
  * @property {NETWORKS | null} fetchedNetwork - The network the current balances snapshot was fetched for, null before the first fetch
+ * @property {string[]} hiddenTokenIds - Balance identifiers the user hid for the fetched account and network
  * @property {Function} fetchAccountBalances - Function to fetch account balances from the backend
+ * @property {Function} hideToken - Hides a token from the balances list and persists the choice
+ * @property {Function} unhideToken - Reverses hideToken
  */
 interface BalancesState {
   balances: BalanceMap;
@@ -47,16 +57,47 @@ interface BalancesState {
   isLoading: boolean;
   isFunded: boolean;
   subentryCount: number;
+  /**
+   * Contract IDs in `balances` that are there only because the user saved them
+   * locally. The balances view offers removal for these and hide-only for
+   * everything else the backend returns on its own.
+   */
+  localOnlyTokenIds: string[];
   error: string | null;
   fetchedPublicKey: string | null;
   fetchedNetwork: NETWORKS | null;
+  /**
+   * Balance identifiers the user hid. `balances` and `pricedBalances` still
+   * hold them, so one source of truth feeds both the visible list and the
+   * hidden-tokens sheet; consumers filter with this list.
+   */
+  hiddenTokenIds: string[];
   fetchAccountBalances: (params: {
     publicKey: string;
     network: NETWORKS;
     contractIds?: string[];
   }) => Promise<void>;
+  hideToken: (params: HiddenTokenParams) => Promise<void>;
+  unhideToken: (params: HiddenTokenParams) => Promise<void>;
   getBalances: () => BalanceMap;
 }
+
+interface HiddenTokenParams {
+  publicKey: string;
+  network: NETWORKS;
+  /** The balance identifier, as keyed in `balances` */
+  tokenId: string;
+}
+
+/**
+ * Whether the store's balances snapshot belongs to the given account and
+ * network, so an in-memory update for them is safe to apply.
+ */
+const isSnapshotFor = (
+  state: Pick<BalancesState, "fetchedPublicKey" | "fetchedNetwork">,
+  publicKey: string,
+  network: NETWORKS,
+) => state.fetchedPublicKey === publicKey && state.fetchedNetwork === network;
 
 /**
  * Processes balances and creates priced balances with display information
@@ -85,8 +126,7 @@ const getExistingPricedBalances = (
     } else {
       // Handle regular token balances
       tokenCode = balance.token.code;
-      displayName =
-        balance.token.type === "native" ? "Stellar Lumens" : tokenCode;
+      displayName = isNativeToken(balance.token) ? "Stellar Lumens" : tokenCode;
     }
 
     // Create the priced balance object and keep existing price data if available
@@ -106,7 +146,9 @@ const getExistingPricedBalances = (
       // becomes state, making the wrong value stick.
       fiatTotal:
         existingPriceData?.currentPrice &&
-        balance.total.multipliedBy(existingPriceData.currentPrice),
+        getBalanceInWholeUnits(balance).multipliedBy(
+          existingPriceData.currentPrice,
+        ),
     };
 
     // Return entry as [id, pricedBalance] tuple
@@ -138,7 +180,9 @@ const getUpdatedPricedBalances = (
         fiatCode: "USD",
         fiatTotal:
           priceData.currentPrice &&
-          updatedPricedBalances[id].total.multipliedBy(priceData.currentPrice),
+          getBalanceInWholeUnits(updatedPricedBalances[id]).multipliedBy(
+            priceData.currentPrice,
+          ),
       };
     }
   });
@@ -222,10 +266,8 @@ const extractScanResultsFromBalances = (
   const scanResults: Record<string, Blockaid.Token.TokenScanResponse> = {};
 
   Object.entries(pricedBalances).forEach(([tokenIdentifier, balance]) => {
-    if (
-      tokenIdentifier === NATIVE_TOKEN_CODE ||
-      tokenIdentifier.includes("lp")
-    ) {
+    // Native has no scan result; liquidity pools are detected by their shape.
+    if (isNativeAssetId(tokenIdentifier) || isLiquidityPool(balance)) {
       return;
     }
 
@@ -300,9 +342,11 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
   isLoading: false,
   isFunded: false,
   subentryCount: 0,
+  localOnlyTokenIds: [],
   error: null,
   fetchedPublicKey: null,
   fetchedNetwork: null,
+  hiddenTokenIds: [],
   fetchAccountBalances: async (params) => {
     try {
       // It can happen that the public key is not available yet during app initialization
@@ -312,10 +356,16 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
 
       set({ isLoading: true, error: null });
 
-      const customTokensContractsIds = await retrieveCustomTokens({
-        network: params.network,
-        publicKey: params.publicKey,
-      });
+      const [customTokensContractsIds, hiddenTokenIds] = await Promise.all([
+        retrieveCustomTokens({
+          network: params.network,
+          publicKey: params.publicKey,
+        }),
+        retrieveHiddenTokens({
+          network: params.network,
+          publicKey: params.publicKey,
+        }),
+      ]);
 
       // Combine provided contract IDs with custom token contract IDs
       const allContractIds = [
@@ -323,24 +373,32 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         ...customTokensContractsIds,
       ];
 
-      // Fetch balances with combined contract IDs
-      const { balances, isFunded, subentryCount } = await fetchBalances({
-        ...params,
-        contractIds: allContractIds,
-      });
+      // Fetch balances with combined contract IDs. Read the v2 flag from the
+      // store at call time (not a captured value) so a freshly resolved
+      // Amplitude flag isn't missed — mirrors the token-prices flag below.
+      const { balances, isFunded, subentryCount, localOnlyTokenIds } =
+        await fetchBalances({
+          ...params,
+          contractIds: allContractIds,
+          useV2: useRemoteConfigStore.getState().use_balances_v2,
+        });
 
       if (!balances) {
         throw new Error("No balances returned from API");
       }
 
       // Set the "raw" balances right away as they don't depend on prices being fetched
-      set({
+      set((state) => ({
         balances,
         isFunded: isFunded ?? false,
         subentryCount: subentryCount ?? 0,
         fetchedPublicKey: params.publicKey,
         fetchedNetwork: params.network,
-      });
+        localOnlyTokenIds: localOnlyTokenIds ?? [],
+        hiddenTokenIds: isSnapshotFor(state, params.publicKey, params.network)
+          ? state.hiddenTokenIds
+          : hiddenTokenIds,
+      }));
 
       // Get existing state priced balances to preserve price data
       const statePricedBalances = get().pricedBalances;
@@ -391,6 +449,9 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         error,
         {
           network: params.network,
+          // Structured, so sanitizeLogData can redact it for opt-out users —
+          // interpolating it into an error message would bypass the redactor.
+          publicKey: params.publicKey,
           ...(apiError && {
             status: apiError.status,
             isNetworkError: apiError.isNetworkError,
@@ -403,6 +464,64 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         error: message,
         isLoading: false,
       });
+    }
+  },
+  /**
+   * Hides a token from the balances list. The choice is persisted per account
+   * and network, so it survives app restarts and logouts. Native XLM is never
+   * hidden: it pays every fee, and Send and Swap read it from the visible list.
+   *
+   * @throws when the storage write fails, after logging it
+   */
+  hideToken: async ({ publicKey, network, tokenId }) => {
+    if (isNativeAssetId(tokenId)) {
+      return;
+    }
+
+    try {
+      await addHiddenTokenToStorage({ publicKey, network, tokenId });
+
+      set((state) => {
+        // The store may belong to another account or network by now (a
+        // switch during the write). Storage already has the change, and
+        // that account's next fetch reads it, so leave the list alone.
+        if (!isSnapshotFor(state, publicKey, network)) {
+          return {};
+        }
+
+        return {
+          hiddenTokenIds: state.hiddenTokenIds.includes(tokenId)
+            ? state.hiddenTokenIds
+            : [...state.hiddenTokenIds, tokenId],
+        };
+      });
+    } catch (error) {
+      logger.error("hideToken", "Error hiding token:", error);
+      throw error;
+    }
+  },
+  /**
+   * Reverses {@link hideToken}.
+   *
+   * @throws when the storage write fails, after logging it
+   */
+  unhideToken: async ({ publicKey, network, tokenId }) => {
+    try {
+      await removeHiddenTokenFromStorage({ publicKey, network, tokenId });
+
+      set((state) => {
+        // Same guard as hideToken
+        if (!isSnapshotFor(state, publicKey, network)) {
+          return {};
+        }
+
+        return {
+          hiddenTokenIds: state.hiddenTokenIds.filter((id) => id !== tokenId),
+        };
+      });
+    } catch (error) {
+      logger.error("unhideToken", "Error unhiding token:", error);
+      throw error;
     }
   },
   getBalances: () => get().balances,

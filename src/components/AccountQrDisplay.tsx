@@ -24,9 +24,8 @@ export interface AccountQrDisplayProps {
 /**
  * Account identity + QR + network-pill block shared between
  * `ScanReceiveScreen`'s Receive tab and the Earn flow's in-flow "Receive
- * funds" sheet (design node `9457:46184`) -- both surfaces show the exact
- * same avatar/name/address row, white QR card, and "Stellar" network pill
- * for the active account.
+ * funds" sheet -- both surfaces show the exact same avatar/name/address row,
+ * white QR card, and "Stellar" network pill for the active account.
  *
  * Deliberately excludes the network-support caption and the copy CTA: both
  * callers now copy through the same plain `useClipboard` hook, but each has
@@ -71,10 +70,10 @@ export const AccountQrDisplay: React.FC<AccountQrDisplayProps> = ({
         <View className="bg-white p-4 rounded-2xl">
           <QRCode
             size={pxValue(QR_SIZE)}
-            logo={logos.freighter2d}
+            logo={logos.varial2d}
             value={publicKey}
             quietZone={6}
-            logoMargin={12}
+            logoMargin={7}
             logoSize={60}
             logoBackgroundColor="transparent"
             ecl="H"

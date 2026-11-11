@@ -4,13 +4,13 @@ import BigNumber from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import {
   DEFAULT_DECIMALS,
-  isNativeAssetId,
   mapNetworkToNetworkDetails,
   NATIVE_TOKEN_CODE,
   NETWORKS,
 } from "config/constants";
 import { logger } from "config/logger";
 import { TokenTypeWithCustomToken } from "config/types";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useCallback, useRef } from "react";

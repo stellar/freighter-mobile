@@ -1,7 +1,6 @@
 import { IconPosition, Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import React, { memo } from "react";
 
 type AddTokenRightContentProps = {
@@ -12,16 +11,13 @@ const AddTokenRightContent: React.FC<AddTokenRightContentProps> = ({
   handleAddToken,
 }) => {
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
 
   return (
     <Button
-      secondary
+      tertiary
       squared
       testID="add-token-button"
-      icon={
-        <Icon.PlusCircle size={16} color={themeColors.foreground.primary} />
-      }
+      icon={<Icon.PlusCircle size={16} />}
       iconPosition={IconPosition.RIGHT}
       onPress={handleAddToken}
     >

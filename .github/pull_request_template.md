@@ -10,7 +10,17 @@
 
 [TODO or N/A]
 
+### Screenshots / video
+
+[TODO: Before and after screenshots, or a screen recording, for any user-facing change. Write N/A if there is none.]
+
+| Before | After |
+| ------ | ----- |
+|        |       |
+
 ### Checklist
+
+- [ ] I have read [CONTRIBUTING.md](https://github.com/stellar/freighter-mobile/blob/main/CONTRIBUTING.md) and this PR meets its requirements.
 
 #### PR structure
 

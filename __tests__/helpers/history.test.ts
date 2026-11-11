@@ -3,6 +3,7 @@ import {
   NETWORKS,
   mapNetworkToNetworkDetails,
   NATIVE_TOKEN_CODE,
+  TESTNET_NETWORK_DETAILS,
 } from "config/constants";
 import type { NetworkDetails } from "config/constants";
 import {
@@ -22,9 +23,6 @@ jest.mock("helpers/soroban", () => {
   return {
     ...actual,
     getAttrsFromSorobanHorizonOp: jest.fn(),
-    getNativeContractDetails: jest.fn(() => ({
-      contract: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
-    })),
   };
 });
 
@@ -197,6 +195,51 @@ describe("history helpers", () => {
       );
 
       expect(result).toBe(true);
+    });
+
+    describe("operationInvolvesToken — XLM-coded classic assets", () => {
+      const CLASSIC_XLM_ISSUER =
+        "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO";
+
+      const nativePaymentOp = {
+        type: "payment",
+        asset_type: "native",
+      } as unknown as Horizon.ServerApi.OperationRecord;
+
+      it("does not match a native operation to an issuer-bound XLM target", () => {
+        const target = getTokenFromTokenId(`XLM:${CLASSIC_XLM_ISSUER}`);
+        expect(
+          operationInvolvesToken(
+            nativePaymentOp,
+            target,
+            TESTNET_NETWORK_DETAILS,
+          ),
+        ).toBe(false);
+      });
+
+      it("still matches a native operation to the native target", () => {
+        const target = getTokenFromTokenId("XLM");
+        expect(
+          operationInvolvesToken(
+            nativePaymentOp,
+            target,
+            TESTNET_NETWORK_DETAILS,
+          ),
+        ).toBe(true);
+      });
+
+      it("matches an issuer-bound XLM target to its own classic operation", () => {
+        const classicOp = {
+          type: "payment",
+          asset_type: "credit_alphanum4",
+          asset_code: "XLM",
+          asset_issuer: CLASSIC_XLM_ISSUER,
+        } as unknown as Horizon.ServerApi.OperationRecord;
+        const target = getTokenFromTokenId(`XLM:${CLASSIC_XLM_ISSUER}`);
+        expect(
+          operationInvolvesToken(classicOp, target, TESTNET_NETWORK_DETAILS),
+        ).toBe(true);
+      });
     });
   });
 
@@ -372,6 +415,29 @@ describe("history helpers", () => {
 
       expect(filtered).toHaveLength(1);
       expect(filtered[0]).toBe(mockSorobanOperation1);
+    });
+
+    it("skips a Soroban operation it can't decode instead of throwing", () => {
+      // The rest of this file mocks getAttrsFromSorobanHorizonOp, so feed the
+      // real one through once.
+      const actual =
+        jest.requireActual<typeof import("helpers/soroban")>("helpers/soroban");
+      mockGetAttrsFromSorobanHorizonOp.mockImplementationOnce(
+        actual.getAttrsFromSorobanHorizonOp,
+      );
+      const undecodable = {
+        type: "invoke_host_function",
+        id: "4",
+        transaction_attr: { envelope_xdr: "not-xdr" },
+      } as unknown as Horizon.ServerApi.OperationRecord;
+
+      expect(
+        filterOperationsByToken(
+          [undecodable, mockClassicPaymentOperation],
+          "native",
+          networkDetails,
+        ),
+      ).toEqual([mockClassicPaymentOperation]);
     });
   });
 });

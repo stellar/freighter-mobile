@@ -1,6 +1,22 @@
-import { Address, xdr } from "@stellar/stellar-sdk";
-import { BigNumber } from "bignumber.js";
 import {
+  Address,
+  Asset as SdkToken,
+  Keypair,
+  nativeToScVal,
+  Operation,
+  xdr,
+} from "@stellar/stellar-sdk";
+import {
+  G_ACCOUNT,
+  M_ACCOUNT_ID_1234,
+  MUXED_CONTRACT_ID_0,
+  MUXED_CONTRACT_ID_1234,
+} from "__tests__/support/muxedContractFixtures";
+import { sacTransferArgs } from "__tests__/support/sacTransferFixtures";
+import { BigNumber } from "bignumber.js";
+import { NETWORKS, TESTNET_NETWORK_DETAILS } from "config/constants";
+import {
+  Balance,
   ClassicBalance,
   NativeBalance,
   SorobanBalance,
@@ -9,10 +25,24 @@ import {
 import {
   computeTotalFeeXlm,
   getArgsForTokenInvocation,
+  getContractFnArgNames,
   getAuthEntryBoundAddress,
+  getBalanceByKey,
+  getInvocationArgs,
+  getInvocationDetails,
+  getNativeContractDetails,
+  getTokenInvocationArgs,
+  INVOCATION_TYPE_EXTERNAL_REF,
+  INVOCATION_TYPE_INVOKE,
+  INVOCATION_TYPE_UNRECOGNIZED,
+  INVOCATION_TYPE_WASM,
+  scValByType,
+  scValToDisplayTokens,
+  scValToDisplayValue,
   SorobanTokenInterface,
   addressToString,
   isSorobanTransaction,
+  xdrStringToRaw,
 } from "helpers/soroban";
 
 // Mock isContractId before importing the module
@@ -24,6 +54,10 @@ jest.mock("helpers/soroban", () => {
     isContractId: (address: string) => mockIsContractId(address),
   };
 });
+
+// A well-formed contract strkey used as an executable owner / address fixture.
+const OWNER_CONTRACT =
+  "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4";
 
 describe("soroban helpers", () => {
   describe("getArgsForTokenInvocation", () => {
@@ -44,8 +78,8 @@ describe("soroban helpers", () => {
         // Mock i128 amount for token transfer
         const mockAmount = xdr.ScVal.scvI128(
           new xdr.Int128Parts({
-            lo: xdr.Uint64.fromString("1000000"),
-            hi: xdr.Int64.fromString("0"),
+            lo: BigInt("1000000"),
+            hi: BigInt(0),
           }),
         );
 
@@ -106,8 +140,8 @@ describe("soroban helpers", () => {
         );
         const mockAmount = xdr.ScVal.scvI128(
           new xdr.Int128Parts({
-            lo: xdr.Uint64.fromString("1000000"),
-            hi: xdr.Int64.fromString("0"),
+            lo: BigInt("1000000"),
+            hi: BigInt(0),
           }),
         );
 
@@ -150,6 +184,20 @@ describe("soroban helpers", () => {
         expect(typeof result.to).toBe("string");
         expect(result.tokenId).toBe(99999);
       });
+
+      it("reads a W destination from a SAC transfer", () => {
+        expect(
+          getArgsForTokenInvocation(
+            SorobanTokenInterface.transfer,
+            sacTransferArgs(),
+          ),
+        ).toEqual({
+          from: G_ACCOUNT,
+          to: MUXED_CONTRACT_ID_1234,
+          amount: BigInt(100),
+          tokenId: undefined,
+        });
+      });
     });
 
     describe("mint function", () => {
@@ -161,8 +209,8 @@ describe("soroban helpers", () => {
         );
         const mockAmount = xdr.ScVal.scvI128(
           new xdr.Int128Parts({
-            lo: xdr.Uint64.fromString("5000000"),
-            hi: xdr.Int64.fromString("0"),
+            lo: BigInt("5000000"),
+            hi: BigInt(0),
           }),
         );
         // Add a dummy third argument to satisfy the implementation
@@ -223,9 +271,9 @@ describe("soroban helpers", () => {
     });
 
     it("should convert contract address to string", () => {
-      // Buffer extends Uint8Array, which is compatible with the Hash type expected by stellar-sdk
+      // v17: ScAddress contract ids are xdr.ContractId wrappers, not raw bytes.
       const mockAddress = xdr.ScAddress.scAddressTypeContract(
-        Buffer.alloc(32, 1) as any,
+        new xdr.ContractId(Buffer.alloc(32, 1)),
       );
 
       const result = addressToString(mockAddress);
@@ -234,6 +282,22 @@ describe("soroban helpers", () => {
       expect(result).toBeTruthy();
       // Should start with 'C' for contract addresses
       expect(result[0]).toBe("C");
+    });
+
+    it("returns the W strkey for a muxed contract address", () => {
+      expect(
+        addressToString(new Address(MUXED_CONTRACT_ID_1234).toScAddress()),
+      ).toBe(MUXED_CONTRACT_ID_1234);
+    });
+
+    // validateAuthEntryAddress fails closed on this throw; a fallback string
+    // here would weaken it.
+    it("still throws for an address arm it cannot stringify", () => {
+      expect(() =>
+        addressToString({
+          type: "scAddressTypeUnknown",
+        } as unknown as xdr.ScAddress),
+      ).toThrow();
     });
   });
 
@@ -259,7 +323,7 @@ describe("soroban helpers", () => {
     const addressCreds = () =>
       new xdr.SorobanAddressCredentials({
         address: new Address(BOUND_ADDRESS).toScAddress(),
-        nonce: xdr.Int64.fromString("1") as xdr.Int64,
+        nonce: BigInt("1"),
         signatureExpirationLedger: 999999,
         signature: xdr.ScVal.scvVoid(),
       });
@@ -301,6 +365,505 @@ describe("soroban helpers", () => {
         ),
       );
       expect(getAuthEntryBoundAddress(entry)).toBe(BOUND_ADDRESS);
+    });
+  });
+
+  describe("getInvocationDetails", () => {
+    const deployer = Keypair.random().publicKey();
+
+    const buildCreateInvocation = (
+      executable: xdr.ContractExecutable,
+      constructorArgs?: xdr.ScVal[],
+    ) => {
+      const preimage = xdr.ContractIdPreimage.contractIdPreimageFromAddress(
+        new xdr.ContractIdPreimageFromAddress({
+          address: new Address(deployer).toScAddress(),
+          salt: new xdr.Uint256Bytes(Buffer.alloc(32, 7)),
+        }),
+      );
+      const fn = constructorArgs
+        ? xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractV2HostFn(
+            new xdr.CreateContractArgsV2({
+              contractIdPreimage: preimage,
+              executable,
+              constructorArgs,
+            }),
+          )
+        : xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractHostFn(
+            new xdr.CreateContractArgs({
+              contractIdPreimage: preimage,
+              executable,
+            }),
+          );
+      return new xdr.SorobanAuthorizedInvocation({
+        function: fn,
+        subInvocations: [],
+      });
+    };
+
+    it("describes a wasm contract creation", () => {
+      const invocation = buildCreateInvocation(
+        xdr.ContractExecutable.contractExecutableWasm(
+          new xdr.Hash(Buffer.alloc(32, 9)),
+        ),
+      );
+
+      const [details] = getInvocationDetails(invocation);
+
+      expect(details.type).toBe(INVOCATION_TYPE_WASM);
+      if (details.type !== INVOCATION_TYPE_WASM) throw new Error("unreachable");
+      expect(details.hash).toBe("09".repeat(32));
+      expect(details.salt).toBe("07".repeat(32));
+      expect(details.address).toBe(deployer);
+    });
+
+    it("describes a CAP-85 external-executable contract creation (Protocol 28)", () => {
+      const invocation = buildCreateInvocation(
+        xdr.ContractExecutable.contractExecutableExternalRef(
+          new xdr.ContractExecutableExternalRef({
+            executableOwner: new Address(OWNER_CONTRACT).toScAddress(),
+            tag: "token-v2",
+          }),
+        ),
+        [xdr.ScVal.scvU32(1)],
+      );
+
+      // Round-trip through XDR so the assertion covers the decode path a dapp
+      // request actually takes.
+      const decoded = xdr.SorobanAuthorizedInvocation.fromXdr(
+        invocation.toXdr("base64"),
+        "base64",
+      );
+      const [details] = getInvocationDetails(decoded);
+
+      expect(details.type).toBe(INVOCATION_TYPE_EXTERNAL_REF);
+      if (details.type !== INVOCATION_TYPE_EXTERNAL_REF) {
+        throw new Error("unreachable");
+      }
+      expect(details.owner).toBe(OWNER_CONTRACT);
+      expect(details.tag).toBe("token-v2");
+      expect(details.salt).toBe("07".repeat(32));
+      expect(details.address).toBe(deployer);
+      expect(details.args).toHaveLength(1);
+    });
+
+    it("renders a non-UTF-8 external-executable tag in its reversible SEP-51 form", () => {
+      // Two distinct binary tags must not collapse to the same replacement
+      // characters: the tag decides which executable runs.
+      const invocation = buildCreateInvocation(
+        xdr.ContractExecutable.contractExecutableExternalRef(
+          new xdr.ContractExecutableExternalRef({
+            executableOwner: new Address(OWNER_CONTRACT).toScAddress(),
+            tag: new Uint8Array([0xff, 0xfe]),
+          }),
+        ),
+      );
+
+      const [details] = getInvocationDetails(invocation);
+
+      expect(details.type).toBe(INVOCATION_TYPE_EXTERNAL_REF);
+      if (details.type !== INVOCATION_TYPE_EXTERNAL_REF) {
+        throw new Error("unreachable");
+      }
+      expect(details.tag).toBe("\\xff\\xfe");
+    });
+
+    it("rejects an external-executable creation whose preimage is not the address arm", () => {
+      // Like the SDK's own invocation decoder: an external reference deploys
+      // from an address, so this pairing is invalid and must surface as
+      // unrecognized rather than as a normal contract creation.
+      const invocation = new xdr.SorobanAuthorizedInvocation({
+        function:
+          xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractHostFn(
+            new xdr.CreateContractArgs({
+              contractIdPreimage:
+                xdr.ContractIdPreimage.contractIdPreimageFromAsset(
+                  xdr.Asset.assetTypeNative(),
+                ),
+              executable: xdr.ContractExecutable.contractExecutableExternalRef(
+                new xdr.ContractExecutableExternalRef({
+                  executableOwner: new Address(OWNER_CONTRACT).toScAddress(),
+                  tag: "v2",
+                }),
+              ),
+            }),
+          ),
+        subInvocations: [],
+      });
+
+      expect(() => getInvocationArgs(invocation)).toThrow(
+        /external executable reference.*contractIdPreimageFromAsset/,
+      );
+      expect(getInvocationDetails(invocation)).toEqual([
+        { type: INVOCATION_TYPE_UNRECOGNIZED },
+      ]);
+    });
+
+    it("explains which executable/preimage pairing was invalid when it throws", () => {
+      const assetPreimage = xdr.ContractIdPreimage.contractIdPreimageFromAsset(
+        xdr.Asset.assetTypeNative(),
+      );
+      const addressPreimage =
+        xdr.ContractIdPreimage.contractIdPreimageFromAddress(
+          new xdr.ContractIdPreimageFromAddress({
+            address: new Address(deployer).toScAddress(),
+            salt: new xdr.Uint256Bytes(Buffer.alloc(32)),
+          }),
+        );
+      const build = (
+        executable: xdr.ContractExecutable,
+        contractIdPreimage: xdr.ContractIdPreimage,
+      ) =>
+        new xdr.SorobanAuthorizedInvocation({
+          function:
+            xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractHostFn(
+              new xdr.CreateContractArgs({ contractIdPreimage, executable }),
+            ),
+          subInvocations: [],
+        });
+
+      // wasm code must be deployed from an address, never derived from an asset
+      expect(() =>
+        getInvocationArgs(
+          build(
+            xdr.ContractExecutable.contractExecutableWasm(
+              new xdr.Hash(Buffer.alloc(32)),
+            ),
+            assetPreimage,
+          ),
+        ),
+      ).toThrow(/wasm executable.*contractIdPreimageFromAsset/);
+
+      // and a SAC is only ever derived from an asset
+      expect(() =>
+        getInvocationArgs(
+          build(
+            xdr.ContractExecutable.contractExecutableStellarAsset(),
+            addressPreimage,
+          ),
+        ),
+      ).toThrow(/Stellar asset executable.*contractIdPreimageFromAddress/);
+    });
+
+    it("marks an invocation it cannot parse as unrecognized instead of throwing", () => {
+      // A wasm executable paired with an asset preimage is decodable XDR but a
+      // nonsensical combination -- the kind of thing a future protocol arm or a
+      // hostile dApp could produce. It must not crash the review UI.
+      const invocation = new xdr.SorobanAuthorizedInvocation({
+        function:
+          xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractHostFn(
+            new xdr.CreateContractArgs({
+              contractIdPreimage:
+                xdr.ContractIdPreimage.contractIdPreimageFromAsset(
+                  xdr.Asset.assetTypeNative(),
+                ),
+              executable: xdr.ContractExecutable.contractExecutableWasm(
+                new xdr.Hash(Buffer.alloc(32)),
+              ),
+            }),
+          ),
+        subInvocations: [],
+      });
+
+      expect(getInvocationDetails(invocation)).toEqual([
+        { type: INVOCATION_TYPE_UNRECOGNIZED },
+      ]);
+    });
+  });
+
+  describe("scValByType", () => {
+    it("decodes a CAP-85 executable tag like a string", () => {
+      expect(scValByType(xdr.ScVal.scvExecutableTag("token-v2"))).toBe(
+        "token-v2",
+      );
+    });
+
+    it("keeps a non-UTF-8 executable tag distinguishable via its SEP-51 form", () => {
+      expect(
+        scValByType(xdr.ScVal.scvExecutableTag(new Uint8Array([0xff, 0xfe]))),
+      ).toBe("\\xff\\xfe");
+    });
+
+    it("keeps non-UTF-8 string payloads distinguishable via their SEP-51 form", () => {
+      expect(
+        scValByType(xdr.ScVal.scvString(new Uint8Array([0xff, 0xfe]))),
+      ).toBe("\\xff\\xfe");
+      // Two distinct binary payloads must not collapse onto one screen string.
+      expect(
+        scValByType(xdr.ScVal.scvString(new Uint8Array([0xff, 0xfd]))),
+      ).toBe("\\xff\\xfd");
+    });
+
+    it("keeps non-UTF-8 symbol payloads distinguishable via their SEP-51 form", () => {
+      expect(
+        scValByType(xdr.ScVal.scvSymbol(new Uint8Array([0xff, 0xfe]))),
+      ).toBe("\\xff\\xfe");
+    });
+
+    it("leaves valid non-ASCII text readable rather than escaping it", () => {
+      expect(scValByType(xdr.ScVal.scvString("caf\u00e9"))).toBe("caf\u00e9");
+      expect(scValByType(xdr.ScVal.scvExecutableTag("caf\u00e9"))).toBe(
+        "caf\u00e9",
+      );
+    });
+
+    // The `0x` prefix is what the value-literal form uses, and the two forms
+    // rendering the same bytes differently is exactly the drift this whole
+    // change is about.
+    it("hex-encodes bytes, prefixed the same way the value literal is", () => {
+      expect(scValByType(xdr.ScVal.scvBytes(new Uint8Array([1, 2, 255])))).toBe(
+        "0x0102ff",
+      );
+    });
+
+    it("returns a strkey for account and contract addresses", () => {
+      const account = Keypair.random().publicKey();
+      expect(
+        scValByType(xdr.ScVal.scvAddress(new Address(account).toScAddress())),
+      ).toBe(account);
+      expect(
+        scValByType(
+          xdr.ScVal.scvAddress(new Address(OWNER_CONTRACT).toScAddress()),
+        ),
+      ).toBe(OWNER_CONTRACT);
+    });
+
+    it("stringifies integers", () => {
+      expect(scValByType(xdr.ScVal.scvU32(7))).toBe("7");
+      expect(scValByType(xdr.ScVal.scvI64(BigInt("-5")))).toBe("-5");
+    });
+    describe("maps and vectors", () => {
+      const mapEntry = (key: xdr.ScVal, val: xdr.ScVal) =>
+        new xdr.ScMapEntry({ key, val });
+
+      it("renders a map as a value literal", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvMap([
+              mapEntry(xdr.ScVal.scvString("key"), xdr.ScVal.scvU64(BigInt(1))),
+            ]),
+          ),
+        ).toBe('{\n  "key": 1\n}');
+      });
+
+      it("renders a vector as a value literal", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvVec([xdr.ScVal.scvU32(1), xdr.ScVal.scvString("two")]),
+          ),
+        ).toBe('[\n  1,\n  "two"\n]');
+      });
+
+      it("renders empty maps and vectors", () => {
+        expect(scValByType(xdr.ScVal.scvMap([]))).toBe("{}");
+        expect(scValByType(xdr.ScVal.scvVec([]))).toBe("[]");
+      });
+
+      // Decoding a map to a JS object coerces every key to a string and lets a
+      // later entry overwrite an earlier one, so these maps could render as a
+      // single line on the screen the user approves from.
+      it("renders every entry of a map with mixed-type keys", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvMap([
+              mapEntry(
+                xdr.ScVal.scvU64(BigInt(1)),
+                xdr.ScVal.scvString("from-u64"),
+              ),
+              mapEntry(
+                xdr.ScVal.scvString("1"),
+                xdr.ScVal.scvString("from-string"),
+              ),
+            ]),
+          ),
+        ).toBe('{\n  1: "from-u64",\n  "1": "from-string"\n}');
+      });
+
+      it("renders every entry of a map with structured keys", () => {
+        const structKey = (id: number) =>
+          xdr.ScVal.scvMap([
+            mapEntry(xdr.ScVal.scvSymbol("id"), xdr.ScVal.scvU32(id)),
+          ]);
+        const rendered = scValByType(
+          xdr.ScVal.scvMap(
+            [0, 1, 2, 3].map((id) =>
+              mapEntry(structKey(id), xdr.ScVal.scvString(`v${id}`)),
+            ),
+          ),
+        );
+
+        expect(rendered).toBe(
+          '{\n  { id: 0 }: "v0",\n  { id: 1 }: "v1",\n  { id: 2 }: "v2",\n  { id: 3 }: "v3"\n}',
+        );
+        expect(rendered).not.toContain("[object Object]");
+      });
+
+      it("distinguishes a symbol key from a string key", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvMap([
+              mapEntry(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvString("sym")),
+              mapEntry(xdr.ScVal.scvString("a"), xdr.ScVal.scvString("str")),
+            ]),
+          ),
+        ).toBe('{\n  a: "sym",\n  "a": "str"\n}');
+      });
+
+      it("renders every entry of an address-keyed map", () => {
+        const account = Keypair.random().publicKey();
+        expect(
+          scValByType(
+            xdr.ScVal.scvMap([
+              mapEntry(
+                xdr.ScVal.scvAddress(new Address(account).toScAddress()),
+                xdr.ScVal.scvU32(0),
+              ),
+              mapEntry(
+                xdr.ScVal.scvAddress(new Address(OWNER_CONTRACT).toScAddress()),
+                xdr.ScVal.scvU32(1),
+              ),
+            ]),
+          ),
+        ).toBe(`{\n  ${account}: 0,\n  ${OWNER_CONTRACT}: 1\n}`);
+      });
+
+      it("renders every entry of a u32-keyed map", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvMap(
+              [0, 1, 2].map((id) =>
+                mapEntry(xdr.ScVal.scvU32(id), xdr.ScVal.scvBool(true)),
+              ),
+            ),
+          ),
+        ).toBe("{\n  0: true,\n  1: true,\n  2: true\n}");
+      });
+
+      it("does not collapse a map nested inside a vector", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvVec([
+              xdr.ScVal.scvMap([
+                mapEntry(
+                  xdr.ScVal.scvU64(BigInt(1)),
+                  xdr.ScVal.scvString("from-u64"),
+                ),
+                mapEntry(
+                  xdr.ScVal.scvString("1"),
+                  xdr.ScVal.scvString("from-string"),
+                ),
+              ]),
+            ]),
+          ),
+        ).toBe('[\n  {\n    1: "from-u64",\n    "1": "from-string"\n  }\n]');
+      });
+
+      it("renders binary content nested in a container without decoding it as text", () => {
+        expect(
+          scValByType(
+            xdr.ScVal.scvVec([
+              xdr.ScVal.scvString(
+                new Uint8Array([...Buffer.from("alice"), 0xff]),
+              ),
+              xdr.ScVal.scvBytes(new Uint8Array([0xde, 0xad])),
+            ]),
+          ),
+        ).toBe('[\n  "alice\\xff",\n  0xdead\n]');
+      });
+    });
+  });
+
+  // A function name is an SCSymbol, so it is a byte string rather than
+  // guaranteed text. A lenient decode renders every invalid byte as U+FFFD,
+  // which would collapse two distinct signed names onto one screen string.
+  describe("function name decoding", () => {
+    const invalidFnName = (suffix: number) =>
+      new Uint8Array([...Buffer.from("transfer"), suffix]);
+
+    const contractFn = (functionName: string | Uint8Array, args: xdr.ScVal[]) =>
+      new xdr.InvokeContractArgs({
+        contractAddress: new Address(OWNER_CONTRACT).toScAddress(),
+        functionName: functionName as unknown as string,
+        args,
+      });
+
+    const contractFnInvocation = (functionName: string | Uint8Array) =>
+      new xdr.SorobanAuthorizedInvocation({
+        function:
+          xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+            contractFn(functionName, []),
+          ),
+        subInvocations: [],
+      });
+
+    const invokeHostFn = (
+      functionName: string | Uint8Array,
+      args: xdr.ScVal[],
+    ) => {
+      const op = Operation.fromXDRObject(
+        Operation.invokeHostFunction({
+          func: xdr.HostFunction.hostFunctionTypeInvokeContract(
+            contractFn(functionName, args),
+          ),
+          auth: [],
+        }),
+      );
+      // Narrow to the invokeHostFunction arm rather than asserting, so the
+      // fixture fails loudly if the builder ever stops producing one.
+      if (op.type !== "invokeHostFunction") {
+        throw new Error("unreachable");
+      }
+      return op;
+    };
+
+    const fnNameOf = (functionName: string | Uint8Array) => {
+      const [details] = getInvocationDetails(
+        contractFnInvocation(functionName),
+      );
+      if (details.type !== INVOCATION_TYPE_INVOKE) {
+        throw new Error("unreachable");
+      }
+      return details.fnName;
+    };
+
+    it("renders a non-UTF-8 function name in its reversible SEP-51 form", () => {
+      expect(fnNameOf(invalidFnName(0xff))).toBe("transfer\\xff");
+      expect(fnNameOf(invalidFnName(0xff))).not.toContain("�");
+    });
+
+    it("does not collapse two distinct non-UTF-8 function names", () => {
+      expect(fnNameOf(invalidFnName(0xff))).not.toBe(
+        fnNameOf(invalidFnName(0xfe)),
+      );
+    });
+
+    it("leaves a valid function name untouched", () => {
+      expect(fnNameOf("transfer")).toBe("transfer");
+    });
+
+    it("treats a non-UTF-8 function name as not a token invocation", () => {
+      // A binary name can never be one of the token interfaces, so this must
+      // bail out rather than match on a lossily decoded string or throw.
+      expect(
+        getTokenInvocationArgs(invokeHostFn(invalidFnName(0xff), [])),
+      ).toBe(null);
+    });
+
+    it("still recognises a valid token transfer", () => {
+      const from = Keypair.random().publicKey();
+      const to = Keypair.random().publicKey();
+      const op = invokeHostFn(SorobanTokenInterface.transfer, [
+        nativeToScVal(from, { type: "address" }),
+        nativeToScVal(to, { type: "address" }),
+        nativeToScVal(BigInt(100), { type: "i128" }),
+      ]);
+
+      expect(getTokenInvocationArgs(op)).toMatchObject({
+        fnName: SorobanTokenInterface.transfer,
+        from,
+        to,
+        amount: BigInt(100),
+      });
     });
   });
 
@@ -477,6 +1040,23 @@ describe("soroban helpers", () => {
       });
     });
 
+    describe("when recipientAddress is a muxed contract (W)", () => {
+      it.each([
+        ["native", () => createMockNativeBalance()],
+        ["classic", () => createMockClassicBalance()],
+        ["no", () => undefined],
+      ])("returns true with a %s balance", (_label, balance) => {
+        expect(isSorobanTransaction(balance(), MUXED_CONTRACT_ID_0)).toBe(true);
+      });
+
+      it("returns false for an M or a lower-cased W", () => {
+        expect(isSorobanTransaction(undefined, M_ACCOUNT_ID_1234)).toBe(false);
+        expect(
+          isSorobanTransaction(undefined, MUXED_CONTRACT_ID_0.toLowerCase()),
+        ).toBe(false);
+      });
+    });
+
     describe("when recipientAddress is not a contract ID", () => {
       it("should return false when recipientAddress is a regular G address", () => {
         const recipientAddress =
@@ -556,5 +1136,550 @@ describe("soroban helpers", () => {
         expect(result).toBe(false);
       });
     });
+  });
+
+  describe("getNativeContractDetails", () => {
+    it("derives a contract id for every network, including unlisted ones", () => {
+      expect(getNativeContractDetails(NETWORKS.PUBLIC).contract).toBe(
+        "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+      );
+      expect(getNativeContractDetails(NETWORKS.TESTNET).contract).toBe(
+        "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+      );
+      expect(getNativeContractDetails(NETWORKS.FUTURENET).contract).toMatch(
+        /^C[A-Z2-7]{55}$/,
+      );
+    });
+  });
+
+  describe("getBalanceByKey", () => {
+    const networkDetails = TESTNET_NETWORK_DETAILS; // from config/constants
+    const NATIVE_SAC =
+      "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+    const CLASSIC_XLM_ISSUER =
+      "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO";
+    const classicXlmSac = new SdkToken("XLM", CLASSIC_XLM_ISSUER).contractId(
+      networkDetails.networkPassphrase,
+    );
+
+    const nativeBalance = {
+      token: { type: "native", code: "XLM" },
+      total: new BigNumber("10"),
+    } as unknown as Balance;
+
+    const nonNativeXlmBalance = {
+      token: { code: "XLM", issuer: { key: CLASSIC_XLM_ISSUER } },
+      total: new BigNumber("10"),
+    } as unknown as Balance;
+
+    it("resolves the native SAC to the native balance even when an XLM-coded classic balance sorts first", () => {
+      const found = getBalanceByKey(
+        NATIVE_SAC,
+        [nonNativeXlmBalance, nativeBalance],
+        networkDetails,
+      );
+      expect(found).toBe(nativeBalance);
+    });
+
+    it("resolves an XLM-coded classic balance by its own SAC", () => {
+      const found = getBalanceByKey(
+        classicXlmSac,
+        [nonNativeXlmBalance, nativeBalance],
+        networkDetails,
+      );
+      expect(found).toBe(nonNativeXlmBalance);
+    });
+  });
+});
+
+describe("getContractFnArgNames", () => {
+  // gauge_schedule_reward(router, distributor, gauge, start_at: Option<u64>,
+  // duration, tps) as `Spec.jsonSchema()` emits it: `properties` holds all six
+  // parameters in declaration order, `required` omits the Option.
+  const gaugeSpec = {
+    definitions: {
+      gauge_schedule_reward: {
+        properties: {
+          args: {
+            type: "object",
+            properties: {
+              router: { $ref: "#/definitions/Address" },
+              distributor: { $ref: "#/definitions/Address" },
+              gauge: { $ref: "#/definitions/Address" },
+              start_at: { type: "object" },
+              duration: { type: "integer" },
+              tps: { $ref: "#/definitions/U128" },
+            },
+            required: ["router", "distributor", "gauge", "duration", "tps"],
+          },
+        },
+      },
+    },
+  };
+
+  it("names every argument in declaration order, including an Option", () => {
+    expect(
+      getContractFnArgNames(gaugeSpec, "gauge_schedule_reward", 6),
+    ).toEqual([
+      "router",
+      "distributor",
+      "gauge",
+      "start_at",
+      "duration",
+      "tps",
+    ]);
+  });
+
+  it("names arguments when every parameter is optional and required is absent", () => {
+    const spec = {
+      definitions: {
+        maybe: {
+          properties: {
+            args: {
+              type: "object",
+              properties: {
+                first: { type: "object" },
+                second: { type: "object" },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    expect(getContractFnArgNames(spec, "maybe", 2)).toEqual([
+      "first",
+      "second",
+    ]);
+  });
+
+  it("returns null when the spec names fewer arguments than were passed", () => {
+    expect(
+      getContractFnArgNames(gaugeSpec, "gauge_schedule_reward", 5),
+    ).toBeNull();
+  });
+
+  it("returns null when the spec names more arguments than were passed", () => {
+    expect(
+      getContractFnArgNames(gaugeSpec, "gauge_schedule_reward", 7),
+    ).toBeNull();
+  });
+
+  it("keeps the key order even when required lists the names differently", () => {
+    // `required` is not an order witness -- it is emitted in declaration order
+    // but omits every Option, so it can never be reconciled against the keys.
+    // The names come from `properties` alone.
+    const spec = {
+      definitions: {
+        transfer: {
+          properties: {
+            args: {
+              type: "object",
+              properties: {
+                from: { $ref: "#/definitions/Address" },
+                to: { $ref: "#/definitions/Address" },
+                amount: { $ref: "#/definitions/I128" },
+              },
+              required: ["amount", "from", "to"],
+            },
+          },
+        },
+      },
+    };
+
+    expect(getContractFnArgNames(spec, "transfer", 3)).toEqual([
+      "from",
+      "to",
+      "amount",
+    ]);
+  });
+
+  it("returns null for integer-like parameter names, which Object.keys reorders", () => {
+    const spec = {
+      definitions: {
+        weird: {
+          properties: {
+            args: {
+              type: "object",
+              properties: {
+                "1": { type: "integer" },
+                "0": { type: "integer" },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    expect(getContractFnArgNames(spec, "weird", 2)).toBeNull();
+  });
+
+  it("returns null when the function is not in the spec", () => {
+    expect(getContractFnArgNames(gaugeSpec, "transfer", 3)).toBeNull();
+  });
+
+  it("returns null when the definition carries no args schema", () => {
+    const spec = { definitions: { noop: { properties: {} } } };
+
+    expect(getContractFnArgNames(spec, "noop", 1)).toBeNull();
+  });
+
+  it("returns null when there is no spec at all", () => {
+    expect(getContractFnArgNames(undefined, "transfer", 3)).toBeNull();
+  });
+
+  it("returns an empty list for a zero-argument function", () => {
+    const spec = {
+      definitions: { bump: { properties: { args: { properties: {} } } } },
+    };
+
+    expect(getContractFnArgNames(spec, "bump", 0)).toEqual([]);
+  });
+});
+
+const mapEntryOf = (key: xdr.ScVal, val: xdr.ScVal) =>
+  new xdr.ScMapEntry({ key, val });
+
+/**
+ * A signing screen is only honest if the string it draws stands for exactly
+ * one signed byte string. Every case below is a way two distinct payloads
+ * could otherwise collapse onto one line.
+ */
+describe("signing-screen text escaping", () => {
+  it("escapes an invalid byte in a string", () => {
+    const rendered = scValByType(
+      xdr.ScVal.scvString(new Uint8Array([0x61, 0x6c, 0xff])),
+    );
+    expect(rendered).toBe("al\\xff");
+  });
+
+  it("escapes an invalid byte in a symbol", () => {
+    expect(scValByType(xdr.ScVal.scvSymbol(new Uint8Array([0x61, 0xfe])))).toBe(
+      "a\\xfe",
+    );
+  });
+
+  it("escapes an invalid byte in an executable tag", () => {
+    expect(
+      scValByType(xdr.ScVal.scvExecutableTag(new Uint8Array([0x61, 0xff]))),
+    ).toBe("a\\xff");
+  });
+
+  it("does not let two distinct invalid payloads collapse onto one string", () => {
+    const first = scValByType(xdr.ScVal.scvString(new Uint8Array([0xff])));
+    const second = scValByType(xdr.ScVal.scvString(new Uint8Array([0xfe])));
+    expect(first).not.toBe(second);
+  });
+
+  // The escape alphabet is prefix-free because the backslash is itself
+  // escaped, so valid text can never spell out another payload's escape.
+  it("does not let valid text impersonate an escaped byte string", () => {
+    const escapedByte = scValByType(
+      xdr.ScVal.scvString(new Uint8Array([0xff])),
+    );
+    const literalText = scValByType(xdr.ScVal.scvString("\\xff"));
+    expect(escapedByte).toBe("\\xff");
+    expect(literalText).toBe("\\\\xff");
+    expect(literalText).not.toBe(escapedByte);
+  });
+
+  it("leaves legible non-ASCII text alone", () => {
+    expect(scValByType(xdr.ScVal.scvString("café ☕"))).toBe("café ☕");
+  });
+
+  // Valid UTF-8, but invisible: left raw, a bidi override reorders what is
+  // drawn without changing what is signed.
+  it("escapes invisible and control codepoints", () => {
+    expect(scValByType(xdr.ScVal.scvString("a‮b"))).toBe("a\\u{202e}b");
+    expect(scValByType(xdr.ScVal.scvString("a​b"))).toBe("a\\u{200b}b");
+    expect(scValByType(xdr.ScVal.scvString("a\u0007b"))).toBe("a\\x07b");
+    expect(scValByType(xdr.ScVal.scvString("a\tb"))).toBe("a\\tb");
+  });
+
+  it("escapes invalid UTF-8 nested inside a container", () => {
+    const rendered = scValToDisplayValue(
+      xdr.ScVal.scvVec([
+        xdr.ScVal.scvMap([
+          mapEntryOf(
+            xdr.ScVal.scvSymbol("k"),
+            xdr.ScVal.scvString(new Uint8Array([0x61, 0xff])),
+          ),
+        ]),
+      ]),
+    );
+    expect(rendered).toContain('"a\\xff"');
+  });
+
+  // These all exercise the hand-written UTF-8 decoder that replaced
+  // `new TextDecoder("utf-8", { fatal: true })`. React Native's polyfill throws
+  // from that constructor, so the strict decode has to be written out -- and
+  // written out means it needs its own coverage of the shapes a strict decoder
+  // is supposed to reject.
+  describe("strict UTF-8 decoding", () => {
+    const str = (...bytes: number[]) =>
+      xdr.ScVal.scvString(new Uint8Array(bytes));
+
+    it("accepts a four-byte codepoint", () => {
+      // U+1F680 ROCKET
+      expect(scValByType(str(0xf0, 0x9f, 0x9a, 0x80))).toBe("\u{1f680}");
+    });
+
+    it("rejects an overlong encoding", () => {
+      // 0xc0 0x80 is a two-byte spelling of U+0000.
+      expect(scValByType(str(0xc0, 0x80))).toBe("\\xc0\\x80");
+    });
+
+    it("rejects a lone continuation byte", () => {
+      expect(scValByType(str(0x80))).toBe("\\x80");
+    });
+
+    it("rejects a truncated multi-byte sequence", () => {
+      expect(scValByType(str(0x61, 0xe2, 0x82))).toBe("a\\xe2\\x82");
+    });
+
+    it("rejects a surrogate half", () => {
+      // 0xed 0xa0 0x80 is CESU-8 for U+D800.
+      expect(scValByType(str(0xed, 0xa0, 0x80))).toBe("\\xed\\xa0\\x80");
+    });
+
+    it("escapes only the bad byte, not the text that follows it", () => {
+      expect(scValByType(str(0x61, 0xff, 0x62))).toBe("a\\xffb");
+    });
+  });
+
+  describe("xdrStringToRaw", () => {
+    it("returns the text of a valid name", () => {
+      expect(xdrStringToRaw(new xdr.XdrString("transfer"))).toBe("transfer");
+    });
+
+    // An escaped display string is not a name any contract spec declares, so
+    // there is nothing to look up rather than something wrong to look up.
+    it("returns undefined when the bytes are not text", () => {
+      expect(xdrStringToRaw(new xdr.XdrString(new Uint8Array([0xff])))).toBe(
+        undefined,
+      );
+    });
+  });
+});
+
+describe("display tokens", () => {
+  it("tags every scalar with the arm it was signed as, at any depth", () => {
+    const tokens = scValToDisplayTokens(
+      xdr.ScVal.scvMap([
+        mapEntryOf(
+          xdr.ScVal.scvSymbol("nested"),
+          xdr.ScVal.scvVec([
+            xdr.ScVal.scvU64(BigInt(1)),
+            xdr.ScVal.scvString("1"),
+          ]),
+        ),
+      ]),
+    );
+
+    const values = tokens
+      .filter((token) => token.kind === "value")
+      .map((token) => [token.text, token.scValType]);
+
+    expect(values).toEqual([
+      ["nested", "scvSymbol"],
+      ["1", "scvU64"],
+      ['"1"', "scvString"],
+    ]);
+  });
+
+  // The rendered text and the copied text are the same stream, so they cannot
+  // drift apart.
+  it("joins back to exactly the string form", () => {
+    const fixtures = [
+      xdr.ScVal.scvU64(BigInt(7)),
+      xdr.ScVal.scvString("hello"),
+      xdr.ScVal.scvBool(false),
+      xdr.ScVal.scvVoid(),
+      xdr.ScVal.scvVec([xdr.ScVal.scvU32(1), xdr.ScVal.scvU32(2)]),
+      xdr.ScVal.scvMap([
+        mapEntryOf(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvString("b")),
+      ]),
+    ];
+
+    fixtures.forEach((scVal) => {
+      [{}, { compact: true }].forEach((opts) => {
+        expect(
+          scValToDisplayTokens(scVal, opts)
+            .map((token) => token.text)
+            .join(""),
+        ).toBe(scValToDisplayValue(scVal, opts));
+      });
+    });
+  });
+
+  const EMPTY_ROW_FIXTURES = [
+    xdr.ScVal.scvBool(false),
+    xdr.ScVal.scvBool(true),
+    xdr.ScVal.scvVoid(),
+    xdr.ScVal.scvLedgerKeyContractInstance(),
+    xdr.ScVal.scvU32(0),
+    // A signed empty string is a value too; the quoting in the literal form is
+    // what keeps it from being nothing at all.
+    xdr.ScVal.scvString(""),
+    xdr.ScVal.scvMap([]),
+    xdr.ScVal.scvVec([]),
+  ];
+
+  // `<Text>{undefined}</Text>` and `<Text>{false}</Text>` both render nothing,
+  // so anything that reaches the screen as a non-string, or as the empty
+  // string, is a blank row on the screen the user approves from.
+  it("never renders a signed value as an empty row", () => {
+    EMPTY_ROW_FIXTURES.forEach((scVal) => {
+      const rendered = scValToDisplayValue(scVal);
+      expect(typeof rendered).toBe("string");
+      expect(rendered.length).toBeGreaterThan(0);
+    });
+  });
+
+  // `scValByType` is the bare-scalar projection, so it does not quote — an
+  // empty string is legitimately empty there. What it must never do is hand
+  // back something React drops entirely.
+  it("always projects a scalar to a string", () => {
+    EMPTY_ROW_FIXTURES.forEach((scVal) => {
+      expect(typeof scValByType(scVal)).toBe("string");
+    });
+  });
+
+  it("renders false rather than dropping it", () => {
+    expect(scValByType(xdr.ScVal.scvBool(false))).toBe("false");
+    expect(scValByType(xdr.ScVal.scvVoid())).toBe("void");
+  });
+
+  it("renders a CAP-85 executable tag as a tag literal", () => {
+    const scvTag = xdr.ScVal.scvExecutableTag("v2");
+    expect(scValToDisplayValue(scvTag)).toBe('tag("v2")');
+  });
+
+  // A tag's bytes can be anything, including a quoted string. Shown bare, a
+  // tag of `"hello"` and the string `hello` are the same characters.
+  it("does not let an executable tag read as a string", () => {
+    const tag = scValToDisplayValue(xdr.ScVal.scvExecutableTag('"hello"'));
+    const string = scValToDisplayValue(xdr.ScVal.scvString("hello"));
+    expect(string).toBe('"hello"');
+    expect(tag).toBe('tag("\\"hello\\"")');
+    expect(tag).not.toBe(string);
+  });
+
+  it("keeps an escaped byte in an executable tag distinguishable", () => {
+    const first = scValToDisplayValue(
+      xdr.ScVal.scvExecutableTag(
+        new Uint8Array([0x61, 0x6c, 0x69, 0x63, 0x65, 0xff]),
+      ),
+    );
+    const second = scValToDisplayValue(
+      xdr.ScVal.scvExecutableTag(
+        new Uint8Array([0x61, 0x6c, 0x69, 0x63, 0x65, 0xfe]),
+      ),
+    );
+    expect(first).toBe('tag("alice\\xff")');
+    expect(first).not.toBe(second);
+  });
+
+  it("renders a W address as a single scvAddress token", () => {
+    const w = new Address(MUXED_CONTRACT_ID_1234).toScVal();
+
+    expect(scValToDisplayTokens(w)).toEqual([
+      { kind: "value", text: MUXED_CONTRACT_ID_1234, scValType: "scvAddress" },
+    ]);
+    expect(scValToDisplayValue(w)).toBe(MUXED_CONTRACT_ID_1234);
+  });
+});
+
+describe("contract instances", () => {
+  const WASM_HASH = new Uint8Array(32).fill(0xab);
+  const ACCOUNT = "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF";
+
+  const instance = (
+    executable: xdr.ContractExecutable,
+    storage: xdr.ScMapEntry[] | null,
+  ) =>
+    xdr.ScVal.scvContractInstance(
+      new xdr.ScContractInstance({ executable, storage }),
+    );
+
+  const instanceOf = (storage: xdr.ScMapEntry[] | null) =>
+    instance(xdr.ContractExecutable.contractExecutableWasm(WASM_HASH), storage);
+
+  const externalRefOf = (tag: string | Uint8Array) =>
+    xdr.ContractExecutable.contractExecutableExternalRef(
+      new xdr.ContractExecutableExternalRef({
+        executableOwner: new Address(OWNER_CONTRACT).toScAddress(),
+        tag,
+      }),
+    );
+
+  // CAP-85: the owner and tag say whose code is about to run, so naming the
+  // executable arm alone would drop exactly what the signer is approving.
+  it("renders an external reference's owner and quoted tag", () => {
+    const rendered = scValToDisplayValue(instance(externalRefOf("v2"), null));
+    expect(rendered).toContain(OWNER_CONTRACT);
+    expect(rendered).toContain('tag: "v2"');
+  });
+
+  // The tag is a byte string the deployer chose. Unquoted, one that reads
+  // `x, owner: G...` draws a second owner field that nobody signed.
+  it("does not let an external reference's tag forge a field", () => {
+    const rendered = scValToDisplayValue(
+      instance(externalRefOf(`x, owner: ${ACCOUNT}`), null),
+    );
+    expect(rendered).toBe(
+      [
+        "contractInstance {",
+        "  executable: externalRef {",
+        `    owner: ${OWNER_CONTRACT},`,
+        `    tag: "x, owner: ${ACCOUNT}"`,
+        "  }",
+        "}",
+      ].join("\n"),
+    );
+  });
+
+  it("renders the storage map, not just the executable", () => {
+    const rendered = scValByType(
+      instanceOf([
+        mapEntryOf(xdr.ScVal.scvSymbol("admin"), xdr.ScVal.scvU32(1)),
+      ]),
+    );
+    expect(rendered).toContain("storage:");
+    expect(rendered).toContain("admin");
+  });
+
+  // Two instances sharing an executable are told apart by storage alone, so
+  // dropping it makes them indistinguishable on the screen being approved.
+  it("tells two instances sharing an executable apart", () => {
+    const first = scValByType(
+      instanceOf([mapEntryOf(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvU32(1))]),
+    );
+    const second = scValByType(
+      instanceOf([mapEntryOf(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvU32(2))]),
+    );
+    expect(first).not.toBe(second);
+  });
+
+  // `storage` is an optional pointer: absent and empty are different signed
+  // values.
+  it("distinguishes absent storage from empty storage", () => {
+    expect(scValByType(instanceOf(null))).not.toBe(scValByType(instanceOf([])));
+  });
+
+  it("stays on one line when used as a map key", () => {
+    const rendered = scValToDisplayValue(
+      xdr.ScVal.scvMap([
+        mapEntryOf(
+          instanceOf([
+            mapEntryOf(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvU32(1)),
+          ]),
+          xdr.ScVal.scvU32(9),
+        ),
+      ]),
+    );
+    // One signed entry is exactly one line: the opening brace's newline, the
+    // entry, and the closing brace's newline — nothing more.
+    expect(rendered.split("\n")).toHaveLength(3);
   });
 });

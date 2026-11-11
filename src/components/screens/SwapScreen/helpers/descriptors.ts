@@ -1,13 +1,10 @@
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
-import {
-  DEFAULT_DECIMALS,
-  isNativeAssetId,
-  NATIVE_TOKEN_CODE,
-} from "config/constants";
+import { DEFAULT_DECIMALS, NATIVE_TOKEN_CODE } from "config/constants";
 import {
   FormattedSearchTokenRecord,
   TokenTypeWithCustomToken,
 } from "config/types";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { assessTokenSecurity } from "services/blockaid/helper";
 

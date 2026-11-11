@@ -17,29 +17,35 @@ describe("buildBlendRequestScVal", () => {
       requestType: BlendRequestType.SupplyCollateral,
     });
 
-    const entries = val.map();
+    const entries = xdr.expectUnionVariant(val, "scvMap").map;
     expect(entries).not.toBeNull();
-    expect(entries!.map((e) => e.key().sym().toString())).toEqual([
-      "address",
-      "amount",
-      "request_type",
-    ]);
+    expect(
+      entries!.map((e) =>
+        xdr.expectUnionVariant(e.key, "scvSymbol").sym.toString(),
+      ),
+    ).toEqual(["address", "amount", "request_type"]);
   });
 
   it("encodes the amount as an i128 and the request type as a u32", () => {
-    const entries = buildBlendRequestScVal({
-      assetId: USDC_SAC,
-      amount: "5000000000",
-      requestType: BlendRequestType.SupplyCollateral,
-    }).map()!;
+    const entries = xdr.expectUnionVariant(
+      buildBlendRequestScVal({
+        assetId: USDC_SAC,
+        amount: "5000000000",
+        requestType: BlendRequestType.SupplyCollateral,
+      }),
+      "scvMap",
+    ).map!;
 
     const byKey = (name: string) =>
-      entries.find((e) => e.key().sym().toString() === name)!.val();
+      entries.find(
+        (e) =>
+          xdr.expectUnionVariant(e.key, "scvSymbol").sym.toString() === name,
+      )!.val;
 
-    expect(byKey("amount").switch().name).toBe("scvI128");
-    expect(byKey("request_type").switch().name).toBe("scvU32");
-    expect(byKey("request_type").u32()).toBe(2);
-    expect(byKey("address").switch().name).toBe("scvAddress");
+    expect(byKey("amount").type).toBe("scvI128");
+    expect(byKey("request_type").type).toBe("scvU32");
+    expect(xdr.expectUnionVariant(byKey("request_type"), "scvU32").u32).toBe(2);
+    expect(byKey("address").type).toBe("scvAddress");
   });
 
   it("uses SupplyCollateral (2), not Supply (0), for deposits", () => {
@@ -72,19 +78,19 @@ describe("buildBlendSubmitOp", () => {
       ],
     });
 
-    const invocation = op
-      .body()
-      .invokeHostFunctionOp()
-      .hostFunction()
-      .invokeContract();
+    const invocation = xdr.expectUnionVariant(
+      xdr.expectUnionVariant(op.body, "invokeHostFunction").invokeHostFunctionOp
+        .hostFunction,
+      "hostFunctionTypeInvokeContract",
+    ).invokeContract;
 
-    expect(invocation.functionName().toString()).toBe("submit");
+    expect(invocation.functionName.toString()).toBe("submit");
     // from, spender, to, requests
-    expect(invocation.args()).toHaveLength(4);
+    expect(invocation.args).toHaveLength(4);
 
     // Verify that from, spender, and to are all the user's Address
     const expectedUser = new Address(PUBLIC_KEY).toScVal().toXDR("base64");
-    const args = invocation.args();
+    const { args } = invocation;
     expect(args[0].toXDR("base64")).toBe(expectedUser);
     expect(args[1].toXDR("base64")).toBe(expectedUser);
     expect(args[2].toXDR("base64")).toBe(expectedUser);
