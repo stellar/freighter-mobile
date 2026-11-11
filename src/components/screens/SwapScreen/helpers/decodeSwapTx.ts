@@ -60,6 +60,7 @@ const decodeClassic = (
   account: string,
   from: Asset,
   to: Asset,
+  amount: string,
 ): DecodedSwapTx => {
   const ops = tx.operations;
   const payment = ops[ops.length - 1];
@@ -82,6 +83,9 @@ const decodeClassic = (
       changeTrust.limit !== MAX_TRUSTLINE_LIMIT)
   ) {
     throw mismatch("trustline");
+  }
+  if (!new BigNumber(payment.sendAmount).eq(amount)) {
+    throw mismatch("amount");
   }
   return {
     sendAmount: new BigNumber(payment.sendAmount).toFixed(),
@@ -126,6 +130,7 @@ const decodeSoroban = (
   account: string,
   from: Asset,
   to: Asset,
+  amount: string,
   networkPassphrase: string,
 ): DecodedSwapTx => {
   const op = tx.operations[0] as Operation.InvokeHostFunction;
@@ -145,15 +150,15 @@ const decodeSoroban = (
       const firstArg = fn.args.length ? scValToNative(fn.args[0]) : undefined;
       if (firstArg !== account) return;
       if (name === "transfer") {
-        const amount = scValToNative(fn.args[2]) as unknown;
+        const moved = scValToNative(fn.args[2]) as unknown;
         if (
           contract !== fromContract ||
-          typeof amount !== "bigint" ||
-          amount < BigInt(0)
+          typeof moved !== "bigint" ||
+          moved < BigInt(0)
         ) {
           throw mismatch("transfer");
         }
-        sent += amount;
+        sent += moved;
       } else if (name === "trust") {
         if (contract !== toContract) throw mismatch("trustline");
         addsTrustline = true;
@@ -161,7 +166,7 @@ const decodeSoroban = (
         throw mismatch(name);
       }
     });
-  if (sent <= BigInt(0)) {
+  if (sent <= BigInt(0) || !new BigNumber(fromUnits(sent)).eq(amount)) {
     throw mismatch("amount");
   }
 
@@ -180,6 +185,7 @@ const decode = ({
   fromAsset,
   toAsset,
   minOut,
+  amount,
 }: {
   transactionXdr: string;
   networkPassphrase: string;
@@ -189,6 +195,8 @@ const decode = ({
   toAsset: string;
   /** The `minOut` sent to `/swap/tx`; a classic destMin must meet it */
   minOut: string;
+  /** The `amount` sent to `/swap/tx`; the transaction must sell exactly it */
+  amount: string;
 }): DecodedSwapTx => {
   const parsed = TransactionBuilder.fromXdr(transactionXdr, networkPassphrase);
   if (parsed instanceof FeeBumpTransaction) {
@@ -206,9 +214,9 @@ const decode = ({
     parsed.operations.length === 1 &&
     parsed.operations[0].type === "invokeHostFunction"
   ) {
-    return decodeSoroban(parsed, account, from, to, networkPassphrase);
+    return decodeSoroban(parsed, account, from, to, amount, networkPassphrase);
   }
-  const decoded = decodeClassic(parsed, account, from, to);
+  const decoded = decodeClassic(parsed, account, from, to, amount);
   const wantMin = new BigNumber(minOut);
   if (
     !wantMin.isFinite() ||

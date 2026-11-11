@@ -436,6 +436,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           fromAsset: request.fromAsset,
           toAsset: request.toAsset,
           minOut: request.minOut,
+          amount: request.amount,
         });
 
         // Only update store if this swap build is still the latest one.

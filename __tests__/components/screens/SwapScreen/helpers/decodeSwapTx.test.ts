@@ -49,10 +49,19 @@ const pathPayment = (overrides: { destination?: string } = {}) =>
 
 const decode = (
   transactionXdr: string,
-  account = ACCOUNT,
-  toAsset = USDC,
-  fromAsset = "XLM",
-  minOut = "0",
+  {
+    account = ACCOUNT,
+    toAsset = USDC,
+    fromAsset = "XLM",
+    minOut = "0",
+    amount = "100",
+  }: {
+    account?: string;
+    toAsset?: string;
+    fromAsset?: string;
+    minOut?: string;
+    amount?: string;
+  } = {},
 ) =>
   decodeSwapTx({
     transactionXdr,
@@ -61,6 +70,7 @@ const decode = (
     fromAsset,
     toAsset,
     minOut,
+    amount,
   });
 
 describe("decodeSwapTx", () => {
@@ -90,15 +100,21 @@ describe("decodeSwapTx", () => {
       });
     });
 
+    it("refuses a payment that sells more than the amount requested", () => {
+      const tx = classicTx({ ops: [pathPayment()] });
+
+      expect(() => decode(tx.toXDR(), { amount: "99" })).toThrow(/amount/);
+    });
+
     it("refuses a minimum below the minOut the client asked for", () => {
       const tx = classicTx({ ops: [pathPayment()] });
 
-      expect(() =>
-        decode(tx.toXDR(), ACCOUNT, USDC, "XLM", "17.1941799"),
-      ).toThrow(/minimum/);
-      expect(
-        decode(tx.toXDR(), ACCOUNT, USDC, "XLM", "17.1941798").minReceived,
-      ).toBe("17.1941798");
+      expect(() => decode(tx.toXDR(), { minOut: "17.1941799" })).toThrow(
+        /minimum/,
+      );
+      expect(decode(tx.toXDR(), { minOut: "17.1941798" }).minReceived).toBe(
+        "17.1941798",
+      );
     });
 
     it("refuses a payment to another account", () => {
@@ -110,7 +126,9 @@ describe("decodeSwapTx", () => {
     it("refuses a different destination asset", () => {
       const tx = classicTx({ ops: [pathPayment()] });
 
-      expect(() => decode(tx.toXDR(), ACCOUNT, EURC)).toThrow(/path payment/);
+      expect(() => decode(tx.toXDR(), { toAsset: EURC })).toThrow(
+        /path payment/,
+      );
     });
 
     it("refuses a changeTrust that sets a limit instead of opening the default one", () => {
@@ -228,7 +246,13 @@ describe("decodeSwapTx", () => {
         .setTimeout(180)
         .build();
 
-      expect(decode(tx.toXDR(), account, USDC, "XLM", "18191.30443")).toEqual({
+      expect(
+        decode(tx.toXDR(), {
+          account,
+          minOut: "18191.30443",
+          amount: "100000",
+        }),
+      ).toEqual({
         sendAmount: "100000",
         minReceived: undefined,
         fee: "0.00001",
@@ -242,7 +266,7 @@ describe("decodeSwapTx", () => {
       const { xdr: txXdr, account } = lifi.xlmUsdc100k;
 
       // 100,000 XLM: a 250 XLM LI.FI fee plus 99,750 XLM into the aggregator.
-      expect(decode(txXdr, account)).toEqual({
+      expect(decode(txXdr, { account, amount: "100000" })).toEqual({
         sendAmount: "100000",
         minReceived: undefined,
         fee: "0.0829393",
@@ -250,10 +274,18 @@ describe("decodeSwapTx", () => {
       });
     });
 
+    it("refuses a call that sells more than the amount requested", () => {
+      const { xdr: txXdr, account } = lifi.xlmUsdc100k;
+
+      expect(() => decode(txXdr, { account, amount: "99999" })).toThrow(
+        /amount/,
+      );
+    });
+
     it("reports the trustline the swap opens", () => {
       const { xdr: txXdr, account } = lifi.xlmUsdcWithTrust;
 
-      expect(decode(txXdr, account)).toMatchObject({
+      expect(decode(txXdr, { account, amount: "10" })).toMatchObject({
         sendAmount: "10",
         addsTrustline: true,
       });
@@ -271,15 +303,15 @@ describe("decodeSwapTx", () => {
       });
       Object.assign(env.v1.tx, { operations: [swapOp, extra] });
 
-      expect(() => decode(env.toXDR("base64"), account)).toThrow(
-        /does not match/,
-      );
+      expect(() =>
+        decode(env.toXDR("base64"), { account, amount: "100000" }),
+      ).toThrow(/does not match/);
     });
 
     it("refuses a swap for another account", () => {
-      expect(() => decode(lifi.xlmUsdc100k.xdr, OTHER)).toThrow(
-        /source account/,
-      );
+      expect(() =>
+        decode(lifi.xlmUsdc100k.xdr, { account: OTHER, amount: "100000" }),
+      ).toThrow(/source account/);
     });
 
     it("refuses an authorized transfer of another token", () => {
@@ -303,7 +335,9 @@ describe("decodeSwapTx", () => {
         ).toScAddress(),
       });
 
-      expect(() => decode(env.toXDR("base64"), account)).toThrow(/transfer/);
+      expect(() =>
+        decode(env.toXDR("base64"), { account, amount: "100000" }),
+      ).toThrow(/transfer/);
     });
 
     const withFeeTransfer = (txXdr: string, stroops: bigint) => {
@@ -329,9 +363,12 @@ describe("decodeSwapTx", () => {
     it("refuses a negative authorized transfer, which would lower the amount shown", () => {
       const { xdr: txXdr, account } = lifi.xlmUsdc100k;
 
-      expect(() => decode(withFeeTransfer(txXdr, BigInt(-1)), account)).toThrow(
-        /transfer/,
-      );
+      expect(() =>
+        decode(withFeeTransfer(txXdr, BigInt(-1)), {
+          account,
+          amount: "100000",
+        }),
+      ).toThrow(/transfer/);
     });
 
     it("accepts a zero fee transfer, as the backend does", () => {
@@ -339,14 +376,17 @@ describe("decodeSwapTx", () => {
 
       // 99,750 XLM into the aggregator and no fee.
       expect(
-        decode(withFeeTransfer(txXdr, BigInt(0)), account).sendAmount,
+        decode(withFeeTransfer(txXdr, BigInt(0)), { account, amount: "99750" })
+          .sendAmount,
       ).toBe("99750");
     });
 
     it("refuses a trustline for an asset other than the one bought", () => {
       const { xdr: txXdr, account } = lifi.xlmUsdcWithTrust;
 
-      expect(() => decode(txXdr, account, EURC)).toThrow(/trustline/);
+      expect(() =>
+        decode(txXdr, { account, toAsset: EURC, amount: "10" }),
+      ).toThrow(/trustline/);
     });
 
     // Appends a call the account authorizes to the LI.FI auth tree.
@@ -392,7 +432,7 @@ describe("decodeSwapTx", () => {
         nativeToScVal(60_000_000, { type: "u32" }),
       ]);
 
-      expect(() => decode(input, account)).toThrow(/approve/);
+      expect(() => decode(input, { account, amount: "10" })).toThrow(/approve/);
     });
 
     it("still reads a swap whose source calls its own contracts", () => {
@@ -404,7 +444,9 @@ describe("decodeSwapTx", () => {
         [new Address(account).toScVal()],
       );
 
-      expect(decode(input, account)).toMatchObject({ sendAmount: "10" });
+      expect(decode(input, { account, amount: "10" })).toMatchObject({
+        sendAmount: "10",
+      });
     });
   });
 
@@ -435,18 +477,18 @@ describe("decodeSwapTx", () => {
       input = env.toXDR("base64");
     }
 
-    expect(() => decode(input, account)).toThrow(SwapTxMismatchError);
+    expect(() => decode(input, { account, amount: "100000" })).toThrow(
+      SwapTxMismatchError,
+    );
   });
 
   it("refuses a contract token until the picker allows them", () => {
     const tx = classicTx({ ops: [pathPayment()] });
 
     expect(() =>
-      decode(
-        tx.toXDR(),
-        ACCOUNT,
-        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
-      ),
+      decode(tx.toXDR(), {
+        toAsset: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      }),
     ).toThrow(/unsupported asset/);
   });
 });
