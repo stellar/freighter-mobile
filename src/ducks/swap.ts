@@ -29,7 +29,6 @@ import { create } from "zustand";
 export interface SwapPathResult {
   sourceAmount: string;
   destinationAmount: string;
-  destinationAmountMin: string;
   path: string[];
   conversionRate: string;
   /** `swapQuoteKey` of the inputs this quote answered. */
@@ -68,7 +67,6 @@ interface SwapState {
     sourceBalance: PricedBalance;
     destinationBalance: PricedBalance;
     sourceAmount: string;
-    slippage: number;
     network: NETWORKS;
     publicKey: string;
   }) => Promise<void>;
@@ -195,8 +193,7 @@ export const useSwapStore = create<SwapState>((set) => ({
   },
 
   findSwapPath: async (params) => {
-    const { sourceBalance, destinationBalance, sourceAmount, slippage } =
-      params;
+    const { sourceBalance, destinationBalance, sourceAmount } = params;
 
     quoteRequestId += 1;
     const requestId = quoteRequestId;
@@ -264,10 +261,6 @@ export const useSwapStore = create<SwapState>((set) => ({
       const pathResult: SwapPathResult = {
         sourceAmount,
         destinationAmount: route.toAmount,
-        destinationAmountMin: computeDestMinWithSlippage(
-          route.toAmount,
-          slippage,
-        ),
         path: swapRouteIntermediateAssets(route),
         conversionRate: new BigNumber(route.toAmount)
           .dividedBy(new BigNumber(sourceAmount))

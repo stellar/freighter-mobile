@@ -605,7 +605,6 @@ export const useSwapTransaction = ({
             sourceBalance: latestSource,
             destinationBalance: latestDest,
             sourceAmount,
-            slippage: useSwapSettingsStore.getState().swapSlippage,
             network,
             publicKey: account.publicKey,
           });

@@ -22,7 +22,6 @@ const props = (quoteKey: string, currentQuoteKey: string | null) => ({
   pathResult: {
     sourceAmount: "10",
     destinationAmount: "2",
-    destinationAmountMin: "1.98",
     path: [],
     conversionRate: "0.2",
     quoteKey,

@@ -84,9 +84,7 @@ const inputs = (sourceAmount = "10") => ({
 });
 
 const find = (sourceAmount = "10") =>
-  useSwapStore
-    .getState()
-    .findSwapPath({ ...inputs(sourceAmount), slippage: 1 });
+  useSwapStore.getState().findSwapPath(inputs(sourceAmount));
 
 const apiError = (status: number) => ({
   message: `Request failed with status code ${status}`,
@@ -133,7 +131,6 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(state.pathResult).toEqual({
       sourceAmount: "10",
       destinationAmount: "2.0000000",
-      destinationAmountMin: "1.9800000",
       path: [AQUA],
       conversionRate: "0.2000000",
       quoteKey: swapQuoteKey(inputs("10")),
