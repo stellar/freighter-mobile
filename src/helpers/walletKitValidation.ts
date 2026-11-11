@@ -56,6 +56,13 @@ export const SIGN_AUTH_ENTRY_MAX_LENGTH = 65_536;
  */
 export const SIGN_MESSAGE_MAX_BYTES = 10240;
 
+/**
+ * Longest indented JSON the sign-message view will show. Indentation can make
+ * deeply nested input hundreds of times longer than it was sent; past this,
+ * the message is shown as sent.
+ */
+export const SIGN_MESSAGE_PRETTY_MAX_LENGTH = 20_000;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
