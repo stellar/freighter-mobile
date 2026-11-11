@@ -178,7 +178,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     );
   });
 
-  it.each([0, 401, 429, 500, 502, 503, 504])(
+  it.each([0, 401, 403, 404, 429, 500, 502, 503, 504])(
     "shows swaps temporarily unavailable on %i",
     async (status) => {
       mockFetchSwapQuotes.mockRejectedValue(apiError(status));
@@ -191,6 +191,20 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
       expect(state.pathErrorQuoteKey).toBe(swapQuoteKey(inputs("10")));
     },
   );
+
+  it("shows swaps temporarily unavailable on a malformed quotes body", async () => {
+    mockFetchSwapQuotes.mockRejectedValue(
+      Object.assign(new Error("Unexpected swap quotes response shape"), {
+        name: "SwapQuotesResponseError",
+      }),
+    );
+
+    await find();
+
+    expect(useSwapStore.getState().pathError).toBe(
+      "swapScreen.errors.swapsUnavailable",
+    );
+  });
 
   it("ignores a response that lands after a newer request was started", async () => {
     let resolveFirst: (q: SwapQuotes) => void = () => {};

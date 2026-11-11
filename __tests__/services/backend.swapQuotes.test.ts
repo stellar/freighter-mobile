@@ -98,6 +98,6 @@ describe("fetchSwapQuotes", () => {
         toAsset: USDC,
         amount: "100",
       }),
-    ).rejects.toThrow(/swap quotes/);
+    ).rejects.toMatchObject({ name: "SwapQuotesResponseError" });
   });
 });

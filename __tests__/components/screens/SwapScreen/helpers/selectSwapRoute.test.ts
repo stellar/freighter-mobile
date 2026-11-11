@@ -77,4 +77,28 @@ describe("swapQuoteErrorReason", () => {
   it("treats a backend rate limit (429) as unavailable", () => {
     expect(swapQuoteErrorReason(apiError(429))).toBe("unavailable");
   });
+
+  it("treats a 400 as no route", () => {
+    expect(swapQuoteErrorReason(apiError(400))).toBe("noRoute");
+  });
+
+  // The route 404s while prd runs a backend image without it, and an
+  // ingress can 403; both are outages from the user's side, not bad input.
+  it.each([0, 401, 403, 404, 500, 502, 503])(
+    "treats a %i as unavailable",
+    (status) => {
+      expect(swapQuoteErrorReason(apiError(status))).toBe("unavailable");
+    },
+  );
+
+  it("treats a malformed quotes body as unavailable", () => {
+    const shapeError = Object.assign(new Error("Unexpected shape"), {
+      name: "SwapQuotesResponseError",
+    });
+    expect(swapQuoteErrorReason(shapeError)).toBe("unavailable");
+  });
+
+  it("leaves any other thrown error to the caller", () => {
+    expect(swapQuoteErrorReason(new Error("debug failure"))).toBeNull();
+  });
 });
