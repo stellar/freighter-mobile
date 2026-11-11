@@ -11,6 +11,7 @@ import { AUTH_STATUS } from "config/types";
 import type * as WalletKitDuck from "ducks/walletKit";
 import * as signingDisplay from "helpers/signingDisplay";
 import * as walletKitUtil from "helpers/walletKitUtil";
+import * as dappMetadataHook from "hooks/useDappMetadata";
 import { WalletKitProvider } from "providers/WalletKitProvider";
 import React from "react";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
@@ -363,5 +364,113 @@ describe("WalletKitProvider: a dApp request whose details can't be displayed", (
       }),
     );
     expect(logger.error).not.toHaveBeenCalledWith(...BLOCKED_APPROVAL);
+  });
+});
+
+/** A connection proposal from the dApp. */
+const dappProposal = (id: number) =>
+  ({
+    type: WalletKitEventTypes.SESSION_PROPOSAL,
+    id,
+    params: {
+      id,
+      proposer: {
+        publicKey: "proposer",
+        metadata: { name: "dApp", description: "", url: DAPP_URL, icons: [] },
+      },
+      requiredNamespaces: {},
+      optionalNamespaces: {
+        stellar: {
+          chains: [StellarRpcChains.TESTNET],
+          methods: [],
+          events: [],
+        },
+      },
+    },
+    verifyContext: { verified: { origin: DAPP_URL } },
+  }) as unknown as WalletKitDuck.WalletKitSessionProposal;
+
+/** Makes the handler's next metadata lookup throw, as an unexpected bug would. */
+const failNextMetadataLookup = () =>
+  jest
+    .spyOn(dappMetadataHook, "getDappMetadataFromEvent")
+    .mockImplementationOnce(() => {
+      throw new Error("unexpected");
+    });
+
+describe("WalletKitProvider: a dApp event whose handling throws", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+    jest
+      .spyOn(walletKitUtil, "rejectSessionRequest")
+      .mockResolvedValue(undefined);
+    jest
+      .spyOn(walletKitUtil, "rejectSessionProposal")
+      .mockResolvedValue(undefined);
+    mockRequestSheetProps = undefined;
+    mockBlockaidOverride = null;
+    useWalletKitStore.getState().clearEvent();
+    useWalletKitStore.setState({ activeSessions: ACTIVE_SESSIONS });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  it("rejects the request, keeps running and shows the next request", async () => {
+    render(provider());
+    failNextMetadataLookup();
+    await deliver(signXdrRequest(1, sacTransferTransactionXdr()));
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledTimes(1);
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledWith({
+      sessionRequest: expect.objectContaining({ id: 1 }),
+      message: "walletKit.invalidRequestTitle",
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      "WalletKitProvider",
+      "Failed to handle a session request",
+      expect.objectContaining({ message: "unexpected" }),
+    );
+    expect(mockToast.showToast).toHaveBeenCalledWith({
+      title: "walletKit.invalidRequestTitle",
+      variant: "error",
+    });
+
+    // The deferred teardown releases the queue for the next request.
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    await deliver(signXdrRequest(2, sacTransferTransactionXdr()));
+
+    expect(requestSheet().requestEvent?.id).toBe(2);
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects the proposal and clears it", async () => {
+    render(provider());
+    failNextMetadataLookup();
+    await actAndSettle(() =>
+      useWalletKitStore.getState().setEvent(dappProposal(7)),
+    );
+
+    expect(walletKitUtil.rejectSessionProposal).toHaveBeenCalledWith({
+      sessionProposal: expect.objectContaining({ id: 7 }),
+      message: "walletKit.invalidRequestTitle",
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      "WalletKitProvider",
+      "Failed to handle a session proposal",
+      expect.objectContaining({ message: "unexpected" }),
+    );
+    expect(mockToast.showToast).toHaveBeenCalledWith({
+      title: "walletKit.invalidRequestTitle",
+      variant: "error",
+    });
+    expect(useWalletKitStore.getState().event.type).toBe(
+      WalletKitEventTypes.NONE,
+    );
   });
 });

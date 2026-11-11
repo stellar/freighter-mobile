@@ -963,9 +963,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   };
 
   /**
-   * Handles SESSION_PROPOSAL events — validates auth, scans site, shows connection sheet.
+   * Processes SESSION_PROPOSAL events — validates auth, scans site, shows connection sheet.
+   * Called through handleSessionProposal, which rejects the proposal if this throws.
    */
-  const handleSessionProposal = (sessionProposal: WalletKitSessionProposal) => {
+  const processSessionProposal = (
+    sessionProposal: WalletKitSessionProposal,
+  ) => {
     // Check if user is not authenticated
     if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
       showToast({
@@ -1041,10 +1044,37 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   };
 
   /**
-   * Handles SESSION_REQUEST events — validates auth/session/origin, pre-validates
-   * request params, scans transactions, and shows the appropriate sheet.
+   * Handles SESSION_PROPOSAL events. A proposal comes from the dApp, so if
+   * processing it throws, the proposal is rejected and cleared instead of the
+   * error reaching React.
    */
-  const handleSessionRequest = (sessionRequest: WalletKitSessionRequest) => {
+  const handleSessionProposal = (sessionProposal: WalletKitSessionProposal) => {
+    try {
+      processSessionProposal(sessionProposal);
+    } catch (error) {
+      logger.error(
+        "WalletKitProvider",
+        "Failed to handle a session proposal",
+        error,
+      );
+      rejectSessionProposal({
+        sessionProposal,
+        message: t("walletKit.invalidRequestTitle"),
+      });
+      showToast({
+        title: t("walletKit.invalidRequestTitle"),
+        variant: "error",
+      });
+      handleClearDappConnection();
+    }
+  };
+
+  /**
+   * Processes SESSION_REQUEST events — validates auth/session/origin, pre-validates
+   * request params, scans transactions, and shows the appropriate sheet.
+   * Called through handleSessionRequest, which rejects the request if this throws.
+   */
+  const processSessionRequest = (sessionRequest: WalletKitSessionRequest) => {
     // Simple queue: if already processing a request, store this one as pending
     if (isProcessingRequestRef.current) {
       // Normal queue flow, not an error condition.
@@ -1245,6 +1275,40 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       }
 
       dappRequestBottomSheetModalRef.current?.present();
+    }
+  };
+
+  /**
+   * Handles SESSION_REQUEST events. A request comes from the dApp, so if
+   * processing it throws, the request is rejected, its sheet closes, and the
+   * deferred teardown moves on to the next queued request.
+   */
+  const handleSessionRequest = (sessionRequest: WalletKitSessionRequest) => {
+    try {
+      processSessionRequest(sessionRequest);
+    } catch (error) {
+      logger.error(
+        "WalletKitProvider",
+        "Failed to handle a session request",
+        error,
+      );
+      // Answered here, so the teardown below doesn't reject it a second time.
+      hasRespondedRef.current = true;
+      rejectSessionRequest({
+        sessionRequest,
+        message: t("walletKit.invalidRequestTitle"),
+      }).catch((rejectError: unknown) => {
+        logger.warn(
+          "WalletKitProvider",
+          "Failed to reject a session request",
+          rejectError,
+        );
+      });
+      showToast({
+        title: t("walletKit.invalidRequestTitle"),
+        variant: "error",
+      });
+      handleClearDappRequest();
     }
   };
 
