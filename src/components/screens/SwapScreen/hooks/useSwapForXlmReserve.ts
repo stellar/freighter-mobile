@@ -15,7 +15,7 @@ import { TokenTypeWithCustomToken } from "config/types";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { fetchSwapQuotes } from "services/backend";
 
 interface UseSwapForXlmReserveParams {
@@ -57,6 +57,17 @@ export const useSwapForXlmReserve = ({
   setTokenAmount,
 }: UseSwapForXlmReserveParams) => {
   const xlmReserveBottomSheetRef = useRef<BottomSheetModal>(null);
+  // The receive quote can take seconds. A result that lands after the screen
+  // unmounted (resetSwap has run) or after a newer tap must not write the
+  // store.
+  const isMountedRef = useRef(true);
+  const quoteRequestRef = useRef(0);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const isCurrentSourceNonXlmClassic =
     !!sourceBalance &&
@@ -92,6 +103,8 @@ export const useSwapForXlmReserve = ({
         : undefined;
     if (!sellTokenCode || !sellIssuer) return;
 
+    quoteRequestRef.current += 1;
+    const requestId = quoteRequestRef.current;
     let receivedSourceAmount: string | null = null;
     try {
       if (publicKey && isCurrentSourceNonXlmClassic) {
@@ -124,6 +137,9 @@ export const useSwapForXlmReserve = ({
         "receive quote failed",
         error,
       );
+    }
+    if (!isMountedRef.current || requestId !== quoteRequestRef.current) {
+      return;
     }
 
     setDestinationToken({

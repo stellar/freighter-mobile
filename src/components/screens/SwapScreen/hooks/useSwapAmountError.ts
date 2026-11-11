@@ -153,8 +153,13 @@ export const useSwapAmountError = ({
   useEffect(() => {
     const hasAmount = sourceAmount && Number(sourceAmount) > 0;
     const hasDestinationToken = !!destinationTokenDescriptor;
+    // The amount screen shows these two as a persistent "Quote unavailable"
+    // row with its own sheet, so a toast would say the same thing twice.
+    const shownInline =
+      pathError === t("swapScreen.errors.noPathFound") ||
+      pathError === t("swapScreen.errors.swapsUnavailable");
 
-    if (pathError && hasAmount && hasDestinationToken) {
+    if (pathError && !shownInline && hasAmount && hasDestinationToken) {
       setActiveError({
         message: pathError,
         toastId: SWAP_TOAST_IDS.SWAP_PATH_ERROR,
@@ -173,6 +178,7 @@ export const useSwapAmountError = ({
     sourceAmount,
     destinationTokenDescriptor,
     activeError?.toastId,
+    t,
   ]);
 
   return { amountError, setActiveError };

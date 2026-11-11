@@ -20,14 +20,18 @@ export const missingSwapRouteReason = (
     : "noRoute";
 };
 
-/** Maps a failed quote request; null leaves it to the caller's generic handling. */
+/**
+ * Maps a failed quote request. A 400 is the request (bad input, an unfunded
+ * account); any other HTTP failure, and a body the parser rejected, means the
+ * backend can't quote right now. Null leaves a non-HTTP error (the debug
+ * failure switch) to the caller's generic handling.
+ */
 export const swapQuoteErrorReason = (
   error: unknown,
 ): "unavailable" | "noRoute" | null => {
-  if (!isApiError(error)) return null;
-  if (error.status === 400) return "noRoute";
-  if ([0, 401, 429].includes(error.status) || error.status >= 500) {
+  if (error instanceof Error && error.name === "SwapQuotesResponseError") {
     return "unavailable";
   }
-  return null;
+  if (!isApiError(error)) return null;
+  return error.status === 400 ? "noRoute" : "unavailable";
 };

@@ -84,9 +84,7 @@ const inputs = (sourceAmount = "10") => ({
 });
 
 const find = (sourceAmount = "10") =>
-  useSwapStore
-    .getState()
-    .findSwapPath({ ...inputs(sourceAmount), slippage: 1 });
+  useSwapStore.getState().findSwapPath(inputs(sourceAmount));
 
 const apiError = (status: number) => ({
   message: `Request failed with status code ${status}`,
@@ -133,7 +131,6 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(state.pathResult).toEqual({
       sourceAmount: "10",
       destinationAmount: "2.1000000",
-      destinationAmountMin: "2.0790000",
       route: lifiRoute,
       conversionRate: "0.2100000",
       quoteKey: swapQuoteKey(inputs("10")),
@@ -166,9 +163,12 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(useSwapStore.getState().pathError).toBe(
       "swapScreen.errors.noPathFound",
     );
+    // Bad input is the user's state, not something to page on.
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalled();
   });
 
-  it.each([0, 401, 429, 500, 502, 503, 504])(
+  it.each([0, 401, 403, 404, 429, 500, 502, 503, 504])(
     "shows swaps temporarily unavailable on %i",
     async (status) => {
       mockFetchSwapQuotes.mockRejectedValue(apiError(status));
@@ -181,6 +181,20 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
       expect(state.pathErrorQuoteKey).toBe(swapQuoteKey(inputs("10")));
     },
   );
+
+  it("shows swaps temporarily unavailable on a malformed quotes body", async () => {
+    mockFetchSwapQuotes.mockRejectedValue(
+      Object.assign(new Error("Unexpected swap quotes response shape"), {
+        name: "SwapQuotesResponseError",
+      }),
+    );
+
+    await find();
+
+    expect(useSwapStore.getState().pathError).toBe(
+      "swapScreen.errors.swapsUnavailable",
+    );
+  });
 
   it("ignores a response that lands after a newer request was started", async () => {
     let resolveFirst: (q: SwapQuotes) => void = () => {};
@@ -233,6 +247,52 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     await find();
 
     expect(logger.error).toHaveBeenCalled();
+  });
+
+  it("reports an outage once until a quote succeeds, not once per keystroke", async () => {
+    mockFetchSwapQuotes.mockRejectedValue(apiError(503));
+    await find("10");
+    await find("11");
+    await find("12");
+    expect(logger.error).toHaveBeenCalledTimes(1);
+
+    // A 200 with classic down is the same outage.
+    mockFetchSwapQuotes.mockResolvedValue({
+      routes: [],
+      unavailable: [{ source: "classic", reason: "timeout" }],
+    });
+    await find("13");
+    expect(logger.error).toHaveBeenCalledTimes(1);
+
+    mockFetchSwapQuotes.mockResolvedValue({
+      routes: [classicRoute],
+      unavailable: [],
+    });
+    await find("14");
+    mockFetchSwapQuotes.mockRejectedValue(apiError(503));
+    await find("15");
+    expect(logger.error).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports a new outage after the backend recovered with no route", async () => {
+    mockFetchSwapQuotes.mockRejectedValue(apiError(503));
+    await find("10");
+    mockFetchSwapQuotes.mockResolvedValue({
+      routes: [],
+      unavailable: [{ source: "classic", reason: "no_route" }],
+    });
+    await find("11");
+    mockFetchSwapQuotes.mockRejectedValue(apiError(503));
+    await find("12");
+    expect(logger.error).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports again on the next screen visit", async () => {
+    mockFetchSwapQuotes.mockRejectedValue(apiError(503));
+    await find("10");
+    useSwapStore.getState().resetSwap();
+    await find("10");
+    expect(logger.error).toHaveBeenCalledTimes(2);
   });
 
   it.each(["error", "timeout", "rate_limited"])(

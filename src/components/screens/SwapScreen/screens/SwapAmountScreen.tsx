@@ -120,7 +120,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const headerHeight = useHeaderHeight();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { swapFee, swapSlippage, resetToDefaults } = useSwapSettingsStore();
+  const { swapFee, resetToDefaults } = useSwapSettingsStore();
   const { overriddenBlockaidResponse } = useDebugStore();
   const { isBuilding, resetTransaction } = useTransactionBuilderStore();
   const { transactionXDR, transactionHash } = useTransactionBuilderStore();
@@ -282,7 +282,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceBalance,
     destinationTokenForPath: destinationForPath,
     sourceAmount,
-    swapSlippage,
     network,
     publicKey: account?.publicKey,
     amountError,

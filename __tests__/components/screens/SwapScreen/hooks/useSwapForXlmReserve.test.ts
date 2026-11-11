@@ -3,7 +3,7 @@ import BigNumber from "bignumber.js";
 import { useSwapForXlmReserve } from "components/screens/SwapScreen/hooks/useSwapForXlmReserve";
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
-import { TokenTypeWithCustomToken } from "config/types";
+import { SwapQuotes, TokenTypeWithCustomToken } from "config/types";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { fetchSwapQuotes } from "services/backend";
 
@@ -174,6 +174,63 @@ describe("useSwapForXlmReserve — 0.5 XLM estimate", () => {
     });
 
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("does not write the store when the quote lands after unmount", async () => {
+    let resolveQuote: (q: SwapQuotes) => void = () => {};
+    mockFetchSwapQuotes.mockReturnValue(
+      new Promise<SwapQuotes>((resolve) => {
+        resolveQuote = resolve;
+      }),
+    );
+    const setSourceToken = jest.fn();
+    const setDestinationToken = jest.fn();
+    const setTokenAmount = jest.fn();
+    const { result, unmount } = renderHook(() =>
+      useSwapForXlmReserve({
+        sourceBalance: usdcBalance,
+        bestNonXlmClassicBalance: undefined,
+        network: NETWORKS.PUBLIC,
+        publicKey: ACCOUNT,
+        subentryCount: 0,
+        swapFee: "0.00001",
+        setSourceToken,
+        setDestinationToken,
+        setTokenAmount,
+      }),
+    );
+
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.handleSwapForXlmFromSheet();
+    });
+    // The user backs out of the swap screen while the quote is in flight;
+    // the screen's unmount resets the store, which this must not re-fill.
+    unmount();
+    await act(async () => {
+      resolveQuote({
+        routes: [
+          {
+            source: "classic",
+            fromAmount: "0.0912345",
+            toAmount: "0.5",
+            paths: [
+              {
+                share: "1",
+                hops: [{ venue: "stellar-dex", from: USDC, to: "XLM" }],
+              },
+            ],
+            fees: [],
+          },
+        ],
+        unavailable: [],
+      });
+      await pending;
+    });
+
+    expect(setDestinationToken).not.toHaveBeenCalled();
+    expect(setSourceToken).not.toHaveBeenCalled();
+    expect(setTokenAmount).not.toHaveBeenCalled();
   });
 
   it("does not quote when the sell side falls back to another token", async () => {

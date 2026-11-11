@@ -1026,6 +1026,14 @@ export interface FetchSwapQuotesParams {
   amount: string;
 }
 
+/** A 200 whose body is not a quotes envelope; classified as an outage. */
+export class SwapQuotesResponseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SwapQuotesResponseError";
+  }
+}
+
 /**
  * Quotes a swap from every backend source, best route first. A 200 with empty
  * `routes` means no source can quote the pair; HTTP failures reject with the
@@ -1042,7 +1050,7 @@ export const fetchSwapQuotes = async ({
   );
 
   if (!Array.isArray(data?.data?.routes)) {
-    throw new Error("Unexpected swap quotes response shape");
+    throw new SwapQuotesResponseError("Unexpected swap quotes response shape");
   }
 
   return data.data;
