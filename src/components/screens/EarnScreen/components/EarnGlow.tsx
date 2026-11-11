@@ -1,9 +1,11 @@
+import { DEFAULT_COLOR_SCHEME } from "config/theme";
+import useColors from "hooks/useColors";
 import React from "react";
-import { View } from "react-native";
+import { View, useColorScheme } from "react-native";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 
 /**
- * The Earn designs' ambient glow is a solid #11351E circle of radius 132
+ * The Earn designs' ambient glow is a solid green circle of radius 132
  * under an SVG `feGaussianBlur` of stdDeviation 100. Shipping that node as an
  * asset renders as a hard-edged disc on device -- react-native-svg parses the
  * filter but does not apply it -- so the blur is reproduced as the radial
@@ -22,8 +24,12 @@ import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
  * - The gradient's radius is 460, not the source node's 332. The falloff is
  *   still at ~1.2% opacity at 332, so stopping there leaves a faint but
  *   visible circular seam; 460 is where it reaches ~0.02%.
+ *
+ * The green follows the theme. Dark uses green-4, the nearest token to the
+ * dark design's #11351E. The design has no light frame for this glow, so
+ * light uses green-6: it stands off the light page about as far as green-4
+ * stands off the dark one, where green-4 itself all but disappears.
  */
-const GLOW_COLOR = "#11351E";
 const GLOW_RADIUS = 460;
 const GLOW_SIZE = GLOW_RADIUS * 2;
 
@@ -62,34 +68,40 @@ export interface EarnGlowProps {
  * `pointerEvents="none"` because the gradient's box is far larger than its
  * visible falloff and would otherwise swallow taps on whatever it overlaps.
  */
-export const EarnGlow: React.FC<EarnGlowProps> = ({ centerY, opacity = 1 }) => (
-  <View
-    pointerEvents="none"
-    className="absolute left-1/2"
-    style={{ top: centerY - GLOW_RADIUS, marginLeft: -GLOW_RADIUS }}
-    testID="earn-glow"
-  >
-    <Svg width={GLOW_SIZE} height={GLOW_SIZE}>
-      <Defs>
-        <RadialGradient id="earnGlow" cx="50%" cy="50%" r="50%">
-          {GLOW_STOPS.map(([offset, stopOpacity]) => (
-            <Stop
-              key={offset}
-              offset={offset}
-              stopColor={GLOW_COLOR}
-              stopOpacity={stopOpacity * opacity}
-            />
-          ))}
-        </RadialGradient>
-      </Defs>
-      <Circle
-        cx={GLOW_RADIUS}
-        cy={GLOW_RADIUS}
-        r={GLOW_RADIUS}
-        fill="url(#earnGlow)"
-      />
-    </Svg>
-  </View>
-);
+export const EarnGlow: React.FC<EarnGlowProps> = ({ centerY, opacity = 1 }) => {
+  const { themeColors } = useColors();
+  const isLight = (useColorScheme() ?? DEFAULT_COLOR_SCHEME) === "light";
+  const glowColor = isLight ? themeColors.green[6] : themeColors.green[4];
+
+  return (
+    <View
+      pointerEvents="none"
+      className="absolute left-1/2"
+      style={{ top: centerY - GLOW_RADIUS, marginLeft: -GLOW_RADIUS }}
+      testID="earn-glow"
+    >
+      <Svg width={GLOW_SIZE} height={GLOW_SIZE}>
+        <Defs>
+          <RadialGradient id="earnGlow" cx="50%" cy="50%" r="50%">
+            {GLOW_STOPS.map(([offset, stopOpacity]) => (
+              <Stop
+                key={offset}
+                offset={offset}
+                stopColor={glowColor}
+                stopOpacity={stopOpacity * opacity}
+              />
+            ))}
+          </RadialGradient>
+        </Defs>
+        <Circle
+          cx={GLOW_RADIUS}
+          cy={GLOW_RADIUS}
+          r={GLOW_RADIUS}
+          fill="url(#earnGlow)"
+        />
+      </Svg>
+    </View>
+  );
+};
 
 export default EarnGlow;
