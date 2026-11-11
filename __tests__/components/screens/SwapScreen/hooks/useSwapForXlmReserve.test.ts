@@ -44,6 +44,28 @@ const usdcBalance = {
   available: new BigNumber("100"),
 } as unknown as HeldBalanceItem;
 
+const AQUA_ISSUER = "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA";
+const aquaBalance = {
+  id: `AQUA:${AQUA_ISSUER}`,
+  tokenCode: "AQUA",
+  tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+  token: {
+    code: "AQUA",
+    issuer: { key: AQUA_ISSUER },
+    type: "credit_alphanum4",
+  },
+  total: new BigNumber("100"),
+  available: new BigNumber("100"),
+} as unknown as HeldBalanceItem;
+
+const xlmBalance = {
+  id: "XLM",
+  tokenCode: "XLM",
+  tokenType: TokenTypeWithCustomToken.NATIVE,
+  total: new BigNumber("100"),
+  available: new BigNumber("100"),
+} as unknown as HeldBalanceItem;
+
 const renderReserveHook = () => {
   const setSourceToken = jest.fn();
   const setDestinationToken = jest.fn();
@@ -145,6 +167,7 @@ describe("useSwapForXlmReserve — 0.5 XLM estimate", () => {
     expect(setDestinationToken).toHaveBeenCalledWith(
       expect.objectContaining({ id: "XLM" }),
     );
+    expect(logger.error).toHaveBeenCalled();
   });
 
   it("reports a classic outage the way a failed quote is reported", async () => {
@@ -159,7 +182,24 @@ describe("useSwapForXlmReserve — 0.5 XLM estimate", () => {
     });
 
     expect(setTokenAmount).not.toHaveBeenCalled();
-    expect(logger.warn).toHaveBeenCalled();
+    // Same level as the extension: a tap-driven quote failure is reported.
+    expect(logger.error).toHaveBeenCalled();
+  });
+
+  it("reports a rejected receive quote (400) like any other failure", async () => {
+    mockFetchSwapQuotes.mockRejectedValue({
+      message: "Request failed with status code 400",
+      status: 400,
+      isNetworkError: false,
+    });
+    const { result, setDestinationToken } = renderReserveHook();
+
+    await act(async () => {
+      await result.current.handleSwapForXlmFromSheet();
+    });
+
+    expect(logger.error).toHaveBeenCalled();
+    expect(setDestinationToken).toHaveBeenCalled();
   });
 
   it("does not report a plain no-route answer", async () => {
@@ -174,6 +214,7 @@ describe("useSwapForXlmReserve — 0.5 XLM estimate", () => {
     });
 
     expect(logger.warn).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
   });
 
   it("does not write the store when the quote lands after unmount", async () => {
@@ -230,6 +271,122 @@ describe("useSwapForXlmReserve — 0.5 XLM estimate", () => {
 
     expect(setDestinationToken).not.toHaveBeenCalled();
     expect(setSourceToken).not.toHaveBeenCalled();
+    expect(setTokenAmount).not.toHaveBeenCalled();
+  });
+
+  it("drops the quote when the sell token changes while it is in flight", async () => {
+    let resolveQuote: (q: SwapQuotes) => void = () => {};
+    mockFetchSwapQuotes.mockReturnValue(
+      new Promise<SwapQuotes>((resolve) => {
+        resolveQuote = resolve;
+      }),
+    );
+    const setSourceToken = jest.fn();
+    const setDestinationToken = jest.fn();
+    const setTokenAmount = jest.fn();
+    const props = (sourceBalance: HeldBalanceItem) => ({
+      sourceBalance,
+      bestNonXlmClassicBalance: undefined,
+      network: NETWORKS.PUBLIC,
+      publicKey: ACCOUNT,
+      subentryCount: 0,
+      swapFee: "0.00001",
+      setSourceToken,
+      setDestinationToken,
+      setTokenAmount,
+    });
+    const { result, rerender } = renderHook(
+      (p: ReturnType<typeof props>) => useSwapForXlmReserve(p),
+      { initialProps: props(usdcBalance) },
+    );
+
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.handleSwapForXlmFromSheet();
+    });
+    // The user dismisses the sheet and picks another sell token before the
+    // USDC quote lands.
+    rerender(props(aquaBalance));
+    await act(async () => {
+      resolveQuote({
+        routes: [
+          {
+            source: "classic",
+            fromAmount: "0.0912345",
+            toAmount: "0.5",
+            paths: [
+              {
+                share: "1",
+                hops: [{ venue: "stellar-dex", from: USDC, to: "XLM" }],
+              },
+            ],
+            fees: [],
+          },
+        ],
+        unavailable: [],
+      });
+      await pending;
+    });
+
+    expect(setDestinationToken).not.toHaveBeenCalled();
+    expect(setTokenAmount).not.toHaveBeenCalled();
+  });
+
+  it("drops the quote when the source becomes XLM while it is in flight, even if the fallback is the same token", async () => {
+    let resolveQuote: (q: SwapQuotes) => void = () => {};
+    mockFetchSwapQuotes.mockReturnValue(
+      new Promise<SwapQuotes>((resolve) => {
+        resolveQuote = resolve;
+      }),
+    );
+    const setSourceToken = jest.fn();
+    const setDestinationToken = jest.fn();
+    const setTokenAmount = jest.fn();
+    const props = (sourceBalance: HeldBalanceItem) => ({
+      sourceBalance,
+      // USDC is also the best classic fallback, so the resolved sell token
+      // is USDC before and after the switch.
+      bestNonXlmClassicBalance: usdcBalance,
+      network: NETWORKS.PUBLIC,
+      publicKey: ACCOUNT,
+      subentryCount: 0,
+      swapFee: "0.00001",
+      setSourceToken,
+      setDestinationToken,
+      setTokenAmount,
+    });
+    const { result, rerender } = renderHook(
+      (p: ReturnType<typeof props>) => useSwapForXlmReserve(p),
+      { initialProps: props(usdcBalance) },
+    );
+
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.handleSwapForXlmFromSheet();
+    });
+    rerender(props(xlmBalance));
+    await act(async () => {
+      resolveQuote({
+        routes: [
+          {
+            source: "classic",
+            fromAmount: "0.0912345",
+            toAmount: "0.5",
+            paths: [
+              {
+                share: "1",
+                hops: [{ venue: "stellar-dex", from: USDC, to: "XLM" }],
+              },
+            ],
+            fees: [],
+          },
+        ],
+        unavailable: [],
+      });
+      await pending;
+    });
+
+    expect(setDestinationToken).not.toHaveBeenCalled();
     expect(setTokenAmount).not.toHaveBeenCalled();
   });
 

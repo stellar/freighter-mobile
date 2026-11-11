@@ -139,6 +139,34 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(state.swapQuotes).toEqual(quotes);
   });
 
+  it("keeps the previous receive amount while quoting and clears it when the quote fails", async () => {
+    mockFetchSwapQuotes.mockResolvedValueOnce({
+      routes: [classicRoute],
+      unavailable: [],
+    });
+    await find("10");
+    const quoted = useSwapStore.getState().destinationAmount;
+    expect(quoted).not.toBe("0");
+
+    let reject: (e: unknown) => void = () => {};
+    mockFetchSwapQuotes.mockReturnValueOnce(
+      new Promise((_, r) => {
+        reject = r;
+      }),
+    );
+    const pending = find("11");
+    // The design keeps the last amount on the card while the next quote is
+    // in flight; only a failure clears it.
+    expect(useSwapStore.getState().destinationAmount).toBe(quoted);
+
+    reject(apiError(503));
+    await pending;
+
+    const state = useSwapStore.getState();
+    expect(state.destinationAmount).toBe("0");
+    expect(state.pathError).toBe("swapScreen.errors.swapsUnavailable");
+  });
+
   it("shows no path when the backend returns empty routes", async () => {
     const quotes: SwapQuotes = {
       routes: [],

@@ -235,6 +235,7 @@ export const useSwapStore = create<SwapState>((set) => ({
         outageReported = false;
         set({
           isLoadingPath: false,
+          destinationAmount: "0",
           pathError: t("swapScreen.errors.customTokenSwapNotSupported"),
           pathErrorQuoteKey,
         });
@@ -262,9 +263,13 @@ export const useSwapStore = create<SwapState>((set) => ({
         } else {
           outageReported = false;
         }
+        // The receive card renders destinationAmount directly: the previous
+        // quote's amount stays while a new quote is in flight (as designed)
+        // but must not sit next to a failure.
         set({
           isLoadingPath: false,
           swapQuotes,
+          destinationAmount: "0",
           pathError: t(QUOTE_ERROR_KEYS[reason]),
           pathErrorQuoteKey,
         });
@@ -314,6 +319,7 @@ export const useSwapStore = create<SwapState>((set) => ({
 
       set({
         isLoadingPath: false,
+        destinationAmount: "0",
         pathError: displayError,
         pathErrorQuoteKey,
       });
