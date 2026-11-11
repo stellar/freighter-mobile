@@ -753,6 +753,10 @@
       "bodySuffix": " from your balance. You can get it back by removing the trustline after your {{tokenCode}} balance is zero.",
       "confirm": "Got it"
     },
+    "quoteUnavailable": {
+      "title": "Quote unavailable",
+      "body": "We couldn't get a quote for this swap right now. Try a different amount or token pair, or try again later."
+    },
     "trustlineBanner": "This will add a trustline to {{tokenCode}}",
     "xlmReserve": {
       "title": "You need XLM to create a trustline",
