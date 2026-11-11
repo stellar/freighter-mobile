@@ -1,0 +1,142 @@
+appId: org.stellar.freighterdev
+tags:
+  - transactions
+  - send
+  - muxed-contract
+  - testnet
+---
+# Send XLM on testnet to a muxed contract (W...) address, up to the review
+# sheet, checking on the way that the memo is disabled. It never confirms.
+#
+# The recipient is the SEP-23 test vector's contract with mux id 1234
+# (MUXED_CONTRACT_ID_1234 in __tests__/support/muxedContractFixtures.ts).
+#
+# Testnet can't simulate a W send until it runs Protocol 30 and the backend
+# ships freighter-backend#329, so the flow first turns on the DEV-only
+# "W Address Simulation Stub" in Home's debug sheet. With the stub on, the
+# review sheet opens with the device-built, unsimulated transaction, which
+# can't be submitted: the flow cancels the review instead of confirming.
+#
+# Needs E2E_TEST_FUNDED_RECOVERY_PHRASE (a funded testnet account) and a dev
+# build, since the debug sheet only exists in DEV.
+
+# Import funded wallet
+- runFlow:
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Switch to Testnet (account is provisioned on testnet). The shared sub-flow
+# waits for Home to settle, dismisses any auth-error toast, then performs the
+# network switch.
+- runFlow:
+    file: ../shared/SwitchToTestnet.yaml
+
+# Wait for accounts and balances to load
+- extendedWaitUntil:
+    visible:
+      id: home-account-switcher
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: icon-button-send
+    timeout: 15000
+
+# Turn on the W simulation stub. A fresh install starts with it off, and the
+# toggle reads "✓ ..." once it's on.
+- tapOn:
+    id: debug-trigger
+- scrollUntilVisible:
+    element:
+      id: debug-stub-muxed-contract-simulation
+    direction: DOWN
+- tapOn:
+    id: debug-stub-muxed-contract-simulation
+- assertVisible:
+    text: "✓ Stub W Address Simulation"
+- tapOn:
+    id: debug-sheet-close-button
+
+# Navigate to send flow and select XLM
+- tapOn:
+    id: icon-button-send
+- extendedWaitUntil:
+    visible:
+      id: token-option-XLM
+    timeout: 30000
+- tapOn:
+    id: token-option-XLM
+
+# Wait for recipient search screen
+- extendedWaitUntil:
+    visible:
+      id: send-search-contacts-screen
+    timeout: 15000
+
+# Type the W recipient and select its suggestion
+- tapOn:
+    id: send-recipient-input
+- inputText: "WA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAE2LLEM"
+- extendedWaitUntil:
+    visible:
+      id: search-suggestion-0
+    timeout: 30000
+- tapOn:
+    id: search-suggestion-0
+
+# Verify we're on amount screen
+- extendedWaitUntil:
+    visible:
+      id: send-amount-screen
+    timeout: 15000
+
+# XLM can go to a W, so there's no "not supported" banner
+- assertNotVisible:
+    id: muxed-contract-not-supported-banner
+
+# The settings sheet says the memo is disabled for a W
+- tapOn:
+    id: send-settings-button
+- assertVisible:
+    text: 'Memo is disabled for this transaction\.'
+- tapOn:
+    id: transaction-settings-close-button
+
+# Enter amount: 0.000001 XLM
+- tapOn:
+    id: send-amount-focus-trigger
+- inputText: "0.000001"
+
+# Dismiss the keyboard on Android so the Review button is not obscured
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+
+# Tap Review button
+- tapOn:
+    id: send-continue-button
+# Dismiss Blockaid "Proceed with caution" sheet on testnet
+- runFlow:
+    file: ../shared/HandleUnableToScan.yaml
+# Verify review sheet is visible
+- extendedWaitUntil:
+    visible:
+      id: send-review-sheet
+    timeout: 30000
+
+# No memo row for a W. On iOS each review row is one accessible element,
+# whose label joins its texts ("Memo, None"), and Maestro's text is a
+# full-match regex, so the check matches the start of the label. The Fee
+# row's check first shows that this kind of pattern does match a row that
+# is there. Then cancel: never confirm, since the stubbed transaction can't
+# be submitted.
+- assertVisible:
+    text: "Fee.*"
+- assertNotVisible:
+    text: "Memo.*"
+- tapOn:
+    id: send-review-cancel-button
+- extendedWaitUntil:
+    notVisible:
+      id: send-review-sheet
+    timeout: 15000

@@ -22,7 +22,6 @@ describe("startConfirmationPriceSnapshot", () => {
     const handle = startConfirmationPriceSnapshot({
       canonicalIds: ["XLM"],
       network: NETWORKS.TESTNET,
-      useV2: true,
       cachedDisplayPrices: {
         XLM: { currentPrice: new BigNumber(0.1) },
       } as TokenPricesMap,
@@ -56,7 +55,6 @@ describe("startConfirmationPriceSnapshot", () => {
         "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
       ],
       network: NETWORKS.PUBLIC,
-      useV2: true,
       cachedDisplayPrices: {
         XLM: { currentPrice: new BigNumber(0.4) },
         "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN": {
@@ -88,7 +86,6 @@ describe("startConfirmationPriceSnapshot", () => {
     const handle = startConfirmationPriceSnapshot({
       canonicalIds: ["XLM"],
       network: NETWORKS.TESTNET,
-      useV2: false,
       cachedDisplayPrices: {
         XLM: { currentPrice: new BigNumber(0.1) },
       } as TokenPricesMap,
@@ -97,7 +94,7 @@ describe("startConfirmationPriceSnapshot", () => {
     expect(handle.resolve()).toEqual({
       pricesById: { XLM: { currentPrice: new BigNumber(0.1) } },
       freshness: "cached_display",
-      source: "token_prices_v1",
+      source: "token_prices_v2",
     });
   });
 
@@ -109,7 +106,6 @@ describe("startConfirmationPriceSnapshot", () => {
     const handle = startConfirmationPriceSnapshot({
       canonicalIds: ["XLM"],
       network: NETWORKS.TESTNET,
-      useV2: true,
       cachedDisplayPrices: {
         XLM: { currentPrice: new BigNumber(0.1) },
       } as TokenPricesMap,
@@ -135,7 +131,6 @@ describe("startConfirmationPriceSnapshot", () => {
     const handle = startConfirmationPriceSnapshot({
       canonicalIds: ["XLM"],
       network: NETWORKS.TESTNET,
-      useV2: true,
       cachedDisplayPrices: null,
     });
 
@@ -160,7 +155,6 @@ describe("startConfirmationPriceSnapshot", () => {
     const handle = startConfirmationPriceSnapshot({
       canonicalIds: ["XLM"],
       network: NETWORKS.TESTNET,
-      useV2: false,
       cachedDisplayPrices: null,
     });
 
@@ -181,7 +175,6 @@ describe("startConfirmationPriceSnapshot", () => {
     const handle = startConfirmationPriceSnapshot({
       canonicalIds: ["XLM"],
       network: NETWORKS.TESTNET,
-      useV2: false,
       cachedDisplayPrices: null,
     });
 
@@ -204,7 +197,6 @@ describe("startConfirmationPriceSnapshot", () => {
     const handle = startConfirmationPriceSnapshot({
       canonicalIds: ["XLM"],
       network: NETWORKS.TESTNET,
-      useV2: true,
       cachedDisplayPrices: {
         XLM: { currentPrice: new BigNumber(0.2) },
       } as TokenPricesMap,

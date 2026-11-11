@@ -118,7 +118,7 @@ export type QRPayload =
  *
  * Priority order:
  * 1. WalletConnect URI (unambiguous "wc:" prefix)
- * 2. Stellar address (G, C, M, or federation)
+ * 2. Stellar address (G, M, C, W, or federation)
  * 3. Invalid
  *
  * Self-send check (exact string match) is included since it's synchronous.

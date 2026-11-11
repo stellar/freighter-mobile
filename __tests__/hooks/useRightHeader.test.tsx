@@ -52,4 +52,13 @@ describe("useRightHeaderButton", () => {
       "Scan a QR code",
     );
   });
+
+  it("forwards a testID to the header button", () => {
+    expect(
+      renderHeaderRight({
+        icon: Icon.Settings04,
+        testID: "send-settings-button",
+      }).getByTestId("send-settings-button"),
+    ).toBeTruthy();
+  });
 });

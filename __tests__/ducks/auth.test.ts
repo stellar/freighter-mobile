@@ -215,10 +215,12 @@ jest.mock("ducks/collectibles", () => ({
   },
 }));
 
+const mockResetPrices = jest.fn();
 jest.mock("ducks/prices", () => ({
   usePricesStore: {
     getState: jest.fn(() => ({
       fetchPrices: jest.fn().mockResolvedValue(undefined),
+      reset: mockResetPrices,
     })),
     setState: jest.fn(),
   },
@@ -2395,18 +2397,14 @@ describe("auth duck", () => {
       });
     });
 
-    it("should clear all prices store data", () => {
-      // Call clearAccountData
+    it("should reset the prices store through its reset action", () => {
+      // The action (not setState) also drops in-flight price responses, so a
+      // late response can't write pre-wipe prices back. The cleared values
+      // are covered in the prices duck tests.
       clearAccountData();
 
-      // Verify setState was called with correct reset values
-      expect(usePricesStore.setState).toHaveBeenCalledWith({
-        pricesByNetwork: {},
-        sourceByNetwork: {},
-        isLoading: false,
-        error: null,
-        lastUpdated: null,
-      });
+      expect(mockResetPrices).toHaveBeenCalledTimes(1);
+      expect(usePricesStore.setState).not.toHaveBeenCalled();
     });
 
     it("should reset the accounts fiat totals store through its action", () => {
@@ -2433,7 +2431,7 @@ describe("auth duck", () => {
 
       expect(useBalancesStore.setState).toHaveBeenCalledTimes(1);
       expect(useHistoryStore.setState).toHaveBeenCalledTimes(1);
-      expect(usePricesStore.setState).toHaveBeenCalledTimes(1);
+      expect(mockResetPrices).toHaveBeenCalledTimes(1);
       expect(useCollectiblesStore.setState).toHaveBeenCalledTimes(1);
       expect(mockResetAccountsFiatTotals).toHaveBeenCalledTimes(1);
     });
@@ -2451,11 +2449,6 @@ describe("auth duck", () => {
         .calls[0]?.[0];
       expect(historyCall?.isLoading).toBe(false);
       expect(historyCall?.isFetching).toBe(false);
-
-      // Verify prices loading flag
-      const pricesCall = (usePricesStore.setState as jest.Mock).mock
-        .calls[0]?.[0];
-      expect(pricesCall?.isLoading).toBe(false);
     });
 
     it("should clear all error states", () => {
@@ -2470,11 +2463,6 @@ describe("auth duck", () => {
       const historyCall = (useHistoryStore.setState as jest.Mock).mock
         .calls[0]?.[0];
       expect(historyCall?.error).toBeNull();
-
-      // Verify prices error
-      const pricesCall = (usePricesStore.setState as jest.Mock).mock
-        .calls[0]?.[0];
-      expect(pricesCall?.error).toBeNull();
     });
 
     it("should reset balances store to empty objects and zero values", () => {
@@ -2511,16 +2499,6 @@ describe("auth duck", () => {
         .calls[0]?.[0];
       expect(historyCall?.rawHistoryData).toBeNull();
       expect(historyCall?.hasRecentTransaction).toBe(false);
-    });
-
-    it("should reset prices store to empty object and null values", () => {
-      clearAccountData();
-
-      const pricesCall = (usePricesStore.setState as jest.Mock).mock
-        .calls[0]?.[0];
-      expect(pricesCall?.pricesByNetwork).toEqual({});
-      expect(pricesCall?.sourceByNetwork).toEqual({});
-      expect(pricesCall?.lastUpdated).toBeNull();
     });
 
     it("should reset collectibles store to empty collections", () => {

@@ -73,12 +73,13 @@ target 'freighter-mobile' do
       :ccache_enabled => true
     )
 
-    # Fix deployment targets for all pods to be compatible with Xcode 26.2+
-    # This ensures jail-monkey and any other pods with old deployment targets work correctly
+    # Raise every pod (including resource-bundle targets such as the
+    # *PrivacyInfo bundles) to the app's minimum iOS version. Xcode 27's iOS
+    # simulator SDK rejects deployment targets below 15.0 as a build error.
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
-        if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 12.0
-          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+        if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < min_ios_version_supported.to_f
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = min_ios_version_supported
         end
 
         # Xcode 26.4 / Apple clang 21 rejects fmt 11.0.2's FMT_STRING consteval
