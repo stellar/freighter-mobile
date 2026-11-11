@@ -723,44 +723,6 @@ export const approveSessionRequest = async ({
 };
 
 /**
- * Retrieves all active Wallet Connect sessions for a given public key and network
- * @param {string} publicKey - The public key of the account to get sessions for
- * @param {NETWORKS} network - The network to get sessions for
- * @returns {Promise<ActiveSessions>} A promise that resolves with the active sessions
- */
-// eslint-disable-next-line @typescript-eslint/require-await
-export const getActiveSessions = (
-  publicKey: string,
-  network: NETWORKS,
-): ActiveSessions => {
-  const allActiveSessions = walletKit.getActiveSessions() as ActiveSessions;
-  const activeChain =
-    network === NETWORKS.PUBLIC
-      ? StellarRpcChains.PUBLIC
-      : StellarRpcChains.TESTNET;
-  const activeAccount = `${activeChain}:${publicKey}`;
-
-  // Let's get only the sessions related to the active account
-  const activeAccountSessions: ActiveSessions = Object.values(
-    allActiveSessions,
-  ).reduce((sessionsMap, session) => {
-    if (
-      session.namespaces.stellar.accounts.some(
-        (account) => account === activeAccount,
-      )
-    ) {
-      return {
-        ...sessionsMap,
-        [session.topic]: session,
-      };
-    }
-    return sessionsMap;
-  }, {} as ActiveSessions);
-
-  return activeAccountSessions;
-};
-
-/**
  * Disconnects a specific Wallet Connect session by topic
  * @param {string} topic - The session topic to disconnect
  * @returns {Promise<void>} A promise that resolves when the session is disconnected
@@ -786,6 +748,79 @@ export const disconnectSession = async (topic: string): Promise<void> => {
       error,
     );
   }
+};
+
+/**
+ * Splits stored sessions into the active account's sessions and the topics of
+ * sessions whose stellar namespace doesn't list accounts as an array of
+ * strings. Sessions are keyed by their record key, so one that lacks its own
+ * `topic` field is still identified.
+ * @param {ActiveSessions} allSessions - Every stored session, keyed by topic
+ * @param {string} activeAccount - The CAIP-10 account, e.g. `stellar:testnet:G…`
+ * @returns The account's well-formed sessions and the malformed sessions' topics
+ */
+export const partitionAccountSessions = (
+  allSessions: ActiveSessions,
+  activeAccount: string,
+): { accountSessions: ActiveSessions; malformedTopics: string[] } => {
+  const accountSessions: ActiveSessions = {};
+  const malformedTopics: string[] = [];
+
+  Object.entries(allSessions).forEach(([topic, session]) => {
+    const accounts: unknown = session?.namespaces?.stellar?.accounts;
+
+    if (
+      !Array.isArray(accounts) ||
+      !accounts.every((account) => typeof account === "string")
+    ) {
+      malformedTopics.push(topic);
+      return;
+    }
+
+    if (accounts.includes(activeAccount)) {
+      accountSessions[topic] = session;
+    }
+  });
+
+  return { accountSessions, malformedTopics };
+};
+
+/**
+ * Retrieves all active Wallet Connect sessions for a given public key and network.
+ * Stored sessions without Stellar accounts are left out and disconnected.
+ * @param {string} publicKey - The public key of the account to get sessions for
+ * @param {NETWORKS} network - The network to get sessions for
+ * @returns {ActiveSessions} The active account's sessions
+ */
+export const getActiveSessions = (
+  publicKey: string,
+  network: NETWORKS,
+): ActiveSessions => {
+  const allActiveSessions = walletKit.getActiveSessions() as ActiveSessions;
+  const activeChain =
+    network === NETWORKS.PUBLIC
+      ? StellarRpcChains.PUBLIC
+      : StellarRpcChains.TESTNET;
+  const activeAccount = `${activeChain}:${publicKey}`;
+
+  const { accountSessions, malformedTopics } = partitionAccountSessions(
+    allActiveSessions,
+    activeAccount,
+  );
+
+  if (malformedTopics.length > 0) {
+    logger.warn(
+      "getActiveSessions",
+      "Skipped sessions without Stellar accounts",
+      { count: malformedTopics.length },
+    );
+    // disconnectSession catches and logs its own failures.
+    malformedTopics.forEach((topic) => {
+      disconnectSession(topic);
+    });
+  }
+
+  return accountSessions;
 };
 
 /**

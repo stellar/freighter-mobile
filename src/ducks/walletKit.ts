@@ -2,6 +2,7 @@ import { WalletKitTypes } from "@reown/walletkit";
 import { SessionTypes } from "@walletconnect/types";
 import { NETWORKS } from "config/constants";
 import { EnvConfig } from "config/envConfig";
+import { logger } from "config/logger";
 import {
   disconnectAllSessions,
   disconnectSession,
@@ -160,8 +161,18 @@ export const useWalletKitStore = create<WalletKitState>((set, get) => ({
   setEvent: (event) => set({ event }),
   clearEvent: () => set({ event: noneEvent }),
   fetchActiveSessions: (publicKey: string, network: NETWORKS) => {
-    const activeSessions = getActiveSessions(publicKey, network);
-    set({ activeSessions });
+    try {
+      const activeSessions = getActiveSessions(publicKey, network);
+      set({ activeSessions });
+    } catch (error) {
+      // Stored sessions come from dApps; keep the last good list rather than
+      // letting a bad one take the app down.
+      logger.error(
+        "fetchActiveSessions",
+        "Failed to read active sessions",
+        error,
+      );
+    }
   },
   disconnectSession: async ({
     topic,
