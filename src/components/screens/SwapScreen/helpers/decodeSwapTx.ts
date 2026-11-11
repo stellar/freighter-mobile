@@ -10,6 +10,7 @@ import {
 } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { isNativeAssetId } from "helpers/assetIdentity";
+import { formatTokenIdentifier } from "helpers/balances";
 
 /** What the swap review shows, read from the transaction, not the quote. */
 export interface DecodedSwapTx {
@@ -48,11 +49,12 @@ const mismatch = (what: string) => new SwapTxMismatchError(what);
 
 const toClassicAsset = (wire: string): Asset => {
   if (isNativeAssetId(wire)) return Asset.native();
-  const [code, issuer, ...rest] = wire.split(":");
-  if (!code || !issuer || rest.length) {
+  const { tokenCode, issuer } = formatTokenIdentifier(wire);
+  try {
+    return new Asset(tokenCode, issuer);
+  } catch {
     throw mismatch(`unsupported asset ${wire}`);
   }
-  return new Asset(code, issuer);
 };
 
 const decodeClassic = (
