@@ -28,7 +28,6 @@ import { ActiveAccount } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useHistoryStore } from "ducks/history";
 import { usePricesStore } from "ducks/prices";
-import { useRemoteConfigStore } from "ducks/remoteConfig";
 import {
   SwapPathResult,
   swapMinOut,
@@ -167,7 +166,6 @@ export const useSwapTransaction = ({
         sourceBalance: latestSource,
         destinationBalance: latestDest,
         sourceAmount,
-        slippage: useSwapSettingsStore.getState().swapSlippage,
         network,
         publicKey: account.publicKey,
       });
@@ -417,7 +415,6 @@ export const useSwapTransaction = ({
       snapshotHandle = startConfirmationPriceSnapshot({
         canonicalIds: [sourceCanonicalId, destCanonicalId],
         network,
-        useV2: useRemoteConfigStore.getState().use_token_prices_v2,
         cachedDisplayPrices: {
           [sourceCanonicalId]: {
             currentPrice: displayPriceFor(freshSource, sourceCanonicalId),

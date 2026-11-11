@@ -406,6 +406,24 @@ requests clipboard access — if dismissed, sync stops working silently.
    ```
    Run this after copying on the Mac, then paste normally in the simulator.
 
+### Paste buttons do nothing on iOS 27 simulators
+
+**Symptom:** On an iOS 27 simulator, the app's own Paste buttons (Import
+wallet's Paste, Add token's Paste from clipboard) do nothing with text copied on
+the Mac or in another app, and no "Allow Paste" prompt appears. Text copied
+inside the app pastes fine.
+
+**Root cause:** iOS asks before an app reads what another app copied, but the
+iOS 27 simulators can't show that prompt: SpringBoard refuses it because their
+pasteboard daemon lacks the `com.apple.springboard.CFUserNotification`
+entitlement. The read fails silently. It's a simulator bug, not an app bug, and
+iOS 26 simulators still show the prompt.
+
+**Solution:** `yarn ios` sets the app's "Paste from Other Apps" permission to
+Allow on every booted iOS 27 simulator after launching it. If you launched from
+Xcode, run `./scripts/allow-ios-simulator-paste`. To test the prompt itself, use
+an iOS 26 simulator or a device.
+
 ## Dependency & Package Issues
 
 ### Metro package exports + rn-nodeify conflict

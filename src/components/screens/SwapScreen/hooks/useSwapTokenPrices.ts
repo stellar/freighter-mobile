@@ -2,7 +2,6 @@ import { recordTokenId } from "components/screens/SwapScreen/helpers";
 import { FormattedSearchTokenRecord, TokenPricesMap } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { usePricesForNetwork, usePricesStore } from "ducks/prices";
-import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useCallback, useEffect, useMemo } from "react";
 
 /**
@@ -38,9 +37,6 @@ export const useSwapTokenPrices = ({
     (state) => state.fetchPricesForTokenIds,
   );
   const network = useAuthenticationStore((state) => state.network);
-  // Subscribe to the endpoint flag so a v1/v2 rollback re-runs the fetch below
-  // even while this screen stays mounted with an unchanged token list/network.
-  const useV2 = useRemoteConfigStore((state) => state.use_token_prices_v2);
   // Read the active network's prices only — never another network's.
   const prices = usePricesForNetwork(network);
 
@@ -57,15 +53,8 @@ export const useSwapTokenPrices = ({
     const trendingIds = enabled ? tokens.map(recordTokenId) : [];
     const ids = [...trendingIds, ...stableExtraTokenIds];
     if (ids.length === 0) return;
-    fetchPricesForTokenIds({ tokens: ids, network, useV2 });
-  }, [
-    enabled,
-    tokens,
-    stableExtraTokenIds,
-    fetchPricesForTokenIds,
-    network,
-    useV2,
-  ]);
+    fetchPricesForTokenIds({ tokens: ids, network });
+  }, [enabled, tokens, stableExtraTokenIds, fetchPricesForTokenIds, network]);
 
   const refreshPrices = useCallback(async () => {
     const trendingIds = tokens.map(recordTokenId);
@@ -74,10 +63,9 @@ export const useSwapTokenPrices = ({
     await fetchPricesForTokenIds({
       tokens: ids,
       network,
-      useV2,
       forceRefresh: true,
     });
-  }, [tokens, stableExtraTokenIds, fetchPricesForTokenIds, network, useV2]);
+  }, [tokens, stableExtraTokenIds, fetchPricesForTokenIds, network]);
 
   return { prices, refreshPrices };
 };

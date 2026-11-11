@@ -2,7 +2,7 @@ import Blockaid from "@blockaid/client";
 import BigNumber from "bignumber.js";
 import { MINIMUM_CREATE_ACCOUNT_XLM } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
-import { isContractId } from "helpers/soroban";
+import { isContractDestination } from "helpers/muxedContract";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useMemo } from "react";
 import { SecurityLevel } from "services/blockaid/constants";
@@ -44,9 +44,9 @@ export interface BuildUnfundedContextParams {
  * import time (see backend.getTokenMetadata).
  *
  * The `isContractDestination` flag is true when the recipient is a
- * contract (C...) address. Contract destinations never trigger the
- * warning because their balances live in the token contract's storage —
- * there's no classic account to be "unfunded".
+ * contract (`C…`) or muxed contract (`W…`) address. Contract destinations
+ * never trigger the warning because their balances live in the token
+ * contract's storage — there's no classic account to be "unfunded".
  */
 export function buildUnfundedContext({
   selectedBalance,
@@ -72,17 +72,15 @@ export function buildUnfundedContext({
   const isClassicAsset =
     selectedBalance.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN;
 
-  const isContractDestination = Boolean(
-    recipientAddress && isContractId(recipientAddress),
-  );
-
   return {
     assetCode,
     isNativeAsset,
     isDestinationFunded,
     canCreateAccountWithAmount,
     isClassicAsset,
-    isContractDestination,
+    isContractDestination: Boolean(
+      recipientAddress && isContractDestination(recipientAddress),
+    ),
   };
 }
 
@@ -175,11 +173,9 @@ export interface UseSendBannerContentParams {
   isExpectedToFail?: boolean;
   isUnableToScan?: boolean;
   isRequiredMemoMissing?: boolean;
-  isMuxedAddressWithoutMemoSupport?: boolean;
   unfundedContext?: UnfundedDestinationContext;
   onSecurityWarningPress: () => void;
   onMemoMissingPress?: () => void;
-  onMuxedAddressWithoutMemoSupportPress?: () => void;
 }
 
 /**
@@ -192,11 +188,9 @@ export function useSendBannerContent({
   isExpectedToFail = false,
   isUnableToScan = false,
   isRequiredMemoMissing = false,
-  isMuxedAddressWithoutMemoSupport = false,
   unfundedContext,
   onSecurityWarningPress,
   onMemoMissingPress,
-  onMuxedAddressWithoutMemoSupportPress,
 }: UseSendBannerContentParams): BannerContent | undefined {
   const { t } = useAppTranslation();
 
@@ -215,7 +209,6 @@ export function useSendBannerContent({
       isSuspicious ||
       isExpectedToFail ||
       isUnfundedDestination ||
-      isMuxedAddressWithoutMemoSupport ||
       isUnableToScan;
 
     if (!shouldShowNoticeBanner) {
@@ -246,17 +239,6 @@ export function useSendBannerContent({
       };
     }
 
-    if (
-      isMuxedAddressWithoutMemoSupport &&
-      onMuxedAddressWithoutMemoSupportPress
-    ) {
-      return {
-        text: t("transactionAmountScreen.errors.muxedAddressNotSupported"),
-        variant: "error" as const,
-        onPress: onMuxedAddressWithoutMemoSupportPress,
-      };
-    }
-
     if (isRequiredMemoMissing && onMemoMissingPress) {
       return {
         text: t("transactionAmountScreen.errors.memoMissing"),
@@ -280,12 +262,10 @@ export function useSendBannerContent({
     isMalicious,
     isSuspicious,
     isExpectedToFail,
-    isMuxedAddressWithoutMemoSupport,
     isUnableToScan,
     isUnfundedDestination,
     onSecurityWarningPress,
     onMemoMissingPress,
-    onMuxedAddressWithoutMemoSupportPress,
     t,
   ]);
 }

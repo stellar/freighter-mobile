@@ -7,6 +7,10 @@ import {
   hash,
   xdr,
 } from "@stellar/stellar-sdk";
+import {
+  MUXED_CONTRACT_ID_0,
+  MUXED_CONTRACT_ID_U64_MAX,
+} from "__tests__/support/muxedContractFixtures";
 import { logger } from "config/logger";
 import { isContractId } from "helpers/soroban";
 import {
@@ -34,6 +38,17 @@ jest.mock("@stellar/stellar-sdk", () => {
       isValidEd25519PublicKey: jest.fn(),
       isValidMed25519PublicKey: jest.fn(),
       encodeEd25519PublicKey: originalSdk.StrKey.encodeEd25519PublicKey,
+      // Real passthroughs for every StrKey member `helpers/muxedContract`
+      // calls: `helpers/stellar` imports it, and it reads StrKey from this mock.
+      isValidMuxedContract: originalSdk.StrKey.isValidMuxedContract.bind(
+        originalSdk.StrKey,
+      ),
+      isValidContract: originalSdk.StrKey.isValidContract.bind(
+        originalSdk.StrKey,
+      ),
+      decodeMuxedContract: originalSdk.StrKey.decodeMuxedContract.bind(
+        originalSdk.StrKey,
+      ),
     },
     Account: jest.fn().mockImplementation((accountId, sequenceNumber) => ({
       accountId: () => accountId,
@@ -198,6 +213,10 @@ describe("Stellar helpers", () => {
       expect(mockedMuxedAccount.fromAddress).not.toHaveBeenCalled();
     });
 
+    it("returns a W unchanged", () => {
+      expect(getBaseAccount(MUXED_CONTRACT_ID_0)).toBe(MUXED_CONTRACT_ID_0);
+    });
+
     it("should return null and log error if MuxedAccount.fromAddress throws", () => {
       mockedStrKey.isValidMed25519PublicKey.mockReturnValueOnce(true);
       const error = new Error("SDK error");
@@ -254,6 +273,26 @@ describe("Stellar helpers", () => {
       mockedStrKey.isValidMed25519PublicKey.mockReturnValueOnce(false);
       mockedIsContractId.mockReturnValueOnce(false);
       expect(isValidStellarAddress(validFederation)).toBe(true);
+    });
+
+    it("accepts a muxed contract (W) address", () => {
+      [MUXED_CONTRACT_ID_0, MUXED_CONTRACT_ID_U64_MAX].forEach((w) =>
+        expect(isValidStellarAddress(w)).toBe(true),
+      );
+    });
+
+    it("rejects a near-miss W", () => {
+      [
+        `${MUXED_CONTRACT_ID_0.slice(0, -1)}D`,
+        MUXED_CONTRACT_ID_0.toLowerCase(),
+        ` ${MUXED_CONTRACT_ID_0}`,
+      ].forEach((w) => expect(isValidStellarAddress(w)).toBe(false));
+    });
+
+    // The W check must not early-return on a "W" prefix the way the C branch
+    // does on "C", or every federation name starting with a W is rejected.
+    it("still accepts a federation address that starts with a W", () => {
+      expect(isValidStellarAddress("Walter*example.com")).toBe(true);
     });
 
     it("should return false for invalid addresses", () => {
@@ -456,6 +495,15 @@ describe("Stellar helpers", () => {
         (key) => key === validContract || key === anotherContract,
       );
       expect(isSameAccount(validContract, anotherContract)).toBe(false);
+    });
+
+    // Locks in today's behaviour: a W is a contract destination, never an account.
+    it("never treats a W as the same account", () => {
+      expect(isSameAccount(validEd25519, MUXED_CONTRACT_ID_0)).toBe(false);
+      expect(isSameAccount(MUXED_CONTRACT_ID_0, validEd25519)).toBe(false);
+      expect(isSameAccount(MUXED_CONTRACT_ID_0, MUXED_CONTRACT_ID_0)).toBe(
+        false,
+      );
     });
 
     it("should return false when comparing Federation address with anything else", () => {

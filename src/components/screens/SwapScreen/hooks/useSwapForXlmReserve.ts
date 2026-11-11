@@ -15,7 +15,7 @@ import { TokenTypeWithCustomToken } from "config/types";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { fetchSwapQuotes } from "services/backend";
 
 interface UseSwapForXlmReserveParams {
@@ -57,12 +57,28 @@ export const useSwapForXlmReserve = ({
   setTokenAmount,
 }: UseSwapForXlmReserveParams) => {
   const xlmReserveBottomSheetRef = useRef<BottomSheetModal>(null);
+  // The receive quote can take seconds. A result that lands after the screen
+  // unmounted (resetSwap has run), after a newer tap, or after the sell
+  // token, account or network changed must not write the store.
+  const isMountedRef = useRef(true);
+  const quoteRequestRef = useRef(0);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const isCurrentSourceNonXlmClassic =
     !!sourceBalance &&
     !isNativeAssetId(sourceBalance.id) &&
     (sourceBalance.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM4 ||
       sourceBalance.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM12);
+  // Keyed on the source itself, not the resolved sell token: switching the
+  // source to XLM must drop an in-flight quote even when the fallback
+  // resolves to the same token that was quoted.
+  const quoteInputsRef = useRef("");
+  quoteInputsRef.current = `${sourceBalance?.id}|${publicKey}|${network}`;
   const canOfferSwapToXlm =
     isCurrentSourceNonXlmClassic || !!bestNonXlmClassicBalance;
 
@@ -92,6 +108,9 @@ export const useSwapForXlmReserve = ({
         : undefined;
     if (!sellTokenCode || !sellIssuer) return;
 
+    quoteRequestRef.current += 1;
+    const requestId = quoteRequestRef.current;
+    const quotedFor = quoteInputsRef.current;
     let receivedSourceAmount: string | null = null;
     try {
       if (publicKey && isCurrentSourceNonXlmClassic) {
@@ -108,7 +127,7 @@ export const useSwapForXlmReserve = ({
           !receivedSourceAmount &&
           missingSwapRouteReason(quotes) === "unavailable"
         ) {
-          logger.warn(
+          logger.error(
             "useSwapForXlmReserve.handleSwapForXlmFromSheet",
             "receive quote source unavailable",
             quotes.unavailable,
@@ -117,13 +136,21 @@ export const useSwapForXlmReserve = ({
       }
     } catch (error) {
       // No path / network error — fall back to setting source+dest without
-      // a pre-filled amount so the user can still adjust manually. Expected
-      // and handled, so warn (not error → no red LogBox / Sentry issue).
-      logger.warn(
+      // a pre-filled amount so the user can still adjust manually. Reported
+      // per tap, 400 included, as the extension does: the request was built
+      // from the app's own balances, so a rejection is worth seeing.
+      logger.error(
         "useSwapForXlmReserve.handleSwapForXlmFromSheet",
         "receive quote failed",
         error,
       );
+    }
+    if (
+      !isMountedRef.current ||
+      requestId !== quoteRequestRef.current ||
+      quotedFor !== quoteInputsRef.current
+    ) {
+      return;
     }
 
     setDestinationToken({

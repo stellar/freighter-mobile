@@ -12,7 +12,6 @@ import {
 } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { usePricesForNetwork, usePricesStore } from "ducks/prices";
-import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -41,11 +40,9 @@ export const useTransactionBalanceListItems = (
 ): ListItemProps[] => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  // Subscribe to the active network and endpoint flag so the price-fetch effect
-  // re-runs on a network switch or v1/v2 rollback — v2 prices are network-scoped
-  // and the rollback must re-query the new source.
+  // Subscribe to the active network so the price-fetch effect re-runs on a
+  // network switch — prices are network-scoped.
   const network = useAuthenticationStore((state) => state.network);
-  const useV2 = useRemoteConfigStore((state) => state.use_token_prices_v2);
   // Subscribe to the active network's prices so the list recomputes when an
   // async price response lands (reading via getState alone would not trigger a
   // re-render) and never shows another network's prices.
@@ -81,8 +78,8 @@ export const useTransactionBalanceListItems = (
     const { fetchPricesForTokenIds } = usePricesStore.getState();
     // Fire and ignore resolution; the store handles errors.
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    fetchPricesForTokenIds({ tokens: tokenIds, network, useV2 });
-  }, [tokenIds, network, useV2]);
+    fetchPricesForTokenIds({ tokens: tokenIds, network });
+  }, [tokenIds, network]);
 
   return useMemo(() => {
     const items: ListItemProps[] = [];
