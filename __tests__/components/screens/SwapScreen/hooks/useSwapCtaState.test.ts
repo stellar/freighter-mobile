@@ -44,3 +44,19 @@ describe("useSwapCtaState — quote freshness", () => {
     expect(result.current.ctaState.kind).toBe("loading");
   });
 });
+
+describe("useSwapCtaState — failed quote", () => {
+  it("keeps Review swap, disabled, when the quote failed (the Quote unavailable line explains)", () => {
+    const { result } = renderHook(() =>
+      useSwapCtaState({
+        ...props("k1", "k1"),
+        pathResult: null,
+        pathError: "swapScreen.errors.noPathFound",
+      }),
+    );
+
+    expect(result.current.ctaState.kind).toBe("review");
+    expect(result.current.ctaLabel).toBe("swapScreen.cta.review");
+    expect(result.current.isCtaDisabled).toBe(true);
+  });
+});
