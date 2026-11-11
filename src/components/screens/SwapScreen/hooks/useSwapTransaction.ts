@@ -198,10 +198,12 @@ export const useSwapTransaction = ({
     const { route } = pathResult;
     // The stored default is recommended × op count, sized for a classic
     // build (changeTrust + path payment). A Soroban source builds one op and
-    // charges the whole fee as inclusion, so it gets the per-op rate.
+    // charges the whole fee as inclusion, so it gets the per-op rate, capped
+    // at the stored total: that is what spendable (Max) was sized from, and
+    // it stays frozen while the recommendation keeps moving.
     const requestFee =
       !feeManuallyChanged && route.source !== "classic" && recommendedFee
-        ? recommendedFee
+        ? BigNumber.min(recommendedFee, freshSwapFee).toFixed()
         : freshSwapFee;
 
     const isStillCurrent = (xdr: string) => {
