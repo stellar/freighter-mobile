@@ -154,6 +154,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     const state = useSwapStore.getState();
     expect(state.pathResult).toBeNull();
     expect(state.pathError).toBe("swapScreen.errors.noPathFound");
+    expect(state.pathErrorQuoteKey).toBe(swapQuoteKey(inputs("10")));
     expect(state.swapQuotes).toEqual(quotes);
   });
 
@@ -177,6 +178,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
       const state = useSwapStore.getState();
       expect(state.pathResult).toBeNull();
       expect(state.pathError).toBe("swapScreen.errors.swapsUnavailable");
+      expect(state.pathErrorQuoteKey).toBe(swapQuoteKey(inputs("10")));
     },
   );
 
