@@ -991,6 +991,8 @@
     "errorInvalidMessage": "Message is missing or empty",
     "errorInvalidAuthEntry": "Authorization entry XDR is missing or malformed",
     "errorInvalidXdr": "Transaction XDR is missing or malformed",
+    "errorXdrTooLarge": "Transaction XDR is too large (max 256 KB)",
+    "errorAuthEntryTooLarge": "Authorization entry XDR is too large (max 64 KB)",
     "errorAuthEntryNetworkMismatch": "Authorization entry is for a different network",
     "errorAuthEntryAddressMismatch": "Authorization entry is bound to a different account",
     "errorEmptyMessage": "Cannot sign empty message",

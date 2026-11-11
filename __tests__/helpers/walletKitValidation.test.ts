@@ -10,6 +10,8 @@ import {
   validateSignMessageContent,
   validateSignMessageLength,
   validateSignXdrContent,
+  validateSignXdrLength,
+  validateSignAuthEntryLength,
   ValidationErrorKeys,
 } from "helpers/walletKitValidation";
 
@@ -87,6 +89,42 @@ const buildNonSorobanPreimage = (): string =>
 // ─────────────────────────────────────────────────────────────────────────────
 // validateSignMessageContent
 // ─────────────────────────────────────────────────────────────────────────────
+
+describe("validateSignXdrLength", () => {
+  it("accepts an xdr of exactly 262144 characters", () => {
+    const xdrParam = "A".repeat(262144);
+
+    expect(validateSignXdrLength(xdrParam)).toEqual({
+      valid: true,
+      value: xdrParam,
+    });
+  });
+
+  it("rejects an xdr of 262145 characters", () => {
+    expect(validateSignXdrLength("A".repeat(262145))).toEqual({
+      valid: false,
+      errorKey: "walletKit.errorXdrTooLarge",
+    });
+  });
+});
+
+describe("validateSignAuthEntryLength", () => {
+  it("accepts an entry of exactly 65536 characters", () => {
+    const entryXdr = "A".repeat(65536);
+
+    expect(validateSignAuthEntryLength(entryXdr)).toEqual({
+      valid: true,
+      value: entryXdr,
+    });
+  });
+
+  it("rejects an entry of 65537 characters", () => {
+    expect(validateSignAuthEntryLength("A".repeat(65537))).toEqual({
+      valid: false,
+      errorKey: "walletKit.errorAuthEntryTooLarge",
+    });
+  });
+});
 
 describe("validateSignXdrContent", () => {
   it.each([undefined, null, 42, "", "   ", {}, ["AAAA"]])(

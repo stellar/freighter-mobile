@@ -367,7 +367,7 @@ describe("WalletKitProvider: a dApp request whose details can't be displayed", (
   });
 });
 
-describe("WalletKitProvider: a transaction request without an XDR string", () => {
+describe("WalletKitProvider: a request whose params fail validation", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
@@ -408,6 +408,34 @@ describe("WalletKitProvider: a transaction request without an XDR string", () =>
       expect(requestSheet().requestEvent?.id).toBe(2);
     },
   );
+
+  it("rejects a stellar_signXDR request whose xdr is over 262144 characters and moves on", async () => {
+    render(provider());
+    await deliver(signXdrRequest(1, "A".repeat(262145)));
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledWith({
+      sessionRequest: expect.objectContaining({ id: 1 }),
+      message: "walletKit.errorXdrTooLarge",
+    });
+
+    await deliver(signXdrRequest(2, sacTransferTransactionXdr()));
+
+    expect(requestSheet().requestEvent?.id).toBe(2);
+  });
+
+  it("rejects a stellar_signAuthEntry request whose entry is over 65536 characters and moves on", async () => {
+    render(provider());
+    await deliver(signAuthEntryRequest(1, "A".repeat(65537)));
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledWith({
+      sessionRequest: expect.objectContaining({ id: 1 }),
+      message: "walletKit.errorAuthEntryTooLarge",
+    });
+
+    await deliver(signXdrRequest(2, sacTransferTransactionXdr()));
+
+    expect(requestSheet().requestEvent?.id).toBe(2);
+  });
 });
 
 /** A connection proposal from the dApp. */

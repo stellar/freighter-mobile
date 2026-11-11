@@ -38,10 +38,13 @@ import {
   resolveDappRejectionEvent,
 } from "helpers/walletKitUtil";
 import {
+  ValidationErrorKey,
   validateSignMessageContent,
   validateSignMessageLength,
   validateSignXdrContent,
+  validateSignXdrLength,
   validateSignAuthEntryContent,
+  validateSignAuthEntryLength,
   parseAuthEntryPreimage,
   validateAuthEntryNetwork,
   validateAuthEntryAddress,
@@ -762,6 +765,27 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   // ─────────────────────────────────────────────────────────────────────────────
 
   /**
+   * Rejects a request that failed a validation rule: shows the reason, answers
+   * the dApp with it, clears the event and releases the request queue.
+   */
+  const failRequestValidation = (
+    sessionRequest: WalletKitSessionRequest,
+    errorKey: ValidationErrorKey,
+  ) => {
+    showToast({
+      title: t("walletKit.invalidRequestTitle"),
+      message: t(errorKey),
+      variant: "error",
+    });
+    rejectSessionRequest({
+      sessionRequest,
+      message: t(errorKey),
+    });
+    clearEvent();
+    isProcessingRequestRef.current = false;
+  };
+
+  /**
    * Validates the xdr param for sign_xdr and sign_and_submit_xdr requests.
    * @returns the xdr string if valid, or null if invalid (rejection handled)
    */
@@ -790,7 +814,13 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       return null;
     }
 
-    return result.value;
+    const lengthResult = validateSignXdrLength(result.value);
+    if (!lengthResult.valid) {
+      failRequestValidation(sessionRequest, lengthResult.errorKey);
+      return null;
+    }
+
+    return lengthResult.value;
   };
 
   /**
@@ -872,7 +902,13 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       return null;
     }
 
-    return result.value;
+    const lengthResult = validateSignAuthEntryLength(result.value);
+    if (!lengthResult.valid) {
+      failRequestValidation(sessionRequest, lengthResult.errorKey);
+      return null;
+    }
+
+    return lengthResult.value;
   };
 
   /**

@@ -16,7 +16,22 @@ export const ValidationErrorKeys = {
   AUTH_ENTRY_NETWORK_MISMATCH: "walletKit.errorAuthEntryNetworkMismatch",
   AUTH_ENTRY_ADDRESS_MISMATCH: "walletKit.errorAuthEntryAddressMismatch",
   INVALID_XDR: "walletKit.errorInvalidXdr",
+  XDR_TOO_LARGE: "walletKit.errorXdrTooLarge",
+  AUTH_ENTRY_TOO_LARGE: "walletKit.errorAuthEntryTooLarge",
 } as const;
+
+/**
+ * Max length, in base64 characters, of the transaction XDR in sign_xdr and
+ * sign_and_submit_xdr requests. The network's largest transaction is about
+ * 176 KB once base64-encoded, so no transaction it accepts is turned away.
+ */
+export const SIGN_XDR_MAX_LENGTH = 262_144;
+
+/**
+ * Max length, in base64 characters, of the HashIdPreimage in sign_auth_entry
+ * requests. Real authorization entries are a few KB.
+ */
+export const SIGN_AUTH_ENTRY_MAX_LENGTH = 65_536;
 
 /**
  * Max UTF-8 byte length for sign_message content. SEP-53 imposes no size
@@ -54,6 +69,33 @@ export function validateSignXdrContent(
     return { valid: false, errorKey: ValidationErrorKeys.INVALID_XDR };
   }
   return { valid: true, value: xdrParam };
+}
+
+/**
+ * Validates sign_xdr and sign_and_submit_xdr length against SIGN_XDR_MAX_LENGTH.
+ */
+export function validateSignXdrLength(
+  xdrParam: string,
+): ValidationResult<string> {
+  if (xdrParam.length > SIGN_XDR_MAX_LENGTH) {
+    return { valid: false, errorKey: ValidationErrorKeys.XDR_TOO_LARGE };
+  }
+  return { valid: true, value: xdrParam };
+}
+
+/**
+ * Validates sign_auth_entry length against SIGN_AUTH_ENTRY_MAX_LENGTH.
+ */
+export function validateSignAuthEntryLength(
+  entryXdr: string,
+): ValidationResult<string> {
+  if (entryXdr.length > SIGN_AUTH_ENTRY_MAX_LENGTH) {
+    return {
+      valid: false,
+      errorKey: ValidationErrorKeys.AUTH_ENTRY_TOO_LARGE,
+    };
+  }
+  return { valid: true, value: entryXdr };
 }
 
 /**
