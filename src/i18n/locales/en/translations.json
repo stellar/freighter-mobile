@@ -982,6 +982,7 @@
     "userRejected": "User rejected the request",
     "errorInitializing": "Error initializing WalletConnect",
     "errorPairing": "Failed to pair with App",
+    "errorInvalidPairingLink": "This link isn't a valid connection link.",
     "errorConnecting": "{{dappName}} connection failed",
     "errorSigning": "Failed to sign transaction",
     "errorSigningMessage": "Failed to sign message",

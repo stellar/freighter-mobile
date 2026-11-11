@@ -7,6 +7,7 @@ import {
   WALLET_KIT_MT_REDIRECT_NATIVE,
   WalletKitEventTypes,
 } from "ducks/walletKit";
+import { parsePairingLink } from "helpers/pairingLink";
 import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -82,21 +83,25 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
 
   const onDeepLink = useCallback(
     (event: { url: string | null }): void => {
-      // Early return if the deep link is not compliant with the expected format
-      if (!event.url?.includes(WALLET_KIT_MT_REDIRECT_NATIVE)) {
+      const link = parsePairingLink(event.url, WALLET_KIT_MT_REDIRECT_NATIVE);
+
+      // Not a pairing link, or a bare one that only brings the wallet forward
+      if (link.status === "ignored") {
         return;
       }
 
-      const urlWithParams = new URL(event.url);
-      const uriParam = urlWithParams.search.split("uri=")[1];
-
-      // Early return if the URI param is not found
-      if (!uriParam) {
+      if (link.status === "invalid") {
+        logger.warn("onDeepLink", "Pairing link could not be decoded");
+        showToast({
+          title: t("walletKit.errorPairing"),
+          message: t("walletKit.errorInvalidPairingLink"),
+          variant: "error",
+        });
         return;
       }
 
-      // Try pairing with the dApp using the provided URI param
-      walletKit.pair({ uri: decodeURIComponent(uriParam) }).catch((error) => {
+      // Try pairing with the dApp using the provided URI
+      walletKit.pair({ uri: link.uri }).catch((error) => {
         showToast({
           title: t("walletKit.errorPairing"),
           message: t("common.error", {
@@ -125,7 +130,11 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
       deepLinkSubscription = Linking.addEventListener("url", onDeepLink);
 
       // Handle deep links when app is opened from a quit state
-      Linking.getInitialURL().then((url) => onDeepLink({ url }));
+      Linking.getInitialURL()
+        .then((url) => onDeepLink({ url }))
+        .catch((error: unknown) => {
+          logger.warn("onDeepLink", "Failed to read the initial link", error);
+        });
     }
 
     return () => {

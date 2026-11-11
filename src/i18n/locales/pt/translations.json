@@ -948,6 +948,7 @@
     "userRejected": "O usuário rejeitou a solicitação",
     "errorInitializing": "Erro ao inicializar o WalletConnect",
     "errorPairing": "Falha ao parear com o dApp",
+    "errorInvalidPairingLink": "Este link não é um link de conexão válido.",
     "errorConnecting": "Erro ao conectar com {{dappName}}",
     "errorSigning": "Erro ao assinar a transação",
     "errorSigningMessage": "Erro ao assinar a mensagem",
