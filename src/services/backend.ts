@@ -992,7 +992,7 @@ export interface FetchSwapQuotesParams {
   amount: string;
 }
 
-/** A 200 whose body is not a quotes envelope; classified as an outage. */
+/** A 200 from a swap route whose body is not the envelope; an outage. */
 export class SwapQuotesResponseError extends Error {
   constructor(message: string) {
     super(message);
@@ -1058,7 +1058,7 @@ export const buildSwapTx = async ({
   );
 
   if (typeof data?.data?.xdr !== "string" || !data.data.xdr) {
-    throw new Error("Unexpected swap tx response shape");
+    throw new SwapQuotesResponseError("Unexpected swap tx response shape");
   }
 
   return data.data;
