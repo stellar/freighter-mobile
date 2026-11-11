@@ -816,9 +816,7 @@
     "supplied": "Supplied",
     "borrowed": "Borrowed",
     "backstop": "Backstop",
-    "descriptions": {
-      "fixedPool": "Permissionless lending pool with no admin. Collateral factors, interest curves, and supported assets are locked at deployment."
-    }
+    "poolDescription": "Deposit supported assets into this Blend pool to earn yield. APY may change over time. Withdraw anytime."
   },
   "earnAmount": {
     "title": "Deposit",

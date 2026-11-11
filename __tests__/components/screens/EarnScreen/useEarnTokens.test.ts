@@ -3,9 +3,10 @@ import {
   buildEarnTokenRows,
   headlineApy,
 } from "components/screens/EarnScreen/hooks/useEarnTokens";
+import { BLEND_FIXED_POOL_IDS } from "config/blend";
 import { NETWORKS } from "config/constants";
 
-const POOL_ID = "CAJJZSGMMM3PD7N33TAPHGBUGTB43OC73HVIK2L2G6BNGGGYOSSYBXBD";
+const POOL_ID = BLEND_FIXED_POOL_IDS[NETWORKS.PUBLIC]!;
 const USDC_SAC = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
 
 describe("headlineApy", () => {

@@ -5,7 +5,6 @@ import { TokenIcon } from "components/TokenIcon";
 import {
   formatCompactUsd,
   formatRate,
-  getPoolDescriptionKey,
 } from "components/screens/EarnScreen/helpers";
 import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
@@ -127,15 +126,6 @@ export const PoolDetailsBottomSheet: React.FC<PoolDetailsBottomSheetProps> = ({
   if (!pool) {
     return null;
   }
-
-  // getPoolDescriptionKey's return is deliberately widened to `string | null`
-  // (Task 7) so the pool-id map can grow without narrowing callers — but that
-  // means it can't type-check against i18next's literal key union the way a
-  // hardcoded key can. The cast below is scoped to exactly this one dynamic
-  // lookup; every other `t(...)` call in this file uses a literal key and is
-  // fully type-checked.
-  const descriptionKey = getPoolDescriptionKey(pool.id);
-  const description = descriptionKey ? t(descriptionKey as never) : null;
 
   const nativeContractId = getNativeContractDetails(network).contract;
   const visibleReserves = pool.reserves.slice(0, MAX_VISIBLE_RESERVE_ICONS);
@@ -274,16 +264,17 @@ export const PoolDetailsBottomSheet: React.FC<PoolDetailsBottomSheetProps> = ({
         />
       </View>
 
-      {description && (
-        <View className="gap-[6px]">
-          <Text xs secondary>
-            {t("earnPoolDetails.description")}
-          </Text>
-          <Text sm regular secondary testID="pool-details-description">
-            {description}
-          </Text>
-        </View>
-      )}
+      {/* One description for every pool, as on the extension. Per-pool
+          claims only hold for a specific deployment: "no admin" was true of
+          the v2 Fixed pool, but the v2.1 pools have a contract admin. */}
+      <View className="gap-[6px]">
+        <Text xs secondary>
+          {t("earnPoolDetails.description")}
+        </Text>
+        <Text sm regular secondary testID="pool-details-description">
+          {t("earnPoolDetails.poolDescription")}
+        </Text>
+      </View>
 
       <View className="gap-[12px]">
         <Text xs secondary>

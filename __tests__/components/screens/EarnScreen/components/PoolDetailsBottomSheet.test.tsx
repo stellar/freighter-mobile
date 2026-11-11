@@ -1,7 +1,9 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { fireEvent } from "@testing-library/react-native";
 import { PoolDetailsBottomSheet } from "components/screens/EarnScreen/components/PoolDetailsBottomSheet";
+import { BLEND_FIXED_POOL_IDS } from "config/blend";
 import { BlendCatalogPool, BlendCatalogReserve } from "config/blendTypes";
+import { NETWORKS } from "config/constants";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -38,12 +40,12 @@ const nullHeavyPool: BlendCatalogPool = {
   reserves: [],
 };
 
-// The Fixed pool (testnet contract id) — has a description entry and fully
-// priced figures, including a supply-side rate that legitimately exceeds 1
-// (a decimal fraction, not a pre-multiplied percentage).
+// The testnet Fixed pool — fully priced figures, including a supply-side rate
+// that legitimately exceeds 1 (a decimal fraction, not a pre-multiplied
+// percentage).
 const fixedPool: BlendCatalogPool = {
-  id: "CCEBVDYM32YNYCVNRXQKDFFPISJJCV557CDZEIRBEE4NCV4KHPQ44HGF",
-  name: "TestnetV2",
+  id: BLEND_FIXED_POOL_IDS[NETWORKS.TESTNET]!,
+  name: "Testnet v2.1",
   status: "ADMIN_ACTIVE",
   suppliedUsd: 40385476.30883376,
   borrowedUsd: 35717534.91620809,
@@ -76,18 +78,25 @@ describe("PoolDetailsBottomSheet", () => {
     expect(getByTestId("pool-details-backstop")).toHaveTextContent("--");
   });
 
-  it("renders no description for a pool with no catalog entry", () => {
-    const { queryByTestId } = renderWithProviders(
-      <PoolDetailsBottomSheet pool={nullHeavyPool} />,
-    );
-    expect(queryByTestId("pool-details-description")).toBeNull();
+  it("renders the same generic description for every pool", () => {
+    const generic = /Deposit supported assets into this Blend pool/i;
+
+    [nullHeavyPool, fixedPool].forEach((pool) => {
+      const { getByTestId, unmount } = renderWithProviders(
+        <PoolDetailsBottomSheet pool={pool} />,
+      );
+      expect(getByTestId("pool-details-description")).toHaveTextContent(
+        generic,
+      );
+      unmount();
+    });
   });
 
   it("renders the pool name and formatted figures for a fully-priced pool", () => {
     const { getByText, getByTestId } = renderWithProviders(
       <PoolDetailsBottomSheet pool={fixedPool} />,
     );
-    expect(getByText("TestnetV2")).toBeTruthy();
+    expect(getByText("Testnet v2.1")).toBeTruthy();
     expect(getByTestId("pool-details-lendingInterest")).toHaveTextContent(
       "392.00%",
     );
@@ -106,17 +115,17 @@ describe("PoolDetailsBottomSheet", () => {
     const { getByText } = renderWithProviders(
       <PoolDetailsBottomSheet pool={fixedPool} />,
     );
-    expect(getByText("TestnetV2").props.children).toBe("TestnetV2");
+    expect(getByText("Testnet v2.1").props.children).toBe("Testnet v2.1");
     expect(getByText("Pool Details")).toBeTruthy();
     expect(getByText("by Blend")).toBeTruthy();
   });
 
-  it("renders the fixed-pool description for a pool id present in the catalog", () => {
+  it("makes no per-pool claims, such as 'no admin', that a new deployment can falsify", () => {
     const { getByTestId } = renderWithProviders(
       <PoolDetailsBottomSheet pool={fixedPool} />,
     );
-    expect(getByTestId("pool-details-description")).toHaveTextContent(
-      /Permissionless lending pool with no admin/i,
+    expect(getByTestId("pool-details-description")).not.toHaveTextContent(
+      /no admin/i,
     );
   });
 

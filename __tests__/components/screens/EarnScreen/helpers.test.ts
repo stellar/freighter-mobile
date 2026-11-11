@@ -8,7 +8,6 @@ import {
   getEarnCtaState,
   getNotEnoughVariant,
   getPercentageDepositAmount,
-  getPoolDescriptionKey,
   getXlmFeeShortfall,
   hasSwappableBalance,
   isInsufficientBalanceFailure,
@@ -269,20 +268,6 @@ describe("formatRate", () => {
   it("distinguishes unavailable from zero", () => {
     expect(formatRate(null)).toBe("--");
     expect(formatRate(0)).toBe("0.00%");
-  });
-});
-
-describe("getPoolDescriptionKey", () => {
-  it("keys prose by pool id, because the copy makes pool-specific claims", () => {
-    expect(
-      getPoolDescriptionKey(
-        "CAJJZSGMMM3PD7N33TAPHGBUGTB43OC73HVIK2L2G6BNGGGYOSSYBXBD",
-      ),
-    ).toBe("earnPoolDetails.descriptions.fixedPool");
-  });
-
-  it("renders nothing rather than something wrong for an unknown pool", () => {
-    expect(getPoolDescriptionKey("CUNKNOWN")).toBeNull();
   });
 });
 

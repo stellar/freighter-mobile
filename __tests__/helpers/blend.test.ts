@@ -1,11 +1,13 @@
 import { Address, xdr } from "@stellar/stellar-sdk";
+import { BLEND_FIXED_POOL_IDS } from "config/blend";
+import { NETWORKS } from "config/constants";
 import {
   BlendRequestType,
   buildBlendRequestScVal,
   buildBlendSubmitOp,
 } from "helpers/blend";
 
-const POOL_ID = "CAJJZSGMMM3PD7N33TAPHGBUGTB43OC73HVIK2L2G6BNGGGYOSSYBXBD";
+const POOL_ID = BLEND_FIXED_POOL_IDS[NETWORKS.PUBLIC]!;
 const USDC_SAC = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
 const PUBLIC_KEY = "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H";
 

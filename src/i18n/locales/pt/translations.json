@@ -782,9 +782,7 @@
     "supplied": "Fornecido",
     "borrowed": "Emprestado",
     "backstop": "Backstop",
-    "descriptions": {
-      "fixedPool": "Pool de empréstimo sem permissão e sem administrador. Os fatores de garantia, as curvas de juros e os ativos suportados são fixados no momento da implantação."
-    }
+    "poolDescription": "Deposite ativos compatíveis neste pool da Blend para gerar rendimento. A APY pode mudar ao longo do tempo. Saque quando quiser."
   },
   "earnAmount": {
     "title": "Depositar",

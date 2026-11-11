@@ -1,3 +1,4 @@
+import { BLEND_FIXED_POOL_IDS } from "config/blend";
 import { NETWORKS } from "config/constants";
 import { freighterBackendV2 } from "services/backend";
 import {
@@ -13,7 +14,7 @@ jest.mock("services/backend", () => ({
 const mockGet = freighterBackendV2.get as jest.Mock;
 const mockPost = freighterBackendV2.post as jest.Mock;
 const networkDetails = { network: NETWORKS.PUBLIC } as never;
-const POOL_ID = "CAJJZSGMMM3PD7N33TAPHGBUGTB43OC73HVIK2L2G6BNGGGYOSSYBXBD";
+const POOL_ID = BLEND_FIXED_POOL_IDS[NETWORKS.PUBLIC]!;
 const USDC_SAC = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
 
 beforeEach(() => jest.clearAllMocks());

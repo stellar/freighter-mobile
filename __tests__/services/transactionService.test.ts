@@ -16,6 +16,7 @@ import {
   MUXED_CONTRACT_ID_1234,
 } from "__tests__/support/muxedContractFixtures";
 import { BigNumber } from "bignumber.js";
+import { BLEND_FIXED_POOL_IDS } from "config/blend";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { TokenTypeWithCustomToken, type PricedBalance } from "config/types";
 import { BlendRequestType } from "helpers/blend";
@@ -955,8 +956,7 @@ describe("buildSwapTransaction — includeTrustline", () => {
 describe("buildBlendDepositTransaction", () => {
   const USDC_SAC = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
   const SENDER = "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H";
-  // Mirrors config/blend.ts BLEND_FIXED_POOL_IDS[NETWORKS.PUBLIC].
-  const POOL_ID = "CAJJZSGMMM3PD7N33TAPHGBUGTB43OC73HVIK2L2G6BNGGGYOSSYBXBD";
+  const POOL_ID = BLEND_FIXED_POOL_IDS[NETWORKS.PUBLIC]!;
   const mockPreparedXdr = "mock_prepared_blend_xdr";
 
   const baseParams = {

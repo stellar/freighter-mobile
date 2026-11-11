@@ -1,5 +1,7 @@
 import { buildEarnSwapDestination } from "components/screens/EarnScreen/helpers";
 import { EarnTokenOption } from "components/screens/EarnScreen/hooks/useEarnTokens";
+import { BLEND_FIXED_POOL_IDS } from "config/blend";
+import { NETWORKS } from "config/constants";
 
 const makeOption = (over: Partial<EarnTokenOption> = {}): EarnTokenOption => ({
   assetId: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
@@ -7,7 +9,7 @@ const makeOption = (over: Partial<EarnTokenOption> = {}): EarnTokenOption => ({
   decimals: 7,
   total: "0",
   apy: 0.0651,
-  poolId: "CAJJZSGMMM3PD7N33TAPHGBUGTB43OC73HVIK2L2G6BNGGGYOSSYBXBD",
+  poolId: BLEND_FIXED_POOL_IDS[NETWORKS.PUBLIC]!,
   canonicalId: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
   isNative: false,
   balance: undefined,

@@ -4,6 +4,8 @@ import { fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import { UNKNOWN_RESOURCE_FEE_FLOOR_XLM } from "components/screens/EarnScreen/helpers";
 import EarnAmountScreen from "components/screens/EarnScreen/screens/EarnAmountScreen";
+import { BLEND_FIXED_POOL_IDS } from "config/blend";
+import { NETWORKS } from "config/constants";
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { useEarnStore } from "ducks/earn";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -196,7 +198,7 @@ jest.mock("hooks/useAppTranslation", () => ({
 
 const USDC_ASSET_ID =
   "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
-const POOL_ID = "CAJJZSGMMM3PD7N33TAPHGBUGTB43OC73HVIK2L2G6BNGGGYOSSYBXBD";
+const POOL_ID = BLEND_FIXED_POOL_IDS[NETWORKS.PUBLIC]!;
 
 const USDC_BALANCE = {
   id: USDC_ASSET_ID,
