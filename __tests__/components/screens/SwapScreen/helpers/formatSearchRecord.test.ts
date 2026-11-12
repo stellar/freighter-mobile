@@ -14,6 +14,14 @@ describe("formatSearchRecord", () => {
     });
   });
 
+  it("names a contract token with an empty code by its shortened ID too", () => {
+    const record = { asset: CONTRACT, code: "" } as never;
+
+    expect(formatSearchRecord(record, () => false).tokenCode).toBe(
+      "CCW6...MI75",
+    );
+  });
+
   it("names a contract token with no code by its shortened ID, as the extension does", () => {
     const record = { asset: CONTRACT } as never;
 

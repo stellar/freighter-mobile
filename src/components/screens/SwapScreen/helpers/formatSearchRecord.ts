@@ -24,7 +24,7 @@ export const formatSearchRecord = (
       // The picker row (and asset_code) shows a no-code token by its
       // shortened ID, as the extension does; Add token keeps the full ID.
       tokenCode:
-        record.code ?? record.tomlInfo?.code ?? truncateAddress(record.asset),
+        record.code || record.tomlInfo?.code || truncateAddress(record.asset),
       iconUrl: record.tomlInfo?.image,
       price: record.price,
     };
