@@ -1022,6 +1022,9 @@
     "invalidTransactionOriginMessage": "A WalletConnect transaction was received from {{transactionRequestOrigin}}, but this domain is not connected in your Varial wallet.",
     "unableToLoadAuthEntry": "Unable to load request details",
     "failedToProcessAuthEntry": "Unable to sign — authorization entry is malformed or invalid",
+    "requestRejectedAtStartTitle": "Request rejected",
+    "requestRejectedAtStart": "Varial closed while a request from {{dappName}} was open, so Varial rejected it. The dApp can send it again.",
+    "requestRejectedAtStartReason": "Varial closed while this request was open",
     "e2eHelper": {
       "title": "WC E2E Helper",
       "createSession": "Create Session",

@@ -391,6 +391,9 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  * This is used to prevent the app update full screen notice from being shown again after the user has dismissed it.
  * It stores the version that the user has dismissed the notice for so it can be shown again if the user updates to a new version and falls behind again in the future.
  *
+ * DAPP_REQUEST_ON_SCREEN The dApp request whose sheet is on screen (id, session topic and dApp name). If it's still set at
+ * the next start, the app closed while showing it, and that dApp's pending requests are rejected. @see helpers/dappRequestReplayBreaker
+ *
  * NOTE: we also have the BACKEND_V1_ENVIRONMENT and BACKEND_V2_ENVIRONMENT storage keys for the backend environment which are
  * handled separately in the backendConfig.ts file since those shouldn't be cleared or changed without the user's consent.
  * */
@@ -411,6 +414,7 @@ export enum STORAGE_KEYS {
   HAS_SEEN_DISCOVER_WELCOME = "hasSeenDiscoverWelcome",
   REBRAND_ANNOUNCEMENT_STATUS = "rebrandAnnouncementStatus",
   APP_UPDATE_DISMISSED_REQUIRED_VERSION = "appUpdateDismissedRequiredVersion",
+  DAPP_REQUEST_ON_SCREEN = "dappRequestOnScreen",
 }
 
 /**
