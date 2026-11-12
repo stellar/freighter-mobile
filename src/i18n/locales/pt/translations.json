@@ -234,6 +234,12 @@
     "description": "Importe sua carteira com a frase de recuperação de 12 ou 24 palavras",
     "textAreaPlaceholder": "Digite sua frase de recuperação"
   },
+  "importRecoveryPhraseScreen": {
+    "title": "Importar frase de recuperação",
+    "description": "Adicione uma carteira com a frase de recuperação de 12 ou 24 palavras",
+    "textAreaPlaceholder": "Digite sua frase de recuperação",
+    "importButton": "Importar"
+  },
   "rebrandAnnouncementScreen": {
     "title": "O Freighter agora é Varial",
     "description": "Sua carteira Freighter, agora com um novo nome e visual.",
@@ -480,7 +486,8 @@
       "disableBiometricsFailedMessage": "Não conseguimos verificar sua identidade. Por favor, tente novamente.",
       "pendingRecoveryPhraseMissing": "A nova frase de recuperação não está mais disponível. Comece novamente.",
       "recoveryPhraseAlreadyHeld": "Esta frase de recuperação já está na sua carteira",
-      "failedToAddRecoveryPhrase": "Falha ao adicionar a frase de recuperação. Por favor, tente novamente."
+      "failedToAddRecoveryPhrase": "Falha ao adicionar a frase de recuperação. Por favor, tente novamente.",
+      "failedToImportRecoveryPhrase": "Falha ao importar a frase de recuperação. Por favor, tente novamente."
     },
     "account": "Conta {{number}}",
     "faceId": {
@@ -874,6 +881,8 @@
     "actions": {
       "createNewWallet": "Criar nova carteira",
       "createNewWalletDescription": "Usando uma frase de recuperação existente ou nova",
+      "importRecoveryPhrase": "Importar frase de recuperação",
+      "importRecoveryPhraseDescription": "Importe carteiras usando uma frase de recuperação.",
       "importSecretKey": "Importar chave secreta",
       "importSecretKeyDescription": "Importe uma carteira usando a chave secreta dela."
     }
@@ -900,7 +909,8 @@
     "verifyPasswordTemplateTitle": "Digite sua senha",
     "verifyPasswordTemplateDescription": "Digite sua senha para verificar sua conta.",
     "actions": {
-      "createNewWallet": "Criar nova carteira"
+      "createNewWallet": "Criar nova carteira",
+      "importRecoveryPhrase": "Importar"
     }
   },
   "logout": "Sair",

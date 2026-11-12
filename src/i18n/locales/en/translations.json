@@ -268,6 +268,12 @@
     "description": "Import your wallet with the 12 or 24-word recovery phrase",
     "textAreaPlaceholder": "Enter your recovery phrase"
   },
+  "importRecoveryPhraseScreen": {
+    "title": "Import Recovery Phrase",
+    "description": "Add a wallet with its 12 or 24-word recovery phrase",
+    "textAreaPlaceholder": "Enter your recovery phrase",
+    "importButton": "Import"
+  },
   "rebrandAnnouncementScreen": {
     "title": "Freighter is now Varial",
     "description": "Your Freighter wallet, now with a new name and look.",
@@ -514,7 +520,8 @@
       "disableBiometricsFailedMessage": "We couldn't verify your identity. Please try again.",
       "pendingRecoveryPhraseMissing": "The new recovery phrase is no longer available. Start again.",
       "recoveryPhraseAlreadyHeld": "This recovery phrase is already in your wallet",
-      "failedToAddRecoveryPhrase": "Failed to add the recovery phrase. Please try again."
+      "failedToAddRecoveryPhrase": "Failed to add the recovery phrase. Please try again.",
+      "failedToImportRecoveryPhrase": "Failed to import the recovery phrase. Please try again."
     },
     "account": "Account {{number}}",
     "faceId": {
@@ -908,6 +915,8 @@
     "actions": {
       "createNewWallet": "Create new wallet",
       "createNewWalletDescription": "Using an existing or new recovery phrase",
+      "importRecoveryPhrase": "Import Recovery Phrase",
+      "importRecoveryPhraseDescription": "Import wallets using a recovery phrase.",
       "importSecretKey": "Import Secret Key",
       "importSecretKeyDescription": "Import a wallet using its secret key."
     }
@@ -934,7 +943,8 @@
     "verifyPasswordTemplateTitle": "Enter your password",
     "verifyPasswordTemplateDescription": "Enter your account password to verify your account.",
     "actions": {
-      "createNewWallet": "Create New Wallet"
+      "createNewWallet": "Create New Wallet",
+      "importRecoveryPhrase": "Import"
     }
   },
   "logout": "Log out",

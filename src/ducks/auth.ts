@@ -59,6 +59,10 @@ import {
 import { findAccountById, findAccountByPublicKey } from "helpers/findAccount";
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { markRebrandAnnouncementSeen } from "helpers/rebrandAnnouncement";
+import {
+  isValidImportMnemonic,
+  normalizeAndTrimRecoveryPhrase,
+} from "helpers/recoveryPhrase";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { scrubStrKeys } from "helpers/stellarStrKey";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
@@ -71,6 +75,7 @@ import {
   getDerivationIndices,
   lowestUnusedIndex,
   markDerivationIndexUsed,
+  releaseDerivationIndex,
 } from "services/auth/derivationIndices";
 import { deriveAuthKeypair } from "services/auth/deriveAuthKeypair";
 import { linkWalletSources } from "services/auth/linkSources";
@@ -83,6 +88,7 @@ import {
   getSecretKeySourceId,
   getSecretSources,
   pinFirstSource,
+  removeSecretSource,
 } from "services/auth/secretSources";
 import { getWalletSources } from "services/auth/walletSources";
 import { clearCachedWalletSources } from "services/auth/walletSourcesCache";
@@ -391,6 +397,15 @@ interface AuthActions {
     password: string,
     pendingPhraseId: string,
     accountName?: string,
+  ) => Promise<void>;
+  /**
+   * Stores the phrase `holdPendingRecoveryPhrase` is holding as a new phrase
+   * source, with its index 0 and every funded index up to 49. The first
+   * becomes active; nothing already in the wallet changes.
+   */
+  importRecoveryPhrase: (
+    password: string,
+    pendingPhraseId: string,
   ) => Promise<void>;
   selectAccount: (publicKey: string) => Promise<void>;
   selectNetwork: (network: NETWORKS) => Promise<void>;
@@ -1303,11 +1318,12 @@ const deriveKeyPair = (params: DeriveKeypairParams) => {
 };
 
 /*
-  A phrase generated for a new source in this wallet, held until the user has
-  seen it and confirmed with their password. Module state rather than store
-  state, so it never shows up in a store snapshot or a selector, and the
-  screens never pass it back: `addRecoveryPhraseSource` reads it from here.
-  Cleared once stored, when the flow is left, and on lock, log out or wipe.
+  A phrase for a new source in this wallet, generated or typed, held until
+  the user confirms with their password. Module state rather than store
+  state, so it never shows up in a store snapshot, a selector or navigation
+  params, and the screens never pass it back: `addRecoveryPhraseSource` and
+  `importRecoveryPhrase` read it from here. Cleared once stored, when the
+  flow is left, and on lock, log out or wipe.
 
   Each generation gets an id the screens carry instead of the phrase. The
   backup screen keeps the phrase it showed while the held one can be
@@ -1318,6 +1334,24 @@ let pendingRecoveryPhrase: { mnemonicPhrase: string; id: string } | null = null;
 let pendingRecoveryPhraseCount = 0;
 
 /**
+ * Holds a phrase the user typed until `importRecoveryPhrase` stores it, in
+ * the same slot a generated phrase uses. A second call replaces it.
+ *
+ * @param {string} mnemonicPhrase - The phrase, already normalized
+ * @returns The id of this hold, for the screens to pass along
+ */
+export const holdPendingRecoveryPhrase = (mnemonicPhrase: string): string => {
+  pendingRecoveryPhraseCount += 1;
+  pendingRecoveryPhrase = {
+    mnemonicPhrase,
+    // Unique within the process, which is all it has to be: the phrase never
+    // outlives it.
+    id: `pending-phrase-${pendingRecoveryPhraseCount}`,
+  };
+  return pendingRecoveryPhrase.id;
+};
+
+/**
  * Generates the phrase for a new source in an existing wallet and holds it
  * until `addRecoveryPhraseSource` stores it. Nothing is persisted. A second
  * call replaces the held phrase, so backing out and starting over never
@@ -1325,16 +1359,10 @@ let pendingRecoveryPhraseCount = 0;
  *
  * @returns The id of this generation, for the screens to pass along
  */
-export const generatePendingRecoveryPhrase = (): string => {
-  pendingRecoveryPhraseCount += 1;
-  pendingRecoveryPhrase = {
-    mnemonicPhrase: StellarHDWallet.generateMnemonic({ entropyBits: 128 }),
-    // Unique within the process, which is all it has to be: the phrase never
-    // outlives it.
-    id: `pending-phrase-${pendingRecoveryPhraseCount}`,
-  };
-  return pendingRecoveryPhrase.id;
-};
+export const generatePendingRecoveryPhrase = (): string =>
+  holdPendingRecoveryPhrase(
+    StellarHDWallet.generateMnemonic({ entropyBits: 128 }),
+  );
 
 /**
  * The held phrase, if it's still the one generation `pendingPhraseId` made.
@@ -1451,6 +1479,54 @@ const withFundedLookupTimeout = <T>(lookup: Promise<T>): Promise<T | null> => {
     timer = setTimeout(() => resolve(null), FUNDED_LOOKUP_TIMEOUT_MS);
   });
   return Promise.race([lookup, timeout]).finally(() => clearTimeout(timer));
+};
+
+/** How many indices a phrase import checks: 0, plus 1 to 49 if funded. */
+const PHRASE_IMPORT_DISCOVERY_DEPTH = 50;
+const MAX_LOOKUPS_IN_FLIGHT = 10;
+
+/**
+ * The indices from `from` to `to` (inclusive) whose accounts are funded on
+ * mainnet, ascending. At most MAX_LOOKUPS_IN_FLIGHT lookups run at once. A
+ * lookup that fails or times out counts as unfunded.
+ *
+ * @param {StellarHDWallet} wallet - The phrase's wallet
+ * @param {number} from - The first index to check
+ * @param {number} to - The last index to check
+ * @returns {Promise<number[]>} The funded indices
+ */
+const discoverFundedIndices = async (
+  wallet: StellarHDWallet,
+  from: number,
+  to: number,
+): Promise<number[]> => {
+  const indices = Array.from({ length: to - from + 1 }, (_, i) => from + i);
+  const funded = new Set<number>();
+  let next = 0;
+
+  const worker = async () => {
+    while (next < indices.length) {
+      const index = indices[next];
+      next += 1;
+      // getAccount resolves to null on any failure, never rejects.
+      // eslint-disable-next-line no-await-in-loop
+      const account = await withFundedLookupTimeout(
+        getAccount(wallet.getPublicKey(index), NETWORKS.PUBLIC),
+      );
+      if (account) {
+        funded.add(index);
+      }
+    }
+  };
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(MAX_LOOKUPS_IN_FLIGHT, indices.length) },
+      worker,
+    ),
+  );
+
+  return indices.filter((index) => funded.has(index));
 };
 
 /**
@@ -2926,6 +3002,166 @@ const addRecoveryPhraseSource = async (
   clearPendingRecoveryPhrase();
 };
 
+/** What `prepareRecoveryPhraseImport` found, for `storeImportedRecoveryPhrase`. */
+interface RecoveryPhraseImportPlan {
+  mnemonicPhrase: string;
+  sourceId: string;
+  wallet: StellarHDWallet;
+  /** 0, then every funded index, ascending. */
+  indices: number[];
+}
+
+/**
+ * The read-only half of a phrase import, run before the account-mutation
+ * lock: checks the held phrase and the password, refuses a phrase already
+ * held, and looks up which of the phrase's first 50 indices are funded. Up to
+ * 50 mainnet lookups at 5s each would hold the lock for as long as they take,
+ * so they run outside it, and `storeImportedRecoveryPhrase` checks again
+ * under it.
+ *
+ * @param {string} password - The user's password, verified against the active keystore
+ * @param {AuthStatus} authStatus - Current auth status, gating the session read
+ * @param {string} pendingPhraseId - The hold the import screen made
+ * @returns {Promise<RecoveryPhraseImportPlan>} The phrase, its source id and the indices to store
+ */
+const prepareRecoveryPhraseImport = async (
+  password: string,
+  authStatus: AuthStatus,
+  pendingPhraseId: string,
+): Promise<RecoveryPhraseImportPlan> => {
+  const heldPhrase = getPendingRecoveryPhrase(pendingPhraseId);
+  if (!heldPhrase) {
+    throw new Error(t("authStore.error.pendingRecoveryPhraseMissing"));
+  }
+  const mnemonicPhrase = normalizeAndTrimRecoveryPhrase(heldPhrase);
+  if (!isValidImportMnemonic(mnemonicPhrase)) {
+    throw new Error(t("authStore.error.invalidMnemonicPhrase"));
+  }
+
+  // The new keystores are encrypted with the password, so a wrong one must
+  // fail here, not produce keystores the wallet can never open.
+  await getKeyFromKeyManager(password);
+
+  const temporaryStore = await getTemporaryStore(authStatus);
+  if (!temporaryStore) {
+    throw new Error(t("authStore.error.temporaryStoreNotFound"));
+  }
+
+  const sourceId = await getPhraseSourceId(mnemonicPhrase);
+  // Checked before discovery to skip the lookups for a held phrase.
+  if ((await getSecretSources())[sourceId]) {
+    throw new Error(t("authStore.error.recoveryPhraseAlreadyHeld"));
+  }
+
+  const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
+  const fundedIndices = await discoverFundedIndices(
+    wallet,
+    1,
+    PHRASE_IMPORT_DISCOVERY_DEPTH - 1,
+  );
+
+  return { mnemonicPhrase, sourceId, wallet, indices: [0, ...fundedIndices] };
+};
+
+/**
+ * The write half of a phrase import, run under the account-mutation lock:
+ * stores the phrase as a new source with an account at each planned index,
+ * the first of which becomes active. Nothing already in the wallet changes.
+ * Every refusal comes before the first write.
+ *
+ * The source is registered first, so a failure after some accounts are
+ * stored leaves them under a labeled group and a retry is refused as held.
+ * If no account was listed, the source and its indices are removed again so
+ * a retry starts clean, and the previous account is made active again.
+ *
+ * @param {RecoveryPhraseImportPlan} plan - What `prepareRecoveryPhraseImport` found
+ * @param {string} password - The user's password, already verified
+ * @param {string} pendingPhraseId - The hold the import screen made
+ * @returns {Promise<void>}
+ */
+const storeImportedRecoveryPhrase = async (
+  { mnemonicPhrase, sourceId, wallet, indices }: RecoveryPhraseImportPlan,
+  password: string,
+  pendingPhraseId: string,
+): Promise<void> => {
+  // A lock or log out while the lookups ran drops the held phrase; so does
+  // starting over with another one.
+  if (getPendingRecoveryPhrase(pendingPhraseId) === null) {
+    throw new Error(t("authStore.error.pendingRecoveryPhraseMissing"));
+  }
+
+  // Checked again: an import or add that finished while the lookups ran may
+  // have stored this phrase or one of its accounts since.
+  if ((await getSecretSources())[sourceId]) {
+    throw new Error(t("authStore.error.recoveryPhraseAlreadyHeld"));
+  }
+
+  // Collisions are refused, never merged: if any address this phrase would
+  // add is already in the wallet (say, imported earlier as a secret key),
+  // nothing is added.
+  const allAccounts = await getAllAccounts();
+  const held = new Set(allAccounts.map(({ publicKey }) => publicKey));
+  if (indices.some((index) => held.has(wallet.getPublicKey(index)))) {
+    throw new Error(t("authStore.error.accountAlreadyExists"));
+  }
+
+  const previousActiveId = await dataStorage.getItem(
+    STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
+  );
+
+  try {
+    await addSecretSource({ id: sourceId, type: SecretSourceType.PHRASE });
+
+    // Sequential: each one reads and appends the account list, and the key
+    // manager's id index is a read-modify-write too.
+    await indices.reduce(async (previous, index) => {
+      await previous;
+      await storeAccount({
+        mnemonicPhrase,
+        phraseSourceId: sourceId,
+        sourceId,
+        derivationIndex: index,
+        password,
+        keyPair: {
+          publicKey: wallet.getPublicKey(index),
+          privateKey: wallet.getSecret(index),
+        },
+        shouldRefreshHashKey: false,
+        // The phrase's first account is the one to land on.
+        shouldSetActiveAccount: index === 0,
+      });
+    }, Promise.resolve());
+  } catch (error) {
+    try {
+      const listedAny = (await getAllAccounts()).some(
+        (account) => account.sourceId === sourceId,
+      );
+      if (!listedAny) {
+        await removeSecretSource(sourceId);
+        await indices.reduce(async (previous, index) => {
+          await previous;
+          await releaseDerivationIndex({ sourceId, index });
+        }, Promise.resolve());
+      }
+      if (previousActiveId) {
+        await dataStorage.setItem(
+          STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
+          previousActiveId,
+        );
+      }
+    } catch (rollbackError) {
+      logger.error(
+        "importRecoveryPhrase",
+        "Failed to roll back a failed phrase import",
+        rollbackError,
+      );
+    }
+    throw error;
+  }
+
+  clearPendingRecoveryPhrase(pendingPhraseId);
+};
+
 /**
  * Imports a secret key and creates a new account
  *
@@ -4181,6 +4417,52 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         error: getUserFacingError(
           error,
           "authStore.error.failedToAddRecoveryPhrase",
+        ),
+        isCreatingAccount: false,
+      });
+      throw error;
+    }
+  },
+
+  importRecoveryPhrase: async (password: string, pendingPhraseId: string) => {
+    set({ isCreatingAccount: true, error: null });
+
+    try {
+      // The lookups run first, outside the lock; the checks that matter
+      // run again inside it, before anything is written.
+      const plan = await prepareRecoveryPhraseImport(
+        password,
+        get().authStatus,
+        pendingPhraseId,
+      );
+      await withAccountMutationLock(() =>
+        storeImportedRecoveryPhrase(plan, password, pendingPhraseId),
+      );
+
+      // The phrase's first account becomes active, as on createAccount.
+      clearAccountData({ keepAccountsFiatTotals: true });
+
+      await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
+
+      analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT, {
+        number_of_accounts: get().allAccounts.length,
+        source: "imported_phrase",
+      });
+
+      // The imported phrase is a source of its own.
+      get().linkSources();
+
+      set({ isCreatingAccount: false, error: null });
+    } catch (error) {
+      logger.error(
+        "useAuthenticationStore.importRecoveryPhrase",
+        "Failed to import recovery phrase",
+        error,
+      );
+      set({
+        error: getUserFacingError(
+          error,
+          "authStore.error.failedToImportRecoveryPhrase",
         ),
         isCreatingAccount: false,
       });

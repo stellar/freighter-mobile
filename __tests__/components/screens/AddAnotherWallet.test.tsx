@@ -22,6 +22,10 @@ describe("AddAnotherWalletScreen", () => {
   it.each([
     ["add-wallet-create", MANAGE_WALLETS_ROUTES.CREATE_WALLET_SCREEN],
     [
+      "add-wallet-import-phrase",
+      MANAGE_WALLETS_ROUTES.IMPORT_RECOVERY_PHRASE_SCREEN,
+    ],
+    [
       "add-wallet-import-secret-key",
       MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN,
     ],
@@ -37,7 +41,7 @@ describe("AddAnotherWalletScreen", () => {
     const { getByText, queryByText } = renderScreen();
 
     expect(getByText("Add account")).toBeTruthy();
-    expect(queryByText("Import Recovery Phrase")).toBeNull();
+    expect(getByText("Import Recovery Phrase")).toBeTruthy();
     expect(queryByText("Connect Hardware Wallet")).toBeNull();
   });
 });
