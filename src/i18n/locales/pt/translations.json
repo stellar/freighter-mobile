@@ -686,7 +686,7 @@
       "route": "Rota",
       "oneProvider": "1 provedor",
       "providers": "{{count}} provedores",
-      "footer": "Melhor rota selecionada com base em cotações e taxas. A cotação pode mudar conforme as condições do mercado."
+      "footer": "Melhor rota selecionada com base nas cotações e taxas. A cotação pode mudar conforme as condições de mercado."
     },
     "route": {
       "title": "Rota",
