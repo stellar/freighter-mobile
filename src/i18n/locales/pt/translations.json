@@ -703,7 +703,7 @@
       "insufficientBalance": "Saldo insuficiente. Máximo disponível: {{amount}} {{symbol}}",
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
       "noPathFound": "Nenhuma cotação disponível",
-      "tokenDetailsUnavailable": "Não foi possível ler os detalhes deste token. Tente novamente mais tarde.",
+      "tokenDetailsUnavailable": "Não foi possível ler os detalhes deste token. Tente novamente.",
       "pathFindFailed": "Não foi possível buscar o caminho de troca. Tente novamente.",
       "swapsUnavailable": "As trocas estão temporariamente indisponíveis",
       "quoteExpired": "A cotação expirou, tente novamente para obter uma nova cotação",

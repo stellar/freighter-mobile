@@ -337,6 +337,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     currentQuoteKey,
     account,
     network,
+    recommendedFee,
     navigation,
   });
 

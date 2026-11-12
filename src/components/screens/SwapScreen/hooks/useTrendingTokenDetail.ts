@@ -59,6 +59,10 @@ export const useTrendingTokenDetail = ({
 
   const [selectedTrendingRecord, setSelectedTrendingRecord] =
     useState<FormattedSearchTokenRecord | null>(null);
+  // A Soroban pick can wait on /token-details; these let a newer pick or the
+  // sheet closing win over its late result (as SwapToScreen does).
+  const pickIdRef = useRef(0);
+  const pendingPickRef = useRef<string | null>(null);
   const [trendingSecurityRecord, setTrendingSecurityRecord] =
     useState<FormattedSearchTokenRecord | null>(null);
 
@@ -87,10 +91,11 @@ export const useTrendingTokenDetail = ({
     [],
   );
 
-  const clearSelectedTrendingRecord = useCallback(
-    () => setSelectedTrendingRecord(null),
-    [],
-  );
+  const clearSelectedTrendingRecord = useCallback(() => {
+    pickIdRef.current += 1;
+    pendingPickRef.current = null;
+    setSelectedTrendingRecord(null);
+  }, []);
 
   const clearTrendingSecurityRecord = useCallback(
     () => setTrendingSecurityRecord(null),
@@ -134,9 +139,17 @@ export const useTrendingTokenDetail = ({
         select(descriptorFromBalance(heldMatch));
         return;
       }
+      const recordId = `${record.tokenCode}:${record.issuer}`;
+      if (pendingPickRef.current === recordId) return;
+      pickIdRef.current += 1;
+      const pickId = pickIdRef.current;
+      pendingPickRef.current = recordId;
       const pickedFrom = useSwapStore.getState();
-      // A late result must not undo a pick made while it was loading.
-      const isUnchanged = () => {
+      // Only the latest pick, made while the sheet was open, may apply, and
+      // not over a pick made elsewhere while it was loading.
+      const isCurrent = () => {
+        if (pickId !== pickIdRef.current) return false;
+        pendingPickRef.current = null;
         const now = useSwapStore.getState();
         return (
           now.sourceTokenId === pickedFrom.sourceTokenId &&
@@ -147,10 +160,10 @@ export const useTrendingTokenDetail = ({
         record,
         { publicKey, network },
         (resolved) => {
-          if (isUnchanged()) select(descriptorFromSearchRecord(resolved));
+          if (isCurrent()) select(descriptorFromSearchRecord(resolved));
         },
         () => {
-          if (!isUnchanged()) return;
+          if (!isCurrent()) return;
           showToast({
             variant: "error",
             title: t("swapScreen.errors.tokenDetailsUnavailable"),

@@ -1,5 +1,9 @@
 import { NETWORKS } from "config/constants";
-import { buildSwapTx, freighterBackendV2 } from "services/backend";
+import {
+  SwapQuotesResponseError,
+  buildSwapTx,
+  freighterBackendV2,
+} from "services/backend";
 
 jest.mock("services/apiFactory", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports, global-require
@@ -66,10 +70,10 @@ describe("buildSwapTx", () => {
     });
   });
 
-  it("rejects a body without a transaction", async () => {
+  it("rejects a body without a transaction as an outage", async () => {
     mockV2Post.mockResolvedValue({ data: { data: { addsTrustline: false } } });
 
-    await expect(buildSwapTx(REQUEST)).rejects.toThrow(/swap tx/);
+    await expect(buildSwapTx(REQUEST)).rejects.toThrow(SwapQuotesResponseError);
   });
 
   it("passes an HTTP failure through with its status", async () => {

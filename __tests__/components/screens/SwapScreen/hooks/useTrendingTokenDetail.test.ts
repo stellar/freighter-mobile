@@ -114,6 +114,72 @@ describe("useTrendingTokenDetail", () => {
     expect(setDestinationToken).not.toHaveBeenCalled();
   });
 
+  it("drops a late decimals result once the detail sheet is dismissed", async () => {
+    let resolveDetails: (v: unknown) => void = () => {};
+    mockGetTokenDetails.mockReturnValue(
+      new Promise((r) => {
+        resolveDetails = r;
+      }),
+    );
+    mockSwapState = { sourceTokenId: "XLM", destinationToken: null };
+    const setDestinationToken = jest.fn();
+    const { result } = renderHook(() =>
+      useTrendingTokenDetail({
+        balanceItems: [],
+        sourceTokenId: "XLM",
+        setSourceToken: jest.fn(),
+        setDestinationToken,
+        publicKey: ACCOUNT,
+        network: NETWORKS.PUBLIC,
+      }),
+    );
+
+    act(() => {
+      result.current.openTrendingDetail(record, 0);
+    });
+    act(() => {
+      result.current.confirmTrendingSelection();
+    });
+    // The sheet's onChange(-1): the user closed it while the read was out.
+    act(() => {
+      result.current.clearSelectedTrendingRecord();
+    });
+    await act(async () => {
+      resolveDetails({ name: "Token", symbol: "TKN", decimals: 18 });
+      await new Promise((r) => {
+        setImmediate(r);
+      });
+    });
+
+    expect(setDestinationToken).not.toHaveBeenCalled();
+  });
+
+  it("reads /token-details once while a confirm for the same token is pending", () => {
+    mockGetTokenDetails.mockClear();
+    mockGetTokenDetails.mockReturnValue(new Promise(() => {}));
+    mockSwapState = { sourceTokenId: "XLM", destinationToken: null };
+    const { result } = renderHook(() =>
+      useTrendingTokenDetail({
+        balanceItems: [],
+        sourceTokenId: "XLM",
+        setSourceToken: jest.fn(),
+        setDestinationToken: jest.fn(),
+        publicKey: ACCOUNT,
+        network: NETWORKS.PUBLIC,
+      }),
+    );
+
+    act(() => {
+      result.current.openTrendingDetail(record, 0);
+    });
+    act(() => {
+      result.current.confirmTrendingSelection();
+      result.current.confirmTrendingSelection();
+    });
+
+    expect(mockGetTokenDetails).toHaveBeenCalledTimes(1);
+  });
+
   it("picks the held balance for a trending token listed under another code", () => {
     mockGetTokenDetails.mockClear();
     mockSwapState = { sourceTokenId: "XLM", destinationToken: null };
