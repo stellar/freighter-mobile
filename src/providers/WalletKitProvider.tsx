@@ -872,6 +872,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       message: t("walletKit.sheetRenderFailed"),
       variant: "error",
     });
+    // Clear the event now, as handleSessionRequest's catch does: the teardown
+    // clears it only after a delay, and a dependency change before then would
+    // hand this request to the dispatch effect again.
+    clearEvent();
     handleClearDappRequest();
   };
 

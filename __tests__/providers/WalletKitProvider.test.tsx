@@ -1105,4 +1105,42 @@ describe("WalletKitProvider: a dApp sheet that fails to render", () => {
 
     expect(dismissals(CONNECTION_SHEET)).toBe(beforeOpened + 1);
   });
+
+  it("doesn't bring back a request whose sheet failed when the sessions refresh during the teardown", async () => {
+    render(provider());
+    await settle();
+    mockFailRequestSheet = true;
+    await deliver(signMessageRequest(1));
+    await settle();
+
+    // A session refresh lands before the deferred teardown has run.
+    await actAndSettle(() =>
+      useWalletKitStore.setState({ activeSessions: { ...ACTIVE_SESSIONS } }),
+    );
+    await actAndSettle(() => {
+      jest.runOnlyPendingTimers();
+    });
+    await settle();
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledTimes(1);
+    expect(mockRequestSheetProps?.requestEvent ?? null).toBeNull();
+  });
+
+  it("shows a request that arrives during the teardown of one whose sheet failed, once the teardown runs", async () => {
+    render(provider());
+    await settle();
+    mockFailRequestSheet = true;
+    await deliver(signMessageRequest(1));
+    await settle();
+    mockFailRequestSheet = false;
+
+    await deliver(signMessageRequest(2));
+    await actAndSettle(() => {
+      jest.runOnlyPendingTimers();
+    });
+    await settle();
+
+    expect(requestSheet().requestEvent?.id).toBe(2);
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledTimes(1);
+  });
 });
