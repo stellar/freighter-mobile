@@ -259,6 +259,84 @@ describe("buildSwapRouteView", () => {
     expect(middle.iconUrl).toBe("https://icons.example/list.png");
   });
 
+  it("falls back past an empty list code to the shortened contract ID", () => {
+    const view = buildSwapRouteView({
+      route: route([
+        {
+          share: "1",
+          hops: [
+            hop("Soroswap", "XLM", OTHER_CONTRACT, "p1"),
+            hop("Aquarius", OTHER_CONTRACT, USDC, "p2"),
+          ],
+        },
+      ]),
+      protocols: PROTOCOLS,
+      balanceItems: [],
+      tokenLists: [
+        {
+          code: "",
+          issuer: "",
+          contract: OTHER_CONTRACT,
+          domain: "",
+          icon: "",
+          decimals: 7,
+        },
+      ],
+    });
+
+    expect(view!.paths[0].tokens[1].code).toMatch(/\.\.\./);
+  });
+
+  it("gives a classic middle hop its token-list icon", () => {
+    const EURC_ISSUER =
+      "GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2";
+    const view = buildSwapRouteView({
+      route: route([
+        {
+          share: "1",
+          hops: [
+            hop("stellar-dex", "XLM", `EURC:${EURC_ISSUER}`),
+            hop("stellar-dex", `EURC:${EURC_ISSUER}`, USDC),
+          ],
+        },
+      ]),
+      protocols: PROTOCOLS,
+      balanceItems: [],
+      tokenLists: [
+        {
+          code: "EURC",
+          issuer: EURC_ISSUER,
+          contract: "",
+          domain: "",
+          icon: "https://icons.example/eurc.png",
+          decimals: 7,
+        },
+      ],
+    });
+
+    expect(view!.paths[0].tokens[1].iconUrl).toBe(
+      "https://icons.example/eurc.png",
+    );
+  });
+
+  it("names a venue after the first /protocols entry that matches it", () => {
+    const view = buildSwapRouteView({
+      route: route([
+        { share: "1", hops: [hop("soroswap", "XLM", USDC, "p1")] },
+      ]),
+      protocols: [
+        protocol("Soroswap", "https://icons.example/first.png"),
+        protocol("soroswap ", "https://icons.example/second.png"),
+      ],
+      balanceItems: [],
+    });
+
+    expect(view!.paths[0].hopVenues[0]).toMatchObject({
+      name: "Soroswap",
+      iconUrl: "https://icons.example/first.png",
+    });
+  });
+
   it("names XLM's own contract as XLM", () => {
     const xlmContract = Asset.native().contractId(Networks.PUBLIC);
     const view = buildSwapRouteView({

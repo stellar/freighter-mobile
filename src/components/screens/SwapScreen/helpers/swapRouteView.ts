@@ -95,7 +95,7 @@ const resolveToken = (
     const code =
       held?.tokenCode ??
       (isDestination ? destination.tokenCode : undefined) ??
-      listed?.code ??
+      (listed?.code || undefined) ??
       truncateAddress(assetId);
     return {
       assetId,
@@ -122,7 +122,9 @@ const resolveToken = (
       code,
       issuer: { key: issuer },
     },
-    iconUrl: destination?.id === assetId ? destination.iconUrl : undefined,
+    iconUrl:
+      (destination?.id === assetId ? destination.iconUrl : undefined) ??
+      tokenLists.find((t) => t.code === code && t.issuer === issuer)?.icon,
   };
 };
 
@@ -150,7 +152,10 @@ export const buildSwapRouteView = ({
   const paths = (route?.paths ?? []).filter((p) => p.hops.length > 0);
   if (paths.length === 0) return null;
 
-  const protocolByVenue = new Map(protocols.map((p) => [venueKey(p.name), p]));
+  // First entry wins on a duplicate key, as on the extension.
+  const protocolByVenue = new Map(
+    [...protocols].reverse().map((p) => [venueKey(p.name), p]),
+  );
   const toVenue = (name: string): SwapRouteVenue => {
     // Not in /protocols: listing it there would show it in Discovery.
     if (venueKey(name) === STELLAR_DEX_VENUE) {
