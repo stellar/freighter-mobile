@@ -26,6 +26,11 @@ import {
   StellarSignAuthEntryParams,
   StellarSignXDRParams,
 } from "ducks/walletKit";
+import {
+  clearDappRequestOnScreen,
+  markDappRequestOnScreen,
+  rejectRequestsLeftOnScreen,
+} from "helpers/dappRequestReplayBreaker";
 import { isE2ETest } from "helpers/isEnv";
 import { getHostname } from "helpers/protocols";
 import { isAuthEntryDisplayable } from "helpers/signingDisplay";
@@ -155,6 +160,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   // approve-threw path isn't miscounted as a signing.*_rejected. Reset with
   // hasRespondedRef in the teardown.
   const approvalInFlightRef = useRef(false);
+  // Requests wait until the start check has run (see the effect below that
+  // calls rejectRequestsLeftOnScreen); these are the ids it rejected.
+  const [hasCheckedRequestsLeftOnScreen, setHasCheckedRequestsLeftOnScreen] =
+    useState(false);
+  const requestsRejectedAtStartRef = useRef<Set<number>>(new Set());
 
   const xdr = useMemo(
     () =>
@@ -499,6 +509,16 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     dappRequestBottomSheetModalRef.current?.dismiss();
     siteSecurityWarningBottomSheetModalRef.current?.dismiss();
 
+    if (requestEvent) {
+      clearDappRequestOnScreen(requestEvent.id).catch((error: unknown) => {
+        logger.error(
+          "WalletKitProvider",
+          "Failed to clear the dApp request on screen",
+          error,
+        );
+      });
+    }
+
     // We need to explicitly reject the request here otherwise
     // the app will show the request again on next app launch.
     // Skip if approveSessionRequest already sent a response. This WC-level
@@ -762,6 +782,35 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleCloseVerifyDomain = useCallback(() => {
     verifyDomainBottomSheetModalRef.current?.dismiss();
   }, []);
+
+  /**
+   * Shows a request's first sheet (the request sheet, or the Blockaid sheet
+   * in front of it) once the request is saved as on screen. If showing it
+   * crashes or freezes the app, the next start finds the request saved and
+   * rejects it instead of showing it again. A failed save is logged, and the
+   * sheet shows anyway.
+   */
+  const presentRequestSheet = (
+    sessionRequest: WalletKitSessionRequest,
+    dappName: string,
+    sheetRef: React.RefObject<BottomSheetModal | null>,
+  ) => {
+    markDappRequestOnScreen({
+      id: sessionRequest.id,
+      topic: sessionRequest.topic,
+      dappName,
+    })
+      .catch((error: unknown) => {
+        logger.error(
+          "WalletKitProvider",
+          "Failed to save the dApp request on screen",
+          error,
+        );
+      })
+      .finally(() => {
+        sheetRef.current?.present();
+      });
+  };
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Pre-validation helpers for WalletKit session requests
@@ -1337,6 +1386,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       (dappMetadata?.url as string) ||
       sessionRequest.verifyContext?.verified?.origin ||
       "";
+    const dappName = (dappMetadata?.name as string) || dappDomain;
 
     const requestParams = sessionRequest.params as
       | { request?: { method?: string } }
@@ -1363,9 +1413,17 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           if (securityAssessment.isUnableToScan) {
             setSecurityWarningContext(SecurityContext.TRANSACTION);
             setSecurityWarningBlocksSheet(true);
-            siteSecurityWarningBottomSheetModalRef.current?.present();
+            presentRequestSheet(
+              sessionRequest,
+              dappName,
+              siteSecurityWarningBottomSheetModalRef,
+            );
           } else {
-            dappRequestBottomSheetModalRef.current?.present();
+            presentRequestSheet(
+              sessionRequest,
+              dappName,
+              dappRequestBottomSheetModalRef,
+            );
           }
         })
         .catch(() => {
@@ -1377,9 +1435,17 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           if (securityAssessment.isUnableToScan) {
             setSecurityWarningContext(SecurityContext.TRANSACTION);
             setSecurityWarningBlocksSheet(true);
-            siteSecurityWarningBottomSheetModalRef.current?.present();
+            presentRequestSheet(
+              sessionRequest,
+              dappName,
+              siteSecurityWarningBottomSheetModalRef,
+            );
           } else {
-            dappRequestBottomSheetModalRef.current?.present();
+            presentRequestSheet(
+              sessionRequest,
+              dappName,
+              dappRequestBottomSheetModalRef,
+            );
           }
         });
     } else {
@@ -1394,7 +1460,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         if (!prevalidateSignAuthEntry(sessionRequest)) return;
       }
 
-      dappRequestBottomSheetModalRef.current?.present();
+      presentRequestSheet(
+        sessionRequest,
+        dappName,
+        dappRequestBottomSheetModalRef,
+      );
     }
   };
 
@@ -1441,6 +1511,52 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   // ─────────────────────────────────────────────────────────────────────────────
 
   /**
+   * Start check: if the app closed while a dApp request was on screen (a
+   * crash, a kill for memory, or a freeze the user ended), rejects that dApp's
+   * pending requests so none of them shows again, and says so. WalletKit
+   * replays pending requests as soon as it starts, so requests wait for this.
+   */
+  useEffect(() => {
+    if (!initialized) {
+      return;
+    }
+
+    rejectRequestsLeftOnScreen(t("walletKit.requestRejectedAtStartReason"))
+      .then((result) => {
+        if (!result) {
+          return;
+        }
+
+        result.rejectedIds.forEach((id) =>
+          requestsRejectedAtStartRef.current.add(id),
+        );
+        logger.warn(
+          "WalletKitProvider",
+          "Rejected the requests of a dApp whose request was on screen when the app closed",
+          { count: result.rejectedIds.length },
+        );
+        showToast({
+          title: t("walletKit.requestRejectedAtStartTitle"),
+          message: t("walletKit.requestRejectedAtStart", {
+            dappName: result.dappName || "dApp",
+          }),
+          variant: "error",
+        });
+      })
+      .catch((error: unknown) => {
+        logger.error(
+          "WalletKitProvider",
+          "Failed to check for a dApp request left on screen",
+          error,
+        );
+      })
+      .finally(() => {
+        setHasCheckedRequestsLeftOnScreen(true);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialized]);
+
+  /**
    * Effect that dispatches WalletKit events to their respective handlers.
    */
   useEffect(() => {
@@ -1448,8 +1564,19 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       handleSessionProposal(event as WalletKitSessionProposal);
     }
 
-    if (event.type === WalletKitEventTypes.SESSION_REQUEST) {
-      handleSessionRequest(event as WalletKitSessionRequest);
+    if (
+      event.type === WalletKitEventTypes.SESSION_REQUEST &&
+      hasCheckedRequestsLeftOnScreen
+    ) {
+      const sessionRequest = event as WalletKitSessionRequest;
+
+      // Rejected by the start check: a replay WalletKit had already queued.
+      if (requestsRejectedAtStartRef.current.has(sessionRequest.id)) {
+        clearEvent();
+        return;
+      }
+
+      handleSessionRequest(sessionRequest);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -1458,6 +1585,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     authStatus,
     transactionMemo,
     overriddenBlockaidResponse,
+    hasCheckedRequestsLeftOnScreen,
   ]);
 
   const onCancelAddMemo = () => {

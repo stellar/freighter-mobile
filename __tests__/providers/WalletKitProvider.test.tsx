@@ -10,7 +10,8 @@ import {
 } from "__tests__/support/sacTransferFixtures";
 import type { SecurityDetailBottomSheetProps } from "components/blockaid";
 import type DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
-import { NETWORKS } from "config/constants";
+import { AnalyticsEvent } from "config/analyticsConfig";
+import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import type * as WalletKitDuck from "ducks/walletKit";
@@ -20,6 +21,7 @@ import * as dappMetadataHook from "hooks/useDappMetadata";
 import { WalletKitProvider } from "providers/WalletKitProvider";
 import React from "react";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
+import { dataStorage } from "services/storage/storageFactory";
 
 type RequestSheetProps = React.ComponentProps<
   typeof DappRequestBottomSheetContent
@@ -31,6 +33,8 @@ let mockRequestSheetProps: RequestSheetProps | undefined;
 let mockSecuritySheetProps: SecurityDetailBottomSheetProps | undefined;
 /** The Blockaid verdict the debug store forces, or null for none. */
 let mockBlockaidOverride: SecurityLevel | null = null;
+/** The sheets presented, in order (see the BottomSheet mock). */
+let mockPresentedSheets: string[] = [];
 
 const mockAuthState = {
   network: NETWORKS.TESTNET,
@@ -71,9 +75,13 @@ jest.mock("ducks/transactionSettings", () => ({
 jest.mock("providers/ToastProvider", () => ({
   useToast: () => mockToast,
 }));
+// Returns the key, with the dApp name when one is passed.
 jest.mock("hooks/useAppTranslation", () => ({
   __esModule: true,
-  default: () => ({ t: (key: string) => key }),
+  default: () => ({
+    t: (key: string, params?: { dappName?: string }) =>
+      params?.dappName ? `${key} (${params.dappName})` : key,
+  }),
 }));
 jest.mock("hooks/useWalletKitInitialize", () => ({
   useWalletKitInitialize: () => true,
@@ -97,15 +105,41 @@ jest.mock("hooks/blockaid/useBlockaidTransaction", () => ({
   }),
 }));
 jest.mock("services/analytics", () => ({
-  analytics: { trackSignedTransactionRejected: jest.fn() },
+  analytics: {
+    trackSignedTransactionRejected: jest.fn(),
+    trackSignedMessageRejected: jest.fn(),
+  },
 }));
 
 // Every sheet renders its content as if presented. The request sheet and the
-// Blockaid sheet record their props, which is what the test drives.
+// Blockaid sheet record their props, which is what the test drives. Each
+// present() is recorded in mockPresentedSheets, by the sheet's analytics event
+// or else its content's component name.
 jest.mock("components/BottomSheet", () => ({
   __esModule: true,
-  default: ({ customContent }: { customContent: React.ReactNode }) =>
+  default: ({
     customContent,
+    modalRef,
+    analyticsEvent,
+  }: {
+    customContent: React.ReactElement;
+    modalRef?: { current: unknown };
+    analyticsEvent?: string;
+  }) => {
+    if (modalRef) {
+      // eslint-disable-next-line no-param-reassign
+      modalRef.current = {
+        present: () =>
+          mockPresentedSheets.push(
+            analyticsEvent ??
+              (customContent.type as { name?: string }).name ??
+              "sheet",
+          ),
+        dismiss: () => undefined,
+      };
+    }
+    return customContent;
+  },
 }));
 jest.mock("components/screens/WalletKit/DappRequestBottomSheetContent", () => ({
   __esModule: true,
@@ -662,5 +696,233 @@ describe("WalletKitProvider: a dApp event whose handling throws", () => {
     expect(useWalletKitStore.getState().event.type).toBe(
       WalletKitEventTypes.NONE,
     );
+  });
+});
+
+describe("WalletKitProvider: a request on screen when the app closed", () => {
+  const REQUEST_SHEET = AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION;
+  const ON_SCREEN_KEY = STORAGE_KEYS.DAPP_REQUEST_ON_SCREEN;
+
+  const signMessageRequest = (id: number) =>
+    dappRequest(id, StellarRpcMethods.SIGN_MESSAGE, { message: "Sign in" });
+
+  const storedRequest = async () => {
+    const stored = await dataStorage.getItem(ON_SCREEN_KEY);
+    return stored ? (JSON.parse(stored) as unknown) : null;
+  };
+
+  /** Lets the start check and the promises it chains settle. */
+  const settle = async () => {
+    await act(async () => {});
+    await act(async () => {});
+  };
+
+  /** What WalletKit still holds as pending, for the start check. */
+  let mockPendingRequests: { id: number; topic: string }[];
+  const respondSessionRequest = jest.fn();
+
+  beforeEach(async () => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+    jest
+      .spyOn(walletKitUtil, "approveSessionRequest")
+      .mockResolvedValue(undefined);
+    jest
+      .spyOn(walletKitUtil, "rejectSessionRequest")
+      .mockResolvedValue(undefined);
+    mockPendingRequests = [];
+    respondSessionRequest.mockResolvedValue(undefined);
+    jest.replaceProperty(walletKitUtil, "walletKit", {
+      getPendingSessionRequests: () => mockPendingRequests,
+      respondSessionRequest,
+    } as unknown as typeof walletKitUtil.walletKit);
+    mockRequestSheetProps = undefined;
+    mockSecuritySheetProps = undefined;
+    mockPresentedSheets = [];
+    mockBlockaidOverride = null;
+    await dataStorage.remove(ON_SCREEN_KEY);
+    useWalletKitStore.getState().clearEvent();
+    useWalletKitStore.setState({ activeSessions: ACTIVE_SESSIONS });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  it("saves the request as on screen before it shows the request's sheet", async () => {
+    let finishSave = () => {};
+    jest.spyOn(dataStorage, "setItem").mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSave = resolve;
+        }),
+    );
+    render(provider());
+    await settle();
+    await deliver(signMessageRequest(1));
+
+    expect(dataStorage.setItem).toHaveBeenCalledWith(
+      ON_SCREEN_KEY,
+      JSON.stringify({ id: 1, topic: "topic", dappName: "dApp" }),
+    );
+    expect(mockPresentedSheets).toEqual([]);
+
+    finishSave();
+    await act(async () => {});
+
+    expect(mockPresentedSheets).toEqual([REQUEST_SHEET]);
+  });
+
+  it("saves it before the Blockaid sheet shown first for a transaction it couldn't scan", async () => {
+    let finishSave = () => {};
+    jest.spyOn(dataStorage, "setItem").mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSave = resolve;
+        }),
+    );
+    render(provider());
+    await settle();
+    await deliver(signXdrRequest(1, sacTransferTransactionXdr()));
+
+    expect(dataStorage.setItem).toHaveBeenCalledWith(
+      ON_SCREEN_KEY,
+      JSON.stringify({ id: 1, topic: "topic", dappName: "dApp" }),
+    );
+    expect(mockPresentedSheets).toEqual([]);
+
+    finishSave();
+    await act(async () => {});
+
+    expect(mockPresentedSheets).toEqual(["SecurityDetailBottomSheet"]);
+  });
+
+  it("still shows the request when saving it fails, and logs the failure", async () => {
+    jest
+      .spyOn(dataStorage, "setItem")
+      .mockRejectedValue(new Error("storage full"));
+    render(provider());
+    await settle();
+    await deliver(signMessageRequest(1));
+    await settle();
+
+    expect(mockPresentedSheets).toEqual([REQUEST_SHEET]);
+    expect(logger.error).toHaveBeenCalledWith(
+      "WalletKitProvider",
+      "Failed to save the dApp request on screen",
+      expect.objectContaining({ message: "storage full" }),
+    );
+  });
+
+  it("forgets the request once it's answered", async () => {
+    render(provider());
+    await settle();
+    await deliver(signMessageRequest(1));
+    await settle();
+
+    expect(await storedRequest()).toEqual({
+      id: 1,
+      topic: "topic",
+      dappName: "dApp",
+    });
+
+    await actAndSettle(() => requestSheet().onConfirm());
+    await settle();
+
+    expect(await storedRequest()).toBeNull();
+  });
+
+  it("forgets the request once it's cancelled", async () => {
+    render(provider());
+    await settle();
+    await deliver(signMessageRequest(1));
+    await settle();
+
+    expect(await storedRequest()).not.toBeNull();
+
+    await actAndSettle(() => requestSheet().onCancelRequest());
+    await settle();
+
+    expect(await storedRequest()).toBeNull();
+  });
+
+  it("at start, rejects the pending requests of the dApp whose request was on screen, and says so", async () => {
+    await dataStorage.setItem(
+      ON_SCREEN_KEY,
+      JSON.stringify({ id: 1, topic: "topic", dappName: "Example dApp" }),
+    );
+    mockPendingRequests = [
+      { id: 1, topic: "topic" },
+      { id: 2, topic: "topic" },
+    ];
+    // WalletKit replays a pending request as soon as it starts, which can be
+    // before the check has run.
+    useWalletKitStore.getState().setEvent(signMessageRequest(1));
+
+    render(provider());
+    await settle();
+
+    expect(respondSessionRequest).toHaveBeenCalledTimes(2);
+    expect(respondSessionRequest).toHaveBeenCalledWith({
+      topic: "topic",
+      response: {
+        id: 1,
+        jsonrpc: "2.0",
+        error: {
+          code: 5000,
+          message: "walletKit.requestRejectedAtStartReason",
+        },
+      },
+    });
+    expect(mockToast.showToast).toHaveBeenCalledWith({
+      title: "walletKit.requestRejectedAtStartTitle",
+      message: "walletKit.requestRejectedAtStart (Example dApp)",
+      variant: "error",
+    });
+    expect(mockPresentedSheets).toEqual([]);
+    expect(useWalletKitStore.getState().event.type).toBe(
+      WalletKitEventTypes.NONE,
+    );
+    expect(await storedRequest()).toBeNull();
+  });
+
+  it("drops a rejected request that WalletKit replays after the check", async () => {
+    await dataStorage.setItem(
+      ON_SCREEN_KEY,
+      JSON.stringify({ id: 1, topic: "topic", dappName: "Example dApp" }),
+    );
+    mockPendingRequests = [{ id: 1, topic: "topic" }];
+    render(provider());
+    await settle();
+
+    await deliver(signMessageRequest(1));
+    await settle();
+
+    expect(mockPresentedSheets).toEqual([]);
+    expect(useWalletKitStore.getState().event.type).toBe(
+      WalletKitEventTypes.NONE,
+    );
+  });
+
+  it("shows a request only once the start check is done", async () => {
+    let finishRead = () => {};
+    jest.spyOn(dataStorage, "getItem").mockImplementationOnce(
+      () =>
+        new Promise<string | null>((resolve) => {
+          finishRead = () => resolve(null);
+        }),
+    );
+    render(provider());
+    await deliver(signMessageRequest(1));
+    await settle();
+
+    expect(mockPresentedSheets).toEqual([]);
+
+    finishRead();
+    await settle();
+
+    expect(mockPresentedSheets).toEqual([REQUEST_SHEET]);
+    expect(respondSessionRequest).not.toHaveBeenCalled();
   });
 });
