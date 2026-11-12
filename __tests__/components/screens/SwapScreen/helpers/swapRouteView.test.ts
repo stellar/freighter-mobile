@@ -136,13 +136,13 @@ describe("buildSwapRouteView", () => {
     ]);
   });
 
-  it("gives a venue /protocols lists its icon, matching the name case-insensitively", () => {
+  it("gives a venue /protocols lists that entry's name and icon, matching case-insensitively", () => {
     const view = build(
-      route([{ share: "1", hops: [hop("Sushiswap", "XLM", USDC, "p1")] }]),
+      route([{ share: "1", hops: [hop(" sushiswap ", "XLM", USDC, "p1")] }]),
     );
 
     expect(view?.providers).toEqual([
-      { name: "Sushiswap", iconUrl: "https://icons.example/sushiswap.png" },
+      { name: "SushiSwap", iconUrl: "https://icons.example/sushiswap.png" },
     ]);
   });
 

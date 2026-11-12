@@ -135,15 +135,17 @@ export const buildSwapRouteView = ({
   const paths = (route?.paths ?? []).filter((p) => p.hops.length > 0);
   if (paths.length === 0) return null;
 
-  const iconByVenue = new Map(
-    protocols.map((p) => [venueKey(p.name), p.iconUrl]),
-  );
+  const protocolByVenue = new Map(protocols.map((p) => [venueKey(p.name), p]));
   const toVenue = (name: string): SwapRouteVenue => {
     // Not in /protocols: listing it there would show it in Discovery.
     if (venueKey(name) === STELLAR_DEX_VENUE) {
       return { name: "Stellar DEX", iconSource: logos.stellar };
     }
-    return { name, iconUrl: iconByVenue.get(venueKey(name)) };
+    // The protocol list holds the display name, whatever casing routing sends.
+    const listed = protocolByVenue.get(venueKey(name));
+    return listed
+      ? { name: listed.name, iconUrl: listed.iconUrl }
+      : { name, iconUrl: undefined };
   };
   const context = { balanceItems, destination };
 
