@@ -126,15 +126,14 @@ describe("SwapDetailsBottomSheet", () => {
     ).toBeTruthy();
   });
 
-  it("classic stand-in: one path, no share pill, no pool count", () => {
-    const { getByTestId, getByText, queryByText, queryByTestId } =
-      renderSheet(classicRoute);
+  it("classic stand-in: one path at 100%, no pool count", () => {
+    const { getByTestId, getByText, queryByTestId } = renderSheet(classicRoute);
 
     expect(getByText("1 provider")).toBeTruthy();
     fireEvent.press(getByTestId("swap-details-route-row"));
 
     expect(getByText("1 path")).toBeTruthy();
-    expect(queryByText("100%")).toBeNull();
+    expect(getByText("100%")).toBeTruthy();
     expect(queryByTestId("swap-route-path-0-pools")).toBeNull();
   });
 

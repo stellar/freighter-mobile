@@ -167,7 +167,7 @@ describe("buildSwapRouteView", () => {
     expect(view?.paths[0].hopVenues).toEqual(view?.providers);
   });
 
-  it("classic stand-in: one path with no share and no pool count", () => {
+  it("classic stand-in: one path at 100% with no pool count", () => {
     const view = build(
       route(
         [{ share: "1", hops: [hop("stellar-dex", "XLM", USDC)] }],
@@ -176,7 +176,7 @@ describe("buildSwapRouteView", () => {
     );
 
     expect(view?.paths).toHaveLength(1);
-    expect(view?.paths[0].share).toBeNull();
+    expect(view?.paths[0].share).toBe("100%");
     expect(view?.paths[0].poolCount).toBeNull();
   });
 

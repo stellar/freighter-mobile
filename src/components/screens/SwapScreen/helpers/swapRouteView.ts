@@ -33,7 +33,7 @@ export interface SwapRouteVenue {
 }
 
 export interface SwapRoutePathView {
-  /** "32%"; null on a single-path route. */
+  /** "32%" ("100%" on a single path); null for a zero or invalid share. */
   share: string | null;
   /** One per hop, in order. */
   hopVenues: SwapRouteVenue[];
@@ -146,10 +146,9 @@ export const buildSwapRouteView = ({
     return { name, iconUrl: iconByVenue.get(venueKey(name)) };
   };
   const context = { balanceItems, destination };
-  const isSplit = paths.length > 1;
 
   const pathViews = paths.map((path) => ({
-    share: isSplit ? formatRouteShare(path.share) : null,
+    share: formatRouteShare(path.share),
     hopVenues: path.hops.map((hop) => toVenue(hop.venue)),
     poolCount: path.hops.filter((hop) => hop.pool).length || null,
     tokens: [
