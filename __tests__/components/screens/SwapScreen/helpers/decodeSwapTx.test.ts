@@ -576,13 +576,15 @@ describe("decodeSwapTx", () => {
       ).toThrow(/transfer/);
     });
 
-    it("refuses a trust() on a contract token bought, which opens no trustline", () => {
+    it("accepts a trust() on a token bought by its contract ID: the backend tells a SAC from its instance", () => {
       const txXdr = sorobanSwapTx([
         transferOf(Asset.native().contractId(Networks.PUBLIC), BigInt(1)),
         trustOf(TOKEN),
       ]);
 
-      expect(() => decode(txXdr, { toAsset: TOKEN })).toThrow(/trustline/);
+      expect(
+        decode(txXdr, { toAsset: TOKEN, amount: "0.0000001" }),
+      ).toMatchObject({ addsTrustline: true });
     });
 
     it("refuses a classic path payment for a contract token", () => {

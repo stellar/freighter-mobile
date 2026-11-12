@@ -136,8 +136,7 @@ const ACCOUNT_TOKEN_CALLS = new Set([
  * what the signature authorizes and every source must use it: the amount sold
  * is the sold token's transfers out of the account, and a trust() on the
  * bought token is the trustline. The call itself is source-specific and the
- * backend checks it, so a new source needs no client release. Only a classic
- * asset has a trustline, so a trust() on a Soroban-only token is refused.
+ * backend checks it, so a new source needs no client release.
  */
 const decodeSoroban = (
   tx: Transaction,
@@ -174,9 +173,9 @@ const decodeSoroban = (
         }
         sent += moved;
       } else if (name === "trust") {
-        if (contract !== toContract || !to.classic) {
-          throw mismatch("trustline");
-        }
+        // Also for a SAC given by its contract ID: only the contract instance
+        // tells a SAC apart, and the backend checks it before adding trust().
+        if (contract !== toContract) throw mismatch("trustline");
         addsTrustline = true;
       } else if (ACCOUNT_TOKEN_CALLS.has(name)) {
         throw mismatch(name);
