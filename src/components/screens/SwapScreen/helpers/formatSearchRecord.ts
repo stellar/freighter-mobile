@@ -7,6 +7,7 @@ import { FormattedSearchTokenRecord } from "config/types";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { getTokenType } from "helpers/balances";
 import { formatSorobanSearchRecord } from "helpers/formatSorobanSearchRecord";
+import { truncateAddress } from "helpers/stellar";
 
 /**
  * Format a stellar.expert record into a FormattedSearchTokenRecord. A Soroban
@@ -17,8 +18,13 @@ export const formatSearchRecord = (
   hasTrustline: (tokenCode: string, issuer: string) => boolean,
 ): FormattedSearchTokenRecord => {
   if (isSorobanRecord(record)) {
+    const formatted = formatSorobanSearchRecord(record, hasTrustline);
     return {
-      ...formatSorobanSearchRecord(record, hasTrustline),
+      ...formatted,
+      // The picker row (and asset_code) shows a no-code token by its
+      // shortened ID, as the extension does; Add token keeps the full ID.
+      tokenCode:
+        record.code ?? record.tomlInfo?.code ?? truncateAddress(record.asset),
       iconUrl: record.tomlInfo?.image,
       price: record.price,
     };
