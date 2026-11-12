@@ -1,3 +1,5 @@
+import { parse } from "react-native-svg";
+
 /** Largest SVG icon, in characters of text, that is downloaded and drawn. */
 export const MAX_SVG_BYTES = 100 * 1024;
 
@@ -36,10 +38,68 @@ const ALLOWED_SVG_ELEMENTS = new Set([
   "style",
 ]);
 
+/** An element as react-native-svg's parser reads it, before it's drawn. */
+interface SvgNode {
+  tag: string;
+  props: { [prop: string]: unknown };
+  children: (SvgNode | string)[];
+}
+
+/** Whether a node is masked or clipped, by an attribute or its inline style. */
+const isMaskedOrClipped = ({ props }: SvgNode): boolean => {
+  const style = props.style as { [prop: string]: unknown } | undefined;
+  return Boolean(
+    props.mask || props.clipPath || style?.mask || style?.clipPath,
+  );
+};
+
+/**
+ * Whether a `<mask>` or `<clipPath>` element, or anything inside one, is itself
+ * masked or clipped. react-native-svg follows a mask into its content with no
+ * loop check, so a mask whose content uses the same mask, directly or through
+ * a clip path, recurses until the app is killed. Walks with an explicit stack.
+ */
+const hasNestedMaskOrClipPath = (root: SvgNode): boolean => {
+  const pending = [{ node: root, inMaskOrClipPath: false }];
+  while (pending.length > 0) {
+    const { node, inMaskOrClipPath } = pending.pop()!;
+    const inside =
+      inMaskOrClipPath || node.tag === "mask" || node.tag === "clipPath";
+    if (inside && isMaskedOrClipped(node)) {
+      return true;
+    }
+    node.children.forEach((child) => {
+      if (typeof child !== "string") {
+        pending.push({ node: child, inMaskOrClipPath: inside });
+      }
+    });
+  }
+  return false;
+};
+
+/**
+ * Parses the SVG with react-native-svg's own parser, the one SvgXml draws
+ * from, and checks its element tree before the parser turns it into React
+ * elements. False if it doesn't parse or has a nested mask or clip path.
+ */
+const parsesWithoutNestedMaskOrClipPath = (text: string): boolean => {
+  let safe = false;
+  try {
+    parse(text, (ast) => {
+      safe = !hasNestedMaskOrClipPath(ast as unknown as SvgNode);
+      return ast;
+    });
+  } catch {
+    return false;
+  }
+  return safe;
+};
+
 /**
  * Whether an SVG's text is a plain icon that is cheap to draw: at most
  * MAX_SVG_BYTES long and MAX_SVG_ELEMENTS elements, with no DOCTYPE or entity
- * declaration, and only allowed elements.
+ * declaration, only allowed elements, parseable by react-native-svg, and with
+ * no mask or clip path that is masked or clipped itself.
  */
 export const isRenderableSvg = (text: string): boolean => {
   if (text.length > MAX_SVG_BYTES) {
@@ -55,7 +115,11 @@ export const isRenderableSvg = (text: string): boolean => {
     return false;
   }
 
-  return elements.every((tag) => ALLOWED_SVG_ELEMENTS.has(tag.slice(1)));
+  if (!elements.every((tag) => ALLOWED_SVG_ELEMENTS.has(tag.slice(1)))) {
+    return false;
+  }
+
+  return parsesWithoutNestedMaskOrClipPath(text);
 };
 
 /**

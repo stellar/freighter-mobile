@@ -23,6 +23,55 @@ describe("isRenderableSvg", () => {
     },
   );
 
+  it.each([
+    [
+      "a mask whose content uses the same mask",
+      "<svg><defs><mask id='m'><rect mask='url(#m)'/></mask></defs><rect mask='url(#m)'/></svg>",
+    ],
+    [
+      "a clip path whose content uses the same clip path",
+      "<svg><defs><clipPath id='c'><rect clip-path='url(#c)'/></clipPath></defs><rect clip-path='url(#c)'/></svg>",
+    ],
+    [
+      "a mask whose content is clipped by a clip path that uses the mask",
+      "<svg><defs><mask id='m'><g clip-path='url(#c)'><rect/></g></mask><clipPath id='c'><rect mask='url(#m)'/></clipPath></defs><rect mask='url(#m)'/></svg>",
+    ],
+    [
+      "a mask element that is masked itself",
+      "<svg><defs><mask id='m' mask='url(#m)'><rect/></mask></defs><rect mask='url(#m)'/></svg>",
+    ],
+    [
+      "a mask reference in an inline style inside a mask",
+      "<svg><defs><mask id='m'><rect style='mask: url(#m)'/></mask></defs><rect mask='url(#m)'/></svg>",
+    ],
+    [
+      "a camel-case clipPath attribute inside a clip path",
+      "<svg><defs><clipPath id='c'><rect clipPath='url(#c)'/></clipPath></defs><rect clip-path='url(#c)'/></svg>",
+    ],
+    [
+      "a mask whose content follows a closing tag hidden in a comment",
+      "<svg><defs><mask id='m'><!-- </mask> --><rect mask='url(#m)'/></mask></defs><rect mask='url(#m)'/></svg>",
+    ],
+    [
+      "a masked element inside a mask whose tag has a > in a quoted value",
+      "<svg><defs><mask id='m'><rect x='>' mask='url(#m)'/></mask></defs><rect mask='url(#m)'/></svg>",
+    ],
+  ])("rejects %s", (_case, svg) => {
+    expect(isRenderableSvg(svg)).toBe(false);
+  });
+
+  it("accepts masks and clip paths used the usual way, as design tools export them", () => {
+    expect(
+      isRenderableSvg(
+        "<svg viewBox='0 0 24 24'><mask id='mask0' style='mask-type:alpha' maskUnits='userSpaceOnUse' x='0' y='0' width='24' height='24'><rect width='24' height='24' fill='#D9D9D9'/></mask><g mask='url(#mask0)'><g clip-path='url(#clip0)'><path d='M0 0h24v24H0z'/></g></g><defs><clipPath id='clip0' clipPathUnits='userSpaceOnUse'><rect width='24' height='24'/></clipPath></defs></svg>",
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects an SVG that doesn't parse", () => {
+    expect(isRenderableSvg("<svg><path></svg>")).toBe(false);
+  });
+
   it("rejects a DOCTYPE or entity declaration", () => {
     expect(isRenderableSvg(`<!DOCTYPE svg>${SIMPLE_SVG}`)).toBe(false);
     expect(isRenderableSvg(`<!ENTITY a "b">${SIMPLE_SVG}`)).toBe(false);
