@@ -30,7 +30,7 @@ describe("DappMessageDisplay", () => {
   });
 
   it("shows a JSON message as sent when its indented form would be too long", () => {
-    // 500 levels of nesting: about 10 KB as sent, about 5 MB once indented.
+    // 500 levels of nesting: about 1 KB as sent, about 500 KB once indented.
     const nested = `${"[".repeat(500)}0${"]".repeat(500)}`;
 
     const { getByTestId } = renderWithProviders(
