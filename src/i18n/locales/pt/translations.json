@@ -991,6 +991,9 @@
     "requestRejectedAtStartTitle": "Solicitação rejeitada",
     "requestRejectedAtStart": "O Varial fechou enquanto uma solicitação de {{dappName}} estava aberta, então o Varial a rejeitou. O dApp pode enviá-la novamente.",
     "requestRejectedAtStartReason": "O Varial fechou enquanto esta solicitação estava aberta",
+    "sheetRenderFailedTitle": "Não foi possível mostrar esta solicitação",
+    "sheetRenderFailed": "O Varial a rejeitou. O dApp pode enviá-la novamente.",
+    "sheetRenderFailedReason": "O Varial não conseguiu mostrar esta solicitação",
     "e2eHelper": {
       "title": "WC E2E Helper",
       "createSession": "Criar Sessão",

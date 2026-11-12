@@ -1025,6 +1025,9 @@
     "requestRejectedAtStartTitle": "Request rejected",
     "requestRejectedAtStart": "Varial closed while a request from {{dappName}} was open, so Varial rejected it. The dApp can send it again.",
     "requestRejectedAtStartReason": "Varial closed while this request was open",
+    "sheetRenderFailedTitle": "Couldn't show this request",
+    "sheetRenderFailed": "Varial rejected it. The dApp can send it again.",
+    "sheetRenderFailedReason": "Varial couldn't show this request",
     "e2eHelper": {
       "title": "WC E2E Helper",
       "createSession": "Create Session",
