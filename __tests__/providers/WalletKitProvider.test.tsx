@@ -20,6 +20,7 @@ import * as walletKitUtil from "helpers/walletKitUtil";
 import * as dappMetadataHook from "hooks/useDappMetadata";
 import { WalletKitProvider } from "providers/WalletKitProvider";
 import React from "react";
+import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import { dataStorage } from "services/storage/storageFactory";
 
@@ -35,6 +36,14 @@ let mockSecuritySheetProps: SecurityDetailBottomSheetProps | undefined;
 let mockBlockaidOverride: SecurityLevel | null = null;
 /** The sheets presented, in order (see the BottomSheet mock). */
 let mockPresentedSheets: string[] = [];
+/** The sheets dismissed, in order (see the BottomSheet mock). */
+let mockDismissedSheets: string[] = [];
+/** Each sheet's onChange, by name (see the BottomSheet mock). */
+const mockSheetOnChange: Record<string, (index: number) => void> = {};
+/** Makes the request sheet's content throw while it shows a request. */
+let mockFailRequestSheet = false;
+/** Makes the connection sheet's content throw while it shows a proposal. */
+let mockFailConnectionSheet = false;
 
 const mockAuthState = {
   network: NETWORKS.TESTNET,
@@ -113,29 +122,35 @@ jest.mock("services/analytics", () => ({
 
 // Every sheet renders its content as if presented. The request sheet and the
 // Blockaid sheet record their props, which is what the test drives. Each
-// present() is recorded in mockPresentedSheets, by the sheet's analytics event
-// or else its content's component name.
+// present() and dismiss() is recorded in mockPresentedSheets and
+// mockDismissedSheets, by the sheet's analytics event or else its content's
+// component name, and each sheet's onChange is kept in mockSheetOnChange so a
+// test can report the sheet as opened.
 jest.mock("components/BottomSheet", () => ({
   __esModule: true,
   default: ({
     customContent,
     modalRef,
     analyticsEvent,
+    bottomSheetModalProps,
   }: {
     customContent: React.ReactElement;
     modalRef?: { current: unknown };
     analyticsEvent?: string;
+    bottomSheetModalProps?: { onChange?: (index: number) => void };
   }) => {
+    const name =
+      analyticsEvent ??
+      (customContent.type as { name?: string }).name ??
+      "sheet";
+    if (bottomSheetModalProps?.onChange) {
+      mockSheetOnChange[name] = bottomSheetModalProps.onChange;
+    }
     if (modalRef) {
       // eslint-disable-next-line no-param-reassign
       modalRef.current = {
-        present: () =>
-          mockPresentedSheets.push(
-            analyticsEvent ??
-              (customContent.type as { name?: string }).name ??
-              "sheet",
-          ),
-        dismiss: () => undefined,
+        present: () => mockPresentedSheets.push(name),
+        dismiss: () => mockDismissedSheets.push(name),
       };
     }
     return customContent;
@@ -145,6 +160,9 @@ jest.mock("components/screens/WalletKit/DappRequestBottomSheetContent", () => ({
   __esModule: true,
   default: (props: RequestSheetProps) => {
     mockRequestSheetProps = props;
+    if (mockFailRequestSheet && props.requestEvent) {
+      throw new Error("request sheet render failed");
+    }
     return null;
   },
 }));
@@ -156,7 +174,15 @@ jest.mock("components/blockaid", () => ({
 }));
 jest.mock(
   "components/screens/WalletKit/DappConnectionBottomSheetContent",
-  () => ({ __esModule: true, default: () => null }),
+  () => ({
+    __esModule: true,
+    default: ({ proposalEvent }: { proposalEvent: unknown }) => {
+      if (mockFailConnectionSheet && proposalEvent) {
+        throw new Error("connection sheet render failed");
+      }
+      return null;
+    },
+  }),
 );
 jest.mock("components/AddMemoExplanationBottomSheet", () => ({
   __esModule: true,
@@ -924,5 +950,197 @@ describe("WalletKitProvider: a request on screen when the app closed", () => {
 
     expect(mockPresentedSheets).toEqual([REQUEST_SHEET]);
     expect(respondSessionRequest).not.toHaveBeenCalled();
+  });
+});
+
+describe("WalletKitProvider: a dApp sheet that fails to render", () => {
+  const signMessageRequest = (id: number) =>
+    dappRequest(id, StellarRpcMethods.SIGN_MESSAGE, { message: "Sign in" });
+
+  /** Lets the start check and the promises it chains settle. */
+  const settle = async () => {
+    await act(async () => {});
+    await act(async () => {});
+  };
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+    // React reports the caught render error; the boundary's own report is
+    // what the tests check.
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    jest
+      .spyOn(walletKitUtil, "rejectSessionRequest")
+      .mockResolvedValue(undefined);
+    jest
+      .spyOn(walletKitUtil, "rejectSessionProposal")
+      .mockResolvedValue(undefined);
+    mockRequestSheetProps = undefined;
+    mockPresentedSheets = [];
+    mockBlockaidOverride = null;
+    mockFailRequestSheet = false;
+    mockFailConnectionSheet = false;
+    useWalletKitStore.getState().clearEvent();
+    useWalletKitStore.setState({ activeSessions: ACTIVE_SESSIONS });
+  });
+
+  afterEach(() => {
+    mockFailRequestSheet = false;
+    mockFailConnectionSheet = false;
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  it("rejects a request whose sheet fails to render, closes the sheet and says so", async () => {
+    render(provider());
+    await settle();
+    mockFailRequestSheet = true;
+    await deliver(signMessageRequest(1));
+    await settle();
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledTimes(1);
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledWith({
+      sessionRequest: expect.objectContaining({ id: 1 }),
+      message: "walletKit.sheetRenderFailedReason",
+    });
+    expect(mockToast.showToast).toHaveBeenCalledWith({
+      title: "walletKit.sheetRenderFailedTitle",
+      message: "walletKit.sheetRenderFailed",
+      variant: "error",
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      "DappRequestSheet",
+      "Render error caught by error boundary",
+      expect.objectContaining({ message: "request sheet render failed" }),
+      expect.anything(),
+    );
+
+    // The teardown runs: no second rejection, no user rejection recorded,
+    // and the next request shows.
+    mockFailRequestSheet = false;
+    await actAndSettle(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledTimes(1);
+    expect(analytics.trackSignedMessageRejected).not.toHaveBeenCalled();
+
+    await deliver(signMessageRequest(2));
+    await settle();
+
+    expect(requestSheet().requestEvent?.id).toBe(2);
+  });
+
+  it("rejects a connection whose sheet fails to render, closes the sheet and says so", async () => {
+    render(provider());
+    await settle();
+    mockFailConnectionSheet = true;
+    await actAndSettle(() =>
+      useWalletKitStore.getState().setEvent(dappProposal(7)),
+    );
+
+    expect(walletKitUtil.rejectSessionProposal).toHaveBeenCalledTimes(1);
+    expect(walletKitUtil.rejectSessionProposal).toHaveBeenCalledWith({
+      sessionProposal: expect.objectContaining({ id: 7 }),
+      message: "walletKit.sheetRenderFailedReason",
+    });
+    expect(mockToast.showToast).toHaveBeenCalledWith({
+      title: "walletKit.sheetRenderFailedTitle",
+      message: "walletKit.sheetRenderFailed",
+      variant: "error",
+    });
+    expect(useWalletKitStore.getState().event.type).toBe(
+      WalletKitEventTypes.NONE,
+    );
+  });
+
+  // The bottom sheet library ignores dismiss() while a sheet is still
+  // mounting, which is when a render error in its content is caught; the
+  // sheet would then finish opening, empty.
+  const dismissals = (sheet: string) =>
+    mockDismissedSheets.filter((name) => name === sheet).length;
+
+  it("closes a request sheet that failed while opening once it has opened, and not the next one", async () => {
+    const REQUEST_SHEET = AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION;
+    mockDismissedSheets = [];
+    render(provider());
+    await settle();
+    mockFailRequestSheet = true;
+    await deliver(signMessageRequest(1));
+    await settle();
+    const beforeOpened = dismissals(REQUEST_SHEET);
+
+    act(() => mockSheetOnChange[REQUEST_SHEET](0));
+
+    expect(dismissals(REQUEST_SHEET)).toBe(beforeOpened + 1);
+
+    // Closed; the next request's sheet opens and stays open.
+    act(() => mockSheetOnChange[REQUEST_SHEET](-1));
+    mockFailRequestSheet = false;
+    await actAndSettle(() => {
+      jest.runOnlyPendingTimers();
+    });
+    await deliver(signMessageRequest(2));
+    await settle();
+    const beforeNext = dismissals(REQUEST_SHEET);
+
+    act(() => mockSheetOnChange[REQUEST_SHEET](0));
+
+    expect(requestSheet().requestEvent?.id).toBe(2);
+    expect(dismissals(REQUEST_SHEET)).toBe(beforeNext);
+  });
+
+  it("closes a connection sheet that failed while opening once it has opened", async () => {
+    const CONNECTION_SHEET = AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS;
+    mockDismissedSheets = [];
+    render(provider());
+    await settle();
+    mockFailConnectionSheet = true;
+    await actAndSettle(() =>
+      useWalletKitStore.getState().setEvent(dappProposal(7)),
+    );
+    const beforeOpened = dismissals(CONNECTION_SHEET);
+
+    act(() => mockSheetOnChange[CONNECTION_SHEET](0));
+
+    expect(dismissals(CONNECTION_SHEET)).toBe(beforeOpened + 1);
+  });
+
+  it("doesn't bring back a request whose sheet failed when the sessions refresh during the teardown", async () => {
+    render(provider());
+    await settle();
+    mockFailRequestSheet = true;
+    await deliver(signMessageRequest(1));
+    await settle();
+
+    // A session refresh lands before the deferred teardown has run.
+    await actAndSettle(() =>
+      useWalletKitStore.setState({ activeSessions: { ...ACTIVE_SESSIONS } }),
+    );
+    await actAndSettle(() => {
+      jest.runOnlyPendingTimers();
+    });
+    await settle();
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledTimes(1);
+    expect(mockRequestSheetProps?.requestEvent ?? null).toBeNull();
+  });
+
+  it("shows a request that arrives during the teardown of one whose sheet failed, once the teardown runs", async () => {
+    render(provider());
+    await settle();
+    mockFailRequestSheet = true;
+    await deliver(signMessageRequest(1));
+    await settle();
+    mockFailRequestSheet = false;
+
+    await deliver(signMessageRequest(2));
+    await actAndSettle(() => {
+      jest.runOnlyPendingTimers();
+    });
+    await settle();
+
+    expect(requestSheet().requestEvent?.id).toBe(2);
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledTimes(1);
   });
 });

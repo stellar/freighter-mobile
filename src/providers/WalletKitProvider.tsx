@@ -3,6 +3,7 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { xdr as stellarXdr } from "@stellar/stellar-sdk";
 import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import BottomSheet from "components/BottomSheet";
+import { ErrorBoundary } from "components/ErrorBoundary";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { getDisplayableDetails } from "components/screens/SignTransactionDetails/helpers/detailsState";
@@ -165,6 +166,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const [hasCheckedRequestsLeftOnScreen, setHasCheckedRequestsLeftOnScreen] =
     useState(false);
   const requestsRejectedAtStartRef = useRef<Set<number>>(new Set());
+  // Set when a sheet's content fails to render, until the sheet is closed
+  // (see closeSheetIfFailed).
+  const requestSheetFailedRef = useRef(false);
+  const connectionSheetFailedRef = useRef(false);
 
   const xdr = useMemo(
     () =>
@@ -782,6 +787,97 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleCloseVerifyDomain = useCallback(() => {
     verifyDomainBottomSheetModalRef.current?.dismiss();
   }, []);
+
+  /**
+   * Closes a sheet whose content failed to render, once the sheet reports it
+   * has opened. A render error in a sheet's content is caught while the sheet
+   * is still mounting, and the bottom sheet ignores dismiss() until its
+   * opening animation starts, so the sheet would otherwise finish opening,
+   * empty. A sheet that closes clears the flag.
+   */
+  const closeSheetIfFailed = (
+    failedRef: { current: boolean },
+    sheetRef: React.RefObject<BottomSheetModal | null>,
+    index: number,
+  ) => {
+    if (index === -1) {
+      // eslint-disable-next-line no-param-reassign
+      failedRef.current = false;
+    } else if (failedRef.current) {
+      // eslint-disable-next-line no-param-reassign
+      failedRef.current = false;
+      sheetRef.current?.dismiss();
+    }
+  };
+
+  /**
+   * The connection sheet failed to render: rejects the proposal, says so, and
+   * clears the connection, which closes the sheet. Skipped while the
+   * connection is being approved, whose own teardown follows.
+   */
+  const handleConnectionSheetRenderError = () => {
+    if (!proposalEvent || isConnecting) {
+      return;
+    }
+
+    connectionSheetFailedRef.current = true;
+    rejectSessionProposal({
+      sessionProposal: proposalEvent,
+      message: t("walletKit.sheetRenderFailedReason"),
+    }).catch((error: unknown) => {
+      logger.warn(
+        "WalletKitProvider",
+        "Failed to reject a proposal whose sheet failed to render",
+        error,
+      );
+    });
+    showToast({
+      title: t("walletKit.sheetRenderFailedTitle"),
+      message: t("walletKit.sheetRenderFailed"),
+      variant: "error",
+    });
+    handleClearDappConnection();
+  };
+
+  /**
+   * The request sheet failed to render: rejects the request, says so, and runs
+   * the usual teardown, which closes the sheet. The request counts as
+   * answered, so the teardown neither rejects it again nor records a user
+   * rejection. Skipped once the request is being approved or was answered,
+   * since that teardown is already on its way.
+   */
+  const handleRequestSheetRenderError = () => {
+    if (
+      !requestEvent ||
+      approvalInFlightRef.current ||
+      hasRespondedRef.current
+    ) {
+      return;
+    }
+
+    hasRespondedRef.current = true;
+    requestSheetFailedRef.current = true;
+    rejectSessionRequest({
+      sessionRequest: requestEvent,
+      message: t("walletKit.sheetRenderFailedReason"),
+    }).catch((error: unknown) => {
+      logger.warn(
+        "WalletKitProvider",
+        "Failed to reject a request whose sheet failed to render",
+        error,
+      );
+    });
+    showToast({
+      title: t("walletKit.sheetRenderFailedTitle"),
+      message: t("walletKit.sheetRenderFailed"),
+      variant: "error",
+    });
+    // Clear the event now, as handleSessionRequest's catch does: the teardown
+    // clears it only after a delay, and a dependency change before then would
+    // hand this request to the dispatch effect again.
+    clearEvent();
+    handleClearDappRequest();
+  };
 
   /**
    * Shows a request's first sheet (the request sheet, or the Blockaid sheet
@@ -1609,22 +1705,37 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         analyticsEvent={AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS}
         bottomSheetModalProps={{
           onDismiss: handleClearDappConnection,
+          onChange: (index: number) =>
+            closeSheetIfFailed(
+              connectionSheetFailedRef,
+              dappConnectionBottomSheetModalRef,
+              index,
+            ),
         }}
         customContent={
-          <DappConnectionBottomSheetContent
-            account={account}
-            proposalEvent={proposalEvent}
-            isConnecting={isConnecting}
-            onConnection={handleDappConnection}
-            onCancel={handleClearDappConnection}
-            isMalicious={siteSecurityAssessment.isMalicious}
-            isSuspicious={siteSecurityAssessment.isSuspicious}
-            isUnableToScan={siteSecurityAssessment.isUnableToScan}
-            securityWarningAction={() =>
-              presentSecurityWarningDetail(SecurityContext.SITE)
-            }
-            onVerifyDomainPress={handleOpenVerifyDomain}
-          />
+          // Inside the sheet: sheets render through the portal host, so a
+          // boundary around the BottomSheet would never see these errors.
+          <ErrorBoundary
+            name="DappConnectionSheet"
+            fallback={null}
+            resetKey={proposalEvent?.id}
+            onError={handleConnectionSheetRenderError}
+          >
+            <DappConnectionBottomSheetContent
+              account={account}
+              proposalEvent={proposalEvent}
+              isConnecting={isConnecting}
+              onConnection={handleDappConnection}
+              onCancel={handleClearDappConnection}
+              isMalicious={siteSecurityAssessment.isMalicious}
+              isSuspicious={siteSecurityAssessment.isSuspicious}
+              isUnableToScan={siteSecurityAssessment.isUnableToScan}
+              securityWarningAction={() =>
+                presentSecurityWarningDetail(SecurityContext.SITE)
+              }
+              onVerifyDomainPress={handleOpenVerifyDomain}
+            />
+          </ErrorBoundary>
         }
       />
 
@@ -1642,32 +1753,45 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         enableContentPanningGesture={!isNonTransactionRequest}
         bottomSheetModalProps={{
           onDismiss: handleClearDappRequest,
+          onChange: (index: number) =>
+            closeSheetIfFailed(
+              requestSheetFailedRef,
+              dappRequestBottomSheetModalRef,
+              index,
+            ),
           enableDynamicSizing: true,
         }}
         customContent={
-          <DappRequestBottomSheetContent
-            account={account}
-            requestEvent={requestEvent}
-            networkDetails={networkDetails}
-            isSigning={isSigning}
-            isValidatingMemo={isValidatingMemo}
-            onBannerPress={onOpenAddMemoExplanationBottomSheet}
-            onConfirm={handleDappRequest}
-            onCancelRequest={handleClearDappRequest}
-            isMalicious={requestIsMalicious}
-            isSuspicious={requestIsSuspicious}
-            isUnableToScan={requestIsUnableToScan}
-            transactionScanResult={
-              isNonTransactionRequest ? undefined : transactionScanResult
-            }
-            securityWarningAction={() =>
-              presentSecurityWarningDetail(SecurityContext.TRANSACTION)
-            }
-            signTransactionDetails={signTransactionDetails}
-            isMemoMissing={isMemoMissing}
-            isUndisplayable={isRequestUndisplayable}
-            onDetailsRenderError={handleDetailsRenderError}
-          />
+          <ErrorBoundary
+            name="DappRequestSheet"
+            fallback={null}
+            resetKey={requestEvent?.id}
+            onError={handleRequestSheetRenderError}
+          >
+            <DappRequestBottomSheetContent
+              account={account}
+              requestEvent={requestEvent}
+              networkDetails={networkDetails}
+              isSigning={isSigning}
+              isValidatingMemo={isValidatingMemo}
+              onBannerPress={onOpenAddMemoExplanationBottomSheet}
+              onConfirm={handleDappRequest}
+              onCancelRequest={handleClearDappRequest}
+              isMalicious={requestIsMalicious}
+              isSuspicious={requestIsSuspicious}
+              isUnableToScan={requestIsUnableToScan}
+              transactionScanResult={
+                isNonTransactionRequest ? undefined : transactionScanResult
+              }
+              securityWarningAction={() =>
+                presentSecurityWarningDetail(SecurityContext.TRANSACTION)
+              }
+              signTransactionDetails={signTransactionDetails}
+              isMemoMissing={isMemoMissing}
+              isUndisplayable={isRequestUndisplayable}
+              onDetailsRenderError={handleDetailsRenderError}
+            />
+          </ErrorBoundary>
         }
       />
 

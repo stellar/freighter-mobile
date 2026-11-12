@@ -318,7 +318,8 @@
     "disconnectApp": "Disconnect {{appName}}",
     "appDisconnected": "{{appName}} disconnected",
     "appDisconnectedFallback": "App disconnected",
-    "allAppsDisconnected": "All apps disconnected"
+    "allAppsDisconnected": "All apps disconnected",
+    "loadFailed": "Couldn't load your connected dApps."
   },
   "discovery": {
     "discover": "Discover",
@@ -1025,6 +1026,9 @@
     "requestRejectedAtStartTitle": "Request rejected",
     "requestRejectedAtStart": "Varial closed while a request from {{dappName}} was open, so Varial rejected it. The dApp can send it again.",
     "requestRejectedAtStartReason": "Varial closed while this request was open",
+    "sheetRenderFailedTitle": "Couldn't show this request",
+    "sheetRenderFailed": "Varial rejected it. The dApp can send it again.",
+    "sheetRenderFailedReason": "Varial couldn't show this request",
     "e2eHelper": {
       "title": "WC E2E Helper",
       "createSession": "Create Session",

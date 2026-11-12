@@ -2,9 +2,13 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import BottomSheet from "components/BottomSheet";
 import { PinnedBottomSheetHeader } from "components/BottomSheetHeader";
+import { ErrorBoundary } from "components/ErrorBoundary";
 import ConnectedAppsBottomSheet, {
   ConnectedDapp,
 } from "components/screens/HomeScreen/ConnectedAppsBottomSheet";
+import ConnectedAppsUnavailable, {
+  ConnectedAppsLoadFailed,
+} from "components/screens/HomeScreen/ConnectedAppsUnavailable";
 import { Button } from "components/sds/Button";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING, VISUAL_DELAY_MS } from "config/constants";
@@ -163,15 +167,45 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
       scrollViewHeaderComponent={renderSheetHeader}
       scrollViewFooterComponent={hasSessions ? renderFooter : undefined}
       customContent={
-        <ConnectedAppsBottomSheet
-          connectedDapps={connectedDapps}
-          discoverEnabled={discoverEnabled}
-          onDisconnect={handleDisconnectSession}
-          onGoToDiscover={handleGoToDiscover}
-        />
+        // Inside the sheet: sheets render through the portal host, so the
+        // boundary around ConnectedApps never sees these errors. The footer's
+        // "Disconnect all" stays, since a broken entry means there's a session.
+        <ErrorBoundary
+          name="ConnectedAppsSheet"
+          fallback={<ConnectedAppsLoadFailed />}
+          resetKey={activeSessionsKey}
+        >
+          <ConnectedAppsBottomSheet
+            connectedDapps={connectedDapps}
+            discoverEnabled={discoverEnabled}
+            onDisconnect={handleDisconnectSession}
+            onGoToDiscover={handleGoToDiscover}
+          />
+        </ErrorBoundary>
       }
     />
   );
 };
 
-export default ConnectedApps;
+/**
+ * Connected Apps as Home mounts it. If it fails to render, Home stays up and
+ * a stand-in sheet still offers "Disconnect all", so a dApp that breaks the
+ * list can't hide the way out. Disconnecting changes the sessions, which
+ * clears the error.
+ */
+const ConnectedAppsWithFallback: React.FC<ConnectedAppsProps> = (props) => {
+  const { activeSessions } = useWalletKitStore();
+  const { bottomSheetRef } = props;
+
+  return (
+    <ErrorBoundary
+      name="ConnectedApps"
+      fallback={<ConnectedAppsUnavailable bottomSheetRef={bottomSheetRef} />}
+      resetKey={Object.keys(activeSessions).join(",")}
+    >
+      <ConnectedApps {...props} />
+    </ErrorBoundary>
+  );
+};
+
+export default ConnectedAppsWithFallback;
