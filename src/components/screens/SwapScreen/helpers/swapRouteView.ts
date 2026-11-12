@@ -150,7 +150,7 @@ export const buildSwapRouteView = ({
   const pathViews = paths.map((path) => ({
     share: isSplit ? formatRouteShare(path.share) : null,
     hopVenues: path.hops.map((hop) => toVenue(hop.venue)),
-    poolCount: path.hops.some((hop) => hop.pool) ? path.hops.length : null,
+    poolCount: path.hops.filter((hop) => hop.pool).length || null,
     tokens: [
       resolveToken(path.hops[0].from, context),
       ...path.hops.map((hop) => resolveToken(hop.to, context)),

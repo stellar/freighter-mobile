@@ -178,6 +178,22 @@ describe("buildSwapRouteView", () => {
     expect(view?.paths[0].poolCount).toBeNull();
   });
 
+  it("counts only the hops that go through a pool", () => {
+    const view = build(
+      route([
+        {
+          share: "1",
+          hops: [
+            hop("Aquarius", "XLM", "AQUA", "p1"),
+            hop("stellar-dex", "AQUA", USDC),
+          ],
+        },
+      ]),
+    );
+
+    expect(view?.paths[0].poolCount).toBe(1);
+  });
+
   it("shows an unheld contract token shortened, and a held one by its code", () => {
     const held = {
       id: `HELD:${CONTRACT}`,
