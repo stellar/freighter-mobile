@@ -62,6 +62,8 @@ describe("formatRouteShare", () => {
     ["1", "100%"],
     ["0.325", "33%"],
     ["0.004", "<1%"],
+    // Under 1% never rounds up to "1%", as on the extension.
+    ["0.006", "<1%"],
   ])("formats %s as %s", (share, expected) => {
     expect(formatRouteShare(share)).toBe(expected);
   });

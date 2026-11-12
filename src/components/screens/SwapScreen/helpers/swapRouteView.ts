@@ -54,8 +54,9 @@ export interface SwapRouteView {
 export const formatRouteShare = (share: string): string | null => {
   const fraction = new BigNumber(share);
   if (!fraction.isFinite() || fraction.lte(0)) return null;
-  const percent = fraction.times(100).integerValue(BigNumber.ROUND_HALF_UP);
-  return percent.isZero() ? "<1%" : `${percent.toFixed()}%`;
+  const percent = fraction.times(100);
+  if (percent.lt(1)) return "<1%";
+  return `${percent.integerValue(BigNumber.ROUND_HALF_UP).toFixed()}%`;
 };
 
 const STELLAR_DEX_VENUE = "stellar-dex";
