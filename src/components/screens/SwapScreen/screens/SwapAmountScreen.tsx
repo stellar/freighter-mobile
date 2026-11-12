@@ -72,7 +72,7 @@ import {
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { isNativeAssetId } from "helpers/assetIdentity";
-import { calculateSpendableAmount } from "helpers/balances";
+import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import {
   formatFiatAmount,
   formatTokenForDisplay,
@@ -438,7 +438,27 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     trendingListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [sourceTokenId, destinationTokenDescriptor?.id, trendingListRef]);
 
-  const { ctaState, ctaLabel, isCtaDisabled } = useSwapCtaState({
+  // The amount error stays on the inclusion fee alone: it pauses
+  // path-finding, and the resource fee comes from the quote, so gating it
+  // on the total would hold a stale fee until the user edits the amount.
+  const lacksXlmForTotalFee =
+    !!resourceFee && !hasXLMForFees(balanceItems, totalFee);
+  useEffect(() => {
+    if (!lacksXlmForTotalFee) return;
+    setActiveError({
+      message: t("swapScreen.errors.insufficientXlmForFees", {
+        fee: totalFee,
+      }),
+      toastId: SWAP_TOAST_IDS.INSUFFICIENT_XLM_FOR_FEES,
+      duration: 3000,
+    });
+  }, [lacksXlmForTotalFee, totalFee, setActiveError, t]);
+
+  const {
+    ctaState,
+    ctaLabel,
+    isCtaDisabled: isCtaStateDisabled,
+  } = useSwapCtaState({
     sourceBalance,
     destinationTokenDescriptor,
     sourceAmount,
@@ -450,6 +470,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     amountError,
     currentQuoteKey,
   });
+  const isCtaDisabled = isCtaStateDisabled || lacksXlmForTotalFee;
 
   const showQuoteUnavailable =
     !isLoadingPath &&

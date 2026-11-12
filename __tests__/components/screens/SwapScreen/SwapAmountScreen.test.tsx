@@ -887,6 +887,63 @@ describe("SwapAmountScreen", () => {
       expect(cta.props.accessibilityState?.disabled).toBe(true);
     });
 
+    it("blocks Review when XLM covers the inclusion fee but not a LI.FI quote's resource fee", () => {
+      // USDC source; swapFee "100". 100.1 XLM covers the 100 inclusion fee
+      // but not the 100.2 total once the 0.2 resource fee is in.
+      const xlmBalances = mockBalances.map((b) => {
+        if (!isNativeToken(b.token as Token)) return b;
+        return {
+          ...b,
+          total: new BigNumber("100.1"),
+          available: new BigNumber("0.1"),
+        };
+      });
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: xlmBalances,
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+      const lifiRoute = {
+        source: "lifi",
+        fromAmount: "1",
+        toAmount: "2",
+        paths: [{ share: "1", hops: [] }],
+        fees: [],
+        resourceFee: "0.2",
+      };
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: {
+          destinationAmount: "2",
+          quoteKey: "quote-key",
+          route: lifiRoute,
+        },
+        swapQuotes: { routes: [lifiRoute], unavailable: [] },
+      } as Partial<SwapStoreState>);
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      const cta = getByTestId("swap-continue-button");
+      expect(cta.props.accessibilityState?.disabled).toBe(true);
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "error",
+          title: expect.stringMatching(/at least 100\.2 XLM/),
+        }),
+      );
+      // Quoting keeps running, so a new resource fee can lift the block.
+      expect(mockUseSwapPathFinding).toHaveBeenLastCalledWith(
+        expect.objectContaining({ amountError: null }),
+      );
+    });
+
     it("shows 'Review swap' with a spinner while path-finding is loading", () => {
       setSwapStoreState({ sourceAmount: "1", isLoadingPath: true });
 
