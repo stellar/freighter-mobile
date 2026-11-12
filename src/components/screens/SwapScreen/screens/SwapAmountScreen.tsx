@@ -72,7 +72,7 @@ import {
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { isNativeAssetId } from "helpers/assetIdentity";
-import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
+import { calculateSpendableAmount } from "helpers/balances";
 import {
   formatFiatAmount,
   formatTokenForDisplay,
@@ -441,10 +441,22 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   // The amount error stays on the inclusion fee alone: it pauses
   // path-finding, and the resource fee comes from the quote, so gating it
   // on the total would hold a stale fee until the user edits the amount.
+  // As on the extension: only a non-XLM source pays the fee from a separate
+  // XLM balance (an XLM source's spendable already nets it out), and only
+  // what sits above the minimum balance can pay it.
+  const xlmBalance = balanceItems.find((b) => isNativeAssetId(b.id));
   const lacksXlmForTotalFee =
-    !!resourceFee && !hasXLMForFees(balanceItems, totalFee);
+    !!resourceFee &&
+    !!sourceBalance &&
+    !isNativeAssetId(sourceBalance.id) &&
+    (!xlmBalance ||
+      calculateSpendableAmount({
+        balance: xlmBalance,
+        subentryCount: account?.subentryCount || 0,
+        transactionFee: "0",
+      }).lt(totalFee));
   useEffect(() => {
-    if (!lacksXlmForTotalFee) return;
+    if (!lacksXlmForTotalFee || transactionHash) return;
     setActiveError({
       message: t("swapScreen.errors.insufficientXlmForFees", {
         fee: totalFee,
@@ -452,7 +464,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       toastId: SWAP_TOAST_IDS.INSUFFICIENT_XLM_FOR_FEES,
       duration: 3000,
     });
-  }, [lacksXlmForTotalFee, totalFee, setActiveError, t]);
+  }, [lacksXlmForTotalFee, transactionHash, totalFee, setActiveError, t]);
 
   const {
     ctaState,

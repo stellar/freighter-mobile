@@ -944,6 +944,54 @@ describe("SwapAmountScreen", () => {
       );
     });
 
+    it("counts the minimum balance before deciding XLM covers a Soroban route's fees", () => {
+      // 101.1 XLM is above the 100.2 total fee, but the 1 XLM minimum
+      // balance (no subentries) leaves 100.1, short of it.
+      const xlmBalances = mockBalances.map((b) => {
+        if (!isNativeToken(b.token as Token)) return b;
+        return {
+          ...b,
+          total: new BigNumber("101.1"),
+          available: new BigNumber("1.1"),
+        };
+      });
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: xlmBalances,
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+      const lifiRoute = {
+        source: "lifi",
+        fromAmount: "1",
+        toAmount: "2",
+        paths: [{ share: "1", hops: [] }],
+        fees: [],
+        resourceFee: "0.2",
+      };
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: {
+          destinationAmount: "2",
+          quoteKey: "quote-key",
+          route: lifiRoute,
+        },
+        swapQuotes: { routes: [lifiRoute], unavailable: [] },
+      } as Partial<SwapStoreState>);
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(
+        getByTestId("swap-continue-button").props.accessibilityState?.disabled,
+      ).toBe(true);
+    });
+
     it("shows 'Review swap' with a spinner while path-finding is loading", () => {
       setSwapStoreState({ sourceAmount: "1", isLoadingPath: true });
 
