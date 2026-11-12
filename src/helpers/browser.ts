@@ -3,6 +3,7 @@ import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { clearAllScreenshots } from "helpers/screenshots";
 import { clearWebViewMediaConsent } from "helpers/webViewMediaConsent";
+import { Linking } from "react-native";
 
 /**
  * Checks if the given URL is the homepage URL.
@@ -27,6 +28,75 @@ export const isDangerousScheme = (url: string): boolean => {
     lowered.startsWith("vbscript:")
   );
 };
+
+/** What Discover's WebView does with a navigation. */
+export type DiscoverNavigationAction = "load" | "openOutside" | "block";
+
+/**
+ * Decides what Discover's WebView does with a navigation. The WebView hands
+ * every URL to our handler, links to other apps included; react-native-webview
+ * used to send those to the OS itself, before our handler saw them.
+ *
+ * - `load`: an http(s) page, or `about:blank` for an empty frame.
+ * - `openOutside`: any other scheme loaded into the page itself goes to the
+ *   OS, as before. That's how pairing from Discover works.
+ * - `block`: a scheme that can run code; a page URL that carries the wallet's
+ *   pairing link; and any other scheme loaded into a frame inside the page,
+ *   which could otherwise open an app, pairing included, without the user
+ *   doing anything.
+ *
+ * `isTopFrame` says whether the navigation loads into the page itself or into
+ * a frame, not which of them started it: a link with `target="_top"` in a
+ * frame, which the user has to tap, counts as the page's. Android doesn't say
+ * (`isTopFrame` is undefined there), so there every navigation counts as the
+ * page's own, as before.
+ *
+ * @param navigation.url - The URL about to load
+ * @param navigation.isTopFrame - False when the URL loads into a frame inside the page
+ * @param navigation.pairingLink - The wallet's pairing link, e.g. `freighterwallet://wc-redirect`
+ * @returns What to do with the navigation
+ */
+export const getDiscoverNavigationAction = ({
+  url,
+  isTopFrame,
+  pairingLink,
+}: {
+  url: string;
+  isTopFrame?: boolean;
+  pairingLink: string;
+}): DiscoverNavigationAction => {
+  if (isDangerousScheme(url)) {
+    return "block";
+  }
+
+  // What react-native-webview loads by default.
+  if (/^https?:\/\//.test(url) || url.startsWith("about:blank")) {
+    return url.includes(pairingLink) ? "block" : "load";
+  }
+
+  return isTopFrame === false ? "block" : "openOutside";
+};
+
+/**
+ * Opens a link to another app from Discover the way react-native-webview did:
+ * only if the OS says it can. A failure is logged with the link's scheme
+ * only, since the link (and React Native's error message, which repeats it)
+ * can carry a pairing URI.
+ *
+ * @param url - The link to open
+ */
+export const openLinkOutsideDiscover = (url: string): Promise<void> =>
+  Linking.canOpenURL(url)
+    .then(async (canOpen) => {
+      if (canOpen) {
+        await Linking.openURL(url);
+      }
+    })
+    .catch(() => {
+      logger.warn("Discover", "Failed to open a link outside Discover", {
+        scheme: url.split(":")[0],
+      });
+    });
 
 /**
  * Generates a favicon URL from a website URL.

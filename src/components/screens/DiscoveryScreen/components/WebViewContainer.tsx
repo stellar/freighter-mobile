@@ -7,7 +7,8 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
-import { isDangerousScheme, isHomepageUrl } from "helpers/browser";
+import { WALLET_KIT_MT_REDIRECT_NATIVE } from "ducks/walletKit";
+import { getDiscoverNavigationAction, isHomepageUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
 import { captureTabScreenshot } from "helpers/screenshots";
 import useColors from "hooks/useColors";
@@ -20,7 +21,11 @@ import { WebView, WebViewNavigation } from "react-native-webview";
 interface WebViewContainerProps {
   webViewRef: React.RefObject<WebView | null>;
   onNavigationStateChange: (navState: WebViewNavigation) => void;
-  onShouldStartLoadWithRequest: (request: WebViewNavigation) => boolean;
+  // iOS says whether the page itself or a frame inside it navigates (see
+  // getDiscoverNavigationAction); Android leaves `isTopFrame` out.
+  onShouldStartLoadWithRequest: (
+    request: WebViewNavigation & { isTopFrame?: boolean },
+  ) => boolean;
   javaScriptEnabled?: boolean;
   domStorageEnabled?: boolean;
 }
@@ -376,6 +381,10 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                           }
                         }}
                         source={{ uri: tab.url }}
+                        // Every URL reaches onShouldStartLoadWithRequest, links to
+                        // other apps included. By default react-native-webview sends
+                        // those to the OS itself, before any handler sees them.
+                        originWhitelist={["*"]}
                         onLoadEnd={() => handleLoadEnd(tab.id)}
                         onScroll={() => handleScroll(tab.id)}
                         allowsBackForwardNavigationGestures={isActive}
@@ -385,7 +394,14 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                         onShouldStartLoadWithRequest={
                           isActive
                             ? onShouldStartLoadWithRequest
-                            : (req) => !isDangerousScheme(req.url)
+                            : // A tab in the background loads pages only, and
+                              // opens nothing outside Discover.
+                              (req) =>
+                                getDiscoverNavigationAction({
+                                  url: req.url,
+                                  isTopFrame: req.isTopFrame,
+                                  pairingLink: WALLET_KIT_MT_REDIRECT_NATIVE,
+                                }) === "load"
                         }
                         onLoadStart={() => handleWebViewMount(tab.id)}
                         onError={() => handleWebViewUnmount(tab.id)}

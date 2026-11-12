@@ -18,9 +18,10 @@ import { useBrowserTabsStore } from "ducks/browserTabs";
 import { WALLET_KIT_MT_REDIRECT_NATIVE } from "ducks/walletKit";
 import {
   formatDisplayUrl,
+  getDiscoverNavigationAction,
   getFaviconUrl,
-  isDangerousScheme,
   isHomepageUrl,
+  openLinkOutsideDiscover,
 } from "helpers/browser";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
@@ -36,6 +37,10 @@ import {
   DiscoverAnalyticsSource,
 } from "services/analytics/discover";
 import { dataStorage } from "services/storage/storageFactory";
+
+/** A navigation Discover's WebView asks about. iOS says whether the page
+ * itself or a frame inside it navigates; Android leaves `isTopFrame` out. */
+type DiscoverNavigationRequest = WebViewNavigation & { isTopFrame?: boolean };
 
 type DiscoveryScreenProps = BottomTabScreenProps<
   MainTabStackParamList,
@@ -233,34 +238,32 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   );
 
   const handleShouldStartLoadWithRequest = useCallback(
-    (request: WebViewNavigation) => {
+    (request: DiscoverNavigationRequest) => {
       logger.debug(
         "WebViewContainer",
         "onShouldStartLoadWithRequest, request:",
         request,
       );
 
-      // Block dangerous URL schemes that could execute arbitrary code
-      if (isDangerousScheme(request.url)) {
-        logger.debug(
+      const action = getDiscoverNavigationAction({
+        url: request.url,
+        isTopFrame: request.isTopFrame,
+        pairingLink: WALLET_KIT_MT_REDIRECT_NATIVE,
+      });
+
+      if (action === "openOutside") {
+        // Pairing links come back to the app through the deep-link handler
+        // (useWalletKitEventsManager), as other apps' links go to them.
+        openLinkOutsideDiscover(request.url);
+      } else if (action === "block" && request.isTopFrame === false) {
+        logger.warn(
           "WebViewContainer",
-          "Blocked navigation to dangerous scheme:",
-          request.url,
+          "Blocked a frame inside the page from opening a link outside Discover",
+          { scheme: request.url.split(":")[0] },
         );
-        return false;
       }
 
-      // We should not handle WalletConnect URIs here
-      // let's handle them in the useWalletKitEventsManager hook instead
-      if (request.url.includes(WALLET_KIT_MT_REDIRECT_NATIVE)) {
-        logger.debug(
-          "WebViewContainer",
-          "onShouldStartLoadWithRequest, WalletConnect URI detected:",
-          request.url,
-        );
-        return false;
-      }
-      return true;
+      return action === "load";
     },
     [],
   );

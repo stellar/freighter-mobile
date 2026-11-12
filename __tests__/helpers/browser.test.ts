@@ -4,6 +4,7 @@ import { logger } from "config/logger";
 import {
   isHomepageUrl,
   isDangerousScheme,
+  getDiscoverNavigationAction,
   getFaviconUrl,
   normalizeUrl,
   extractSearchQuery,
@@ -11,8 +12,10 @@ import {
   generateTabId,
   clearAllCookies,
   clearAllWebViewData,
+  openLinkOutsideDiscover,
 } from "helpers/browser";
 import { clearAllScreenshots } from "helpers/screenshots";
+import { Linking } from "react-native";
 
 // Mock dependencies
 jest.mock("@react-native-cookies/cookies");
@@ -89,6 +92,99 @@ describe("browser helpers", () => {
       expect(isDangerousScheme("https://example.com")).toBe(false);
       expect(isDangerousScheme("http://example.com")).toBe(false);
       expect(isDangerousScheme("")).toBe(false);
+    });
+  });
+
+  describe("getDiscoverNavigationAction", () => {
+    const PAIRING_LINK = "freighterwallet://wc-redirect";
+    const pairingUrl = `${PAIRING_LINK}?uri=wc%3Aabc%402`;
+    const action = (url: string, isTopFrame?: boolean) =>
+      getDiscoverNavigationAction({
+        url,
+        isTopFrame,
+        pairingLink: PAIRING_LINK,
+      });
+
+    it("loads http and https pages, in the page or in a frame", () => {
+      expect(action("https://example.com/", true)).toBe("load");
+      expect(action("http://example.com/", false)).toBe("load");
+      expect(action("https://example.com/", undefined)).toBe("load");
+    });
+
+    it("loads about:blank, for empty frames", () => {
+      expect(action("about:blank", false)).toBe("load");
+    });
+
+    it("blocks schemes that can run code", () => {
+      // eslint-disable-next-line no-script-url
+      expect(action("javascript:alert(1)", true)).toBe("block");
+      expect(action("data:text/html,hi", true)).toBe("block");
+      expect(action("blob:https://example.com/id", true)).toBe("block");
+    });
+
+    it("blocks a page URL that carries the pairing link", () => {
+      expect(action(`https://example.com/?next=${pairingUrl}`, true)).toBe(
+        "block",
+      );
+    });
+
+    it("opens a link to another app outside the WebView when the page itself follows it", () => {
+      expect(action(pairingUrl, true)).toBe("openOutside");
+      expect(action("mailto:someone@example.com", true)).toBe("openOutside");
+    });
+
+    it("opens it outside the WebView when the platform doesn't say which frame follows it", () => {
+      expect(action(pairingUrl, undefined)).toBe("openOutside");
+    });
+
+    it("blocks a link to another app that a frame inside the page follows", () => {
+      expect(action(pairingUrl, false)).toBe("block");
+      expect(action("mailto:someone@example.com", false)).toBe("block");
+    });
+  });
+
+  describe("openLinkOutsideDiscover", () => {
+    const otherWalletLink =
+      "otherwallet://wc?uri=wc%3Atopic%402%3FsymKey%3Dsecret";
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("opens a link the OS can open", async () => {
+      jest.spyOn(Linking, "canOpenURL").mockResolvedValue(true);
+      const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+
+      await openLinkOutsideDiscover(otherWalletLink);
+
+      expect(openURL).toHaveBeenCalledWith(otherWalletLink);
+    });
+
+    it("doesn't open a link the OS says it can't", async () => {
+      jest.spyOn(Linking, "canOpenURL").mockResolvedValue(false);
+      const openURL = jest.spyOn(Linking, "openURL");
+
+      await openLinkOutsideDiscover(otherWalletLink);
+
+      expect(openURL).not.toHaveBeenCalled();
+    });
+
+    it("logs only the link's scheme when it can't be opened", async () => {
+      // React Native's error message carries the whole link.
+      jest
+        .spyOn(Linking, "canOpenURL")
+        .mockRejectedValue(new Error(`Unable to open URL: ${otherWalletLink}`));
+
+      await openLinkOutsideDiscover(otherWalletLink);
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        "Discover",
+        "Failed to open a link outside Discover",
+        { scheme: "otherwallet" },
+      );
+      expect(JSON.stringify(mockLogger.warn.mock.calls)).not.toContain(
+        "secret",
+      );
     });
   });
 
