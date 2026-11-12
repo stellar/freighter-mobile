@@ -768,13 +768,24 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   // ─────────────────────────────────────────────────────────────────────────────
 
   /**
-   * Rejects a request that failed a validation rule: shows the reason, answers
-   * the dApp with it, clears the event and releases the request queue.
+   * Rejects a request that failed a validation rule: logs it, shows the
+   * reason, answers the dApp with it, drops it as the current request, clears
+   * the event and releases the request queue.
    */
   const failRequestValidation = (
     sessionRequest: WalletKitSessionRequest,
     errorKey: ValidationErrorKey,
   ) => {
+    logger.warn(
+      "WalletKitProvider",
+      "Rejected a dApp request that failed validation",
+      {
+        method: (
+          sessionRequest.params as { request?: { method?: string } } | undefined
+        )?.request?.method,
+        errorKey,
+      },
+    );
     showToast({
       title: t("walletKit.invalidRequestTitle"),
       message: t(errorKey),
@@ -783,7 +794,17 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     rejectSessionRequest({
       sessionRequest,
       message: t(errorKey),
+    }).catch((error: unknown) => {
+      logger.warn(
+        "WalletKitProvider",
+        "Failed to reject a dApp request that failed validation",
+        error,
+      );
     });
+    // processSessionRequest set this request as the current one before
+    // validating it. Dropping it in the same update means a rejected payload
+    // is never parsed or walked for display.
+    setRequestEvent(null);
     clearEvent();
     isProcessingRequestRef.current = false;
   };

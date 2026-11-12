@@ -475,6 +475,53 @@ describe("WalletKitProvider: a request whose params fail validation", () => {
 
     expect(requestSheet().requestEvent?.id).toBe(2);
   });
+
+  it("clears a stellar_signXDR request it rejects for size instead of keeping it as the current request", async () => {
+    render(provider());
+    await deliver(signXdrRequest(1, "A".repeat(262145)));
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalled();
+    expect(requestSheet().requestEvent).toBeNull();
+  });
+
+  it("never prepares a stellar_signAuthEntry request it rejects for too many calls for display", async () => {
+    const isDisplayable = jest.spyOn(signingDisplay, "isAuthEntryDisplayable");
+    const entryXdr = authEntryPreimageXdr(wideInvocationTree(101));
+    render(provider());
+    await deliver(signAuthEntryRequest(1, entryXdr));
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalled();
+    expect(requestSheet().requestEvent).toBeNull();
+    expect(isDisplayable).not.toHaveBeenCalledWith(entryXdr);
+  });
+
+  it("logs a request it rejects as a warning, with the method and the reason", async () => {
+    render(provider());
+    await deliver(signXdrRequest(1, "A".repeat(262145)));
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "WalletKitProvider",
+      "Rejected a dApp request that failed validation",
+      {
+        method: StellarRpcMethods.SIGN_XDR,
+        errorKey: "walletKit.errorXdrTooLarge",
+      },
+    );
+  });
+
+  it("logs a warning when telling the dApp about a rejected request fails", async () => {
+    jest
+      .mocked(walletKitUtil.rejectSessionRequest)
+      .mockRejectedValueOnce(new Error("relay down"));
+    render(provider());
+    await deliver(signXdrRequest(1, "A".repeat(262145)));
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "WalletKitProvider",
+      "Failed to reject a dApp request that failed validation",
+      expect.objectContaining({ message: "relay down" }),
+    );
+  });
 });
 
 /** A connection proposal from the dApp. */
