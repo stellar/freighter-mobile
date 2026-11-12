@@ -304,7 +304,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationTokenDescriptor,
   });
 
-  const swapRouteView = useSwapRouteView(balanceItems);
+  const swapRouteView = useSwapRouteView(balanceItems, network);
   const { stableConversionRate } = useStableConversionRate({
     pathResult: isQuoteCurrent ? pathResult : null,
     sourceTokenSymbol,

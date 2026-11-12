@@ -1,3 +1,4 @@
+import { Asset, Networks } from "@stellar/stellar-sdk";
 import { logos } from "assets/logos";
 import BigNumber from "bignumber.js";
 import {
@@ -225,6 +226,59 @@ describe("buildSwapRouteView", () => {
       code: "CCW6...MI75",
       issuer: { key: OTHER_CONTRACT },
     });
+  });
+
+  it("names and pictures an unheld middle token from the token lists", () => {
+    const view = buildSwapRouteView({
+      route: route([
+        {
+          share: "1",
+          hops: [
+            hop("Soroswap", "XLM", OTHER_CONTRACT, "p1"),
+            hop("Aquarius", OTHER_CONTRACT, USDC, "p2"),
+          ],
+        },
+      ]),
+      protocols: PROTOCOLS,
+      balanceItems: [],
+      tokenLists: [
+        {
+          code: "LIST",
+          issuer: "",
+          contract: OTHER_CONTRACT,
+          domain: "list.example",
+          icon: "https://icons.example/list.png",
+          decimals: 7,
+        },
+      ],
+      networkPassphrase: Networks.PUBLIC,
+    });
+
+    const middle = view!.paths[0].tokens[1];
+    expect(middle.code).toBe("LIST");
+    expect(middle.iconUrl).toBe("https://icons.example/list.png");
+  });
+
+  it("names XLM's own contract as XLM", () => {
+    const xlmContract = Asset.native().contractId(Networks.PUBLIC);
+    const view = buildSwapRouteView({
+      route: route([
+        {
+          share: "1",
+          hops: [
+            hop("Soroswap", OTHER_CONTRACT, xlmContract, "p1"),
+            hop("Aquarius", xlmContract, USDC, "p2"),
+          ],
+        },
+      ]),
+      protocols: PROTOCOLS,
+      balanceItems: [],
+      networkPassphrase: Networks.PUBLIC,
+    });
+
+    const middle = view!.paths[0].tokens[1];
+    expect(middle.code).toBe("XLM");
+    expect(middle.token).toEqual({ type: "native", code: "XLM" });
   });
 
   it("names and pictures the destination token from its descriptor", () => {

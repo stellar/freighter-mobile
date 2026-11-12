@@ -9,10 +9,11 @@ import {
   Token,
   TokenTypeWithCustomToken,
 } from "config/types";
-import { isNativeAssetId } from "helpers/assetIdentity";
+import { isNativeAssetId, isNativeContract } from "helpers/assetIdentity";
 import { truncateAddress } from "helpers/stellar";
 import type { HeldBalanceItem } from "hooks/useBalancesList";
 import type { ImageSourcePropType } from "react-native";
+import { TokenListReponseItem } from "services/verified-token-lists/types";
 
 /** A path row shows this many venue icons, then "+N". */
 export const MAX_PATH_VENUE_ICONS = 3;
@@ -66,13 +67,18 @@ const venueKey = (name: string) => name.trim().toLowerCase();
 interface ResolveContext {
   balanceItems: HeldBalanceItem[];
   destination?: DestinationTokenDescriptor | null;
+  tokenLists: TokenListReponseItem[];
+  networkPassphrase?: string;
 }
 
 const resolveToken = (
   assetId: string,
-  { balanceItems, destination }: ResolveContext,
+  { balanceItems, destination, tokenLists, networkPassphrase }: ResolveContext,
 ): SwapRouteToken => {
-  if (isNativeAssetId(assetId)) {
+  if (
+    isNativeAssetId(assetId) ||
+    (!!networkPassphrase && isNativeContract(assetId, networkPassphrase))
+  ) {
     return {
       assetId,
       code: NATIVE_TOKEN_CODE,
@@ -85,9 +91,11 @@ const resolveToken = (
       (b) => "contractId" in b && b.contractId === assetId,
     );
     const isDestination = destination?.issuer === assetId;
+    const listed = tokenLists.find((t) => t.contract === assetId);
     const code =
       held?.tokenCode ??
       (isDestination ? destination.tokenCode : undefined) ??
+      listed?.code ??
       truncateAddress(assetId);
     return {
       assetId,
@@ -97,7 +105,8 @@ const resolveToken = (
         code,
         issuer: { key: assetId },
       },
-      iconUrl: isDestination ? destination.iconUrl : undefined,
+      iconUrl:
+        (isDestination ? destination.iconUrl : undefined) ?? listed?.icon,
     };
   }
 
@@ -126,11 +135,17 @@ export const buildSwapRouteView = ({
   protocols,
   balanceItems,
   destination,
+  tokenLists = [],
+  networkPassphrase,
 }: {
   route: SwapRoute | null | undefined;
   protocols: DiscoverProtocol[];
   balanceItems: HeldBalanceItem[];
   destination?: DestinationTokenDescriptor | null;
+  /** Verified token lists: names and icons for unheld contract tokens. */
+  tokenLists?: TokenListReponseItem[];
+  /** Maps XLM's own contract to XLM. */
+  networkPassphrase?: string;
 }): SwapRouteView | null => {
   const paths = (route?.paths ?? []).filter((p) => p.hops.length > 0);
   if (paths.length === 0) return null;
@@ -147,7 +162,7 @@ export const buildSwapRouteView = ({
       ? { name: listed.name, iconUrl: listed.iconUrl }
       : { name, iconUrl: undefined };
   };
-  const context = { balanceItems, destination };
+  const context = { balanceItems, destination, tokenLists, networkPassphrase };
 
   const pathViews = paths.map((path) => ({
     share: formatRouteShare(path.share),
