@@ -47,7 +47,11 @@ describe("buildEarnSwapDestination", () => {
   it("classifies codes longer than 4 characters as alphanum12", () => {
     expect(
       buildEarnSwapDestination(
-        makeOption({ code: "LONGCODE", canonicalId: "LONGCODE:GISSUER" }),
+        makeOption({
+          code: "LONGCODE",
+          canonicalId:
+            "LONGCODE:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        }),
       ),
     ).toMatchObject({ tokenType: "credit_alphanum12" });
   });
@@ -74,6 +78,11 @@ describe("buildEarnSwapDestination", () => {
     ["no separator", "USDCGA5ZSEJY"],
     ["empty code", ":GA5ZSEJY"],
     ["empty issuer", "USDC:"],
+    ["issuer that isn't an account key", "USDC:GISSUER"],
+    [
+      "contract address as issuer",
+      "USDC:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+    ],
   ])(
     "returns null for a malformed canonical id (%s)",
     (_label, canonicalId) => {

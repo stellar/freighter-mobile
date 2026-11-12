@@ -725,4 +725,79 @@ describe("EarnAmountScreen", () => {
       expect(queryByText("earnAmount.retryBanner")).toBeNull();
     });
   });
+
+  describe("deposit precision", () => {
+    it("scales the deposit by the balance record's precision, not the catalog's", async () => {
+      // A catalog entry that disagrees with the asset's real precision: a
+      // classic asset's SAC always uses 7.
+      useEarnStore.getState().selectAsset({
+        assetId: USDC_ASSET_ID,
+        apy: 0.1694,
+        code: "USDC",
+        decimals: 9,
+      });
+
+      const { getByTestId } = renderScreen();
+      await fireEvent.press(getByTestId("earn-amount-cta"));
+      await Promise.resolve();
+
+      expect(mockSimulate).toHaveBeenCalledWith(
+        expect.objectContaining({ decimals: 7 }),
+      );
+    });
+
+    it("never builds the deposit without a balance record to take the precision from", async () => {
+      mockGetBalanceByContractId.mockReturnValue(undefined);
+
+      const { queryByTestId } = renderScreen();
+      const cta = queryByTestId("earn-amount-cta");
+      if (cta) {
+        await fireEvent.press(cta);
+        await Promise.resolve();
+      }
+
+      expect(mockSimulate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("security sheet over Review", () => {
+    const pressSecuritySheetContinue = () => {
+      // eslint-disable-next-line no-underscore-dangle
+      const securitySheet = globalThis.__earnAmountMockSheetContents.find(
+        (content) => "onProceedAnyway" in (content.props as object),
+      );
+      (
+        securitySheet?.props as { onProceedAnyway: () => void }
+      ).onProceedAnyway();
+    };
+
+    it("only closes itself on unable-to-scan, so Review's Confirm stays the way to sign", () => {
+      mockTransactionAssessment = {
+        isMalicious: false,
+        isSuspicious: false,
+        isUnableToScan: true,
+      };
+      renderScreen();
+
+      pressSecuritySheetContinue();
+
+      expect(mockSubmitEarnTransaction).not.toHaveBeenCalled();
+      // eslint-disable-next-line no-underscore-dangle
+      const [, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+      expect(reviewSheet.dismiss).not.toHaveBeenCalled();
+    });
+
+    it("confirms on a Suspicious verdict, like Review's own 'Confirm anyway'", () => {
+      mockTransactionAssessment = {
+        isMalicious: false,
+        isSuspicious: true,
+        isUnableToScan: false,
+      };
+      renderScreen();
+
+      pressSecuritySheetContinue();
+
+      expect(mockSubmitEarnTransaction).toHaveBeenCalledTimes(1);
+    });
+  });
 });

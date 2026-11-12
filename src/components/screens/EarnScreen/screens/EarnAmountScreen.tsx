@@ -18,6 +18,7 @@ import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/component
 import { XlmFeeShortfallBottomSheet } from "components/screens/EarnScreen/components/XlmFeeShortfallBottomSheet";
 import {
   UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
+  getDepositDecimals,
   getEarnCtaState,
   getPercentageDepositAmount,
   getXlmFeeShortfall,
@@ -36,6 +37,7 @@ import {
 } from "components/sds/NoticeBanner";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
+  DEFAULT_DECIMALS,
   NATIVE_TOKEN_CODE,
   TransactionContext,
   mapNetworkToNetworkDetails,
@@ -107,9 +109,6 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
 
   const pool = useEarnStore((state) => state.pool);
   const selectedAssetApy = useEarnStore((state) => state.selectedAssetApy);
-  const selectedAssetDecimals = useEarnStore(
-    (state) => state.selectedAssetDecimals,
-  );
   const lastSubmitFailed = useEarnStore((state) => state.lastSubmitFailed);
   const setSubmitFailed = useEarnStore((state) => state.setSubmitFailed);
   const resetEarn = useEarnStore((state) => state.resetEarn);
@@ -145,6 +144,14 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     [depositBalance],
   );
 
+  // The precision the signed amount is scaled to, from the balance record
+  // rather than the backend catalog. Null without a usable record, in which
+  // case the deposit is never built.
+  const depositDecimals = useMemo(
+    () => getDepositDecimals(depositBalance),
+    [depositBalance],
+  );
+
   const xlmBalance = pricedBalances[NATIVE_TOKEN_CODE];
 
   // Fetches the "before" side of Review's before -> after row as soon as the
@@ -170,7 +177,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
 
   const converter = useTokenFiatConverter({
     selectedBalance: depositBalance,
-    tokenDecimals: selectedAssetDecimals,
+    tokenDecimals: depositDecimals ?? DEFAULT_DECIMALS,
   });
   const {
     tokenAmount,
@@ -306,7 +313,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       const targetAmount = getPercentageDepositAmount({
         maxDepositable: availableBalance,
         pct: percentage,
-        decimals: selectedAssetDecimals,
+        decimals: depositDecimals ?? DEFAULT_DECIMALS,
       });
 
       if (showFiatAmount && depositBalance?.currentPrice) {
@@ -325,7 +332,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     },
     [
       availableBalance,
-      selectedAssetDecimals,
+      depositDecimals,
       showFiatAmount,
       depositBalance,
       updateFiatDisplay,
@@ -384,14 +391,14 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   // just-saved store value (same reasoning as the `getState()` read in
   // `handleCtaPress` above).
   const handleEarnSettingsChange = useCallback(() => {
-    if (isSimulating || !account?.publicKey) {
+    if (isSimulating || !account?.publicKey || depositDecimals === null) {
       return;
     }
     const freshSettings = useTransactionSettingsStore.getState();
     simulate({
       assetId,
       amount: tokenAmount,
-      decimals: selectedAssetDecimals,
+      decimals: depositDecimals,
       transactionFee: freshSettings.transactionFee,
       transactionTimeout: freshSettings.transactionTimeout,
       network,
@@ -403,7 +410,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     simulate,
     assetId,
     tokenAmount,
-    selectedAssetDecimals,
+    depositDecimals,
     network,
   ]);
 
@@ -504,22 +511,31 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
   }, []);
 
-  // Reached only via the review sheet's banner -> detail sheet path (the
-  // review sheet's OWN "Confirm anyway" button calls `handleConfirmDeposit`
-  // directly and dismisses itself) — so this dismisses both sheets before
-  // proceeding.
+  // Reached only via the review sheet's banner -> detail sheet path.
+  //
+  // On unable-to-scan, "Continue" only closes the detail sheet: Review is
+  // still open underneath, so its Confirm -- with its biometric prompt --
+  // stays the only way to sign, as in Send and Swap. On a Malicious or
+  // Suspicious verdict it confirms, matching Review's own "Confirm anyway".
   const handleConfirmAnywayFromSecuritySheet = useCallback(() => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+    if (
+      transactionSecurityAssessment.isUnableToScan &&
+      !transactionSecurityAssessment.isMalicious &&
+      !transactionSecurityAssessment.isSuspicious
+    ) {
+      return;
+    }
     earnReviewBottomSheetModalRef.current?.dismiss();
     handleConfirmDeposit();
-  }, [handleConfirmDeposit]);
+  }, [handleConfirmDeposit, transactionSecurityAssessment]);
 
   const handleCtaPress = useCallback(async () => {
     if (ctaState.disabled) {
       return;
     }
 
-    if (!account?.publicKey) {
+    if (!account?.publicKey || depositDecimals === null) {
       return;
     }
 
@@ -557,7 +573,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     const result = await simulate({
       assetId,
       amount: tokenAmount,
-      decimals: selectedAssetDecimals,
+      decimals: depositDecimals,
       transactionFee,
       transactionTimeout,
       network,
@@ -635,7 +651,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     simulate,
     assetId,
     tokenAmount,
-    selectedAssetDecimals,
+    depositDecimals,
     transactionTimeout,
     network,
     isXlm,

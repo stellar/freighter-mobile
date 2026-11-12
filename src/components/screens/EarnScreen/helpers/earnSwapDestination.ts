@@ -1,3 +1,4 @@
+import { StrKey } from "@stellar/stellar-sdk";
 import { EarnTokenOption } from "components/screens/EarnScreen/hooks/useEarnTokens";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers";
 import { NATIVE_TOKEN_CODE } from "config/constants";
@@ -53,6 +54,12 @@ export const buildEarnSwapDestination = (
 
   const tokenCode = canonical.slice(0, separatorIndex);
   const issuer = canonical.slice(separatorIndex + 1);
+
+  // The catalog's name is backend data: only a real account key may become
+  // the issuer of the asset the swap buys.
+  if (!StrKey.isValidEd25519PublicKey(issuer)) {
+    return null;
+  }
 
   return {
     id: canonical,

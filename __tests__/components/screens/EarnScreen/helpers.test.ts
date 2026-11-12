@@ -7,6 +7,7 @@ import {
   formatRate,
   getEarnCtaState,
   getNotEnoughVariant,
+  getDepositDecimals,
   getPercentageDepositAmount,
   getXlmFeeShortfall,
   hasSwappableBalance,
@@ -165,6 +166,55 @@ describe("isInsufficientBalanceFailure", () => {
       isInsufficientBalanceFailure("HostError: Error(Contract, #1206)"),
     ).toBe(false);
     expect(isInsufficientBalanceFailure("pool is frozen")).toBe(false);
+  });
+});
+
+describe("getDepositDecimals", () => {
+  it("uses 7 for native XLM and classic assets, whatever the catalog says", () => {
+    expect(
+      getDepositDecimals({
+        token: { type: "native", code: "XLM" },
+        total: new BigNumber(1),
+      } as never),
+    ).toBe(7);
+    expect(
+      getDepositDecimals({
+        token: {
+          type: "credit_alphanum4",
+          code: "USDC",
+          issuer: { key: "GISSUER" },
+        },
+        total: new BigNumber(1),
+      } as never),
+    ).toBe(7);
+  });
+
+  it("uses a Soroban token's own decimals", () => {
+    expect(
+      getDepositDecimals({
+        contractId: "CTOKEN",
+        decimals: 6,
+        total: new BigNumber(1),
+      } as never),
+    ).toBe(6);
+  });
+
+  it("refuses to guess without a balance or with unusable decimals", () => {
+    expect(getDepositDecimals(undefined)).toBeNull();
+    expect(
+      getDepositDecimals({
+        contractId: "CTOKEN",
+        decimals: Number.NaN,
+        total: new BigNumber(1),
+      } as never),
+    ).toBeNull();
+    expect(
+      getDepositDecimals({
+        contractId: "CTOKEN",
+        decimals: -1,
+        total: new BigNumber(1),
+      } as never),
+    ).toBeNull();
   });
 });
 
