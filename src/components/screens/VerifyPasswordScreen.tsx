@@ -15,9 +15,10 @@ type VerifyPasswordScreenProps = NativeStackScreenProps<
 >;
 
 /**
- * The password step of Create new wallet. Confirms with the password, or
- * Face ID when it's on, then creates what the route names: an account under
- * an existing phrase, or the held new phrase and its first account.
+ * The password step of Create new wallet and Import Recovery Phrase.
+ * Confirms with the password, or Face ID when it's on, then creates what the
+ * route names: an account under an existing phrase, the held new phrase and
+ * its first account, or the held imported phrase and its accounts.
  */
 const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
   navigation,
@@ -26,6 +27,7 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
   const {
     createAccount,
     addRecoveryPhraseSource,
+    importRecoveryPhrase,
     isCreatingAccount,
     error,
     clearError,
@@ -51,14 +53,20 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
     (password: string) => {
       if (isCreatingAccount) return;
 
-      const create =
-        target.kind === "newPhrase"
-          ? addRecoveryPhraseSource(
+      const create = (() => {
+        switch (target.kind) {
+          case "newPhrase":
+            return addRecoveryPhraseSource(
               password,
               target.pendingPhraseId,
               target.accountName,
-            )
-          : createAccount(password, target.sourceId, target.accountName);
+            );
+          case "importPhrase":
+            return importRecoveryPhrase(password, target.pendingPhraseId);
+          default:
+            return createAccount(password, target.sourceId, target.accountName);
+        }
+      })();
 
       create
         .then(() => {
@@ -74,6 +82,7 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
     [
       addRecoveryPhraseSource,
       createAccount,
+      importRecoveryPhrase,
       isCreatingAccount,
       navigation,
       target,
@@ -86,7 +95,11 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
       error={error}
       isLoading={isCreatingAccount}
       handleContinue={handleUnlock}
-      continueButtonText={t("verifyPasswordScreen.actions.createNewWallet")}
+      continueButtonText={
+        target.kind === "importPhrase"
+          ? t("verifyPasswordScreen.actions.importRecoveryPhrase")
+          : t("verifyPasswordScreen.actions.createNewWallet")
+      }
       title={t("verifyPasswordScreen.verifyPasswordTemplateTitle")}
       description={t("verifyPasswordScreen.verifyPasswordTemplateDescription")}
       showLogo={false}

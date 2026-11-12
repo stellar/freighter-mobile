@@ -27,6 +27,7 @@ import {
   generatePendingRecoveryPhrase,
   getPendingRecoveryPhrase,
   clearPendingRecoveryPhrase,
+  holdPendingRecoveryPhrase,
 } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -145,6 +146,7 @@ jest.mock("stellar-hd-wallet", () => ({
   default: {
     fromMnemonic: jest.fn(),
     generateMnemonic: jest.fn(),
+    validateMnemonic: jest.fn(() => true),
   },
 }));
 
@@ -354,6 +356,8 @@ describe("auth duck", () => {
     createAccount: useAuthenticationStore.getState().createAccount,
     addRecoveryPhraseSource:
       useAuthenticationStore.getState().addRecoveryPhraseSource,
+    importRecoveryPhrase:
+      useAuthenticationStore.getState().importRecoveryPhrase,
     initializeNetwork: useAuthenticationStore.getState().initializeNetwork,
     softLock: useAuthenticationStore.getState().softLock,
     navigateToLockScreen:
@@ -5404,6 +5408,317 @@ describe("auth duck", () => {
 
           expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
           expect(getPendingRecoveryPhrase(id)).toBe(newPhrase);
+        });
+      });
+
+      describe("importRecoveryPhrase", () => {
+        const importedPhrase =
+          "alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima";
+        const importedSourceId = `phrase:${importedPhrase}`;
+
+        // Index 3 of the imported phrase is funded on mainnet; the rest are
+        // not.
+        const mockFunded = (funded: number[]) => {
+          (getAccount as jest.Mock).mockImplementation((publicKey: string) =>
+            Promise.resolve(
+              funded.some(
+                (index) => publicKey === publicKeyAt(importedPhrase, index),
+              )
+                ? { accountId: () => publicKey }
+                : null,
+            ),
+          );
+        };
+
+        const mockImportSession = (
+          accounts: Account[] = [phraseAccount(0)],
+        ) => {
+          const hook = mockAddAccountSession({
+            accounts,
+            indices: { [mockPhraseSourceId]: [0] },
+          });
+          dataStorageMemory[STORAGE_KEYS.SECRET_SOURCES] = JSON.stringify({
+            [mockPhraseSourceId]: {
+              id: mockPhraseSourceId,
+              type: SecretSourceType.PHRASE,
+              label: "Seed Phrase 1",
+              createdAt: 1,
+            },
+          });
+          dataStorageMemory[STORAGE_KEYS.PINNED_SOURCE_ID] = mockPhraseSourceId;
+          let stored = 0;
+          sharedKeyManager.storeKey.mockImplementation(() => {
+            stored += 1;
+            return Promise.resolve({ id: `imported-${stored}` });
+          });
+          mockFunded([3]);
+          act(() => {
+            useAuthenticationStore.setState({
+              importRecoveryPhrase: originalStoreMethods.importRecoveryPhrase,
+            });
+          });
+          return hook;
+        };
+
+        afterEach(() => {
+          clearPendingRecoveryPhrase();
+        });
+
+        it("adds the phrase as a new source with index 0 and its funded indices, landing on index 0", async () => {
+          const { result } = mockImportSession();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          await act(async () => {
+            await result.current.importRecoveryPhrase(mockPassword, id);
+          });
+
+          expect(result.current.error).toBeNull();
+          // Indices 1 to 49 are looked up on mainnet.
+          expect(getAccount).toHaveBeenCalledTimes(49);
+          expect(getAccount).toHaveBeenCalledWith(
+            publicKeyAt(importedPhrase, 49),
+            NETWORKS.PUBLIC,
+          );
+          expect(storedAccounts()).toEqual([
+            phraseAccount(0),
+            expect.objectContaining({
+              id: "imported-1",
+              sourceId: importedSourceId,
+              publicKey: publicKeyAt(importedPhrase, 0),
+            }),
+            expect.objectContaining({
+              id: "imported-2",
+              sourceId: importedSourceId,
+              publicKey: publicKeyAt(importedPhrase, 3),
+            }),
+          ]);
+          expect(storedIndices()).toEqual({
+            [mockPhraseSourceId]: [0],
+            [importedSourceId]: [0, 3],
+          });
+          expect(storedSources()).toEqual([
+            expect.objectContaining({ id: mockPhraseSourceId }),
+            expect.objectContaining({
+              id: importedSourceId,
+              type: SecretSourceType.PHRASE,
+              label: "Seed Phrase 2",
+            }),
+          ]);
+          // The wallet's pin and phrase stay; the imported one joins them.
+          expect(dataStorageMemory[STORAGE_KEYS.PINNED_SOURCE_ID]).toBe(
+            mockPhraseSourceId,
+          );
+          const written = writtenTemporaryStores();
+          expect(written[written.length - 1].mnemonics).toEqual({
+            [mockPhraseSourceId]: mockMnemonicPhrase,
+            [importedSourceId]: importedPhrase,
+          });
+          expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
+            "imported-1",
+          );
+          expect(getPendingRecoveryPhrase(id)).toBeNull();
+          expect(linkWalletSources).toHaveBeenCalledTimes(1);
+        });
+
+        it("refuses a phrase the wallet already holds before looking anything up", async () => {
+          const { result } = mockImportSession();
+          dataStorageMemory[STORAGE_KEYS.SECRET_SOURCES] = JSON.stringify({
+            [importedSourceId]: {
+              id: importedSourceId,
+              type: SecretSourceType.PHRASE,
+              label: "Seed Phrase 1",
+              createdAt: 1,
+            },
+          });
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow("authStore.error.recoveryPhraseAlreadyHeld");
+          });
+
+          expect(result.current.error).toBe(
+            "authStore.error.recoveryPhraseAlreadyHeld",
+          );
+          expect(getAccount).not.toHaveBeenCalled();
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+        });
+
+        it("refuses, and adds nothing, when one of the phrase's addresses is already in the wallet", async () => {
+          const { result } = mockImportSession([
+            phraseAccount(0),
+            {
+              id: "imported-key",
+              sourceId: "key:imported",
+              name: "Account 2",
+              publicKey: publicKeyAt(importedPhrase, 3),
+              importedFromSecretKey: true,
+            },
+          ]);
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow("authStore.error.accountAlreadyExists");
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(storedSources()).toHaveLength(1);
+          expect(storedAccounts()).toHaveLength(2);
+        });
+
+        it("stores nothing and keeps the phrase on a wrong password", async () => {
+          const { result } = mockImportSession();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+          sharedKeyManager.loadKey.mockRejectedValue(new Error("bad password"));
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase("wrong", id),
+            ).rejects.toThrow();
+          });
+
+          expect(getAccount).not.toHaveBeenCalled();
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(getPendingRecoveryPhrase(id)).toBe(importedPhrase);
+        });
+
+        it("refuses a phrase that fails validation", async () => {
+          const { result } = mockImportSession();
+          (StellarHDWallet.validateMnemonic as jest.Mock).mockReturnValueOnce(
+            false,
+          );
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow("authStore.error.invalidMnemonicPhrase");
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+        });
+
+        it("removes the source and its indices again when no account was stored", async () => {
+          const { result } = mockImportSession();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+          sharedKeyManager.storeKey.mockRejectedValue(new Error("disk full"));
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow();
+          });
+
+          expect(result.current.error).toBe(
+            "authStore.error.failedToImportRecoveryPhrase",
+          );
+          expect(storedSources()).toEqual([
+            expect.objectContaining({ id: mockPhraseSourceId }),
+          ]);
+          expect(storedIndices()?.[importedSourceId] ?? []).toEqual([]);
+          expect(storedAccounts()).toEqual([phraseAccount(0)]);
+          expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
+            "account-0",
+          );
+          // The user can retry without typing the phrase again.
+          expect(getPendingRecoveryPhrase(id)).toBe(importedPhrase);
+        });
+
+        it("keeps the source, and puts the previous account back, when a later account fails to store", async () => {
+          const { result } = mockImportSession();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+          sharedKeyManager.storeKey
+            .mockResolvedValueOnce({ id: "imported-1" })
+            .mockRejectedValueOnce(new Error("disk full"));
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow();
+          });
+
+          // A retry is refused as held rather than storing index 0 twice.
+          expect(storedSources()).toEqual([
+            expect.objectContaining({ id: mockPhraseSourceId }),
+            expect.objectContaining({ id: importedSourceId }),
+          ]);
+          expect(
+            storedAccounts().map(({ id: accountId }) => accountId),
+          ).toEqual(["account-0", "imported-1"]);
+          expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
+            "account-0",
+          );
+        });
+
+        it("stores one set of accounts when the same import runs twice at once", async () => {
+          const { result } = mockImportSession();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          let outcomes: PromiseSettledResult<void>[] = [];
+          await act(async () => {
+            outcomes = await Promise.allSettled([
+              result.current.importRecoveryPhrase(mockPassword, id),
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ]);
+          });
+
+          expect(outcomes.map(({ status }) => status).sort()).toEqual([
+            "fulfilled",
+            "rejected",
+          ]);
+          expect(storedPublicKeys()).toEqual([
+            publicKeyAt(importedPhrase, 0),
+            publicKeyAt(importedPhrase, 3),
+          ]);
+          expect(storedSources()).toHaveLength(2);
+        });
+
+        it("lets only the latest of two overlapping holds store the phrase", async () => {
+          const { result } = mockImportSession();
+
+          let outcomes: PromiseSettledResult<void>[] = [];
+          await act(async () => {
+            const first = result.current.importRecoveryPhrase(
+              mockPassword,
+              holdPendingRecoveryPhrase(importedPhrase),
+            );
+            // A second surface, or a retry, holds the same phrase again
+            // while the first import's lookups run.
+            const second = result.current.importRecoveryPhrase(
+              mockPassword,
+              holdPendingRecoveryPhrase(importedPhrase),
+            );
+            outcomes = await Promise.allSettled([first, second]);
+          });
+
+          expect(
+            outcomes.filter(({ status }) => status === "fulfilled"),
+          ).toHaveLength(1);
+          expect(storedPublicKeys()).toEqual([
+            publicKeyAt(importedPhrase, 0),
+            publicKeyAt(importedPhrase, 3),
+          ]);
+        });
+
+        it("stores nothing when a lock drops the phrase while the lookups run", async () => {
+          const { result } = mockImportSession();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+          (getAccount as jest.Mock).mockImplementation(() => {
+            clearPendingRecoveryPhrase();
+            return Promise.resolve(null);
+          });
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow("authStore.error.pendingRecoveryPhraseMissing");
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(storedSources()).toHaveLength(1);
         });
       });
     });

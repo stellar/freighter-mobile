@@ -15,6 +15,7 @@ import {
   getSecretKeySourceId,
   getSecretSources,
   pinFirstSource,
+  removeSecretSource,
   setPinnedSourceId,
 } from "services/auth/secretSources";
 
@@ -359,5 +360,48 @@ describe("getDefaultMnemonic", () => {
 
   it("returns null when no phrase is held", async () => {
     expect(await getDefaultMnemonic({ mnemonics: {} })).toBeNull();
+  });
+});
+
+describe("removeSecretSource", () => {
+  const register = async (id: string) =>
+    addSecretSource({ id, type: SecretSourceType.PHRASE });
+
+  it("removes the record and leaves the others", async () => {
+    await register("phrase:a");
+    await register("phrase:b");
+
+    await removeSecretSource("phrase:b");
+
+    expect(Object.keys(storedSources())).toEqual(["phrase:a"]);
+    expect(await getPinnedSourceId()).toBe("phrase:a");
+  });
+
+  it("moves the pin to the earliest remaining source when the pinned one goes", async () => {
+    await register("phrase:a");
+    await register("phrase:b");
+
+    await removeSecretSource("phrase:a");
+
+    expect(Object.keys(storedSources())).toEqual(["phrase:b"]);
+    expect(await getPinnedSourceId()).toBe("phrase:b");
+  });
+
+  it("leaves no pin when the last source goes", async () => {
+    await register("phrase:a");
+
+    await removeSecretSource("phrase:a");
+
+    expect(storedSources()).toEqual({});
+    expect(await getPinnedSourceId()).toBeNull();
+  });
+
+  it("writes nothing for an unknown id", async () => {
+    await register("phrase:a");
+    dataStorage.setItem.mockClear();
+
+    await removeSecretSource("phrase:missing");
+
+    expect(dataStorage.setItem).not.toHaveBeenCalled();
   });
 });

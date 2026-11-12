@@ -20,10 +20,10 @@ type AddAnotherWalletScreenProps = NativeStackScreenProps<
 >;
 
 /**
- * The ways to add a wallet, opened from the account switcher's Add wallet.
- * Importing a further recovery phrase and connecting a hardware wallet are
- * in the design but not offered yet: an import still replaces the wallet,
- * and mobile has no hardware support.
+ * The ways to add a wallet, opened from the account switcher's Add wallet:
+ * create, import a further recovery phrase, or import a secret key. None of
+ * them replaces the wallet. Connecting a hardware wallet is in the design
+ * but not offered, since mobile has no hardware support.
  */
 const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
   navigation,
@@ -52,6 +52,24 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
               navigation.navigate(MANAGE_WALLETS_ROUTES.CREATE_WALLET_SCREEN)
             }
             testID="add-wallet-create"
+          />
+          <AddWalletOption
+            icon={
+              <Icon.Passcode
+                size={ADD_WALLET_OPTION_ICON_SIZE}
+                color={iconColor}
+              />
+            }
+            title={t("addAnotherWalletScreen.actions.importRecoveryPhrase")}
+            description={t(
+              "addAnotherWalletScreen.actions.importRecoveryPhraseDescription",
+            )}
+            onPress={() =>
+              navigation.navigate(
+                MANAGE_WALLETS_ROUTES.IMPORT_RECOVERY_PHRASE_SCREEN,
+              )
+            }
+            testID="add-wallet-import-phrase"
           />
           <AddWalletOption
             icon={
