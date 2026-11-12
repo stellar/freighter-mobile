@@ -4952,6 +4952,208 @@ describe("auth duck", () => {
         expect(storedIndices()).toEqual({ [mockPhraseSourceId]: [0, 1, 2] });
       });
 
+      describe("overlapping account changes", () => {
+        const flush = () =>
+          new Promise((resolve) => {
+            setTimeout(resolve, 0);
+          });
+
+        it("gives two overlapping adds on one phrase different indices", async () => {
+          const { result } = mockAddAccountSession({
+            accounts: [phraseAccount(0)],
+            indices: { [mockPhraseSourceId]: [0] },
+          });
+          let stored = 0;
+          sharedKeyManager.storeKey.mockImplementation(() => {
+            stored += 1;
+            return Promise.resolve({ id: `new-account-${stored}` });
+          });
+
+          await act(async () => {
+            await Promise.all([
+              result.current.createAccount(mockPassword),
+              result.current.createAccount(mockPassword),
+            ]);
+          });
+
+          expect(result.current.error).toBeNull();
+          expect(storedPublicKeys()).toEqual([
+            publicKeyAt(mockMnemonicPhrase, 1),
+            publicKeyAt(mockMnemonicPhrase, 2),
+          ]);
+          expect(storedIndices()).toEqual({
+            [mockPhraseSourceId]: [0, 1, 2],
+          });
+          expect(storedAccounts().map(({ id }) => id)).toEqual([
+            "account-0",
+            "new-account-1",
+            "new-account-2",
+          ]);
+        });
+
+        it("lets an add in flight finish before a wipe clears the wallet", async () => {
+          const { result } = mockAddAccountSession({
+            accounts: [phraseAccount(0)],
+            indices: { [mockPhraseSourceId]: [0] },
+          });
+          wipeNonSensitiveData();
+          let releaseKeystore: (() => void) | undefined;
+          sharedKeyManager.storeKey.mockImplementation(
+            () =>
+              new Promise((resolve) => {
+                releaseKeystore = () => resolve({ id: "new-account" });
+              }),
+          );
+          act(() => {
+            useAuthenticationStore.setState({
+              logout: originalStoreMethods.logout,
+            });
+          });
+
+          await act(async () => {
+            const adding = result.current
+              .createAccount(mockPassword)
+              .catch(() => undefined);
+            await flush();
+            expect(releaseKeystore).toBeDefined();
+
+            result.current.logout(true);
+            await flush();
+            await flush();
+
+            releaseKeystore?.();
+            await adding;
+            await flush();
+            await flush();
+          });
+
+          expect(clearNonSensitiveData).toHaveBeenCalled();
+          expect(dataStorageMemory).not.toHaveProperty(
+            STORAGE_KEYS.ACCOUNT_LIST,
+          );
+          expect(dataStorageMemory).not.toHaveProperty(
+            STORAGE_KEYS.DERIVATION_INDICES,
+          );
+        });
+
+        it("drops a switch's account once a soft-lock lands during it", async () => {
+          const { result } = mockAddAccountSession({
+            accounts: [phraseAccount(0), phraseAccount(1)],
+            indices: { [mockPhraseSourceId]: [0, 1] },
+          });
+          (
+            useAuthenticationStore.getState().getAuthStatus as jest.Mock
+          ).mockResolvedValue(AUTH_STATUS.AUTHENTICATED);
+          act(() => {
+            useAuthenticationStore.setState({
+              selectAccount: originalStoreMethods.selectAccount,
+              softLock: originalStoreMethods.softLock,
+            });
+          });
+
+          await act(async () => {
+            const switching = result.current.selectAccount(
+              publicKeyAt(mockMnemonicPhrase, 1),
+            );
+            await result.current.softLock();
+            await switching;
+          });
+
+          expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
+            "account-1",
+          );
+          expect(result.current.isSoftLocked).toBe(true);
+          expect(result.current.account).toBeNull();
+          expect(result.current.isSwitchingAccount).toBe(false);
+        });
+
+        it("caches a lazily loaded key onto the session as it stands, not as first read", async () => {
+          mockAddAccountSession({ accounts: [phraseAccount(0)] });
+          const mnemonics = { [mockPhraseSourceId]: mockMnemonicPhrase };
+          // The first read is getActiveAccount's; by the second, an add has
+          // put its key into the session.
+          (decryptDataWithDerivedKey as jest.Mock)
+            .mockReturnValueOnce(JSON.stringify({ privateKeys: {}, mnemonics }))
+            .mockReturnValue(
+              JSON.stringify({
+                privateKeys: { "added-account": "S:added" },
+                mnemonics,
+              }),
+            );
+          (
+            useAuthenticationStore.getState().getAuthStatus as jest.Mock
+          ).mockResolvedValue(AUTH_STATUS.AUTHENTICATED);
+          act(() => {
+            useAuthenticationStore.setState({
+              fetchActiveAccount: originalStoreMethods.fetchActiveAccount,
+            });
+          });
+
+          await act(async () => {
+            await useAuthenticationStore.getState().fetchActiveAccount();
+          });
+
+          const written = writtenTemporaryStores();
+          expect(written[written.length - 1].privateKeys).toEqual({
+            "added-account": "S:added",
+            "account-0": `S:${mockMnemonicPhrase}:0`,
+          });
+        });
+
+        it("cuts off a funded lookup that stalls, so the import finishes", async () => {
+          jest.useFakeTimers();
+          try {
+            mockIndexedWallet();
+            mockAuthenticatedSession(
+              JSON.stringify({ privateKeys: {}, mnemonics: {} }),
+            );
+            delete dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST];
+            let stored = 0;
+            sharedKeyManager.storeKey.mockImplementation(() => {
+              stored += 1;
+              return Promise.resolve({ id: `recovered-${stored}` });
+            });
+            // Index 1 is funded but its lookup never answers; the rest are
+            // unfunded.
+            (getAccount as jest.Mock).mockImplementation((publicKey: string) =>
+              publicKey === publicKeyAt(mockMnemonicPhrase, 1)
+                ? new Promise(() => {})
+                : Promise.resolve(null),
+            );
+            const { result } = renderHook(() => useAuthenticationStore());
+            act(() => {
+              useAuthenticationStore.setState({
+                importWallet: originalStoreMethods.importWallet,
+              });
+            });
+
+            let imported: boolean | undefined;
+            await act(async () => {
+              const importing = result.current
+                .importWallet({
+                  mnemonicPhrase: mockMnemonicPhrase,
+                  password: mockPassword,
+                })
+                .then((value) => {
+                  imported = value;
+                });
+              // Short of the cutoff, the import still waits on the lookup.
+              await jest.advanceTimersByTimeAsync(4_999);
+              expect(imported).toBeUndefined();
+              await jest.advanceTimersByTimeAsync(1);
+              await importing;
+            });
+
+            expect(imported).toBe(true);
+            expect(storedAccounts().map(({ publicKey }) => publicKey)).toEqual([
+              publicKeyAt(mockMnemonicPhrase, 0),
+            ]);
+          } finally {
+            jest.useRealTimers();
+          }
+        });
+      });
+
       describe("account names", () => {
         it("names the new account as the caller asks, trimmed", async () => {
           const { result } = mockAddAccountSession({
