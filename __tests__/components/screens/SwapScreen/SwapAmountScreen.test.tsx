@@ -160,6 +160,7 @@ const makeDefaultSwapState = (): SwapStoreState => ({
 jest.mock("ducks/swap", () => ({
   useSwapStore: jest.fn(),
   swapQuoteKey: jest.fn(() => "quote-key"),
+  swapPairKey: jest.fn(() => "pair-key"),
   // Pass-through adapter — tests can inspect the call by passing in a
   // descriptor that doesn't match any held balance and asserting that the
   // useSwapPathFinding mock receives an object with `tokenCode`/`id` from
@@ -2419,6 +2420,39 @@ describe("SwapAmountScreen", () => {
 
       it("ignores a stale quote's resource fee", () => {
         pressMax(feeRoute("0.0858459"), "older-key");
+
+        expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.5000000");
+      });
+
+      // Max changes the amount, so the quote it lands on is a new one: size
+      // it with the pair's last resource fee so the first tap sticks.
+      const pressMaxWithoutQuote = (pairKey: string) => {
+        setSwapStoreState({
+          sourceTokenId: "XLM",
+          sourceTokenSymbol: "XLM",
+          pathResult: null,
+          swapQuotes: null,
+          lastResourceFee: { pairKey, fee: "0.0858459" },
+        } as Partial<SwapStoreState>);
+        const { getByTestId } = renderWithProviders(
+          <SwapAmountScreen
+            navigation={makeNavigation()}
+            route={makeRoute()}
+          />,
+        );
+        act(() => {
+          fireEvent.press(getByTestId("percentage-100"));
+        });
+      };
+
+      it("holds back the pair's last quoted resource fee when no quote is current", () => {
+        pressMaxWithoutQuote("pair-key");
+
+        expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.4141541");
+      });
+
+      it("ignores another pair's last resource fee", () => {
+        pressMaxWithoutQuote("other-pair");
 
         expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.5000000");
       });

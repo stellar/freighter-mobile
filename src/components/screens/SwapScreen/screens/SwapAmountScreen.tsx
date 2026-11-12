@@ -66,6 +66,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import {
   descriptorAsPathBalance,
+  swapPairKey,
   swapQuoteKey,
   useSwapStore,
 } from "ducks/swap";
@@ -171,6 +172,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     isLoadingPath,
     pathError,
     pathErrorQuoteKey,
+    lastResourceFee,
     setSourceToken,
     setDestinationToken,
     setEntrySource,
@@ -229,6 +231,27 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       ? selectSwapRoute(swapQuotes)?.resourceFee
       : undefined;
   const totalFee = computeTotalFeeXlm(swapFee, resourceFee ?? null, swapFee);
+  // Max changes the amount, so the quote it lands on is a new one: without a
+  // current quote, size spendable with the pair's last resource fee so the
+  // first tap stays within the fee that quote will carry.
+  const pairKey =
+    sourceBalance && destinationForPath && account?.publicKey
+      ? swapPairKey({
+          sourceBalance,
+          destinationBalance: destinationForPath,
+          network,
+          publicKey: account.publicKey,
+        })
+      : null;
+  const lastPairFee =
+    pairKey && lastResourceFee?.pairKey === pairKey
+      ? lastResourceFee.fee
+      : null;
+  const spendableFee = computeTotalFeeXlm(
+    swapFee,
+    (isQuoteCurrent ? resourceFee : lastPairFee) ?? null,
+    swapFee,
+  );
 
   const spendableAmount = useMemo(() => {
     if (!sourceBalance || !account) return null;
@@ -236,7 +259,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     const rawSpendable = calculateSpendableAmount({
       balance: sourceBalance,
       subentryCount: account.subentryCount || 0,
-      transactionFee: totalFee,
+      transactionFee: spendableFee,
     });
     // A Soroban balance is in the token's smallest unit.
     const baseSpendable = hasDecimals(sourceBalance)
@@ -260,7 +283,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [
     sourceBalance,
     account,
-    totalFee,
+    spendableFee,
     destinationTokenDescriptor?.requiresTrustline,
   ]);
 

@@ -55,6 +55,12 @@ interface SwapState {
   pathError: string | null;
   /** `swapQuoteKey` of the inputs `pathError` is for. */
   pathErrorQuoteKey: string | null;
+  /**
+   * The resource fee of the last route quoted for a pair (null for a classic
+   * route). Kept across amount changes: Max sizes the amount before the quote
+   * for it exists, and the fee barely moves with the amount.
+   */
+  lastResourceFee: { pairKey: string; fee: string | null } | null;
   isBuilding: boolean;
   buildError: string | null;
 
@@ -87,6 +93,7 @@ const initialState = {
   isLoadingPath: false,
   pathError: null,
   pathErrorQuoteKey: null as string | null,
+  lastResourceFee: null as SwapState["lastResourceFee"],
   isBuilding: false,
   buildError: null,
 };
@@ -138,6 +145,29 @@ const sendQuoteRequest = (inputs: SwapQuoteInputs) => ({
 
 const quoteKeyOf = (r: ReturnType<typeof sendQuoteRequest>): string =>
   [r.account, r.network, r.mode, r.fromAsset, r.toAsset, r.amount].join("|");
+
+const pairKeyOf = (r: {
+  account: string;
+  network: NETWORKS;
+  fromAsset: string;
+  toAsset: string;
+}): string => [r.account, r.network, r.fromAsset, r.toAsset].join("|");
+
+/** Identifies the swap pair, whatever the amount. */
+export const swapPairKey = (
+  inputs: Omit<SwapQuoteInputs, "sourceAmount">,
+): string | null => {
+  try {
+    return pairKeyOf({
+      account: inputs.publicKey,
+      network: inputs.network,
+      fromAsset: toSwapWireAsset(inputs.sourceBalance),
+      toAsset: toSwapWireAsset(inputs.destinationBalance),
+    });
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Identifies the send-quote request for these inputs. Review and build use
@@ -280,6 +310,10 @@ export const useSwapStore = create<SwapState>((set) => ({
         swapQuotes,
         pathResult,
         destinationAmount: route.toAmount,
+        lastResourceFee: {
+          pairKey: pairKeyOf(request),
+          fee: route.resourceFee ?? null,
+        },
       });
     } catch (error) {
       if (isStale()) return;
