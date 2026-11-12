@@ -126,6 +126,29 @@ describe("SwapDetailsBottomSheet", () => {
     ).toBeTruthy();
   });
 
+  it("previews at most three providers in the Route row, then +N", () => {
+    const venues = ["Aquarius", "Soroswap", "Phoenix", "Comet", "Blend"];
+    const manyProviders: SwapRoute = {
+      ...splitRoute,
+      paths: [
+        {
+          share: "1",
+          hops: venues.map((venue, i) => ({
+            venue,
+            from: i === 0 ? "XLM" : EURC,
+            to: i === venues.length - 1 ? USDC : EURC,
+            pool: `p${i}`,
+          })),
+        },
+      ],
+    };
+    const { getByTestId } = renderSheet(manyProviders);
+    const row = getByTestId("swap-details-route-row");
+
+    expect(within(row).queryAllByTestId(/^swap-venue-icon/)).toHaveLength(3);
+    expect(within(row).getByText("+2")).toBeTruthy();
+  });
+
   it("classic stand-in: one path at 100%, no pool count", () => {
     const { getByTestId, getByText, queryByTestId } = renderSheet(classicRoute);
 

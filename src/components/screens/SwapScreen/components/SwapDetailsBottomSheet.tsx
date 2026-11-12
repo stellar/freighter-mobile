@@ -2,7 +2,10 @@ import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { List } from "components/List";
 import { SwapRouteContent } from "components/screens/SwapScreen/components/SwapRouteContent";
 import { SwapVenueIconStack } from "components/screens/SwapScreen/components/SwapVenueIcon";
-import { SwapRouteView } from "components/screens/SwapScreen/helpers";
+import {
+  MAX_PATH_VENUE_ICONS,
+  SwapRouteView,
+} from "components/screens/SwapScreen/helpers";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -68,11 +71,16 @@ export const SwapDetailsBottomSheet: React.FC<SwapDetailsBottomSheetProps> = ({
                     })}
               </Text>
               <SwapVenueIconStack
-                venues={routeView.providers}
+                venues={routeView.providers.slice(0, MAX_PATH_VENUE_ICONS)}
                 size={16}
                 spacing={-4}
                 ringColor={themeColors.background.tertiary}
               />
+              {providerCount > MAX_PATH_VENUE_ICONS && (
+                <Text sm secondary>
+                  {`+${providerCount - MAX_PATH_VENUE_ICONS}`}
+                </Text>
+              )}
               <Icon.ChevronRight
                 size={16}
                 color={themeColors.foreground.secondary}
