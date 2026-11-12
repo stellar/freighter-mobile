@@ -29,6 +29,27 @@ describe("DappMessageDisplay", () => {
     );
   });
 
+  it("shows a JSON message as sent when its indented form would be too long", () => {
+    // 500 levels of nesting: about 1 KB as sent, about 500 KB once indented.
+    const nested = `${"[".repeat(500)}0${"]".repeat(500)}`;
+
+    const { getByTestId } = renderWithProviders(
+      <DappMessageDisplay message={nested} />,
+    );
+
+    expect(getByTestId("message-display-content").props.children).toBe(nested);
+  });
+
+  it("still indents a JSON message whose indented form stays short", () => {
+    const { getByTestId } = renderWithProviders(
+      <DappMessageDisplay message='{"amount":"10","asset":"XLM"}' />,
+    );
+
+    expect(getByTestId("message-display-content").props.children).toBe(
+      JSON.stringify({ amount: "10", asset: "XLM" }, null, 2),
+    );
+  });
+
   it("bounds the message scroll area so long messages cannot push the action buttons off-screen", () => {
     const { getByTestId } = renderWithProviders(
       <DappMessageDisplay message={"x".repeat(10000)} />,

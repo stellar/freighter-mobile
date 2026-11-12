@@ -1,5 +1,6 @@
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { SIGN_MESSAGE_PRETTY_MAX_LENGTH } from "helpers/walletKitValidation";
 import useColors from "hooks/useColors";
 import React from "react";
 import { useTranslation } from "react-i18next";
@@ -41,10 +42,15 @@ export const DappMessageDisplay: React.FC<DappMessageDisplayProps> = ({
   const isJson = isJsonString(message);
   const { t } = useTranslation();
 
-  // Format JSON with indentation for better readability
-  const displayMessage = isJson
+  // Format JSON with indentation for better readability, unless indenting
+  // would make it far longer than what was sent, as with deeply nested input
+  const indentedMessage = isJson
     ? JSON.stringify(JSON.parse(message), null, 2)
     : message;
+  const displayMessage =
+    indentedMessage.length <= SIGN_MESSAGE_PRETTY_MAX_LENGTH
+      ? indentedMessage
+      : message;
 
   return (
     <View

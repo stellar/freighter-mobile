@@ -1,11 +1,12 @@
 import { Text } from "components/sds/Typography";
 import { useProtocolsStore } from "ducks/protocols";
+import { fetchBoundedSvg } from "helpers/boundedSvg";
 import { pxValue } from "helpers/dimensions";
 import { findMatchedProtocol } from "helpers/protocols";
 import useColors from "hooks/useColors";
-import React, { useState, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Image, View } from "react-native";
-import { SvgUri } from "react-native-svg";
+import { SvgXml } from "react-native-svg";
 
 /**
  * Available sizes for the App component
@@ -32,7 +33,7 @@ export interface AppProps {
  * Size mapping for different App component sizes
  * @type {Object.<string, number>}
  * @description Maps size names to pixel values. Uses numbers instead of className
- * because SvgUri does not support className props.
+ * because SvgXml does not support className props.
  */
 const sizeMap = {
   sm: pxValue(24),
@@ -77,6 +78,53 @@ const AppInitials: React.FC<{
 );
 
 /**
+ * Draws a remote SVG icon only after a bounded download (see fetchBoundedSvg),
+ * leaving the sized box empty while it loads. Any failure calls `onFailed`, so
+ * the caller shows initials instead.
+ */
+const BoundedSvgIcon: React.FC<{
+  uri: string;
+  size: AppSize;
+  onFailed: () => void;
+}> = ({ uri, size, onFailed }) => {
+  const [xml, setXml] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setXml(null);
+
+    fetchBoundedSvg(uri).then((text) => {
+      if (!active) {
+        return;
+      }
+      if (text) {
+        setXml(text);
+      } else {
+        onFailed();
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [uri, onFailed]);
+
+  if (!xml) {
+    return null;
+  }
+
+  return (
+    <SvgXml
+      xml={xml}
+      width={sizeMap[size]}
+      height={sizeMap[size]}
+      preserveAspectRatio="xMidYMid meet"
+      onError={onFailed}
+    />
+  );
+};
+
+/**
  * App component that displays an application icon with fallback to initials
  * @component App
  * @description
@@ -106,6 +154,7 @@ export const App: React.FC<AppProps> = ({
   const { themeColors } = useColors();
   const { protocols } = useProtocolsStore();
   const [imageError, setImageError] = useState(false);
+  const handleImageError = useCallback(() => setImageError(true), []);
 
   // Memoize imageUri calculation for performance
   const imageUri = useMemo(() => {
@@ -137,19 +186,17 @@ export const App: React.FC<AppProps> = ({
         }}
       >
         {isSvg ? (
-          <SvgUri
+          <BoundedSvgIcon
             uri={imageUri}
-            width={sizeMap[size]}
-            height={sizeMap[size]}
-            preserveAspectRatio="xMidYMid meet"
-            onError={() => setImageError(true)}
+            size={size}
+            onFailed={handleImageError}
           />
         ) : (
           <Image
             source={{ uri: imageUri }}
             style={{ width: sizeMap[size], height: sizeMap[size] }}
             resizeMode="contain"
-            onError={() => setImageError(true)}
+            onError={handleImageError}
           />
         )}
       </View>

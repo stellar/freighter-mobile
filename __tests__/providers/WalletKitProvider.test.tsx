@@ -1,5 +1,10 @@
 import { act, render } from "@testing-library/react-native";
 import {
+  authEntryPreimageXdr,
+  invokeTransactionXdr,
+  wideInvocationTree,
+} from "__tests__/support/invocationTreeFixtures";
+import {
   sacTransferPreimageXdr,
   sacTransferTransactionXdr,
 } from "__tests__/support/sacTransferFixtures";
@@ -367,7 +372,7 @@ describe("WalletKitProvider: a dApp request whose details can't be displayed", (
   });
 });
 
-describe("WalletKitProvider: a transaction request without an XDR string", () => {
+describe("WalletKitProvider: a request whose params fail validation", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
@@ -408,6 +413,115 @@ describe("WalletKitProvider: a transaction request without an XDR string", () =>
       expect(requestSheet().requestEvent?.id).toBe(2);
     },
   );
+
+  it("rejects a stellar_signXDR request whose xdr is over 262144 characters and moves on", async () => {
+    render(provider());
+    await deliver(signXdrRequest(1, "A".repeat(262145)));
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledWith({
+      sessionRequest: expect.objectContaining({ id: 1 }),
+      message: "walletKit.errorXdrTooLarge",
+    });
+
+    await deliver(signXdrRequest(2, sacTransferTransactionXdr()));
+
+    expect(requestSheet().requestEvent?.id).toBe(2);
+  });
+
+  it("rejects a stellar_signAuthEntry request with more than 100 contract calls", async () => {
+    render(provider());
+    await deliver(
+      signAuthEntryRequest(1, authEntryPreimageXdr(wideInvocationTree(101))),
+    );
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledWith({
+      sessionRequest: expect.objectContaining({ id: 1 }),
+      message: "walletKit.errorTooManyInvocations",
+    });
+  });
+
+  it("rejects a stellar_signXDR transaction whose authorizations hold more than 100 contract calls", async () => {
+    render(provider());
+    await deliver(
+      signXdrRequest(1, invokeTransactionXdr(wideInvocationTree(101))),
+    );
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledWith({
+      sessionRequest: expect.objectContaining({ id: 1 }),
+      message: "walletKit.errorTooManyInvocations",
+    });
+  });
+
+  it("lets through a stellar_signXDR transaction with 100 contract calls", async () => {
+    render(provider());
+    await deliver(
+      signXdrRequest(1, invokeTransactionXdr(wideInvocationTree(100))),
+    );
+
+    expect(walletKitUtil.rejectSessionRequest).not.toHaveBeenCalled();
+    expect(requestSheet().requestEvent?.id).toBe(1);
+  });
+
+  it("rejects a stellar_signAuthEntry request whose entry is over 65536 characters and moves on", async () => {
+    render(provider());
+    await deliver(signAuthEntryRequest(1, "A".repeat(65537)));
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalledWith({
+      sessionRequest: expect.objectContaining({ id: 1 }),
+      message: "walletKit.errorAuthEntryTooLarge",
+    });
+
+    await deliver(signXdrRequest(2, sacTransferTransactionXdr()));
+
+    expect(requestSheet().requestEvent?.id).toBe(2);
+  });
+
+  it("clears a stellar_signXDR request it rejects for size instead of keeping it as the current request", async () => {
+    render(provider());
+    await deliver(signXdrRequest(1, "A".repeat(262145)));
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalled();
+    expect(requestSheet().requestEvent).toBeNull();
+  });
+
+  it("never prepares a stellar_signAuthEntry request it rejects for too many calls for display", async () => {
+    const isDisplayable = jest.spyOn(signingDisplay, "isAuthEntryDisplayable");
+    const entryXdr = authEntryPreimageXdr(wideInvocationTree(101));
+    render(provider());
+    await deliver(signAuthEntryRequest(1, entryXdr));
+
+    expect(walletKitUtil.rejectSessionRequest).toHaveBeenCalled();
+    expect(requestSheet().requestEvent).toBeNull();
+    expect(isDisplayable).not.toHaveBeenCalledWith(entryXdr);
+  });
+
+  it("logs a request it rejects as a warning, with the method and the reason", async () => {
+    render(provider());
+    await deliver(signXdrRequest(1, "A".repeat(262145)));
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "WalletKitProvider",
+      "Rejected a dApp request that failed validation",
+      {
+        method: StellarRpcMethods.SIGN_XDR,
+        errorKey: "walletKit.errorXdrTooLarge",
+      },
+    );
+  });
+
+  it("logs a warning when telling the dApp about a rejected request fails", async () => {
+    jest
+      .mocked(walletKitUtil.rejectSessionRequest)
+      .mockRejectedValueOnce(new Error("relay down"));
+    render(provider());
+    await deliver(signXdrRequest(1, "A".repeat(262145)));
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "WalletKitProvider",
+      "Failed to reject a dApp request that failed validation",
+      expect.objectContaining({ message: "relay down" }),
+    );
+  });
 });
 
 /** A connection proposal from the dApp. */

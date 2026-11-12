@@ -38,10 +38,16 @@ import {
   resolveDappRejectionEvent,
 } from "helpers/walletKitUtil";
 import {
+  getTransactionAuthInvocations,
+  normalizeAuthPreimage,
+  validateInvocationTrees,
+  ValidationErrorKey,
   validateSignMessageContent,
   validateSignMessageLength,
   validateSignXdrContent,
+  validateSignXdrLength,
   validateSignAuthEntryContent,
+  validateSignAuthEntryLength,
   parseAuthEntryPreimage,
   validateAuthEntryNetwork,
   validateAuthEntryAddress,
@@ -762,6 +768,48 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   // ─────────────────────────────────────────────────────────────────────────────
 
   /**
+   * Rejects a request that failed a validation rule: logs it, shows the
+   * reason, answers the dApp with it, drops it as the current request, clears
+   * the event and releases the request queue.
+   */
+  const failRequestValidation = (
+    sessionRequest: WalletKitSessionRequest,
+    errorKey: ValidationErrorKey,
+  ) => {
+    logger.warn(
+      "WalletKitProvider",
+      "Rejected a dApp request that failed validation",
+      {
+        method: (
+          sessionRequest.params as { request?: { method?: string } } | undefined
+        )?.request?.method,
+        errorKey,
+      },
+    );
+    showToast({
+      title: t("walletKit.invalidRequestTitle"),
+      message: t(errorKey),
+      variant: "error",
+    });
+    rejectSessionRequest({
+      sessionRequest,
+      message: t(errorKey),
+    }).catch((error: unknown) => {
+      logger.warn(
+        "WalletKitProvider",
+        "Failed to reject a dApp request that failed validation",
+        error,
+      );
+    });
+    // processSessionRequest set this request as the current one before
+    // validating it. Dropping it in the same update means a rejected payload
+    // is never parsed or walked for display.
+    setRequestEvent(null);
+    clearEvent();
+    isProcessingRequestRef.current = false;
+  };
+
+  /**
    * Validates the xdr param for sign_xdr and sign_and_submit_xdr requests.
    * @returns the xdr string if valid, or null if invalid (rejection handled)
    */
@@ -790,7 +838,28 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       return null;
     }
 
-    return result.value;
+    const lengthResult = validateSignXdrLength(result.value);
+    if (!lengthResult.valid) {
+      failRequestValidation(sessionRequest, lengthResult.errorKey);
+      return null;
+    }
+
+    // A transaction under the size cap can still carry thousands of tiny
+    // authorized calls, and the details view renders one card per call. An
+    // XDR that doesn't parse goes on and is shown as undisplayable.
+    const authInvocations = getTransactionAuthInvocations(
+      lengthResult.value,
+      networkDetails.networkPassphrase,
+    );
+    if (authInvocations) {
+      const treeResult = validateInvocationTrees(authInvocations);
+      if (!treeResult.valid) {
+        failRequestValidation(sessionRequest, treeResult.errorKey);
+        return null;
+      }
+    }
+
+    return lengthResult.value;
   };
 
   /**
@@ -872,7 +941,13 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       return null;
     }
 
-    return result.value;
+    const lengthResult = validateSignAuthEntryLength(result.value);
+    if (!lengthResult.valid) {
+      failRequestValidation(sessionRequest, lengthResult.errorKey);
+      return null;
+    }
+
+    return lengthResult.value;
   };
 
   /**
@@ -980,6 +1055,16 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     );
     if (!preimage) {
       return false;
+    }
+
+    // Step 2b: Cap the authorized calls the sheet renders, one card per call
+    const normalized = normalizeAuthPreimage(preimage);
+    if (normalized) {
+      const treeResult = validateInvocationTrees([normalized.invocation]);
+      if (!treeResult.valid) {
+        failRequestValidation(sessionRequest, treeResult.errorKey);
+        return false;
+      }
     }
 
     // Step 3: Validate network (networkId matches wallet's active network)

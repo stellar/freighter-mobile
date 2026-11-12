@@ -1,5 +1,10 @@
 import { Address, hash, Keypair, Networks, xdr } from "@stellar/stellar-sdk";
 import {
+  deepInvocationTree,
+  invokeTransactionXdr,
+  wideInvocationTree,
+} from "__tests__/support/invocationTreeFixtures";
+import {
   normalizeAuthPreimage,
   parseAuthEntryPreimage,
   SIGN_MESSAGE_MAX_BYTES,
@@ -10,6 +15,10 @@ import {
   validateSignMessageContent,
   validateSignMessageLength,
   validateSignXdrContent,
+  validateSignXdrLength,
+  validateSignAuthEntryLength,
+  validateInvocationTrees,
+  getTransactionAuthInvocations,
   ValidationErrorKeys,
 } from "helpers/walletKitValidation";
 
@@ -87,6 +96,101 @@ const buildNonSorobanPreimage = (): string =>
 // ─────────────────────────────────────────────────────────────────────────────
 // validateSignMessageContent
 // ─────────────────────────────────────────────────────────────────────────────
+
+describe("validateInvocationTrees", () => {
+  const TOO_MANY = {
+    valid: false,
+    errorKey: "walletKit.errorTooManyInvocations",
+  };
+
+  it("accepts no invocations", () => {
+    expect(validateInvocationTrees([])).toEqual({ valid: true, value: true });
+  });
+
+  it("accepts 100 invocations", () => {
+    expect(validateInvocationTrees([wideInvocationTree(100)])).toEqual({
+      valid: true,
+      value: true,
+    });
+  });
+
+  it("rejects 101 invocations", () => {
+    expect(validateInvocationTrees([wideInvocationTree(101)])).toEqual(
+      TOO_MANY,
+    );
+  });
+
+  it("counts the invocations of every root together", () => {
+    expect(
+      validateInvocationTrees([wideInvocationTree(60), wideInvocationTree(60)]),
+    ).toEqual(TOO_MANY);
+  });
+
+  it("accepts a chain 20 invocations deep", () => {
+    expect(validateInvocationTrees([deepInvocationTree(20)])).toEqual({
+      valid: true,
+      value: true,
+    });
+  });
+
+  it("rejects a chain 21 invocations deep", () => {
+    expect(validateInvocationTrees([deepInvocationTree(21)])).toEqual(TOO_MANY);
+  });
+});
+
+describe("getTransactionAuthInvocations", () => {
+  it("returns the root invocation of each authorization entry", () => {
+    const roots = getTransactionAuthInvocations(
+      invokeTransactionXdr(wideInvocationTree(3)),
+      Networks.TESTNET,
+    );
+
+    expect(roots).toHaveLength(1);
+    expect(roots?.[0].subInvocations).toHaveLength(2);
+  });
+
+  it("returns null for xdr that doesn't parse", () => {
+    expect(getTransactionAuthInvocations("not-xdr", Networks.TESTNET)).toBe(
+      null,
+    );
+  });
+});
+
+describe("validateSignXdrLength", () => {
+  it("accepts an xdr of exactly 262144 characters", () => {
+    const xdrParam = "A".repeat(262144);
+
+    expect(validateSignXdrLength(xdrParam)).toEqual({
+      valid: true,
+      value: xdrParam,
+    });
+  });
+
+  it("rejects an xdr of 262145 characters", () => {
+    expect(validateSignXdrLength("A".repeat(262145))).toEqual({
+      valid: false,
+      errorKey: "walletKit.errorXdrTooLarge",
+    });
+  });
+});
+
+describe("validateSignAuthEntryLength", () => {
+  it("accepts an entry of exactly 65536 characters", () => {
+    const entryXdr = "A".repeat(65536);
+
+    expect(validateSignAuthEntryLength(entryXdr)).toEqual({
+      valid: true,
+      value: entryXdr,
+    });
+  });
+
+  it("rejects an entry of 65537 characters", () => {
+    expect(validateSignAuthEntryLength("A".repeat(65537))).toEqual({
+      valid: false,
+      errorKey: "walletKit.errorAuthEntryTooLarge",
+    });
+  });
+});
 
 describe("validateSignXdrContent", () => {
   it.each([undefined, null, 42, "", "   ", {}, ["AAAA"]])(
