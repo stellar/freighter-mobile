@@ -151,9 +151,8 @@ export const EarnIntroScreen: React.FC<EarnIntroScreenProps> = ({
             {/* Title and subtitle are a single gapless stack in the design --
                 their 40 and 20 line boxes already carry the spacing. */}
             <View className="w-full items-center">
-              {/* Display `sm` is 32/40, exactly Figma's Display/SM/500. The
-                  -1.28 tracking has no SDS prop, so it comes through
-                  `style`. */}
+              {/* Display `sm` medium is 32/40 at weight 500. The -1.28
+                  tracking has no SDS prop, so it comes through `style`. */}
               <Display
                 sm
                 medium

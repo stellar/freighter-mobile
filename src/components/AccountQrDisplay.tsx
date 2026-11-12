@@ -22,33 +22,10 @@ export interface AccountQrDisplayProps {
 }
 
 /**
- * Account identity + QR + network-pill block shared between
- * `ScanReceiveScreen`'s Receive tab and the Earn flow's in-flow "Receive
- * funds" sheet -- both surfaces show the exact same avatar/name/address row,
- * white QR card, and "Stellar" network pill for the active account.
- *
- * Deliberately excludes the network-support caption and the copy CTA: both
- * callers now copy through the same plain `useClipboard` hook, but each has
- * its own surrounding layout (a full-screen tab body vs. sheet content) and
- * its own copy-button styling, so that action stays owned by each caller
- * rather than baked in here.
- *
- * QR size (210) and the white card's padding/radius intentionally match the
- * existing `ReceiveTabView` treatment rather than the Figma mock's 168px --
- * that figure is an artifact of the mock's fixed 360-wide popup canvas, and
- * this component's whole point is to keep the app's one existing "your
- * account's QR code" treatment visually identical everywhere it appears.
- *
- * Same reasoning for the identity-row -> QR gap: this component's outer
- * `gap-8` (32) carries over `ReceiveTabView`'s existing spacing rather than
- * the mock's 24 -- an 8px difference not worth a prop just to shave, given
- * every other rhythm value here (avatar/QR/pill sizing, the 24 QR<->pill
- * gap) already matches the design.
- */
-/**
  * The account's QR on its white card, on its own: the Varial mark in the
  * middle and a white ground in both themes, so it always scans. `size` is the
- * QR's own size, before the card's padding.
+ * QR's own size, before the card's padding. Earn's "Receive" sheet sets its
+ * own size; `AccountQrDisplay` below keeps the Receive tab's 210.
  */
 export const AccountQrCode: React.FC<{ publicKey: string; size?: number }> = ({
   publicKey,
@@ -68,6 +45,13 @@ export const AccountQrCode: React.FC<{ publicKey: string; size?: number }> = ({
   </View>
 );
 
+/**
+ * The Receive tab's account block: the avatar, name and truncated address,
+ * the QR card, and the "Stellar" network pill for the active account.
+ *
+ * Leaves out the network-support caption and the copy button, which the tab
+ * lays out itself.
+ */
 export const AccountQrDisplay: React.FC<AccountQrDisplayProps> = ({
   publicKey,
   accountName,
