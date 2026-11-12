@@ -5,6 +5,7 @@ import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import AddAnotherWalletScreen from "components/screens/AddAnotherWallet";
 import BackupRecoveryPhraseScreen from "components/screens/BackupRecoveryPhraseScreen";
 import CreateWalletScreen from "components/screens/CreateWalletScreen";
+import ImportRecoveryPhraseScreen from "components/screens/ImportRecoveryPhraseScreen";
 import ImportSecretKeyScreen from "components/screens/ImportSecretKeyScreen";
 import VerifyPasswordScreen from "components/screens/VerifyPasswordScreen";
 import {
@@ -70,6 +71,12 @@ export const ManageWalletsStackNavigator = () => {
         name={MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN}
         component={ImportSecretKeyScreen}
         options={resetNestedNavigationOptions(t("importSecretKeyScreen.title"))}
+      />
+      <ManageWalletsStack.Screen
+        name={MANAGE_WALLETS_ROUTES.IMPORT_RECOVERY_PHRASE_SCREEN}
+        component={ImportRecoveryPhraseScreen}
+        // The template sets its own large title.
+        options={{ headerTitle: "" }}
       />
     </ManageWalletsStack.Navigator>
   );
