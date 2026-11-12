@@ -142,6 +142,23 @@ describe("fetchBoundedSvg", () => {
     await expect(result).resolves.toBe(null);
   });
 
+  it.each([0, -1])(
+    "aborts once the text received passes 102400 characters, even when progress reports %p bytes loaded as React Native does on Android",
+    async (loaded) => {
+      const result = fetchBoundedSvg("https://dapp.example/icon.svg");
+
+      request().responseText = "a".repeat(102400);
+      request().onprogress?.({ loaded });
+      expect(request().aborted).toBe(false);
+
+      request().responseText = "a".repeat(102401);
+      request().onprogress?.({ loaded });
+
+      expect(request().aborted).toBe(true);
+      await expect(result).resolves.toBe(null);
+    },
+  );
+
   it("resolves null on a timeout, an error or a non-200 status", async () => {
     const timedOut = fetchBoundedSvg("https://dapp.example/a.svg");
     request().ontimeout?.();

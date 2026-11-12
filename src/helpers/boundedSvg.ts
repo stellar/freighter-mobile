@@ -87,7 +87,9 @@ export const fetchBoundedSvg = (url: string): Promise<string | null> =>
     request.responseType = "text";
     request.timeout = SVG_FETCH_TIMEOUT_MS;
     request.onprogress = (event) => {
-      if (event.loaded > MAX_SVG_BYTES) {
+      // For text responses React Native on Android reports a stale `loaded`
+      // (0, or -1 for a decompressed body), so the text received so far counts too.
+      if (Math.max(event.loaded, request.responseText.length) > MAX_SVG_BYTES) {
         request.abort();
         finish(null);
       }
