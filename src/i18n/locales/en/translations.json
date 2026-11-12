@@ -318,7 +318,8 @@
     "disconnectApp": "Disconnect {{appName}}",
     "appDisconnected": "{{appName}} disconnected",
     "appDisconnectedFallback": "App disconnected",
-    "allAppsDisconnected": "All apps disconnected"
+    "allAppsDisconnected": "All apps disconnected",
+    "loadFailed": "Couldn't load your connected dApps."
   },
   "discovery": {
     "discover": "Discover",

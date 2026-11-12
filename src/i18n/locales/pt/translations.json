@@ -284,7 +284,8 @@
     "disconnectApp": "Desconectar {{appName}}",
     "appDisconnected": "{{appName}} desconectado",
     "appDisconnectedFallback": "Aplicativo desconectado",
-    "allAppsDisconnected": "Todos os aplicativos desconectados"
+    "allAppsDisconnected": "Todos os aplicativos desconectados",
+    "loadFailed": "Não foi possível carregar seus dApps conectados."
   },
   "discovery": {
     "discover": "Descobrir",
