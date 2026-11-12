@@ -14,6 +14,7 @@ import { EarnSwapFromBottomSheet } from "components/screens/EarnScreen/component
 import {
   EarnSwapOutcome,
   EarnSwapProcessingBottomSheet,
+  EarnSwapProcessingBottomSheetProps,
 } from "components/screens/EarnScreen/components/EarnSwapProcessingBottomSheet";
 import { EarnTokenRow } from "components/screens/EarnScreen/components/EarnTokenRow";
 import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
@@ -78,7 +79,13 @@ import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useToast } from "providers/ToastProvider";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Image,
   Keyboard,
@@ -221,7 +228,12 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // back arrow can return with the source unchanged. The swap sheet stays
   // mounted underneath.
   const handleSwapSourcePickerPress = useCallback(() => {
-    swapFromBottomSheetModalRef.current?.present();
+    // Over a dismissed keyboard: the swap sheet's keypad would otherwise
+    // stay up over the list.
+    Keyboard.dismiss();
+    waitForKeyboardDismiss().then(() => {
+      swapFromBottomSheetModalRef.current?.present();
+    });
   }, []);
 
   const handleSwapSourceSelected = useCallback(
@@ -373,9 +385,10 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
           }))
     : undefined;
 
+  // The option is released once the sheet has closed, not as it starts
+  // closing: clearing it first would empty the sheet while it slides away.
   const handleCloseNotEnoughSheet = useCallback(() => {
     notEnoughBottomSheetModalRef.current?.dismiss();
-    setNotEnoughOption(null);
   }, []);
 
   const handleBuyPress = useCallback(() => {
@@ -429,6 +442,35 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     earnSwap.executeSwap();
     swapProcessingBottomSheetModalRef.current?.present();
   }, [earnSwap]);
+
+  // The processing sheet's content, captured when the swap starts and kept
+  // until the sheet has closed: the swap state resets the moment the user
+  // leaves, and rendering from it directly would empty the sheet while it
+  // slides away.
+  const [swapProcessingSnapshot, setSwapProcessingSnapshot] = useState<Omit<
+    EarnSwapProcessingBottomSheetProps,
+    "onClose"
+  > | null>(null);
+  useEffect(() => {
+    if (
+      earnSwap.isProcessing &&
+      earnSwap.sourceToken &&
+      earnSwap.destinationToken
+    ) {
+      setSwapProcessingSnapshot({
+        sourceAmount: earnSwap.sourceAmount,
+        sourceToken: earnSwap.sourceToken,
+        destinationAmount: earnSwap.destinationAmount || "0",
+        destinationToken: earnSwap.destinationToken,
+      });
+    }
+  }, [
+    earnSwap.isProcessing,
+    earnSwap.sourceAmount,
+    earnSwap.sourceToken,
+    earnSwap.destinationAmount,
+    earnSwap.destinationToken,
+  ]);
 
   // X, Close and Done on the processing sheet. Close while the swap is still
   // in flight leaves it running; useSwapTransaction keeps handling its result.
@@ -749,6 +791,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       </BaseLayout>
       <BottomSheet
         modalRef={notEnoughBottomSheetModalRef}
+        bottomSheetModalProps={{ onDismiss: () => setNotEnoughOption(null) }}
         customContent={
           <NotEnoughTokenBottomSheet
             variant={notEnoughVariant}
@@ -846,15 +889,13 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       <BottomSheet
         modalRef={swapProcessingBottomSheetModalRef}
         enablePanDownToClose={false}
+        bottomSheetModalProps={{
+          onDismiss: () => setSwapProcessingSnapshot(null),
+        }}
         customContent={
-          earnSwap.isProcessing &&
-          earnSwap.sourceToken &&
-          earnSwap.destinationToken ? (
+          swapProcessingSnapshot ? (
             <EarnSwapProcessingBottomSheet
-              sourceAmount={earnSwap.sourceAmount}
-              sourceToken={earnSwap.sourceToken}
-              destinationAmount={earnSwap.destinationAmount || "0"}
-              destinationToken={earnSwap.destinationToken}
+              {...swapProcessingSnapshot}
               onClose={handleSwapProcessingSheetClose}
             />
           ) : null
