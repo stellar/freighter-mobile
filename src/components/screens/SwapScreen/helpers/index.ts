@@ -32,3 +32,12 @@ export {
 } from "./selectSwapRoute";
 export { decodeSwapTx, type DecodedSwapTx } from "./decodeSwapTx";
 export { withTokenDecimals } from "./tokenDecimals";
+export {
+  buildSwapRouteView,
+  formatRouteShare,
+  MAX_PATH_VENUE_ICONS,
+  type SwapRoutePathView,
+  type SwapRouteToken,
+  type SwapRouteVenue,
+  type SwapRouteView,
+} from "./swapRouteView";

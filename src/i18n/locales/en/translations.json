@@ -711,6 +711,26 @@
       "xdr": "XDR",
       "sheetTitle": "Review swap"
     },
+    "details": {
+      "networkFeeLine": "{{fee}} network fee",
+      "seeDetails": "See details",
+      "title": "Details",
+      "networkFee": "Network fee",
+      "rate": "Rate",
+      "route": "Route",
+      "oneProvider": "1 provider",
+      "providers": "{{count}} providers",
+      "footer": "Best route selected based on rates and fees. Quote may update as market conditions change."
+    },
+    "route": {
+      "title": "Route",
+      "splitAcross": "Split across {{count}} paths",
+      "onePath": "1 path",
+      "onePool": "1 pool",
+      "pools": "{{count}} pools",
+      "hint": "Routes may be split across multiple hops to optimize rates and fees.",
+      "providers": "Providers"
+    },
     "errors": {
       "failedToSetupTransaction": "Failed to setup swap transaction",
       "swapTransactionFailed": "Swap transaction failed",

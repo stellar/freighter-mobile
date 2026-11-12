@@ -21,3 +21,7 @@ export {
   XlmReserveBottomSheet,
   type XlmReserveBottomSheetProps,
 } from "./XlmReserveBottomSheet";
+export {
+  SwapDetailsBottomSheet,
+  type SwapDetailsBottomSheetProps,
+} from "./SwapDetailsBottomSheet";
