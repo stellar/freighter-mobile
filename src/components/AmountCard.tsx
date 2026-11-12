@@ -86,8 +86,8 @@ type AmountCardCommonProps = {
   /** Renders the picker chip as a static label -- no chevron, not tappable.
    *  For surfaces where the token is fixed rather than chosen: the Earn swap
    *  sheet's "You receive" side is locked to the asset being deposited into
-   *  (design `13722:342108` draws that chip with no chevron, unlike the
-   *  "You sell" chip beside it). Additive -- defaults to false, so every
+   *  (its chip has no chevron, unlike the "You sell" chip beside it).
+   *  Additive -- defaults to false, so every
    *  existing Send/Swap caller is unchanged. */
   isLocked?: boolean;
   pickerTestID?: string;
@@ -142,7 +142,7 @@ const CardShell: React.FC<{
   // 12px symmetric vertical padding, collapsing to 8px on xs screens.
   <View
     testID={testID}
-    className="rounded-[12px] gap-[12px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] bg-background-tertiary w-full"
+    className="rounded-[16px] gap-[12px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] bg-background-secondary w-full"
   >
     {children}
   </View>
@@ -158,7 +158,7 @@ const HeaderRow: React.FC<{
     </Text>
     {!!availableBalanceText && (
       <Text
-        medium
+        regular
         secondary
         numberOfLines={1}
         textAlign="right"
@@ -202,7 +202,7 @@ const PickerChip: React.FC<{
   return (
     <Container
       onPress={isLocked ? undefined : onPress}
-      className="flex-row items-center gap-[4px] rounded-full bg-background-secondary px-[10px] py-[8px]"
+      className="flex-row items-center gap-[4px] rounded-full bg-base-0 px-[10px] py-[4px]"
       testID={testID}
     >
       {token ? (
@@ -221,11 +221,11 @@ const PickerChip: React.FC<{
           singleLetterFallback
         />
       ) : null}
-      <Text md medium>
+      <Text md semiBold>
         {label ?? fallbackLabel ?? ""}
       </Text>
       {!isLocked && (
-        <Icon.ChevronDown size={16} color={themeColors.text.primary} />
+        <Icon.ChevronRight size={16} color={themeColors.foreground.primary} />
       )}
     </Container>
   );
@@ -284,9 +284,11 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
   const amountTextColor = isError
     ? themeColors.status.error
     : themeColors.text.primary;
+  // The empty "0" reads in the primary color, like a value, as the designs
+  // draw it; the caret beside it marks it as a placeholder.
   const amountPlaceholderColor = isError
     ? themeColors.status.error
-    : themeColors.text.secondary;
+    : themeColors.text.primary;
 
   // iOS focus-retry workaround: focus() can silently drop when the input is
   // hidden/animated; re-attempt on the next tick if isFocused() is still
@@ -358,7 +360,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
                   fontFamily: AMOUNT_FONT_FAMILY,
                   fontSize: amountFontSize,
                   letterSpacing: AMOUNT_LETTER_SPACING,
-                  fontWeight: "500",
+                  fontWeight: "600",
                   color: isEmpty ? amountPlaceholderColor : amountTextColor,
                   padding: 0,
                   includeFontPadding: false,
@@ -377,7 +379,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
               autoFocus={autoFocus}
               value={isEmpty ? "" : primaryText}
               placeholder="0"
-              placeholderTextColor={themeColors.text.secondary}
+              placeholderTextColor={amountPlaceholderColor}
               onChangeText={converter.setDisplayAmountFromText}
               onSubmitEditing={() => Keyboard.dismiss()}
               underlineColorAndroid="transparent"
@@ -386,7 +388,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
                 fontFamily: AMOUNT_FONT_FAMILY,
                 fontSize: amountFontSize,
                 letterSpacing: AMOUNT_LETTER_SPACING,
-                fontWeight: "500",
+                fontWeight: "600",
                 color: amountTextColor,
                 padding: 0,
                 includeFontPadding: false,
@@ -425,9 +427,13 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
             onPress={() =>
               converter.setShowFiatAmount(!converter.showFiatAmount)
             }
+            className="rounded-full bg-background-primary p-[2px]"
             testID={fiatToggleTestID}
           >
-            <Icon.RefreshCcw03 size={14} color={themeColors.text.secondary} />
+            <Icon.SwitchVertical01
+              size={12}
+              color={themeColors.foreground.primary}
+            />
           </TouchableOpacity>
         )}
       </View>
@@ -465,7 +471,7 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
             fontSize: amountFontSize,
             lineHeight: pxValue(AMOUNT_LINE_HEIGHT),
             letterSpacing: AMOUNT_LETTER_SPACING,
-            fontWeight: "500",
+            fontWeight: "600",
             color: placeholderActive
               ? themeColors.text.secondary
               : themeColors.text.primary,

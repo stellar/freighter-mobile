@@ -127,6 +127,25 @@ describe("BottomSheetHeader", () => {
 
     expect(getByText("Settings")).toBeTruthy();
   });
+
+  it("adds a back arrow on the left of a centered title when onBack is set", () => {
+    const onBack = jest.fn();
+    const onClose = jest.fn();
+    const { getByTestId } = renderWithProviders(
+      <BottomSheetHeader
+        title="Receive funds"
+        layout="centered"
+        onBack={onBack}
+        backTestID="sheet-back"
+        onClose={onClose}
+        closeTestID="sheet-close"
+      />,
+    );
+
+    fireEvent.press(getByTestId("sheet-back"));
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });
 
 describe("PinnedBottomSheetHeader", () => {

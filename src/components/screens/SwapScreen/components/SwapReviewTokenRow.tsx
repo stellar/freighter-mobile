@@ -45,10 +45,10 @@ export const SwapReviewTokenRow: React.FC<{
       )}
     </View>
     <View className="flex-1">
-      <Text xl medium>
+      <Text lg medium primary>
         {formatTokenForDisplay(amount, symbol)}
       </Text>
-      <Text md medium secondary>
+      <Text sm medium secondary>
         {fiatString}
       </Text>
     </View>

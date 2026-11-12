@@ -45,6 +45,29 @@ export interface AccountQrDisplayProps {
  * every other rhythm value here (avatar/QR/pill sizing, the 24 QR<->pill
  * gap) already matches the design.
  */
+/**
+ * The account's QR on its white card, on its own: the Varial mark in the
+ * middle and a white ground in both themes, so it always scans. `size` is the
+ * QR's own size, before the card's padding.
+ */
+export const AccountQrCode: React.FC<{ publicKey: string; size?: number }> = ({
+  publicKey,
+  size = QR_SIZE,
+}) => (
+  <View className="bg-white p-4 rounded-2xl">
+    <QRCode
+      size={pxValue(size)}
+      logo={logos.varial2d}
+      value={publicKey}
+      quietZone={6}
+      logoMargin={7}
+      logoSize={60}
+      logoBackgroundColor="transparent"
+      ecl="H"
+    />
+  </View>
+);
+
 export const AccountQrDisplay: React.FC<AccountQrDisplayProps> = ({
   publicKey,
   accountName,
@@ -67,18 +90,7 @@ export const AccountQrDisplay: React.FC<AccountQrDisplayProps> = ({
       </View>
 
       <View className="items-center gap-6">
-        <View className="bg-white p-4 rounded-2xl">
-          <QRCode
-            size={pxValue(QR_SIZE)}
-            logo={logos.varial2d}
-            value={publicKey}
-            quietZone={6}
-            logoMargin={7}
-            logoSize={60}
-            logoBackgroundColor="transparent"
-            ecl="H"
-          />
-        </View>
+        <AccountQrCode publicKey={publicKey} />
 
         <View className="flex-row items-center gap-2 bg-background-tertiary rounded-full px-3 py-2">
           <Image

@@ -12,7 +12,8 @@ const CLOSE_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
  * Header layouts:
  * - `inline`: title and X on one row.
  * - `stacked`: optional leading element and X on top, title below.
- * - `centered`: centered title, X on the right.
+ * - `centered`: centered title, X on the right and, optionally, a back
+ *   arrow on the left.
  */
 export type BottomSheetHeaderLayout = "inline" | "stacked" | "centered";
 
@@ -24,6 +25,13 @@ export interface BottomSheetHeaderProps {
   leading?: React.ReactNode;
   /** Shows the X when set. */
   onClose?: () => void;
+  /**
+   * Shows a back arrow on the left when set, e.g. on a sheet stacked over
+   * another one, where back returns to the sheet below and X closes both.
+   * Centered layout only.
+   */
+  onBack?: () => void;
+  backTestID?: string;
   /** Disables the X, e.g. while a save is in flight. */
   closeDisabled?: boolean;
   closeTestID?: string;
@@ -73,10 +81,14 @@ export const BottomSheetHeader: React.FC<BottomSheetHeaderProps> = ({
   layout,
   leading,
   onClose,
+  onBack,
+  backTestID,
   closeDisabled,
   closeTestID,
   titleTestID,
 }) => {
+  const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const resolvedLayout: BottomSheetHeaderLayout =
     layout ?? (leading ? "stacked" : "inline");
 
@@ -124,6 +136,22 @@ export const BottomSheetHeader: React.FC<BottomSheetHeaderProps> = ({
   if (resolvedLayout === "centered") {
     return (
       <View className="w-full flex-row items-center justify-center">
+        {onBack && (
+          <View className="absolute left-0">
+            <TouchableOpacity
+              onPress={onBack}
+              hitSlop={CLOSE_HIT_SLOP}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.back")}
+              testID={backTestID}
+            >
+              <Icon.ArrowLeft
+                size={CLOSE_ICON_SIZE}
+                color={themeColors.text.primary}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
         <View className="flex-1 px-[32px]">{titleText}</View>
         {closeButton && <View className="absolute right-0">{closeButton}</View>}
       </View>
