@@ -11,7 +11,7 @@ import {
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { useDebugStore } from "ducks/debug";
-import { stroopToXlm } from "helpers/formatAmount";
+import { getTokenDecimals, stroopToXlm } from "helpers/formatAmount";
 import { isContractDestination, isMuxedContract } from "helpers/muxedContract";
 import { isMuxedAccount } from "helpers/stellar";
 import { t } from "i18next";
@@ -437,6 +437,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           toAsset: request.toAsset,
           minOut: request.minOut,
           amount: request.amount,
+          fromDecimals: getTokenDecimals(params.sourceBalance),
         });
 
         // Only update store if this swap build is still the latest one.

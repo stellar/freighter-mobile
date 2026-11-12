@@ -313,7 +313,6 @@ type SwapTokenLookupReturn = {
   popularTokens: TrendingFixture[];
   trendingTokens: TrendingFixture[];
   searchResults: TrendingFixture[];
-  hadSorobanMatches: boolean;
   stellarExpertDown: boolean;
   status: string;
   isTrendingLoading: boolean;
@@ -327,7 +326,6 @@ const mockUseSwapTokenLookup = jest.fn<SwapTokenLookupReturn, []>(() => ({
   popularTokens: [],
   trendingTokens: [],
   searchResults: [],
-  hadSorobanMatches: false,
   stellarExpertDown: false,
   status: "idle",
   isTrendingLoading: false,
@@ -442,6 +440,46 @@ describe("SwapAmountScreen", () => {
     );
     expect(mockSetSourceToken).toHaveBeenCalledWith("SRC", "XLM");
     expect(mockSetDestinationToken).toHaveBeenCalledWith(null);
+  });
+
+  it("sets Max for a Soroban source at the token's own decimals", () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    const sorobanSource = {
+      id: `TKN:${contractId}`,
+      tokenCode: "TKN",
+      tokenType: "custom_token",
+      contractId,
+      symbol: "TKN",
+      name: "Token",
+      decimals: 18,
+      token: { code: "TKN", issuer: { key: contractId }, type: "custom_token" },
+      // Soroban balances hold the token's smallest unit.
+      total: new BigNumber("1234567891234567891"),
+      available: new BigNumber("1234567891234567891"),
+    };
+    (useBalancesList as jest.Mock).mockImplementation(() => ({
+      balanceItems: [...mockBalances, sorobanSource],
+      scanResults: {},
+      isLoading: false,
+      error: null,
+      noBalances: false,
+      isRefreshing: false,
+      isFunded: true,
+      handleRefresh: jest.fn(),
+    }));
+    setSwapStoreState({ sourceTokenId: sorobanSource.id });
+
+    const { getByTestId } = renderWithProviders(
+      <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+    );
+    act(() => {
+      fireEvent.press(getByTestId("percentage-100"));
+    });
+
+    expect(mockSetSourceAmount).toHaveBeenLastCalledWith(
+      "1.234567891234567891",
+    );
   });
 
   describe("default destination (USDC) seeding", () => {
@@ -1343,7 +1381,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: trendingFixture,
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: false,
@@ -1460,7 +1497,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: trendingFixture,
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: true,
         status: "error",
         isTrendingLoading: false,
@@ -1480,7 +1516,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: [],
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: false,
@@ -1503,7 +1538,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: trendingFixture,
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: false,
@@ -1536,7 +1570,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: [],
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: true,
@@ -2020,7 +2053,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: trendingFixture,
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: false,
@@ -2098,7 +2130,7 @@ describe("SwapAmountScreen", () => {
   });
 
   describe("quote unavailable line", () => {
-    const NO_ROUTE = "No path found between these tokens";
+    const NO_ROUTE = "No quote available";
     const UNAVAILABLE = "Swaps are temporarily unavailable";
     // A failed quote for the current inputs (swapQuoteKey is mocked).
     const failed = (pathError: string) => ({

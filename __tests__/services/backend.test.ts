@@ -1500,4 +1500,52 @@ describe("Backend Service - handleContractLookup", () => {
       tokenCode: "USDC",
     });
   });
+
+  describe("telling a failed lookup from a contract that isn't a token", () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    const failWith = (status: number) =>
+      mockV1Get.mockImplementation((url: string) => {
+        if (url.startsWith("/token-details/")) {
+          return Promise.reject(Object.assign(new Error("boom"), { status }));
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      });
+
+    it("rethrows a failed request when asked", async () => {
+      failWith(503);
+
+      await expect(
+        handleContractLookup(
+          contractId,
+          NETWORKS.PUBLIC,
+          undefined,
+          undefined,
+          true,
+        ),
+      ).rejects.toThrow("boom");
+    });
+
+    it("still answers null for a contract that isn't a token (400)", async () => {
+      failWith(400);
+
+      await expect(
+        handleContractLookup(
+          contractId,
+          NETWORKS.PUBLIC,
+          undefined,
+          undefined,
+          true,
+        ),
+      ).resolves.toBeNull();
+    });
+
+    it("answers null for a failed request by default, as before", async () => {
+      failWith(503);
+
+      await expect(
+        handleContractLookup(contractId, NETWORKS.PUBLIC),
+      ).resolves.toBeNull();
+    });
+  });
 });

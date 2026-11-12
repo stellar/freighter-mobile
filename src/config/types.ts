@@ -462,6 +462,8 @@ export interface GetTokenDetailsParams {
   network: NETWORKS;
   shouldFetchBalance?: boolean;
   signal?: AbortSignal;
+  /** Throw a failed request instead of answering null, as for a non-token. */
+  throwOnFailure?: boolean;
 }
 
 export type FormattedSearchTokenRecord = {

@@ -26,7 +26,7 @@ import {
   getNativeContractId,
 } from "helpers/assetIdentity";
 import { isLiquidityPool } from "helpers/balances";
-import { xlmToStroop } from "helpers/formatAmount";
+import { getBalanceInWholeUnits, xlmToStroop } from "helpers/formatAmount";
 import {
   determineMuxedDestination,
   checkContractMuxedSupport,
@@ -168,7 +168,7 @@ export const validateSwapTransactionParams = (params: {
 
   // Validate sufficient balance
   const transactionAmount = new BigNumber(sourceAmount);
-  const balanceAmount = new BigNumber(sourceBalance.total);
+  const balanceAmount = getBalanceInWholeUnits(sourceBalance);
 
   if (transactionAmount.isGreaterThan(balanceAmount)) {
     return t("transaction.errors.insufficientBalanceForSwap");

@@ -134,6 +134,42 @@ describe("descriptorFromSearchRecord", () => {
     expect(descriptorFromSearchRecord(record).requiresTrustline).toBe(false);
   });
 
+  it("projects a Soroban search record with no trustline to add", () => {
+    const contractId =
+      "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL";
+
+    expect(
+      descriptorFromSearchRecord({
+        tokenCode: "TKN",
+        issuer: contractId,
+        domain: "",
+        hasTrustline: false,
+        isNative: false,
+        tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        decimals: 18,
+      }),
+    ).toMatchObject({
+      id: `TKN:${contractId}`,
+      issuer: contractId,
+      decimals: 18,
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      requiresTrustline: false,
+    });
+  });
+
+  it("refuses a Soroban record whose decimals are unknown", () => {
+    expect(() =>
+      descriptorFromSearchRecord({
+        tokenCode: "TKN",
+        issuer: "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL",
+        domain: "",
+        hasTrustline: false,
+        isNative: false,
+        tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      }),
+    ).toThrow(/decimals/);
+  });
+
   it("defaults decimals to 7 when not provided", () => {
     const record = {
       tokenCode: "USDC",

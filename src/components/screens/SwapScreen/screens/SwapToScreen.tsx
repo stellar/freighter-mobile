@@ -15,6 +15,7 @@ import {
   getItemKey,
   isHeldToken,
   recordTokenId,
+  withTokenDecimals,
 } from "components/screens/SwapScreen/helpers";
 import {
   useSwapToEmptyStates,
@@ -37,7 +38,8 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useRef } from "react";
+import { useToast } from "providers/ToastProvider";
+import React, { useEffect, useRef } from "react";
 import {
   InteractionManager,
   SectionList,
@@ -64,6 +66,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { getClipboardText } = useClipboard();
+  const { showToast } = useToast();
   const { selectionType } = route.params;
   const {
     setSourceToken,
@@ -84,7 +87,6 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     heldSearchMatches,
     verifiedSearchMatches,
     unverifiedSearchMatches,
-    hadSorobanMatches,
     stellarExpertDown,
     status,
     searchTerm,
@@ -96,6 +98,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     // trending fetch and the per-keystroke stellar.expert search so
     // typing in the search box stays instant.
     holdsOnly: selectionType === SWAP_SELECTION_TYPES.SOURCE,
+    publicKey: account?.publicKey,
   });
 
   const handlePasteFromClipboard = () => {
@@ -115,16 +118,13 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     selectionType,
   });
 
-  const { isSearching, showSorobanEmpty, showNoResults } = useSwapToEmptyStates(
-    {
-      searchTerm,
-      status,
-      heldSearchMatches,
-      verifiedSearchMatches,
-      unverifiedSearchMatches,
-      hadSorobanMatches,
-    },
-  );
+  const { isSearching, showNoResults } = useSwapToEmptyStates({
+    searchTerm,
+    status,
+    heldSearchMatches,
+    verifiedSearchMatches,
+    unverifiedSearchMatches,
+  });
 
   // Dismiss the picker, then apply the store writes after the slide
   // completes. Doing the writes synchronously re-renders the revealed amount
@@ -135,6 +135,17 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     InteractionManager.runAfterInteractions(apply);
   };
 
+  // A Soroban pick can wait on /token-details; these let a newer pick or the
+  // picker closing win over its late result.
+  const pickIdRef = useRef(0);
+  const pendingPickRef = useRef<string | null>(null);
+  useEffect(
+    () => () => {
+      pickIdRef.current += 1;
+    },
+    [],
+  );
+
   const handleHeldPress = (
     balance: HeldBalanceItem,
     source:
@@ -142,6 +153,8 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       | SwapSelectionSource.POPULAR
       | SwapSelectionSource.SEARCH,
   ) => {
+    pickIdRef.current += 1;
+    pendingPickRef.current = null;
     const descriptor = descriptorFromBalance(balance);
     if (selectionType === SWAP_SELECTION_TYPES.SOURCE) {
       // Source picker is holdsOnly, so `source` is either BALANCES (idle)
@@ -190,7 +203,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   // Non-held tokens only appear in destination mode (popularTokens / non-held
   // search results). The source picker lists held tokens only, so this handler
   // is always destination-mode.
-  const handleRecordPress = (
+  const selectRecord = (
     record: FormattedSearchTokenRecord,
     source: SwapSelectionSource.POPULAR | SwapSelectionSource.SEARCH,
   ) => {
@@ -208,6 +221,38 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       }
       setDestinationToken(descriptor);
     });
+  };
+
+  const handleRecordPress = (
+    record: FormattedSearchTokenRecord,
+    source: SwapSelectionSource.POPULAR | SwapSelectionSource.SEARCH,
+  ) => {
+    const recordId = recordTokenId(record);
+    if (pendingPickRef.current === recordId) return;
+    pickIdRef.current += 1;
+    const pickId = pickIdRef.current;
+    pendingPickRef.current = recordId;
+    // Only the latest pick, made while the picker is open, may apply.
+    const isLatest = () => {
+      if (pickId !== pickIdRef.current) return false;
+      pendingPickRef.current = null;
+      return true;
+    };
+    withTokenDecimals(
+      record,
+      { publicKey: account?.publicKey ?? "", network },
+      (resolved) => {
+        if (isLatest()) selectRecord(resolved, source);
+      },
+      () => {
+        if (!isLatest()) return;
+        showToast({
+          variant: "error",
+          title: t("swapScreen.errors.tokenDetailsUnavailable"),
+          toastId: "swap-token-details-unavailable",
+        });
+      },
+    );
   };
 
   return (
@@ -264,15 +309,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         </View>
       )}
 
-      {showSorobanEmpty && (
-        <View className="bg-background-tertiary rounded-[12px] px-8 py-6 items-center mt-4">
-          <Text sm secondary medium textAlign="center">
-            {t("swapScreen.sorobanEmptyState")}
-          </Text>
-        </View>
-      )}
-
-      {showNoResults && (
+      {showNoResults && !stellarExpertDown && (
         <View className="py-8">
           <Text sm secondary>
             {t("swapScreen.noResults", { term: searchTerm })}
@@ -280,7 +317,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         </View>
       )}
 
-      {!isSearching && !showSorobanEmpty && !showNoResults && (
+      {!isSearching && !showNoResults && (
         <SectionList
           sections={sections}
           keyExtractor={getItemKey}
@@ -358,6 +395,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
               const heldMatch = balanceItems.find(
                 (b) =>
                   b.id === recordTokenId(record) ||
+                  ("contractId" in b && b.contractId === record.issuer) ||
                   (record.isNative && isNativeAssetId(b.id)),
               );
 

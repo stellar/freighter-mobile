@@ -10,15 +10,15 @@ import type { SecurityWarning } from "services/blockaid/helper";
  * list). No synthetic balance required.
  */
 export type DestinationTokenDescriptor = {
-  /** "XLM" for native, "CODE:ISSUER" for classic. */
+  /** "XLM" for native, "CODE:ISSUER" for classic, "SYMBOL:C…" for Soroban. */
   id: string;
   tokenCode: string;
-  /** Omitted for native XLM. */
+  /** Omitted for native XLM; the contract ID for a Soroban token. */
   issuer?: string;
   /** Defaults to 7 for classic; tomlInfo.decimals if present. */
   decimals: number;
   tokenType: TokenTypeWithCustomToken;
-  /** `false` when the user already has a trustline; `true` for new tokens. */
+  /** `true` only for a classic token the account has no trustline for. */
   requiresTrustline: boolean;
   /**
    * Blockaid security level for the destination token, when known. Carried on

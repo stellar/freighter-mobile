@@ -44,6 +44,7 @@ import {
   ConfirmationSnapshotHandle,
   startConfirmationPriceSnapshot,
 } from "helpers/confirmationPriceSnapshot";
+import { getTokenDecimals } from "helpers/formatAmount";
 import {
   findPathPaymentStrictSendIndex,
   getSettledPathPaymentStrictSendAmount,
@@ -230,7 +231,11 @@ export const useSwapTransaction = ({
           amount: new BigNumber(sourceAmount).toFixed(),
           // Slippage isn't in the quote key; the settings sheet can change it
           // after quoting.
-          minOut: swapMinOut(route.toAmount, freshSwapSlippage),
+          minOut: swapMinOut(
+            route.toAmount,
+            freshSwapSlippage,
+            getTokenDecimals(destinationTokenInput),
+          ),
           slippage: new BigNumber(freshSwapSlippage).toFixed(),
           timeout: freshSwapTimeout,
           fee: new BigNumber(requestFee).toFixed(),

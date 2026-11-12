@@ -42,7 +42,7 @@ export const descriptorFromBalance = (
     };
   }
 
-  // "USDC:GA5Z..." or contract id for Soroban (we filter Soroban out upstream)
+  // "USDC:GA5Z..." or "SYMBOL:C..." for a Soroban token
   const [tokenCode, issuer] = id.includes(":")
     ? id.split(":")
     : [balance.tokenCode ?? "", ""];
@@ -75,8 +75,8 @@ export const descriptorFromBalance = (
 
 /**
  * Project a stellar.expert / verified-list record into a descriptor.
- * `requiresTrustline` is true unless the record is already in the user's balances
- * (hasTrustline flag set by `useSwapTokenLookup`).
+ * `requiresTrustline` is true for a classic token not already in the user's
+ * balances (hasTrustline flag set by `useSwapTokenLookup`).
  */
 export const descriptorFromSearchRecord = (
   record: FormattedSearchTokenRecord,
@@ -95,17 +95,31 @@ export const descriptorFromSearchRecord = (
     };
   }
 
+  if (
+    record.tokenType === TokenTypeWithCustomToken.CUSTOM_TOKEN &&
+    record.decimals === undefined
+  ) {
+    throw new Error(
+      `descriptorFromSearchRecord: Soroban token ${record.issuer} has unknown decimals`,
+    );
+  }
+
+  const tokenType =
+    record.tokenType ??
+    (record.tokenCode.length <= 4
+      ? TokenTypeWithCustomToken.CREDIT_ALPHANUM4
+      : TokenTypeWithCustomToken.CREDIT_ALPHANUM12);
+
   return {
     id: `${record.tokenCode}:${record.issuer}`,
     tokenCode: record.tokenCode,
     issuer: record.issuer,
     decimals: record.decimals ?? DEFAULT_DECIMALS,
-    tokenType:
-      record.tokenType ??
-      (record.tokenCode.length <= 4
-        ? TokenTypeWithCustomToken.CREDIT_ALPHANUM4
-        : TokenTypeWithCustomToken.CREDIT_ALPHANUM12),
-    requiresTrustline: !record.hasTrustline,
+    tokenType,
+    // Only a classic asset has a trustline.
+    requiresTrustline:
+      !record.hasTrustline &&
+      tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN,
     securityLevel: record.securityLevel,
     // Real Blockaid warnings from the search record's bulk scan — needed
     // because the destination side has no PricedBalance for non-held

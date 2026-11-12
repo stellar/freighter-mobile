@@ -516,6 +516,82 @@ describe("useSwapTransaction", () => {
         "0.9900000",
       );
     });
+
+    it("rounds the minOut to a contract token's own decimals and sends its contract ID", async () => {
+      const token = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      mockSwapSettings = {
+        ...DEFAULT_SWAP_SETTINGS,
+        swapSlippage: 1 as unknown as string,
+      };
+      const params = {
+        ...baseParams,
+        destinationTokenInput: {
+          tokenCode: "TKN",
+          contractId: token,
+          decimals: 18,
+          token: { code: "TKN", type: "custom_token", issuer: { key: token } },
+        } as never,
+        pathResult: {
+          ...(baseParams.pathResult as object),
+          route: { ...QUOTED_ROUTE, toAmount: "1.000000000000000001" },
+        } as never,
+      };
+      const { result } = renderHook(() => useSwapTransaction(params));
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(mockBuildSwapTransaction.mock.calls[0][0].request).toMatchObject({
+        toAsset: token,
+        minOut: "0.990000000000000000",
+      });
+    });
+
+    it("sends a 6-decimal amount sold and an 18-decimal minOut for a 6 → 18 decimal swap", async () => {
+      const sold = "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL";
+      const bought = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      mockSwapSettings = {
+        ...DEFAULT_SWAP_SETTINGS,
+        swapSlippage: 1 as unknown as string,
+      };
+      const params = {
+        ...baseParams,
+        sourceAmount: "1.123456",
+        sourceBalance: {
+          tokenCode: "SIX",
+          contractId: sold,
+          decimals: 6,
+          token: { code: "SIX", type: "custom_token", issuer: { key: sold } },
+        } as never,
+        destinationTokenInput: {
+          tokenCode: "EIGHTEEN",
+          contractId: bought,
+          decimals: 18,
+          token: {
+            code: "EIGHTEEN",
+            type: "custom_token",
+            issuer: { key: bought },
+          },
+        } as never,
+        pathResult: {
+          ...(baseParams.pathResult as object),
+          route: { ...QUOTED_ROUTE, toAmount: "2.123456789012345678" },
+        } as never,
+      };
+      const { result } = renderHook(() => useSwapTransaction(params));
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(mockBuildSwapTransaction.mock.calls[0][0].request).toMatchObject({
+        fromAsset: sold,
+        toAsset: bought,
+        amount: "1.123456",
+        minOut: "2.102222221122222221",
+      });
+    });
   });
 
   describe("setupSwapTransaction — superseded while running", () => {

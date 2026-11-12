@@ -1,9 +1,12 @@
 import {
   Account,
+  Address,
   Asset,
   Keypair,
   Operation,
   TransactionBuilder,
+  nativeToScVal,
+  xdr as stellarXdr,
 } from "@stellar/stellar-sdk";
 import { act } from "@testing-library/react-hooks";
 import {
@@ -970,6 +973,168 @@ describe("transactionBuilder Duck", () => {
         addsTrustline: true,
       });
       expect(state.isBuilding).toBe(false);
+    });
+
+    it("reads a contract token's amount sold at the token's decimals", async () => {
+      const token = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      const swapContract =
+        "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
+      const call = (
+        contract: string,
+        fn: string,
+        args: stellarXdr.ScVal[],
+        subInvocations: stellarXdr.SorobanAuthorizedInvocation[] = [],
+      ) =>
+        new stellarXdr.SorobanAuthorizedInvocation({
+          function:
+            stellarXdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+              new stellarXdr.InvokeContractArgs({
+                contractAddress: new Address(contract).toScAddress(),
+                functionName: fn,
+                args,
+              }),
+            ),
+          subInvocations,
+        });
+      const xdr = new TransactionBuilder(new Account(SWAP_ACCOUNT, "1"), {
+        fee: "100",
+        networkPassphrase: `Passphrase for ${mockNetwork}`,
+      })
+        .addOperation(
+          Operation.invokeContractFunction({
+            contract: swapContract,
+            function: "swap",
+            args: [],
+            auth: [
+              new stellarXdr.SorobanAuthorizationEntry({
+                credentials:
+                  stellarXdr.SorobanCredentials.sorobanCredentialsSourceAccount(),
+                rootInvocation: call(
+                  swapContract,
+                  "swap",
+                  [],
+                  [
+                    call(token, "transfer", [
+                      new Address(SWAP_ACCOUNT).toScVal(),
+                      new Address(swapContract).toScVal(),
+                      nativeToScVal(BigInt("1500000000000000000"), {
+                        type: "i128",
+                      }),
+                    ]),
+                  ],
+                ),
+              }),
+            ],
+          }),
+        )
+        .setTimeout(180)
+        .build()
+        .toXDR();
+      (backend.buildSwapTx as jest.Mock).mockResolvedValue({
+        xdr,
+        addsTrustline: false,
+      });
+
+      await act(async () => {
+        await store.getState().buildSwapTransaction({
+          ...swapParams,
+          request: {
+            ...request,
+            source: "lifi",
+            fromAsset: token,
+            amount: "1.5",
+          },
+          sourceBalance: { decimals: 18 } as never,
+        });
+      });
+
+      expect(store.getState().swapReview?.sendAmount).toBe("1.5");
+    });
+
+    it("decodes a 6-decimal token sold for an 18-decimal token at each token's decimals", async () => {
+      const token = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      const bought = "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL";
+      const swapContract =
+        "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
+      const call = (
+        contract: string,
+        fn: string,
+        args: stellarXdr.ScVal[],
+        subInvocations: stellarXdr.SorobanAuthorizedInvocation[] = [],
+      ) =>
+        new stellarXdr.SorobanAuthorizedInvocation({
+          function:
+            stellarXdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+              new stellarXdr.InvokeContractArgs({
+                contractAddress: new Address(contract).toScAddress(),
+                functionName: fn,
+                args,
+              }),
+            ),
+          subInvocations,
+        });
+      const xdr = new TransactionBuilder(new Account(SWAP_ACCOUNT, "1"), {
+        fee: "100",
+        networkPassphrase: `Passphrase for ${mockNetwork}`,
+      })
+        .addOperation(
+          Operation.invokeContractFunction({
+            contract: swapContract,
+            function: "swap",
+            args: [],
+            auth: [
+              new stellarXdr.SorobanAuthorizationEntry({
+                credentials:
+                  stellarXdr.SorobanCredentials.sorobanCredentialsSourceAccount(),
+                rootInvocation: call(
+                  swapContract,
+                  "swap",
+                  [],
+                  [
+                    call(token, "transfer", [
+                      new Address(SWAP_ACCOUNT).toScVal(),
+                      new Address(swapContract).toScVal(),
+                      nativeToScVal(BigInt("1123456"), {
+                        type: "i128",
+                      }),
+                    ]),
+                  ],
+                ),
+              }),
+            ],
+          }),
+        )
+        .setTimeout(180)
+        .build()
+        .toXDR();
+      (backend.buildSwapTx as jest.Mock).mockResolvedValue({
+        xdr,
+        addsTrustline: false,
+      });
+
+      await act(async () => {
+        await store.getState().buildSwapTransaction({
+          ...swapParams,
+          request: {
+            ...request,
+            source: "lifi",
+            fromAsset: token,
+            toAsset: bought,
+            amount: "1.123456",
+            minOut: "2.102222221122222221",
+          },
+          sourceBalance: { decimals: 6 } as never,
+          destinationBalance: { decimals: 18 } as never,
+        });
+      });
+
+      expect(backend.buildSwapTx).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: "1.123456",
+          minOut: "2.102222221122222221",
+        }),
+      );
+      expect(store.getState().swapReview?.sendAmount).toBe("1.123456");
     });
 
     it("keeps the review in step with the transaction during a rebuild", async () => {
