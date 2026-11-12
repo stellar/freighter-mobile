@@ -1,6 +1,10 @@
+import BigNumber from "bignumber.js";
 import { AmountCard } from "components/AmountCard";
 import { BottomSheetCloseButton } from "components/BottomSheetHeader";
-import { PercentageButtons } from "components/PercentageButtons";
+import {
+  PercentageButtons,
+  PercentageOption,
+} from "components/PercentageButtons";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -18,7 +22,7 @@ export interface EarnSwapBottomSheetProps {
   sourceLabel?: string;
   /** "1,691.69 XLM available", or null to hide the line. */
   availableBalanceText?: string | null;
-  /** Opens the source picker (design `13723:343723`, "swap From"). */
+  /** Opens the "Swap from" source picker. */
   onSourcePickerPress: () => void;
   /** Drives the sell card's input + fiat toggle. */
   converter: UseTokenFiatConverterResult;
@@ -47,25 +51,29 @@ export interface EarnSwapBottomSheetProps {
   isReviewLoading?: boolean;
 }
 
+/** Earn offers 25% / 50% / Max, without main Swap's 75%. */
+const EARN_SWAP_PERCENTAGES: PercentageOption[] = [25, 50, 100];
+
 /**
  * Swap-within-Earn, entered from `NotEnoughTokenBottomSheet`'s "Swap for
  * {CODE}" when the user lacks the asset a pool reserve needs.
  *
- * Presented as a sheet OVER the still-visible token picker (design
- * `13722:341980` composites it on a dimmed picker), rather than navigating
- * into `SWAP_STACK` -- routing away would eject the user from Earn, and they
- * would have to find their way back to the reserve they were trying to
- * deposit into.
+ * Presented as a sheet over the still-visible token picker rather than
+ * navigating into `SWAP_STACK`: routing away would eject the user from Earn,
+ * and they would have to find their way back to the reserve they were trying
+ * to deposit into.
  *
- * Two deliberate differences from `SwapAmountScreen`, both from the design:
+ * Two deliberate differences from `SwapAmountScreen`:
  *
- * - **The receive chip is locked** (`13722:342108` draws it with no chevron,
- *   unlike the sell chip beside it). The destination is the pool asset, so
- *   there is nothing to choose -- see `AmountCard`'s `isLocked`.
- * - **The control between the cards is decorative.** `SwapAmountScreen` puts
- *   a direction toggle there; here the exported glyph is a plain
- *   `chevron-down` (`13722:342112`), and a direction swap would break the
- *   locked-destination invariant anyway, so it renders as a static divider.
+ * - **The receive chip is locked**, with no chevron: the destination is the
+ *   pool asset, so there is nothing to choose -- see `AmountCard`'s
+ *   `isLocked`.
+ * - **The control between the cards is decorative.** A direction swap would
+ *   break the locked-destination invariant, so it renders as a static
+ *   divider.
+ *
+ * With no amount yet, the bottom row offers the 25% / 50% / Max shortcuts;
+ * once there is one, the CTA takes their place.
  */
 export const EarnSwapBottomSheet: React.FC<EarnSwapBottomSheetProps> = ({
   sourceBalance,
@@ -88,6 +96,7 @@ export const EarnSwapBottomSheet: React.FC<EarnSwapBottomSheetProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const hasAmount = new BigNumber(converter.tokenAmount || "0").gt(0);
 
   return (
     <View className="gap-[24px]" testID="earn-swap-bottom-sheet">
@@ -98,10 +107,10 @@ export const EarnSwapBottomSheet: React.FC<EarnSwapBottomSheetProps> = ({
           onPress={onSettingsPress}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel={t("settings.title")}
+          accessibilityLabel={t("earnSwap.settings")}
           testID="earn-swap-settings"
         >
-          <Icon.Settings04 size={24} themeColor="gray" />
+          <Icon.Settings04 size={24} color={themeColors.text.primary} />
         </TouchableOpacity>
 
         <View className="flex-1 items-center">
@@ -114,69 +123,68 @@ export const EarnSwapBottomSheet: React.FC<EarnSwapBottomSheetProps> = ({
       </View>
 
       <View className="gap-[12px]">
-        <View className="gap-[8px]">
-          <AmountCard
-            mode="editable"
-            testID="earn-swap-sell-card"
-            label={t("swapScreen.youSell")}
-            selectedToken={sourceBalance}
-            pickerLabel={sourceLabel ?? t("swapScreen.selectToken")}
-            onPickerPress={onSourcePickerPress}
-            pickerTestID="earn-swap-sell-pill"
-            inputTestID="earn-swap-amount-input"
-            availableBalanceText={availableBalanceText}
-            converter={converter}
-            hasUsdPrice={hasUsdPrice}
-            secondaryAmountText={sourceSecondaryText}
-          />
+        <AmountCard
+          mode="editable"
+          testID="earn-swap-sell-card"
+          label={t("swapScreen.youSell")}
+          selectedToken={sourceBalance}
+          pickerLabel={sourceLabel ?? t("swapScreen.selectToken")}
+          onPickerPress={onSourcePickerPress}
+          pickerTestID="earn-swap-sell-pill"
+          inputTestID="earn-swap-amount-input"
+          focusTriggerTestID="earn-swap-amount-focus-trigger"
+          autoFocus
+          availableBalanceText={availableBalanceText}
+          converter={converter}
+          hasUsdPrice={hasUsdPrice}
+          secondaryAmountText={sourceSecondaryText}
+        />
 
-          <AmountCard
-            mode="readonly"
-            testID="earn-swap-receive-card"
-            label={t("swapScreen.youReceive")}
-            selectedToken={destinationToken}
-            pickerLabel={destinationLabel}
-            // Fixed to the pool asset -- see the component doc.
-            isLocked
-            onPickerPress={() => {}}
-            pickerTestID="earn-swap-receive-pill"
-            primaryAmount={destinationAmount}
-            secondaryAmount={destinationSecondaryText}
-          />
+        <AmountCard
+          mode="readonly"
+          testID="earn-swap-receive-card"
+          label={t("swapScreen.youReceive")}
+          selectedToken={destinationToken}
+          pickerLabel={destinationLabel}
+          // Fixed to the pool asset -- see the component doc.
+          isLocked
+          onPickerPress={() => {}}
+          pickerTestID="earn-swap-receive-pill"
+          primaryAmount={destinationAmount}
+          secondaryAmount={destinationSecondaryText}
+        />
 
-          {/* Static divider `13722:342111`, overlapping both cards' edges.
-              `pointerEvents="none"` so it never steals a tap from the card
-              beneath it. */}
-          <View
-            pointerEvents="none"
-            className="absolute inset-x-0 top-1/2 -mt-[20px] items-center"
-          >
-            <View
-              className="size-10 items-center justify-center rounded-full"
-              style={{ backgroundColor: themeColors.background.secondary }}
-            >
-              <Icon.ChevronDown size={16} color={themeColors.text.primary} />
-            </View>
+        {/* Static divider overlapping both cards' edges. `pointerEvents`
+            "none" so it never steals a tap from the card beneath it. */}
+        <View
+          pointerEvents="none"
+          className="absolute inset-x-0 top-1/2 -mt-[20px] items-center"
+        >
+          <View className="size-[40px] items-center justify-center rounded-full bg-base-0">
+            <Icon.ChevronDown size={16} color={themeColors.text.primary} />
           </View>
         </View>
-
-        <PercentageButtons
-          onPress={onPercentagePress}
-          testID="earn-swap-percentage-buttons"
-        />
       </View>
 
-      <Button
-        tertiary
-        xl
-        isFullWidth
-        disabled={!onReview}
-        isLoading={isReviewLoading}
-        onPress={onReview ?? undefined}
-        testID="earn-swap-review-button"
-      >
-        {ctaLabel}
-      </Button>
+      {hasAmount ? (
+        <Button
+          secondary
+          xl
+          isFullWidth
+          disabled={!onReview}
+          isLoading={isReviewLoading}
+          onPress={onReview ?? undefined}
+          testID="earn-swap-review-button"
+        >
+          {ctaLabel}
+        </Button>
+      ) : (
+        <PercentageButtons
+          onPress={onPercentagePress}
+          percentages={EARN_SWAP_PERCENTAGES}
+          testID="earn-swap-percentage-buttons"
+        />
+      )}
     </View>
   );
 };

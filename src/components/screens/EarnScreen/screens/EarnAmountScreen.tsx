@@ -4,7 +4,10 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
 import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
-import { PercentageButtons } from "components/PercentageButtons";
+import {
+  PercentageButtons,
+  PercentageOption,
+} from "components/PercentageButtons";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -19,6 +22,7 @@ import {
   getPercentageDepositAmount,
   getXlmFeeShortfall,
   isInsufficientBalanceFailure,
+  isOnrampableAsset,
   needsXlmForFee,
 } from "components/screens/EarnScreen/helpers";
 import { useEarnPosition } from "components/screens/EarnScreen/hooks/useEarnPosition";
@@ -61,6 +65,7 @@ import {
   formatFiatInputDisplay,
   formatTokenForDisplay,
 } from "helpers/formatAmount";
+import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
@@ -68,12 +73,15 @@ import { useNetworkFees } from "hooks/useNetworkFees";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { TextInput, View } from "react-native";
+import { Keyboard, TextInput, View } from "react-native";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
   assessTransactionSecurity,
   extractSecurityWarnings,
 } from "services/blockaid/helper";
+
+/** Earn offers 25% / 50% / Max, without main Swap's 75%. */
+const EARN_PERCENTAGES: PercentageOption[] = [25, 50, 100];
 
 type EarnAmountScreenProps = NativeStackScreenProps<
   EarnStackParamList,
@@ -195,7 +203,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   );
 
   // Shared between the CTA state machine and the amount card's red-text
-  // treatment (design `9599:40119`) -- both must agree on exactly the same
+  // treatment -- both must agree on exactly the same
   // "over balance" condition.
   const isAmountTooHigh = useMemo(
     () => new BigNumber(tokenAmount || "0").gt(availableBalanceBn),
@@ -325,18 +333,30 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     ],
   );
 
+  // Every sheet on this screen opens over a dismissed keyboard: with the
+  // keypad up, the sheet rides above it and is pushed under the status bar.
+  // Waiting for the hide animation also lets it open at its final height.
+  const presentOverDismissedKeyboard = useCallback(
+    (modalRef: React.RefObject<BottomSheetModal | null>) => {
+      amountInputRef.current?.blur();
+      Keyboard.dismiss();
+      waitForKeyboardDismiss().then(() => {
+        modalRef.current?.present();
+      });
+    },
+    [],
+  );
+
   const openReviewSheet = useCallback(() => {
-    earnReviewBottomSheetModalRef.current?.present();
-  }, []);
+    presentOverDismissedKeyboard(earnReviewBottomSheetModalRef);
+  }, [presentOverDismissedKeyboard]);
 
-  // The pool card's chevron -- design `9448:29157` -- is the only route into
-  // `PoolDetailsBottomSheet` now that the token picker's header info-button
-  // has been removed (see that sheet's own doc comment).
+  // The pool card is the only route into `PoolDetailsBottomSheet`.
   const handleOpenPoolDetails = useCallback(() => {
-    poolDetailsBottomSheetModalRef.current?.present();
-  }, []);
+    presentOverDismissedKeyboard(poolDetailsBottomSheetModalRef);
+  }, [presentOverDismissedKeyboard]);
 
-  // Review sheet's footer gear (design `9448:29608`) -- same
+  // Review sheet's footer gear -- same
   // `TransactionSettingsBottomSheet`/`TransactionContext.Send` reuse as the
   // fee/timeout context above, wired the same way Send/Swap's own review
   // sheets open theirs (see `TransactionAmountScreen`'s
@@ -459,16 +479,16 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   }, [navigation, resetEarn]);
 
   // Drop back to this screen (no navigation) — the retry banner shows
-  // because `lastSubmitFailed` was already set by the failed submit. Per the
-  // design (`9599:40192`) there is no dedicated failure screen to trigger
-  // this from a button anymore -- the effect below calls it automatically as
-  // soon as `earnTransactionStatus` becomes "error".
+  // because `lastSubmitFailed` was already set by the failed submit. There is
+  // no dedicated failure screen to trigger this from a button -- the effect
+  // below calls it automatically as soon as `earnTransactionStatus` becomes
+  // "error".
   const handleEarnProcessingBackToAmount = useCallback(() => {
     resetEarnTransactionStatus();
   }, [resetEarnTransactionStatus]);
 
-  // Failure returns AUTOMATICALLY to the amount screen (design `9599:40192`
-  // is the amount screen with a retry banner, not a separate failure step).
+  // Failure returns AUTOMATICALLY to the amount screen, with a retry banner
+  // rather than a separate failure step.
   // `resetEarnTransactionStatus` drops `earnTransactionStatus` back to
   // "idle" so the render gate below falls through to the normal amount
   // screen; `lastSubmitFailed` (already set by the failed submit inside
@@ -530,7 +550,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         fee: transactionFee,
       })
     ) {
-      networkFeeBottomSheetModalRef.current?.present();
+      presentOverDismissedKeyboard(networkFeeBottomSheetModalRef);
       return;
     }
 
@@ -622,6 +642,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     showToast,
     t,
     openReviewSheet,
+    presentOverDismissedKeyboard,
   ]);
 
   // Reset the builder's stale XDR/fee snapshot when the user backs out of
@@ -641,19 +662,22 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     });
   }, [rootNavigation]);
 
-  // The fee-shortfall sheet's second action (design node `9457:45927`): an
-  // in-flow "Receive funds" QR sheet (`9457:46184`), presented ON TOP of the
-  // fee sheet rather than replacing it -- the mock itself composites the
-  // receive sheet directly over this one, and this mirrors the review
-  // sheet's own security-detail sheet (`onSecurityWarningPress` below), the
-  // established pattern in this feature for stacking a sheet without
-  // dismissing the one beneath. Dismissing it leaves the fee sheet exactly
-  // as it was -- the user never leaves Earn. Previously this navigated
-  // cross-stack to `ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN`, ejecting the
-  // user from the flow entirely -- same drift as
-  // `EarnTokenPickerScreen`'s `NotEnoughTokenBottomSheet`.
+  // The fee-shortfall sheet's second action: an in-flow "Receive funds" QR
+  // sheet, presented ON TOP of the fee sheet rather than replacing it, the
+  // same pattern the review sheet's security-detail sheet uses. The user
+  // never leaves Earn.
   const handleReceiveXlmPress = useCallback(() => {
     receiveFundsBottomSheetModalRef.current?.present();
+  }, []);
+
+  // Back returns to the fee sheet underneath; X closes both.
+  const handleReceiveXlmBack = useCallback(() => {
+    receiveFundsBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  const handleReceiveXlmClose = useCallback(() => {
+    receiveFundsBottomSheetModalRef.current?.dismiss();
+    networkFeeBottomSheetModalRef.current?.dismiss();
   }, []);
 
   // "error" deliberately falls through to the normal amount screen below
@@ -687,16 +711,18 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     ? formatTokenForDisplay(tokenAmount || "0", tokenCode)
     : formatFiatInputDisplay(fiatAmountDisplay || "0");
 
+  // With no amount yet, the bottom bar offers the 25% / 50% / Max
+  // shortcuts; once there is one, the CTA takes their place.
+  const hasAmount = new BigNumber(tokenAmount || "0").gt(0);
+
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
-      <View className="flex-1" testID="earn-amount-screen">
+      <View className="flex-1 gap-[12px]" testID="earn-amount-screen">
         {lastSubmitFailed && (
-          <View className="mb-[12px]">
-            <NoticeBanner
-              text={t("earnAmount.retryBanner")}
-              variant={NoticeBannerVariants.ERROR}
-            />
-          </View>
+          <NoticeBanner
+            text={t("earnAmount.retryBanner")}
+            variant={NoticeBannerVariants.ERROR}
+          />
         )}
 
         <AmountCard
@@ -721,34 +747,33 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
           isError={isAmountTooHigh}
         />
 
-        <View className="mt-[12px]">
-          <PoolCard
-            pool={pool}
-            apy={selectedAssetApy}
-            onPress={handleOpenPoolDetails}
-            testID="earn-amount-pool-card"
-          />
-        </View>
-
-        <View className="items-center mt-[12px]">
-          <PercentageButtons
-            onPress={handlePercentagePress}
-            testID="earn-amount-percentage-buttons"
-          />
-        </View>
+        <PoolCard
+          pool={pool}
+          apy={selectedAssetApy}
+          onPress={handleOpenPoolDetails}
+          testID="earn-amount-pool-card"
+        />
       </View>
 
-      <View className="w-full mt-auto mb-[8px]">
-        <Button
-          tertiary
-          xl
-          onPress={handleCtaPress}
-          disabled={ctaState.disabled}
-          isLoading={isSimulating}
-          testID="earn-amount-cta"
-        >
-          {ctaLabelKeys[ctaState.labelKey]}
-        </Button>
+      <View className="w-full pt-[16px]">
+        {hasAmount ? (
+          <Button
+            secondary
+            xl
+            onPress={handleCtaPress}
+            disabled={ctaState.disabled}
+            isLoading={isSimulating}
+            testID="earn-amount-cta"
+          >
+            {ctaLabelKeys[ctaState.labelKey]}
+          </Button>
+        ) : (
+          <PercentageButtons
+            onPress={handlePercentagePress}
+            percentages={EARN_PERCENTAGES}
+            testID="earn-amount-percentage-buttons"
+          />
+        )}
       </View>
 
       <BottomSheet
@@ -758,6 +783,10 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
             bottomSheetModalRef={networkFeeBottomSheetModalRef}
             onBuy={handleBuyXlmPress}
             onReceive={handleReceiveXlmPress}
+            isBuyAvailable={isOnrampableAsset(
+              NATIVE_TOKEN_CODE,
+              networkDetails,
+            )}
           />
         }
       />
@@ -811,6 +840,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         customContent={
           <PoolDetailsBottomSheet
             pool={pool}
+            apy={selectedAssetApy}
+            token={depositBalance}
             bottomSheetModalRef={poolDetailsBottomSheetModalRef}
           />
         }
@@ -819,7 +850,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         modalRef={receiveFundsBottomSheetModalRef}
         customContent={
           <ReceiveFundsBottomSheet
-            bottomSheetModalRef={receiveFundsBottomSheetModalRef}
+            onBack={handleReceiveXlmBack}
+            onClose={handleReceiveXlmClose}
           />
         }
       />

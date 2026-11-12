@@ -28,3 +28,10 @@ export const getBlendPoolId = (networkDetails: NetworkDetails) =>
  */
 export const isEarnSupportedNetwork = (networkDetails: NetworkDetails) =>
   Boolean(getBlendPoolId(networkDetails));
+
+/**
+ * Blend's lending guide. The token picker's pool chip and the pool sheet's
+ * "View pool details" link both open it: Blend's docs have no page per pool.
+ */
+export const BLEND_LENDING_DOCS_URL =
+  "https://docs.blend.capital/users/lending-borrowing/lending";

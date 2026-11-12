@@ -1,5 +1,6 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import {
   EarnAmountScreen,
@@ -65,25 +66,28 @@ export const EarnStackNavigator = () => {
       <EarnStack.Screen
         name={EARN_ROUTES.EARN_TOKEN_PICKER_SCREEN}
         component={EarnTokenPickerScreen}
-        // Design `13701:332629` moved this screen's title into the body and
-        // left the header a bare X, which the screen draws itself (the intro
-        // it can render in its place does the same). Keeping the stack header
-        // would double up on both. `getStackBottomNavigateOptions` still
-        // supplies the slide-from-bottom animation that
-        // `getScreenBottomNavigateOptions` used to bring along with it.
+        // The screen draws its own bare-X header and keeps its title in the
+        // body (the intro it can render in its place does the same), so the
+        // stack header would double up on both. `getStackBottomNavigateOptions`
+        // still supplies the slide-from-bottom animation.
         options={{ ...getStackBottomNavigateOptions(), headerShown: false }}
       />
       <EarnStack.Screen
         name={EARN_ROUTES.EARN_AMOUNT_SCREEN}
         component={EarnAmountScreen}
-        // Design `9448:29091` calls for a back arrow here, not the X the
-        // picker route above gets from `getScreenBottomNavigateOptions`.
-        // `getScreenOptionsWithCustomHeader` sets no `headerLeft` override,
-        // so `CustomNavigationHeader` falls back to its own default --
-        // `<CustomHeaderButton position="left" />`, i.e. `Icon.ArrowLeft` +
-        // `navigation.goBack()` -- an existing, general (not Earn-specific)
-        // back-arrow variant rather than a new one-off helper.
-        options={getScreenOptionsWithCustomHeader(t("earnAmount.title"))}
+        // The header's X leaves Earn, like the picker's: the parent stack
+        // pops the whole Earn flow, and the unmount effect above resets it.
+        // The token pill on the amount card is the way back to the picker.
+        options={({ navigation }) => ({
+          ...getScreenOptionsWithCustomHeader(t("earnAmount.title")),
+          headerLeft: () => (
+            <CustomHeaderButton
+              variant="close"
+              onPress={() => navigation.getParent()?.goBack()}
+              testID="earn-amount-close"
+            />
+          ),
+        })}
       />
     </EarnStack.Navigator>
   );

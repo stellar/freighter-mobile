@@ -1,4 +1,3 @@
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { fireEvent } from "@testing-library/react-native";
 import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
 import { renderWithProviders } from "helpers/testUtils";
@@ -28,56 +27,64 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => {
     const translations: Record<string, string> = {
       "earnReceiveFunds.title": "Receive funds",
-      "scanReceiveScreen.receive.network": "Stellar",
-      "scanReceiveScreen.receive.networkSupport":
+      "earnReceiveFunds.networkSupport":
         "This address supports Stellar network.",
-      "scanReceiveScreen.receive.copyButton": "Copy wallet address",
+      "earnReceiveFunds.copyAddress": "Copy address",
     };
     return translations[key] || key;
   },
 }));
-
-const makeRef = (dismissMock: jest.Mock) => {
-  const ref = React.createRef<BottomSheetModal>();
-  Object.defineProperty(ref, "current", {
-    value: { dismiss: dismissMock },
-    writable: true,
-  });
-  return ref;
-};
 
 describe("ReceiveFundsBottomSheet", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("renders the design's copy (node 9457:46184): title, account identity, and the copy CTA", () => {
-    const { getByText } = renderWithProviders(<ReceiveFundsBottomSheet />);
+  const renderSheet = (
+    props: { onBack?: jest.Mock; onClose?: jest.Mock } = {},
+  ) =>
+    renderWithProviders(
+      <ReceiveFundsBottomSheet
+        onBack={props.onBack ?? jest.fn()}
+        onClose={props.onClose ?? jest.fn()}
+      />,
+    );
+
+  it("renders the title, the QR, the network line and the copy CTA, without the account row", () => {
+    const { getByText, getByTestId, queryByText } = renderSheet();
 
     expect(getByText("Receive funds")).toBeTruthy();
-    expect(getByText("Account 1")).toBeTruthy();
-    expect(getByText("GACJ...W5EK")).toBeTruthy();
-    expect(getByText("Stellar")).toBeTruthy();
+    expect(getByTestId("receive-funds-qr")).toBeTruthy();
     expect(getByText("This address supports Stellar network.")).toBeTruthy();
-    expect(getByText("Copy wallet address")).toBeTruthy();
+    expect(getByText("Copy address")).toBeTruthy();
+    expect(queryByText("Account 1")).toBeNull();
   });
 
   it("copies the public key through the plain clipboard path (same as ReceiveTabView) when the CTA is pressed", () => {
-    const { getByTestId } = renderWithProviders(<ReceiveFundsBottomSheet />);
+    const { getByTestId } = renderSheet();
 
     fireEvent.press(getByTestId("receive-funds-copy-button"));
 
     expect(mockCopyToClipboard).toHaveBeenCalledWith(mockAccount.publicKey);
   });
 
-  it("dismisses via the forwarded ref when the close control is pressed", () => {
-    const dismissMock = jest.fn();
-    const ref = makeRef(dismissMock);
-    const { getByTestId } = renderWithProviders(
-      <ReceiveFundsBottomSheet bottomSheetModalRef={ref} />,
-    );
+  it("goes back to the sheet below with the back arrow", () => {
+    const onBack = jest.fn();
+    const onClose = jest.fn();
+    const { getByTestId } = renderSheet({ onBack, onClose });
+
+    fireEvent.press(getByTestId("receive-funds-back"));
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("closes both sheets with the X", () => {
+    const onBack = jest.fn();
+    const onClose = jest.fn();
+    const { getByTestId } = renderSheet({ onBack, onClose });
 
     fireEvent.press(getByTestId("receive-funds-close"));
-    expect(dismissMock).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onBack).not.toHaveBeenCalled();
   });
 });

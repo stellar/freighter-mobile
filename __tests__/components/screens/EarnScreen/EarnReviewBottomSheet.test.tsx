@@ -103,44 +103,43 @@ describe("EarnReviewBottomSheet", () => {
     expect(getByTestId("earn-review-transaction-details")).toBeTruthy();
   });
 
-  it("renders a 0 -> n before/after for a first deposit", () => {
+  it("renders a 0 -> n position for a first deposit", () => {
     // currentPositionTokens defaults to "0" after resetEarn().
-    const { getByText } = renderWithProviders(
+    const { getByTestId } = renderWithProviders(
       <EarnReviewBottomSheet {...defaultProps} />,
     );
 
-    expect(getByText(/0\.00 USDC.*10\.00 USDC/)).toBeTruthy();
+    expect(getByTestId("earn-review-position")).toHaveTextContent(
+      "0.00 → 10.00 USDC",
+    );
   });
 
   it("renders a non-zero before value for a top-up", () => {
     // Raw integer string at 7 decimals -> 500.00 display units.
     useEarnStore.getState().setCurrentPositionTokens("5000000000");
 
-    const { getByText } = renderWithProviders(
+    const { getByTestId } = renderWithProviders(
       <EarnReviewBottomSheet {...defaultProps} />,
     );
 
-    expect(getByText(/500\.00 USDC.*510\.00 USDC/)).toBeTruthy();
+    expect(getByTestId("earn-review-position")).toHaveTextContent(
+      "500.00 → 510.00 USDC",
+    );
   });
 
-  it("projects before/after earnings off the total position, not the deposit alone", () => {
+  it("projects earnings off the total position after the deposit, not the deposit alone", () => {
     // 500 USDC already supplied (price $2) plus a 10 USDC top-up (also
-    // price $2) at 16.94% APY: before = $1000 at the rate, after = $1020.
-    // If this instead projected off the bare $20 deposit, "after" would
-    // read far lower than "before" -- earnings appearing to drop after
-    // depositing more would be actively misleading.
+    // price $2) at 16.94% APY: the position after the deposit is $1020.
+    // Projecting off the bare $20 deposit would understate what the
+    // position earns.
     useEarnStore.getState().setCurrentPositionTokens("5000000000");
 
     const { getByTestId } = renderWithProviders(
       <EarnReviewBottomSheet {...defaultProps} />,
     );
 
-    expect(getByTestId("earn-review-monthly").props.children).toBe(
-      "$14.12 → $14.40",
-    );
-    expect(getByTestId("earn-review-yearly").props.children).toBe(
-      "$169.40 → $172.79",
-    );
+    expect(getByTestId("earn-review-monthly").props.children).toBe("≈ $14.40");
+    expect(getByTestId("earn-review-yearly").props.children).toBe("≈ $172.79");
   });
 
   it("renders '--' for APY and projected earnings when the rate is unknown", () => {

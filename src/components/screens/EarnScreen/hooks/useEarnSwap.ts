@@ -20,6 +20,11 @@ import { HeldBalanceItem, useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import { useCallback, useEffect, useMemo } from "react";
+import { scanToken } from "services/blockaid/api";
+import {
+  assessTokenSecurity,
+  extractSecurityWarnings,
+} from "services/blockaid/helper";
 
 /**
  * Token types `pathPaymentStrictSend` can spend. Soroban/custom tokens and
@@ -114,26 +119,69 @@ export const useEarnSwap = ({
     [balanceItems, destination],
   );
 
-  /** The opening source: whichever swappable holding is worth the most. */
-  const defaultSourceBalance = useMemo(
-    () =>
-      swappableBalances.reduce<HeldBalanceItem | undefined>((best, item) => {
+  /**
+   * The opening source: whichever swappable holding is worth the most, or
+   * XLM when none has a price (testnet, or an unpriced wallet), so the sheet
+   * still opens ready to type.
+   */
+  const defaultSourceBalance = useMemo(() => {
+    const mostValuable = swappableBalances.reduce<HeldBalanceItem | undefined>(
+      (best, item) => {
         const value = item.fiatTotal ?? new BigNumber(0);
         const bestValue = best?.fiatTotal ?? new BigNumber(0);
         return value.gt(bestValue) ? item : best;
-      }, undefined),
-    [swappableBalances],
-  );
+      },
+      undefined,
+    );
+    return (
+      mostValuable ??
+      swappableBalances.find(
+        (item) => item.tokenType === TokenTypeWithCustomToken.NATIVE,
+      ) ??
+      swappableBalances[0]
+    );
+  }, [swappableBalances]);
 
   // Seed the swap store when the sheet opens. Guarded on the destination
   // actually changing so re-renders (and the user then picking a different
   // source) do not stomp the selection back to the default.
   useEffect(() => {
     if (!destination) {
-      return;
+      return undefined;
     }
     setDestinationToken(destination);
-  }, [destination, setDestinationToken]);
+
+    // A destination the account doesn't hold yet carries no Blockaid verdict,
+    // so scan it as main Swap does for its default destination. Without one,
+    // every Earn swap would read as unable to scan. A failed scan leaves the
+    // level unset, which the review treats as unable to scan.
+    if (!destination.requiresTrustline || !destination.issuer) {
+      return undefined;
+    }
+    let isCurrent = true;
+    scanToken({
+      tokenCode: destination.tokenCode,
+      tokenIssuer: destination.issuer,
+      network,
+    })
+      .then((scanResult) => {
+        const current = useSwapStore.getState().destinationToken;
+        if (!isCurrent || current?.id !== destination.id) {
+          return;
+        }
+        setDestinationToken({
+          ...current,
+          securityLevel: assessTokenSecurity(scanResult).level,
+          securityWarnings: extractSecurityWarnings(scanResult),
+        });
+      })
+      .catch(() => {
+        // Unable to scan: the review's gate shows the security sheet.
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [destination, setDestinationToken, network]);
 
   useEffect(() => {
     if (!destination || sourceTokenId || !defaultSourceBalance) {
@@ -250,6 +298,9 @@ export const useEarnSwap = ({
     destinationSecurityAssessment,
     isMalicious,
     isSuspicious,
+    isUnableToScan,
+    isTokenUnableToScan,
+    securityWarnings,
   } = useSwapSecurityAssessments({
     transactionScanResult,
     overriddenBlockaidResponse,
@@ -309,6 +360,9 @@ export const useEarnSwap = ({
     destinationSecurityAssessment,
     isMalicious,
     isSuspicious,
+    isUnableToScan,
+    isTokenUnableToScan,
+    securityWarnings,
     isBuilding,
     transactionXDR,
   };

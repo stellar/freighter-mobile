@@ -1,35 +1,52 @@
+import SparkleGreenDark from "assets/images/earn-sparkle-green-dark.svg";
+import SparkleGreenLight from "assets/images/earn-sparkle-green-light.svg";
+import SparkleLilac from "assets/images/earn-sparkle-lilac.svg";
+import SparkleTealDark from "assets/images/earn-sparkle-teal-dark.svg";
+import SparkleTealLight from "assets/images/earn-sparkle-teal-light.svg";
 import BlendLogo from "assets/logos/blend-logo.svg";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { getNavigationHeaderHeight } from "components/layout/CustomNavigationHeader";
 import { EarnGlow } from "components/screens/EarnScreen/components/EarnGlow";
 import { EarnScreenHeader } from "components/screens/EarnScreen/components/EarnScreenHeader";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
+import { DEFAULT_PADDING } from "config/constants";
+import { DEFAULT_COLOR_SCHEME } from "config/theme";
+import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useEffect } from "react";
-import { View } from "react-native";
+import { useColorScheme, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { track } from "services/analytics/core";
 
 /**
- * Geometry from Figma `13701:332561` ("Blend intro (first time user)"), whose
- * frame is 402x874 -- an iPhone 14/15 Pro, i.e. a real device canvas rather
- * than the extension's 360x600 popup. Absolute offsets in that frame are
- * therefore translated into the equivalent safe-area-relative flex layout
- * instead of being reproduced literally:
- *
- * - `EarnScreenHeader` places the X box at the design's y=70..94.
- * - Content starts at y=176, i.e. 82 below the icon's bottom edge.
- * - The CTA's top is y=766 in an 874-tall frame, leaving 60 beneath it;
- *   safe-area bottom is 34, so 26 (~`pb-6`) of real padding. The gap above it
- *   is slack, which is why the CTA is pinned to the bottom with a flexible
- *   spacer rather than positioned at a fixed offset.
+ * In the design the header row ends at y=91 and the hero starts at y=176.
+ * The nav bar already has 24 of padding under its row, so the hero sits 61
+ * below the bar.
  */
-const CONTENT_TOP_OFFSET = 82;
+const CONTENT_TOP_OFFSET = 61;
 
-/** Figma frame center of the glow: x=201 (402/2, i.e. screen center), y=180. */
-const GLOW_CENTER_Y = 180;
+/**
+ * The glow's center sits 24.5 below the header row (y=115.5), i.e. half a
+ * point below the nav bar, whose own bottom padding is 24.
+ */
+const GLOW_OFFSET_BELOW_HEADER = 0.5;
+
+/** The Blend jar is 88 square. */
+const LOGO_SIZE = 88;
+
+/**
+ * Where the three sparkles sit around the jar, from the jar's top-left
+ * corner. Each asset is drawn at its own size.
+ */
+const SPARKLE_POSITIONS = {
+  lilac: { left: -21.84, top: 2.15 },
+  teal: { left: 94.15, top: 20.15 },
+  green: { left: -4.85, top: 70.15 },
+};
 
 export interface EarnIntroScreenProps {
   /**
@@ -46,18 +63,38 @@ export interface EarnIntroScreenProps {
 }
 
 /**
+ * The jar with its three sparkles. Two of the sparkles change color with the
+ * theme; the lilac one is the same in both.
+ */
+const BlendLogoWithSparkles: React.FC = () => {
+  const isDark = (useColorScheme() ?? DEFAULT_COLOR_SCHEME) === "dark";
+  const SparkleTeal = isDark ? SparkleTealDark : SparkleTealLight;
+  const SparkleGreen = isDark ? SparkleGreenDark : SparkleGreenLight;
+
+  return (
+    <View style={{ width: LOGO_SIZE, height: LOGO_SIZE }}>
+      <BlendLogo width={LOGO_SIZE} height={LOGO_SIZE} />
+      <View className="absolute" style={SPARKLE_POSITIONS.lilac}>
+        <SparkleLilac />
+      </View>
+      <View className="absolute" style={SPARKLE_POSITIONS.teal}>
+        <SparkleTeal />
+      </View>
+      <View className="absolute" style={SPARKLE_POSITIONS.green}>
+        <SparkleGreen />
+      </View>
+    </View>
+  );
+};
+
+/**
  * First-run interstitial for the Earn (Blend) flow, shown once per install.
  *
  * Rendered INLINE by `EarnTokenPickerScreen` as a full-screen early return,
  * not as a registered route -- the same pattern (and for the same reason) as
  * `EarnProcessingScreen`: `EARN_ROUTES` carries no intro entry, and a
  * declared-but-unregistered route throws at runtime. It renders its own bare-X
- * header; the stack header is off for this route at the navigator level (both
- * redesigned Earn frames drop it), so nothing needs toggling here.
- *
- * This replaced a bottom sheet: the design was reworked into a full screen
- * (Figma `13701:332561`), so the sheet, its wrapper, and its `startEarning`
- * copy are gone.
+ * header; the stack header is off for this route at the navigator level.
  */
 export const EarnIntroScreen: React.FC<EarnIntroScreenProps> = ({
   onContinue,
@@ -65,12 +102,11 @@ export const EarnIntroScreen: React.FC<EarnIntroScreenProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const insets = useSafeAreaInsets();
+  const headerHeight = getNavigationHeaderHeight(insets.top);
 
   // Retargeted to `screen.viewed` manually because this is not a route, so
-  // the navigator's automatic route-name tracking never fires for it. The
-  // sheet this replaced got the same event from `BottomSheet`'s
-  // `analyticsEvent` prop; the direct `track()` call matches what the other
-  // non-route Earn screen (`EarnProcessingScreen`) already does.
+  // the navigator's automatic route-name tracking never fires for it.
   useEffect(() => {
     track(
       AnalyticsEvent.SCREEN_VIEWED,
@@ -94,18 +130,23 @@ export const EarnIntroScreen: React.FC<EarnIntroScreenProps> = ({
   return (
     <BaseLayout
       useSafeArea
-      backgroundColor={themeColors.background.primary}
-      insets={{ bottom: true, top: true, left: false, right: false }}
+      insets={{ bottom: true, top: false, left: false, right: false }}
       testID="earn-intro-screen"
     >
-      <EarnGlow centerY={GLOW_CENTER_Y} />
+      <EarnGlow centerY={headerHeight + GLOW_OFFSET_BELOW_HEADER} />
 
-      <View className="flex-1 px-6">
-        <EarnScreenHeader onClose={onClose} testID="earn-intro-close" />
+      <EarnScreenHeader onClose={onClose} testID="earn-intro-close" />
 
-        <View className="gap-10" style={{ marginTop: CONTENT_TOP_OFFSET }}>
-          <View className="items-center gap-8">
-            <BlendLogo width={88} height={88} />
+      <View
+        className="flex-1"
+        style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+      >
+        <View
+          className="gap-[40px]"
+          style={{ marginTop: pxValue(CONTENT_TOP_OFFSET) }}
+        >
+          <View className="items-center gap-[32px]">
+            <BlendLogoWithSparkles />
 
             {/* Title and subtitle are a single gapless stack in the design --
                 their 40 and 20 line boxes already carry the spacing. */}
@@ -126,21 +167,22 @@ export const EarnIntroScreen: React.FC<EarnIntroScreenProps> = ({
             </View>
           </View>
 
-          <View className="gap-8">
+          <View className="gap-[32px]">
             {features.map((feature) => (
-              <View key={feature.key} className="flex-row items-center gap-3">
-                {/* 40 rounded-5 tile; the glyph inside is 26.67 in the
-                    design, which rounds to 27. */}
+              <View
+                key={feature.key}
+                className="flex-row items-center gap-[12px]"
+              >
                 <View
-                  className="size-10 items-center justify-center rounded-[5px]"
+                  className="size-[40px] items-center justify-center rounded-[5px]"
                   style={{ backgroundColor: themeColors.background.tertiary }}
                 >
                   <Icon.Asterisk01
                     color={themeColors.foreground.primary}
-                    size={27}
+                    size={18}
                   />
                 </View>
-                <View className="flex-1 gap-0.5">
+                <View className="flex-1 gap-[2px]">
                   <Text md medium primary>
                     {feature.title}
                   </Text>
@@ -156,17 +198,15 @@ export const EarnIntroScreen: React.FC<EarnIntroScreenProps> = ({
         {/* Slack between the feature list and the pinned CTA. */}
         <View className="flex-1" />
 
-        <View className="pb-6">
-          <Button
-            tertiary
-            xl
-            isFullWidth
-            onPress={onContinue}
-            testID="earn-intro-continue"
-          >
-            {t("common.continue")}
-          </Button>
-        </View>
+        <Button
+          secondary
+          xl
+          isFullWidth
+          onPress={onContinue}
+          testID="earn-intro-continue"
+        >
+          {t("common.continue")}
+        </Button>
       </View>
     </BaseLayout>
   );

@@ -1,4 +1,5 @@
-import { BottomSheetCloseButton } from "components/BottomSheetHeader";
+import { BottomSheetHeader } from "components/BottomSheetHeader";
+import { TokenRowDivider } from "components/TokenRowStyle";
 import { SwapTokenRow } from "components/screens/SwapScreen/components/SwapTokenRow";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
@@ -6,9 +7,10 @@ import { Text } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HeldBalanceItem } from "hooks/useBalancesList";
+import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React, { useMemo, useState } from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 export interface EarnSwapFromBottomSheetProps {
   /** Everything the account can sell into the pool asset. */
@@ -22,26 +24,27 @@ export interface EarnSwapFromBottomSheetProps {
 }
 
 /**
- * Source picker for swap-within-Earn (design `13723:343723`, "Swap from").
+ * Source picker for swap-within-Earn ("Swap from").
  *
  * Unlike Swap's own destination picker, this lists ONLY what the account
  * already holds -- you cannot sell a token you do not have -- so it reuses
  * `SwapTokenRow`'s "held" variant and needs no search-by-address lookup. The
- * design's Paste button is therefore omitted: pasting a contract address is
- * meaningless against a list restricted to your own balances. The search
- * field is kept and filters that list by code or name.
+ * search, and its Paste button, filter that list by code, name or address.
  *
  * The header carries a back arrow as well as a close: back returns to the
- * swap sheet with the source unchanged, close leaves the branch. Both are in
- * the design, and they are not interchangeable.
+ * swap sheet with the source unchanged, close leaves the branch.
  */
 export const EarnSwapFromBottomSheet: React.FC<
   EarnSwapFromBottomSheetProps
 > = ({ balances, network, onSelect, onBack, onClose }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { getClipboardText } = useClipboard();
   const [query, setQuery] = useState("");
 
+  // Matches the code, the display name, or the token's identifier ("XLM",
+  // "CODE:ISSUER" or a contract address), so a pasted issuer or contract
+  // address finds its token.
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) {
@@ -50,48 +53,47 @@ export const EarnSwapFromBottomSheet: React.FC<
     return balances.filter((item) => {
       const code = (item.tokenCode ?? "").toLowerCase();
       const name = (item.displayName ?? "").toLowerCase();
-      return code.includes(needle) || name.includes(needle);
+      const id = item.id.toLowerCase();
+      return (
+        code.includes(needle) || name.includes(needle) || id.includes(needle)
+      );
     });
   }, [balances, query]);
 
+  const handlePaste = () => {
+    getClipboardText().then(setQuery);
+  };
+
   return (
     <View className="flex-1 gap-[24px]" testID="earn-swap-from-bottom-sheet">
-      <View className="flex-row items-center justify-between">
-        <TouchableOpacity
-          onPress={onBack}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel={t("common.back")}
-          testID="earn-swap-from-back"
-        >
-          <Icon.ArrowLeft size={24} color={themeColors.text.primary} />
-        </TouchableOpacity>
-
-        <View className="flex-1 items-center">
-          <Text lg semiBold primary>
-            {t("earnSwapFrom.title")}
-          </Text>
-        </View>
-
-        <BottomSheetCloseButton
-          onPress={onClose}
-          testID="earn-swap-from-close"
-        />
-      </View>
+      <BottomSheetHeader
+        title={t("earnSwapFrom.title")}
+        layout="centered"
+        onBack={onBack}
+        backTestID="earn-swap-from-back"
+        onClose={onClose}
+        closeTestID="earn-swap-from-close"
+      />
 
       <Input
         placeholder={t("earnSwapFrom.searchPlaceholder")}
         value={query}
         onChangeText={setQuery}
         fieldSize="lg"
+        autoCapitalize="none"
+        autoCorrect={false}
         leftElement={
           <Icon.SearchMd size={16} color={themeColors.foreground.primary} />
         }
+        endButton={{
+          content: t("common.paste"),
+          onPress: handlePaste,
+        }}
         testID="earn-swap-from-search"
       />
 
-      <View className="flex-1 gap-[12px]">
-        <Text md medium primary>
+      <View className="flex-1 gap-[24px]">
+        <Text md medium secondary>
           {t("earnSwapFrom.yourTokens")}
         </Text>
 
@@ -101,15 +103,18 @@ export const EarnSwapFromBottomSheet: React.FC<
           </Text>
         ) : (
           <ScrollView showsVerticalScrollIndicator={false}>
-            {filtered.map((item) => (
-              <SwapTokenRow
-                key={item.id}
-                variant="held"
-                balance={item}
-                network={network}
-                onPress={() => onSelect(item)}
-                testID={`earn-swap-from-${item.tokenCode}`}
-              />
+            {filtered.map((item, index) => (
+              <React.Fragment key={item.id}>
+                <SwapTokenRow
+                  variant="held"
+                  rowStyle="shared"
+                  balance={item}
+                  network={network}
+                  onPress={() => onSelect(item)}
+                  testID={`earn-swap-from-${item.tokenCode}`}
+                />
+                {index < filtered.length - 1 ? <TokenRowDivider /> : null}
+              </React.Fragment>
             ))}
           </ScrollView>
         )}

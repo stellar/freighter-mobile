@@ -14,9 +14,13 @@ const makeRef = (dismissMock: jest.Mock) => {
 };
 
 describe("XlmFeeShortfallBottomSheet", () => {
-  it("renders the design's copy (node 13722:341905): title, one-line body, and both action labels", () => {
+  it("renders the title, the one-line body, and both actions when the onramp is offered", () => {
     const { getByText } = renderWithProviders(
-      <XlmFeeShortfallBottomSheet onBuy={jest.fn()} onReceive={jest.fn()} />,
+      <XlmFeeShortfallBottomSheet
+        onBuy={jest.fn()}
+        onReceive={jest.fn()}
+        isBuyAvailable
+      />,
     );
 
     expect(getByText("XLM needed for network fees")).toBeTruthy();
@@ -28,17 +32,38 @@ describe("XlmFeeShortfallBottomSheet", () => {
   it("calls onBuy when 'Buy with Coinbase' is pressed", () => {
     const onBuy = jest.fn();
     const { getByTestId } = renderWithProviders(
-      <XlmFeeShortfallBottomSheet onBuy={onBuy} onReceive={jest.fn()} />,
+      <XlmFeeShortfallBottomSheet
+        onBuy={onBuy}
+        onReceive={jest.fn()}
+        isBuyAvailable
+      />,
     );
 
     fireEvent.press(getByTestId("xlm-fee-shortfall-buy-button"));
     expect(onBuy).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onReceive when 'Transfer from another account' is pressed", () => {
+  it("offers only Receive XLM where the onramp isn't available, e.g. testnet", () => {
+    const { getByText, queryByTestId } = renderWithProviders(
+      <XlmFeeShortfallBottomSheet
+        onBuy={jest.fn()}
+        onReceive={jest.fn()}
+        isBuyAvailable={false}
+      />,
+    );
+
+    expect(queryByTestId("xlm-fee-shortfall-buy-button")).toBeNull();
+    expect(getByText("Receive XLM")).toBeTruthy();
+  });
+
+  it("calls onReceive when 'Receive XLM' is pressed", () => {
     const onReceive = jest.fn();
     const { getByTestId } = renderWithProviders(
-      <XlmFeeShortfallBottomSheet onBuy={jest.fn()} onReceive={onReceive} />,
+      <XlmFeeShortfallBottomSheet
+        onBuy={jest.fn()}
+        onReceive={onReceive}
+        isBuyAvailable
+      />,
     );
 
     fireEvent.press(getByTestId("xlm-fee-shortfall-receive-button"));
@@ -53,6 +78,7 @@ describe("XlmFeeShortfallBottomSheet", () => {
         bottomSheetModalRef={ref}
         onBuy={jest.fn()}
         onReceive={jest.fn()}
+        isBuyAvailable
       />,
     );
 

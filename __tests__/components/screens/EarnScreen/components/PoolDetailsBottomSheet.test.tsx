@@ -1,29 +1,16 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { fireEvent } from "@testing-library/react-native";
 import { PoolDetailsBottomSheet } from "components/screens/EarnScreen/components/PoolDetailsBottomSheet";
-import { BLEND_FIXED_POOL_IDS } from "config/blend";
-import { BlendCatalogPool, BlendCatalogReserve } from "config/blendTypes";
+import { BLEND_FIXED_POOL_IDS, BLEND_LENDING_DOCS_URL } from "config/blend";
+import { BlendCatalogPool } from "config/blendTypes";
 import { NETWORKS } from "config/constants";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
-const buildReserve = (
-  assetId: string,
-  symbol: string,
-): BlendCatalogReserve => ({
-  assetId,
-  symbol,
-  name: symbol,
-  decimals: 7,
-  enabled: true,
-  utilization: null,
-  supplyApy: null,
-  borrowApy: null,
-  emissionsSupplyApr: null,
-  suppliedUsd: null,
-  borrowedUsd: null,
-  priceUsd: null,
-});
+const mockOpenInAppBrowser = jest.fn(() => Promise.resolve());
+jest.mock("hooks/useInAppBrowser", () => ({
+  useInAppBrowser: () => ({ open: mockOpenInAppBrowser }),
+}));
 
 // A pool with nulls across every unpriced field — the COMMON case per the
 // live backend, not an edge case. `borrowedUsd` is a genuine zero here to
@@ -56,34 +43,34 @@ const fixedPool: BlendCatalogPool = {
 };
 
 describe("PoolDetailsBottomSheet", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("renders nothing when the pool hasn't resolved yet", () => {
     const { queryByTestId } = renderWithProviders(
-      <PoolDetailsBottomSheet pool={null} />,
+      <PoolDetailsBottomSheet pool={null} apy={0.1694} />,
     );
     expect(queryByTestId("pool-details-close")).toBeNull();
   });
 
   it("renders '--' for every unpriced figure and a real zero as $0.00, distinctly", () => {
     const { getByTestId } = renderWithProviders(
-      <PoolDetailsBottomSheet pool={nullHeavyPool} />,
+      <PoolDetailsBottomSheet pool={nullHeavyPool} apy={null} />,
     );
-    expect(getByTestId("pool-details-lendingInterest")).toHaveTextContent("--");
-    expect(getByTestId("pool-details-currentNetApy")).toHaveTextContent("--");
+    expect(getByTestId("pool-details-depositApy")).toHaveTextContent("--");
     expect(getByTestId("pool-details-supplied")).toHaveTextContent("--");
     // A genuine zero must never collapse into the same "--" as null.
     expect(getByTestId("pool-details-borrowed")).toHaveTextContent("$0.00");
-    // Backstop: the backend serves no `backstop_usd` for any pool today, so
-    // this is null (not omitted) for the same "unavailable" reason as the
-    // other three -- extends this regression to the new row.
     expect(getByTestId("pool-details-backstop")).toHaveTextContent("--");
   });
 
   it("renders the same generic description for every pool", () => {
-    const generic = /Deposit supported assets into this Blend pool/i;
+    const generic = /Deposit supported token into this Blend pool/i;
 
     [nullHeavyPool, fixedPool].forEach((pool) => {
       const { getByTestId, unmount } = renderWithProviders(
-        <PoolDetailsBottomSheet pool={pool} />,
+        <PoolDetailsBottomSheet pool={pool} apy={0.1694} />,
       );
       expect(getByTestId("pool-details-description")).toHaveTextContent(
         generic,
@@ -92,127 +79,65 @@ describe("PoolDetailsBottomSheet", () => {
     });
   });
 
-  it("renders the pool name and formatted figures for a fully-priced pool", () => {
-    const { getByText, getByTestId } = renderWithProviders(
-      <PoolDetailsBottomSheet pool={fixedPool} />,
-    );
-    expect(getByText("Testnet v2.1")).toBeTruthy();
-    expect(getByTestId("pool-details-lendingInterest")).toHaveTextContent(
-      "392.00%",
-    );
-    expect(getByTestId("pool-details-currentNetApy")).toHaveTextContent(
-      "392.00%",
-    );
-    expect(getByTestId("pool-details-supplied")).toHaveTextContent("$40.39M");
-    expect(getByTestId("pool-details-borrowed")).toHaveTextContent("$35.72M");
-  });
-
-  it("renders the pool's own name directly in the header, and a separate 'Pool Details' eyebrow above the stat cards", () => {
-    // Updated for the design correction (`9448:18518`): the header itself
-    // still has no eyebrow stacked directly above the pool name -- but
-    // unlike before, the sheet now has a "Pool Details" eyebrow of its own,
-    // positioned above the two stat cards rather than the header.
-    const { getByText } = renderWithProviders(
-      <PoolDetailsBottomSheet pool={fixedPool} />,
-    );
-    expect(getByText("Testnet v2.1").props.children).toBe("Testnet v2.1");
-    expect(getByText("Pool Details")).toBeTruthy();
-    expect(getByText("by Blend")).toBeTruthy();
-  });
-
   it("makes no per-pool claims, such as 'no admin', that a new deployment can falsify", () => {
     const { getByTestId } = renderWithProviders(
-      <PoolDetailsBottomSheet pool={fixedPool} />,
+      <PoolDetailsBottomSheet pool={fixedPool} apy={0.1694} />,
     );
     expect(getByTestId("pool-details-description")).not.toHaveTextContent(
       /no admin/i,
     );
   });
 
-  it("renders the Backstop row structurally, reading '--' because the backend doesn't serve that figure yet", () => {
-    // Design decision (overriding this file's earlier omission): the row
-    // always renders, matching the design's structure and this app's
-    // "null means unavailable, never silently omitted" rule. It happens to
-    // read "--" for every live pool today because the backend serves no
-    // `backstop_usd` field yet (`fixedPool.backstopUsd` is null here) --
-    // and will start showing a real figure automatically once it does.
+  it("renders the pool's name, the deposit APY and the pool's liquidity", () => {
     const { getByText, getByTestId } = renderWithProviders(
-      <PoolDetailsBottomSheet pool={fixedPool} />,
+      <PoolDetailsBottomSheet
+        pool={{ ...fixedPool, backstopUsd: 1530000 }}
+        apy={0.1694}
+      />,
     );
-    expect(getByText("Backstop")).toBeTruthy();
-    expect(getByTestId("pool-details-backstop")).toHaveTextContent("--");
+    expect(getByText("Testnet v2.1")).toBeTruthy();
+    expect(getByText("by Blend")).toBeTruthy();
+    expect(getByText("Current yield")).toBeTruthy();
+    expect(getByText("Pool liquidity")).toBeTruthy();
+    expect(getByTestId("pool-details-depositApy")).toHaveTextContent("16.94%");
+    expect(getByTestId("pool-details-supplied")).toHaveTextContent("$40.39M");
+    expect(getByTestId("pool-details-borrowed")).toHaveTextContent("$35.72M");
+    expect(getByTestId("pool-details-backstop")).toHaveTextContent("$1.53M");
   });
 
-  it("renders '--' for Accepted tokens when the reserve list is empty", () => {
+  it("leaves out the rows the design dropped", () => {
+    const { queryByText } = renderWithProviders(
+      <PoolDetailsBottomSheet pool={fixedPool} apy={0.1694} />,
+    );
+    expect(queryByText("Lending Interest")).toBeNull();
+    expect(queryByText("Current Net APY")).toBeNull();
+    expect(queryByText("Accepted tokens")).toBeNull();
+  });
+
+  it("opens Blend's lending docs from 'View pool details'", () => {
     const { getByTestId } = renderWithProviders(
-      <PoolDetailsBottomSheet pool={fixedPool} />,
+      <PoolDetailsBottomSheet pool={fixedPool} apy={0.1694} />,
     );
-    expect(getByTestId("pool-details-acceptedTokens")).toHaveTextContent("--");
+    fireEvent.press(getByTestId("pool-details-view-pool-details"));
+    expect(mockOpenInAppBrowser).toHaveBeenCalledWith(BLEND_LENDING_DOCS_URL);
   });
 
-  it("renders an icon stack (no '+N' trailer) for a reserve list at or under the visible cap", () => {
-    const poolWithReserves: BlendCatalogPool = {
-      ...fixedPool,
-      reserves: [
-        buildReserve("CUSDC...", "USDC"),
-        buildReserve("CEURC...", "EURC"),
-      ],
-    };
+  it("has no bottom Close CTA; the header X dismisses the sheet via the forwarded ref", () => {
+    const dismiss = jest.fn();
+    const ref = React.createRef<BottomSheetModal>();
+    Object.defineProperty(ref, "current", {
+      value: { dismiss },
+      writable: true,
+    });
     const { getByTestId, queryByTestId } = renderWithProviders(
-      <PoolDetailsBottomSheet pool={poolWithReserves} />,
+      <PoolDetailsBottomSheet
+        pool={fixedPool}
+        apy={0.1694}
+        bottomSheetModalRef={ref}
+      />,
     );
-    expect(getByTestId("pool-details-acceptedTokens")).toBeTruthy();
-    expect(queryByTestId("pool-details-acceptedTokens-overflow")).toBeNull();
-  });
-
-  it("collapses reserves beyond the visible cap into a '+N' trailer", () => {
-    const poolWithManyReserves: BlendCatalogPool = {
-      ...fixedPool,
-      reserves: [
-        buildReserve("C1...", "AAA"),
-        buildReserve("C2...", "BBB"),
-        buildReserve("C3...", "CCC"),
-        buildReserve("C4...", "DDD"),
-        buildReserve("C5...", "EEE"),
-        buildReserve("C6...", "FFF"),
-      ],
-    };
-    const { getByTestId } = renderWithProviders(
-      <PoolDetailsBottomSheet pool={poolWithManyReserves} />,
-    );
-    // 6 reserves, 4 visible -> "+2".
-    expect(
-      getByTestId("pool-details-acceptedTokens-overflow"),
-    ).toHaveTextContent("+2");
-  });
-
-  it("the close button dismisses the sheet via the forwarded ref", () => {
-    const dismissMock = jest.fn();
-    const ref = React.createRef<BottomSheetModal>();
-    Object.defineProperty(ref, "current", {
-      value: { dismiss: dismissMock },
-      writable: true,
-    });
-
-    const { getByTestId } = renderWithProviders(
-      <PoolDetailsBottomSheet pool={fixedPool} bottomSheetModalRef={ref} />,
-    );
+    expect(queryByTestId("pool-details-close-cta")).toBeNull();
     fireEvent.press(getByTestId("pool-details-close"));
-    expect(dismissMock).toHaveBeenCalled();
-  });
-
-  it("the bottom 'Close' CTA also dismisses the sheet via the forwarded ref", () => {
-    const dismissMock = jest.fn();
-    const ref = React.createRef<BottomSheetModal>();
-    Object.defineProperty(ref, "current", {
-      value: { dismiss: dismissMock },
-      writable: true,
-    });
-
-    const { getByTestId } = renderWithProviders(
-      <PoolDetailsBottomSheet pool={fixedPool} bottomSheetModalRef={ref} />,
-    );
-    fireEvent.press(getByTestId("pool-details-close-cta"));
-    expect(dismissMock).toHaveBeenCalled();
+    expect(dismiss).toHaveBeenCalledTimes(1);
   });
 });

@@ -744,45 +744,46 @@
     "swapped": "Trocado"
   },
   "earnIntro": {
-    "title": "Ganhe com a Blend",
-    "subtitle": "Forneça ativos à Blend e ganhe rendimento variável.",
+    "title": "Coloque seus tokens para render",
+    "subtitle": "Forneça tokens à Blend e ganhe rendimento variável.",
     "variableYield": {
       "title": "Ganhe rendimento variável",
-      "body": "Forneça ativos suportados e ganhe com base na APY atual."
+      "body": "Forneça tokens suportados e ganhe com base na APY atual."
     },
     "stayInControl": {
       "title": "Mantenha o controle",
-      "body": "Gerencie e retire seus ativos fornecidos direto da sua carteira."
+      "body": "Gerencie e retire seus tokens fornecidos direto da sua carteira."
     }
   },
   "earnTokenPicker": {
     "protocolName": "Blend",
-    "heading": "Escolha um ativo",
-    "subheading": "Forneça ativos à Blend e ganhe rendimento variável.",
-    "inYourAccount": "Na sua conta",
-    "supportedTokens": "Tokens suportados",
+    "heading": "Escolha um token",
+    "subheading": "Selecione um token para depositar e ganhar rendimento.",
     "noSupportedAssets": {
       "title": "Nenhum ativo suportado na sua carteira",
       "body": "Adicione um ativo suportado para começar a ganhar."
     },
-    "apyDisclaimer": "A APY pode mudar conforme as condições do protocolo.",
     "error": {
       "title": "Não foi possível carregar o Earn agora",
       "body": "O Earn está temporariamente indisponível. Tente novamente em breve.",
       "retry": "Tentar novamente"
-    }
+    },
+    "depositInto": "Depositar em",
+    "inYourWallet": "Na sua carteira",
+    "otherSupportedAssets": "Outros ativos suportados",
+    "apyPill": "{{rate}} APY"
   },
   "earnPoolDetails": {
     "byBlend": "por Blend",
     "description": "Descrição",
-    "poolDetails": "Detalhes do pool",
-    "lendingInterest": "Juros de empréstimo",
-    "currentNetApy": "APY líquido atual",
-    "acceptedTokens": "Tokens aceitos",
     "supplied": "Fornecido",
     "borrowed": "Emprestado",
     "backstop": "Backstop",
-    "poolDescription": "Deposite ativos compatíveis neste pool da Blend para gerar rendimento. A APY pode mudar ao longo do tempo. Saque quando quiser."
+    "poolDescription": "Deposite tokens compatíveis neste pool da Blend para gerar rendimento. A APY pode mudar ao longo do tempo. Saque quando quiser.",
+    "depositApy": "APY de depósito",
+    "viewPoolDetails": "Ver detalhes do pool",
+    "currentYield": "Rendimento atual",
+    "poolLiquidity": "Liquidez do pool"
   },
   "earnAmount": {
     "title": "Depositar",
@@ -791,9 +792,9 @@
     "insufficientFunds": "Saldo insuficiente",
     "review": "Revisar depósito",
     "poolCard": {
-      "currentApy": "APY atual: {{rate}}*",
       "byBlend": "por Blend",
-      "accessibilityLabel": "Ver detalhes do pool"
+      "accessibilityLabel": "Ver detalhes do pool",
+      "depositApy": "APY de depósito: {{rate}}"
     },
     "retryBanner": "A transação falhou. Tente novamente.",
     "networkFeeSheet": {
@@ -812,21 +813,19 @@
     "sheetTitle": "Revisar depósito",
     "title": "Você está depositando",
     "to": "Para",
-    "apy": "APY atual",
     "position": "Posição",
-    "positionValue": "{{before}} → {{after}}",
     "estMonthlyEarnings": "Ganhos mensais (est.)",
     "estYearlyEarnings": "Ganhos anuais (est.)",
-    "monthlyEarningsValue": "{{before}} → {{after}}",
-    "yearlyEarningsValue": "{{before}} → {{after}}",
     "transactionDetails": "Detalhes da transação",
-    "projectionDisclaimer": "Os ganhos estimados são projeções baseadas na taxa atual e podem mudar de acordo com a atividade do pool."
+    "depositApy": "APY de depósito",
+    "estimatedValue": "≈ {{value}}",
+    "settings": "Configurações da transação"
   },
   "earnNotEnough": {
     "title": "{{tokenCode}} insuficiente",
     "bodyWithBuy": "Obtenha {{tokenCode}} para depositar neste pool. Compre ou transfira {{tokenCode}} para continuar.",
     "bodySwapOnly": "Você precisará de {{tokenCode}} para depositar neste pool. Troque ou transfira {{tokenCode}} para continuar.",
-    "bodyTransferOnly": "Você precisará de {{tokenCode}} para depositar neste pool. Transfira {{tokenCode}} de outra conta para continuar.",
+    "bodyTransferOnly": "Obtenha {{tokenCode}} para depositar neste pool. Transfira {{tokenCode}} para continuar.",
     "buy": "Comprar {{tokenCode}}",
     "buyWithCoinbase": "Comprar com a Coinbase",
     "swap": "Trocar por {{tokenCode}}",
@@ -834,13 +833,15 @@
     "or": "ou"
   },
   "earnReceiveFunds": {
-    "title": "Receber fundos"
+    "title": "Receber fundos",
+    "networkSupport": "Este endereço é compatível com a rede Stellar.",
+    "copyAddress": "Copiar endereço"
   },
   "earnProcessing": {
-    "depositing": "Depositando",
-    "deposited": "Depositado!",
+    "depositing": "Depósito em andamento",
+    "deposited": "Depósito concluído",
     "to": "para",
-    "closeMessage": "Você pode fechar esta tela, sua transação deve ser concluída em menos de um minuto",
+    "closeMessage": "Você pode fechar esta tela. Sua transação deve ser concluída em menos de um minuto.",
     "viewTransaction": "Ver transação"
   },
   "transactionTokenScreen": {
@@ -1491,8 +1492,22 @@
   },
   "earnSwapFrom": {
     "title": "Trocar de",
-    "searchPlaceholder": "Busque pelo nome ou endereço do token",
+    "searchPlaceholder": "Buscar token ou endereço",
     "yourTokens": "Seus tokens",
     "noResults": "Nenhum token correspondente na sua carteira."
+  },
+  "earnDepositDetails": {
+    "title": "{{tokenCode}} depositado",
+    "to": "Para",
+    "deposited": "Depositado",
+    "fee": "Taxa"
+  },
+  "earnSwapProcessing": {
+    "inProgress": "Troca em andamento",
+    "complete": "Troca concluída"
+  },
+  "earnSwap": {
+    "swappedToast": "{{sourceCode}} trocado por {{destination}}",
+    "settings": "Configurações da troca"
   }
 }

@@ -13,9 +13,9 @@ export interface NotEnoughTokenBottomSheetProps {
   tokenCode: string;
   /**
    * The deposit asset's real token shape, so the header renders its actual
-   * icon (Figma nodes `9457:46399`/`9457:46345`/`9457:46530`) instead of a
-   * generic glyph. Undefined only while no option is selected (the sheet
-   * isn't presented in that state), in which case this renders nothing.
+   * icon instead of a generic glyph. Undefined only while no option is
+   * selected (the sheet isn't presented in that state), in which case this
+   * renders nothing.
    */
   token?: Token | Balance;
   onBuy: () => void;
@@ -30,26 +30,16 @@ export interface NotEnoughTokenBottomSheetProps {
  * are tapped -- those tokens aren't deposit-ready, so this offers a path to
  * acquire some instead of opening the (unusable) amount screen.
  *
- * Four variants, one per `NotEnoughVariant`, each matching its own Figma
- * render exactly rather than a shared layout with parts hidden:
- * - `BUY_SWAP_OR_TRANSFER` (`9457:46345`): "Buy {code}" and "Swap for
- *   {code}" side by side (50/50), a horizontal rule with a centred "or"
- *   below, then "Transfer from another account" as a centred text link
- *   (not a button).
- * - `BUY_OR_TRANSFER` (`9457:46399`): "Buy with Coinbase" stacked full-width
- *   above "Transfer from another account" -- note the Buy label here is
- *   "Buy with Coinbase", not "Buy {code}"; the two variants render different
- *   copy for the same action per their own renders.
- * - `SWAP_OR_TRANSFER` (`9457:42846`): "Swap for {code}" stacked full-width
- *   above "Transfer from another account" -- the same two-action stack as
- *   `BUY_OR_TRANSFER`, with Swap standing in for Buy.
- * - `TRANSFER_ONLY` (`9457:46530`): a single "Transfer from another
- *   account" button, full-width.
- *
- * In the two-action stacks, the top action is the light `tertiary` pill and
- * "Transfer from another account" is the outlined `secondary` pill; in the
- * three-action layout, both acquire actions are `tertiary` pills and
- * "Transfer from another account" is plain secondary text, not a button.
+ * One variant per `NotEnoughVariant`; the first action is always the filled
+ * pill:
+ * - `BUY_SWAP_OR_TRANSFER`: "Swap for {code}" (filled) and "Buy {code}"
+ *   (outlined) side by side, an "or" rule, then "Receive {code}" as a text
+ *   button.
+ * - `SWAP_OR_TRANSFER`: "Swap for {code}" (filled) above "Receive {code}"
+ *   (outlined).
+ * - `BUY_OR_TRANSFER`: "Buy with Coinbase" (filled) above "Receive {code}"
+ *   (outlined).
+ * - `TRANSFER_ONLY`: a single filled "Receive {code}".
  */
 export const NotEnoughTokenBottomSheet: React.FC<
   NotEnoughTokenBottomSheetProps
@@ -76,15 +66,36 @@ export const NotEnoughTokenBottomSheet: React.FC<
     }
   })();
 
+  const receiveLabel = t("earnNotEnough.receive", { tokenCode });
+
+  const renderStackedActions = (
+    primary: { label: string; onPress: () => void; testID: string },
+    testID: string,
+  ) => (
+    <View className="gap-[8px]" testID={testID}>
+      <Button
+        secondary
+        xl
+        isFullWidth
+        onPress={primary.onPress}
+        testID={primary.testID}
+      >
+        {primary.label}
+      </Button>
+      <Button
+        tertiary
+        xl
+        isFullWidth
+        onPress={onReceive}
+        testID="not-enough-token-receive-button"
+      >
+        {receiveLabel}
+      </Button>
+    </View>
+  );
+
   const renderActions = () => {
     switch (variant) {
-      // THREE-action layout, from design `13132:50277` (inside frame
-      // `12615:43940`): two filled pills side by side, an "or" rule, then
-      // Receive as a bare TEXT button -- not a third stacked pill.
-      //
-      // The two-action frames (`13701:332804`, `13717:333036`) stack a filled
-      // primary above an outlined secondary; that shape does NOT extend to
-      // three actions, which is what the design uses this layout for.
       case NotEnoughVariant.BUY_SWAP_OR_TRANSFER:
         return (
           <View
@@ -94,13 +105,13 @@ export const NotEnoughTokenBottomSheet: React.FC<
             <View className="flex-row gap-[8px]">
               <View className="flex-1">
                 <Button
-                  tertiary
+                  secondary
                   xl
                   isFullWidth
-                  onPress={onBuy}
-                  testID="not-enough-token-buy-button"
+                  onPress={onSwap}
+                  testID="not-enough-token-swap-button"
                 >
-                  {t("earnNotEnough.buy", { tokenCode })}
+                  {t("earnNotEnough.swap", { tokenCode })}
                 </Button>
               </View>
               <View className="flex-1">
@@ -108,10 +119,10 @@ export const NotEnoughTokenBottomSheet: React.FC<
                   tertiary
                   xl
                   isFullWidth
-                  onPress={onSwap}
-                  testID="not-enough-token-swap-button"
+                  onPress={onBuy}
+                  testID="not-enough-token-buy-button"
                 >
-                  {t("earnNotEnough.swap", { tokenCode })}
+                  {t("earnNotEnough.buy", { tokenCode })}
                 </Button>
               </View>
             </View>
@@ -124,77 +135,47 @@ export const NotEnoughTokenBottomSheet: React.FC<
               <View className="h-px flex-1 bg-border-primary" />
             </View>
 
-            {/* Bare text button (`13132:50285`): no fill, no border. The
-                pt-8/pb-16 is the design's own, not pill padding. */}
+            {/* A text button: no fill, no border. */}
             <TouchableOpacity
               onPress={onReceive}
-              className="items-center px-4 pb-4 pt-2"
+              className="h-[52px] items-center justify-center px-[16px] pb-[16px] pt-[8px]"
               testID="not-enough-token-receive-link"
             >
               <Text md semiBold secondary>
-                {t("earnNotEnough.receive", { tokenCode })}
+                {receiveLabel}
               </Text>
             </TouchableOpacity>
           </View>
         );
-
-      case NotEnoughVariant.BUY_OR_TRANSFER:
-        return (
-          <View className="gap-[8px]" testID="not-enough-token-actions-buy">
-            <Button
-              tertiary
-              xl
-              isFullWidth
-              onPress={onBuy}
-              testID="not-enough-token-buy-button"
-            >
-              {t("earnNotEnough.buyWithCoinbase")}
-            </Button>
-            <Button
-              secondary
-              xl
-              isFullWidth
-              onPress={onReceive}
-              testID="not-enough-token-receive-button"
-            >
-              {t("earnNotEnough.receive", { tokenCode })}
-            </Button>
-          </View>
-        );
       case NotEnoughVariant.SWAP_OR_TRANSFER:
-        return (
-          <View className="gap-[8px]" testID="not-enough-token-actions-swap">
-            <Button
-              tertiary
-              xl
-              isFullWidth
-              onPress={onSwap}
-              testID="not-enough-token-swap-button"
-            >
-              {t("earnNotEnough.swap", { tokenCode })}
-            </Button>
-            <Button
-              secondary
-              xl
-              isFullWidth
-              onPress={onReceive}
-              testID="not-enough-token-receive-button"
-            >
-              {t("earnNotEnough.receive", { tokenCode })}
-            </Button>
-          </View>
+        return renderStackedActions(
+          {
+            label: t("earnNotEnough.swap", { tokenCode }),
+            onPress: onSwap,
+            testID: "not-enough-token-swap-button",
+          },
+          "not-enough-token-actions-swap",
+        );
+      case NotEnoughVariant.BUY_OR_TRANSFER:
+        return renderStackedActions(
+          {
+            label: t("earnNotEnough.buyWithCoinbase"),
+            onPress: onBuy,
+            testID: "not-enough-token-buy-button",
+          },
+          "not-enough-token-actions-buy",
         );
       case NotEnoughVariant.TRANSFER_ONLY:
       default:
         return (
           <Button
-            tertiary
+            secondary
             xl
             isFullWidth
             onPress={onReceive}
             testID="not-enough-token-receive-button"
           >
-            {t("earnNotEnough.receive", { tokenCode })}
+            {receiveLabel}
           </Button>
         );
     }
@@ -210,7 +191,7 @@ export const NotEnoughTokenBottomSheet: React.FC<
       />
 
       <View className="mt-[24px]">
-        <Text md regular secondary textAlign="left">
+        <Text md regular secondary>
           {t(bodyKey, { tokenCode })}
         </Text>
       </View>

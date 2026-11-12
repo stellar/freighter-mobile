@@ -1,5 +1,4 @@
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { AccountQrDisplay } from "components/AccountQrDisplay";
+import { AccountQrCode } from "components/AccountQrDisplay";
 import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -10,89 +9,74 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React from "react";
 import { View } from "react-native";
 
+/** The QR before its card's 14pt padding, so the card is 240 across. */
+const RECEIVE_QR_SIZE = 212;
+
 export interface ReceiveFundsBottomSheetProps {
-  bottomSheetModalRef?: React.RefObject<BottomSheetModal | null>;
+  /** Returns to the sheet this one was opened over. */
+  onBack: () => void;
+  /** Closes this sheet and the one it was opened over. */
+  onClose: () => void;
 }
 
 /**
- * In-flow "Receive funds" sheet -- opened from
- * "Transfer from another account" on both the token picker's
+ * In-flow "Receive funds" sheet, opened from "Receive" on the token picker's
  * `NotEnoughTokenBottomSheet` and the amount screen's
- * `XlmFeeShortfallBottomSheet`. Previously that action navigated cross-stack
- * to `ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN`, ejecting the user from
- * Earn entirely; this sheet is presented on top of whichever sheet triggered
- * it (mirrors the review sheet's own security-detail sheet, and the mock
- * itself, which composites this sheet directly over the fee sheet) so
- * dismissing it always lands back exactly where the user was, still inside
- * Earn.
+ * `XlmFeeShortfallBottomSheet`. It is presented on top of the sheet that
+ * opened it, so the user never leaves Earn: back returns to that sheet, and
+ * X closes both.
  *
- * Shares `AccountQrDisplay` (avatar/name/address + QR + network pill) with
- * `ScanReceiveScreen`'s Receive tab -- see that component's own doc for why
- * the copy action isn't folded into it. This sheet's copy action uses the
- * same plain `useClipboard` the screen uses -- a receive address is public
- * and is copied precisely so the user can paste it elsewhere, often well
- * after `useSecureClipboard`'s 30s auto-clear window, so the two surfaces
- * behave identically here.
+ * The copy action uses the same plain `useClipboard` as the Receive screen: a
+ * receive address is public and is copied precisely so the user can paste it
+ * elsewhere, often well after `useSecureClipboard`'s 30s auto-clear window.
  *
  * Pure content, following this feature's convention: the caller wraps this
- * in `components/BottomSheet` and owns the modal ref, passed through here
- * only so the close control can dismiss it.
+ * in `components/BottomSheet` and owns the modal refs.
  */
 export const ReceiveFundsBottomSheet: React.FC<
   ReceiveFundsBottomSheetProps
-> = ({ bottomSheetModalRef }) => {
+> = ({ onBack, onClose }) => {
   const { t } = useAppTranslation();
   const { account } = useGetActiveAccount();
   const { copyToClipboard } = useClipboard();
 
   const publicKey = account?.publicKey ?? "";
 
-  const handleClose = () => {
-    bottomSheetModalRef?.current?.dismiss();
-  };
-
   const handleCopy = () => {
     copyToClipboard(publicKey);
   };
 
   return (
-    <View testID="receive-funds-bottom-sheet">
-      <View className="mb-8">
-        <BottomSheetHeader
-          title={t("earnReceiveFunds.title")}
-          layout="centered"
-          onClose={handleClose}
-          closeTestID="receive-funds-close"
-        />
-      </View>
-
-      <AccountQrDisplay
-        publicKey={publicKey}
-        accountName={account?.accountName}
-        testID="receive-funds-account-qr"
+    <View className="gap-[24px]" testID="receive-funds-bottom-sheet">
+      <BottomSheetHeader
+        title={t("earnReceiveFunds.title")}
+        layout="centered"
+        onBack={onBack}
+        backTestID="receive-funds-back"
+        onClose={onClose}
+        closeTestID="receive-funds-close"
       />
 
-      {/* Design rhythm: network pill -> 32 -> footnote ->
-          16 -> CTA. `mt-8` (32) and `gap-4` (16) below match that exactly --
-          this block isn't shared with `ReceiveTabView` (see
-          `AccountQrDisplay`'s doc comment for why the CTA stays
-          caller-owned), so there's no existing treatment to stay
-          consistent with here. */}
-      <View className="mt-8 gap-4">
-        <Text md medium secondary textAlign="center">
-          {t("scanReceiveScreen.receive.networkSupport")}
+      <View className="items-center gap-[16px]">
+        <View testID="receive-funds-qr">
+          <AccountQrCode publicKey={publicKey} size={RECEIVE_QR_SIZE} />
+        </View>
+        <Text md regular secondary textAlign="center">
+          {t("earnReceiveFunds.networkSupport")}
         </Text>
-        <Button
-          isFullWidth
-          tertiary
-          icon={<Icon.Copy01 size={18} />}
-          iconPosition={IconPosition.LEFT}
-          onPress={handleCopy}
-          testID="receive-funds-copy-button"
-        >
-          {t("scanReceiveScreen.receive.copyButton")}
-        </Button>
       </View>
+
+      <Button
+        isFullWidth
+        secondary
+        xl
+        icon={<Icon.Copy01 size={18} />}
+        iconPosition={IconPosition.LEFT}
+        onPress={handleCopy}
+        testID="receive-funds-copy-button"
+      >
+        {t("earnReceiveFunds.copyAddress")}
+      </Button>
     </View>
   );
 };

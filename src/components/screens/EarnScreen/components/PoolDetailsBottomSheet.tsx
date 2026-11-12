@@ -3,206 +3,102 @@ import blendIcon from "assets/logos/blend-icon.png";
 import { BottomSheetCloseButton } from "components/BottomSheetHeader";
 import { TokenIcon } from "components/TokenIcon";
 import {
+  EarnDetailsCard,
+  EarnDetailsRow,
+} from "components/screens/EarnScreen/components/EarnDetailsCard";
+import {
   formatCompactUsd,
   formatRate,
 } from "components/screens/EarnScreen/helpers";
-import { Button } from "components/sds/Button";
+import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { BlendCatalogPool, BlendCatalogReserve } from "config/blendTypes";
-import { NATIVE_TOKEN_CODE } from "config/constants";
-import { Token } from "config/types";
-import { useAuthenticationStore } from "ducks/auth";
-import { getNativeContractDetails } from "helpers/soroban";
+import { BLEND_LENDING_DOCS_URL } from "config/blend";
+import { BlendCatalogPool } from "config/blendTypes";
+import { logger } from "config/logger";
+import { Balance, Token } from "config/types";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React from "react";
-import { Image, View } from "react-native";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
+import React, { useCallback } from "react";
+import { Image, TouchableOpacity, View } from "react-native";
 
 export interface PoolDetailsBottomSheetProps {
   pool: BlendCatalogPool | null;
+  /** The deposit asset's headline APY, shown as "Deposit APY". */
+  apy: number | null;
+  /** The deposit asset, drawn as a badge on the pool's icon. */
+  token?: Balance | Token;
   bottomSheetModalRef?: React.RefObject<BottomSheetModal | null>;
 }
 
-interface PoolDetailRow {
-  key: string;
-  label: string;
-  /** Either a plain string value, or a custom renderer (the "Accepted
-   *  tokens" row's icon stack). Exactly one is provided. */
-  value?: string;
-  renderValue?: () => React.ReactNode;
-  /** Explicit value color, e.g. the green "Current Net APY" figure. */
-  valueColor?: string;
-  testID?: string;
-}
+/** The pool icon is 40 inside a 48 box; the token badge (24) overlaps its
+ * bottom-right corner, as the design draws it. */
+const POOL_ICON_BOX = 48;
+const POOL_ICON_SIZE = 40;
+const TOKEN_BADGE_POSITION = { left: 32, top: 26 };
 
-/** The design's own icon-stack width (`9448:19027`, 4 icons at a 12px pitch)
- *  -- more reserves than this collapse into a "+N" trailer rather than
- *  spilling the row onto a second line. */
-const MAX_VISIBLE_RESERVE_ICONS = 4;
-
-/**
- * Builds the `Token` shape `TokenIcon` expects from a Blend catalog reserve.
- *
- * Mirrors `EarnTokenRow`'s zero-balance fallback (there is no held balance to
- * read a real token shape from here either): native XLM is decided by
- * comparing the reserve's own contract address to the network's derived
- * native SAC -- never by code, since any issuer can mint a classic asset
- * coded "XLM".
- */
-const reserveToToken = (
-  reserve: BlendCatalogReserve,
-  nativeContractId: string,
-): Token =>
-  reserve.assetId === nativeContractId
-    ? { type: "native" as const, code: NATIVE_TOKEN_CODE as "XLM" }
-    : {
-        code: reserve.symbol || `${reserve.assetId.slice(0, 4)}…`,
-        issuer: { key: reserve.assetId },
-      };
-
-/**
- * Renders one `PoolDetailRow[]` inside a rounded card, with a hairline
- * divider between rows (never after the last one) -- shared by both stat
- * cards (design node `9448:19005` / `9448:19023`).
- */
-const PoolDetailsCard: React.FC<{ rows: PoolDetailRow[] }> = ({ rows }) => (
-  <View className="rounded-[16px] bg-background-tertiary px-4">
-    {rows.map((row, index) => (
-      <View key={row.key}>
-        <View className="flex-row items-center justify-between py-3">
-          <Text md medium secondary>
-            {row.label}
-          </Text>
-          {row.renderValue ? (
-            row.renderValue()
-          ) : (
-            <Text md medium primary color={row.valueColor} testID={row.testID}>
-              {row.value}
-            </Text>
-          )}
-        </View>
-        {index < rows.length - 1 && (
-          <View className="h-px bg-border-primary w-full" />
-        )}
-      </View>
-    ))}
+/** A secondary title above an `EarnDetailsCard`. */
+const TitledDetailsCard: React.FC<{
+  title: string;
+  rows: EarnDetailsRow[];
+}> = ({ title, rows }) => (
+  <View className="gap-[8px]">
+    <Text sm medium secondary>
+      {title}
+    </Text>
+    <EarnDetailsCard rows={rows} />
   </View>
 );
 
 /**
- * Content for the Earn pool-details sheet. Previously presented from
- * `EarnTokenPickerScreen`'s header info button, which was never in the
- * design and has been removed there. Now triggered from the amount screen's
- * `PoolCard` chevron (design node `9448:29157`/`9448:18518`) -- the design's
- * only route into this sheet -- mirroring the extension's
- * `EarnAmount/PoolCard.tsx` `onOpenDetails`.
+ * Content for the Earn pool details sheet, opened from the amount screen's
+ * pool card: the pool's identity, a description with a link to Blend's
+ * lending docs, the deposit asset's current yield and the pool's liquidity.
  *
- * Modeled on `XlmReserveBottomSheet`: pure content (the caller wraps it in
- * `components/BottomSheet` and owns the modal ref); `bottomSheetModalRef` is
- * used here for both the close button and the bottom "Close" CTA.
- *
- * Structure follows the render (`9448:18518`) rather than the raw 360×600
- * popup geometry verbatim, per the design owner's ratios-of-canvas rule:
- * header (pool artwork + name/"by Blend" + close) -> "Description" eyebrow +
- * prose -> "Pool Details" eyebrow -> two stat cards -> full-width "Close"
- * CTA.
+ * Pure content: the caller wraps it in `components/BottomSheet` and owns the
+ * modal ref, which the header X dismisses.
  */
 export const PoolDetailsBottomSheet: React.FC<PoolDetailsBottomSheetProps> = ({
   pool,
+  apy,
+  token,
   bottomSheetModalRef,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { network } = useAuthenticationStore();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   const handleClose = () => {
     bottomSheetModalRef?.current?.dismiss();
   };
 
+  const handleViewPoolDetails = useCallback(() => {
+    openInAppBrowser(BLEND_LENDING_DOCS_URL).catch((err) =>
+      logger.error("PoolDetailsBottomSheet", "Failed to open Blend docs", err),
+    );
+  }, [openInAppBrowser]);
+
   // Guards a race where the sheet is presented before (or after) the pool
-  // has resolved — e.g. a stale ref call while useEarnTokens is still
-  // loading. The wrapping BottomSheet keeps working; there's simply nothing
-  // to render here.
+  // has resolved. The wrapping BottomSheet keeps working; there's simply
+  // nothing to render here.
   if (!pool) {
     return null;
   }
 
-  const nativeContractId = getNativeContractDetails(network).contract;
-  const visibleReserves = pool.reserves.slice(0, MAX_VISIBLE_RESERVE_ICONS);
-  const overflowReserveCount = pool.reserves.length - visibleReserves.length;
-
-  const statRows: PoolDetailRow[] = [
+  const yieldRows: EarnDetailsRow[] = [
     {
-      key: "lendingInterest",
-      label: t("earnPoolDetails.lendingInterest"),
-      value: formatRate(pool.interestApy),
-      testID: "pool-details-lendingInterest",
-    },
-    {
-      key: "currentNetApy",
-      label: t("earnPoolDetails.currentNetApy"),
-      value: formatRate(pool.netApy),
-      // Exact hex match for this row's Figma fill (`Colors/Green/10`,
-      // `#3cb179`) -- confirmed against the node's own variable, not the
-      // `#4cc38a` figure recorded in the drift doc's visual notes for this
-      // sheet (that shade belongs to a *different* green variable used on
-      // the Review sheet's own "Current APY" row, not this one). SDS
-      // `Badge`'s "success" variant resolves to lime and is wrong for this
-      // green, per the parallel correction on `EarnTokenRow`'s APY pill —
-      // this is plain text, not a pill, so it goes through `Text`'s `color`
-      // prop directly rather than `Badge`.
-      valueColor: themeColors.green[10],
-      testID: "pool-details-currentNetApy",
+      key: "depositApy",
+      label: t("earnPoolDetails.depositApy"),
+      value: formatRate(apy),
+      valueColor: apy === null ? undefined : themeColors.green[10],
+      isEmphasized: true,
+      testID: "pool-details-depositApy",
     },
   ];
 
-  const detailRows: PoolDetailRow[] = [
-    {
-      key: "acceptedTokens",
-      label: t("earnPoolDetails.acceptedTokens"),
-      renderValue: () =>
-        pool.reserves.length === 0 ? (
-          // Empty reserve list: nothing resolved yet (e.g. a pool row built
-          // before `useEarnTokens` populates it). Same "unavailable" signal
-          // as every other null figure on this sheet, not a bare blank.
-          <Text md medium primary testID="pool-details-acceptedTokens">
-            --
-          </Text>
-        ) : (
-          <View
-            className="flex-row items-center"
-            testID="pool-details-acceptedTokens"
-          >
-            <View className="flex-row items-center">
-              {visibleReserves.map((reserve, index) => (
-                <View
-                  key={reserve.assetId}
-                  className={
-                    index === 0 ? "rounded-full" : "rounded-full -ml-[4px]"
-                  }
-                >
-                  <TokenIcon
-                    token={reserveToToken(reserve, nativeContractId)}
-                    size="sm"
-                  />
-                </View>
-              ))}
-            </View>
-            {overflowReserveCount > 0 && (
-              <View className="ml-[4px]">
-                <Text
-                  xs
-                  medium
-                  secondary
-                  testID="pool-details-acceptedTokens-overflow"
-                >
-                  {`+${overflowReserveCount}`}
-                </Text>
-              </View>
-            )}
-          </View>
-        ),
-    },
+  // A null USD figure means the pool oracle has no fresh price, so it reads
+  // "--" rather than a misleading zero.
+  const liquidityRows: EarnDetailsRow[] = [
     {
       key: "supplied",
       label: t("earnPoolDetails.supplied"),
@@ -216,13 +112,6 @@ export const PoolDetailsBottomSheet: React.FC<PoolDetailsBottomSheetProps> = ({
       testID: "pool-details-borrowed",
     },
     {
-      // The backend does not serve `backstop_usd` for any pool today (see
-      // `BlendCatalogPool.backstopUsd`'s own comment and `mapCatalogPool`),
-      // so this reads "--" in practice for every live pool right now. The
-      // row itself still renders — matching the design's structure and this
-      // app's "null means unavailable, never silently omitted" rule — and
-      // will start showing a real figure automatically the day the backend
-      // adds the field, with no further changes here.
       key: "backstop",
       label: t("earnPoolDetails.backstop"),
       value: formatCompactUsd(pool.backstopUsd),
@@ -232,28 +121,29 @@ export const PoolDetailsBottomSheet: React.FC<PoolDetailsBottomSheetProps> = ({
 
   return (
     <View className="gap-[24px]">
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center flex-1 mr-4">
-          {/* The real Blend mark, shared with `PoolCard` and the token
-              picker's badge. This was a lilac `InfoCircle` placeholder while
-              no artwork existed, sized 28 to match `PoolCard`'s identical
-              stand-in; now that the asset exists each surface takes its own
-              designed size, so this follows this sheet's own header-icon
-              geometry (`9448:18861`) at 32 rather than the amount screen's
-              40. */}
-          <Image
-            source={blendIcon}
-            className="size-8 rounded"
-            resizeMode="cover"
-            accessibilityIgnoresInvertColors
-          />
-          <View className="ml-4 flex-1">
+      <View className="flex-row items-start justify-between">
+        <View className="flex-1 flex-row items-center gap-[12px]">
+          <View style={{ width: POOL_ICON_BOX, height: POOL_ICON_BOX }}>
+            <Image
+              source={blendIcon}
+              className="rounded-full"
+              style={{ width: POOL_ICON_SIZE, height: POOL_ICON_SIZE }}
+              resizeMode="cover"
+              accessibilityIgnoresInvertColors
+            />
+            {token && (
+              <View className="absolute" style={TOKEN_BADGE_POSITION}>
+                <TokenIcon token={token} size="md" />
+              </View>
+            )}
+          </View>
+          <View className="flex-1">
             {pool.name && (
-              <Text md medium primary numberOfLines={1}>
+              <Text xl medium primary numberOfLines={1}>
                 {pool.name}
               </Text>
             )}
-            <Text sm regular secondary numberOfLines={1}>
+            <Text sm medium secondary numberOfLines={1}>
               {t("earnPoolDetails.byBlend")}
             </Text>
           </View>
@@ -267,32 +157,37 @@ export const PoolDetailsBottomSheet: React.FC<PoolDetailsBottomSheetProps> = ({
       {/* One description for every pool, as on the extension. Per-pool
           claims only hold for a specific deployment: "no admin" was true of
           the v2 Fixed pool, but the v2.1 pools have a contract admin. */}
-      <View className="gap-[6px]">
-        <Text xs secondary>
+      <View className="items-start gap-[8px]">
+        <Text sm medium secondary>
           {t("earnPoolDetails.description")}
         </Text>
-        <Text sm regular secondary testID="pool-details-description">
+        <Text md regular primary testID="pool-details-description">
           {t("earnPoolDetails.poolDescription")}
         </Text>
+        <TouchableOpacity
+          onPress={handleViewPoolDetails}
+          activeOpacity={0.7}
+          accessibilityRole="link"
+          className="flex-row items-center gap-[4px] pb-[8px]"
+          testID="pool-details-view-pool-details"
+        >
+          <Text md semiBold color={themeColors.lilac[9]}>
+            {t("earnPoolDetails.viewPoolDetails")}
+          </Text>
+          <Icon.LinkExternal01 size={16} color={themeColors.lilac[9]} />
+        </TouchableOpacity>
       </View>
 
-      <View className="gap-[12px]">
-        <Text xs secondary>
-          {t("earnPoolDetails.poolDetails")}
-        </Text>
-        <PoolDetailsCard rows={statRows} />
-        <PoolDetailsCard rows={detailRows} />
+      <View className="gap-[16px]">
+        <TitledDetailsCard
+          title={t("earnPoolDetails.currentYield")}
+          rows={yieldRows}
+        />
+        <TitledDetailsCard
+          title={t("earnPoolDetails.poolLiquidity")}
+          rows={liquidityRows}
+        />
       </View>
-
-      <Button
-        secondary
-        xl
-        isFullWidth
-        onPress={handleClose}
-        testID="pool-details-close-cta"
-      >
-        {t("common.close")}
-      </Button>
     </View>
   );
 };

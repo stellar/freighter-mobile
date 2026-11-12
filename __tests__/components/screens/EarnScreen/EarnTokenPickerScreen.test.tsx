@@ -74,6 +74,11 @@ jest.mock("hooks/useAppTranslation", () => ({
   default: () => ({ t: (key: string) => key }),
 }));
 
+const mockOpenInAppBrowser = jest.fn(() => Promise.resolve());
+jest.mock("hooks/useInAppBrowser", () => ({
+  useInAppBrowser: () => ({ open: mockOpenInAppBrowser }),
+}));
+
 let mockUseEarnTokens: {
   isLoading: boolean;
   error: string | null;
@@ -212,21 +217,20 @@ describe("EarnTokenPickerScreen", () => {
       expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
     });
   });
-  // Figma `13701:332629`: the held section is replaced by explanatory prose
-  // when the user holds none of the pool's reserves -- the only variant the
-  // mock draws.
+  // The held section is replaced by explanatory prose when the user holds
+  // none of the pool's reserves.
   describe("list structure", () => {
     beforeEach(() => {
       usePreferencesStore.getState().setHasSeenEarnIntro(true);
     });
 
-    it("shows the empty-held prose instead of an 'in your account' section", () => {
+    it("shows the empty-held prose instead of an 'in your wallet' section", () => {
       mockUseEarnTokens.supported = [makeOption("USDC")];
 
       const { getByTestId, queryByText } = renderScreen();
 
       expect(getByTestId("earn-token-picker-empty-held")).toBeTruthy();
-      expect(queryByText("earnTokenPicker.inYourAccount")).toBeNull();
+      expect(queryByText("earnTokenPicker.inYourWallet")).toBeNull();
       expect(getByTestId("earn-token-option-USDC")).toBeTruthy();
     });
 
@@ -236,17 +240,35 @@ describe("EarnTokenPickerScreen", () => {
 
       const { getByText, queryByTestId } = renderScreen();
 
-      expect(getByText("earnTokenPicker.inYourAccount")).toBeTruthy();
+      expect(getByText("earnTokenPicker.inYourWallet")).toBeTruthy();
+      expect(getByText("earnTokenPicker.otherSupportedAssets")).toBeTruthy();
       expect(queryByTestId("earn-token-picker-empty-held")).toBeNull();
     });
 
-    it("renders the disclaimer and the ambient glow", () => {
+    it("drops the disclaimer and the ambient glow", () => {
       mockUseEarnTokens.supported = [makeOption("USDC")];
+
+      const { queryByText, queryByTestId } = renderScreen();
+
+      expect(queryByText("earnTokenPicker.apyDisclaimer")).toBeNull();
+      expect(queryByTestId("earn-glow")).toBeNull();
+    });
+
+    it("names the pool in the 'Deposit into' chip, which opens Blend's docs", () => {
+      mockUseEarnTokens.supported = [makeOption("USDC")];
+      mockUseEarnTokens.pool = { name: "Testnet v2.1", reserves: [] };
 
       const { getByText, getByTestId } = renderScreen();
 
-      expect(getByText("earnTokenPicker.apyDisclaimer")).toBeTruthy();
-      expect(getByTestId("earn-glow")).toBeTruthy();
+      expect(getByText("earnTokenPicker.depositInto")).toBeTruthy();
+      expect(
+        getByText("earnTokenPicker.protocolName · Testnet v2.1"),
+      ).toBeTruthy();
+
+      fireEvent.press(getByTestId("earn-token-picker-pool-chip"));
+      expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
+        "https://docs.blend.capital/users/lending-borrowing/lending",
+      );
     });
   });
 });

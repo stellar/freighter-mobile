@@ -2,13 +2,19 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import blendIcon from "assets/logos/blend-icon.png";
+import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
+import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { EarnGlow } from "components/screens/EarnScreen/components/EarnGlow";
 import { EarnScreenHeader } from "components/screens/EarnScreen/components/EarnScreenHeader";
 import { EarnSwapBottomSheet } from "components/screens/EarnScreen/components/EarnSwapBottomSheet";
 import { EarnSwapFromBottomSheet } from "components/screens/EarnScreen/components/EarnSwapFromBottomSheet";
+import {
+  EarnSwapOutcome,
+  EarnSwapProcessingBottomSheet,
+} from "components/screens/EarnScreen/components/EarnSwapProcessingBottomSheet";
 import { EarnTokenRow } from "components/screens/EarnScreen/components/EarnTokenRow";
 import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
 import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
@@ -30,12 +36,15 @@ import { EarnIntroScreen } from "components/screens/EarnScreen/screens/EarnIntro
 import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
 import { SWAP_TOAST_IDS } from "components/screens/SwapScreen/hooks/useSwapAmountError";
 import { useSwapFooter } from "components/screens/SwapScreen/hooks/useSwapFooter";
-import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import { Button } from "components/sds/Button";
+import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { BLEND_LENDING_DOCS_URL } from "config/blend";
 import {
+  DEFAULT_PADDING,
   NATIVE_TOKEN_CODE,
+  TransactionContext,
   mapNetworkToNetworkDetails,
 } from "config/constants";
 import { logger } from "config/logger";
@@ -49,30 +58,42 @@ import {
 import { Balance, Token } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
+import { useDebugStore } from "ducks/debug";
 import { useEarnStore } from "ducks/earn";
 import { usePreferencesStore } from "ducks/preferences";
+import { useSwapStore } from "ducks/swap";
+import { useSwapSettingsStore } from "ducks/swapSettings";
 import { getTokenIdentifier } from "helpers/balances";
-import { formatBalanceAmount } from "helpers/formatAmount";
+import { pxValue } from "helpers/dimensions";
+import {
+  formatBalanceAmount,
+  formatFiatAmount,
+  formatFiatInputDisplay,
+  formatTokenForDisplay,
+} from "helpers/formatAmount";
+import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HeldBalanceItem } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
+import { useNetworkFees } from "hooks/useNetworkFees";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { Image, ScrollView, View } from "react-native";
+import {
+  Image,
+  Keyboard,
+  ScrollView,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SecurityLevel } from "services/blockaid/constants";
+import { assessTransactionSecurity } from "services/blockaid/helper";
 
 type EarnTokenPickerScreenProps = NativeStackScreenProps<
   EarnStackParamList,
   typeof EARN_ROUTES.EARN_TOKEN_PICKER_SCREEN
 >;
-
-/**
- * Figma `13701:332629` places content at y=118 and the X's box at y=70..94,
- * i.e. 24 below the icon. The glow's circle is centered at (201, 725) with a
- * 0.7 fill opacity, unlike the intro's full-opacity one.
- */
-const CONTENT_TOP_OFFSET = 24;
-const GLOW_CENTER_Y = 725;
-const GLOW_OPACITY = 0.7;
 
 export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   navigation,
@@ -80,7 +101,11 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   const { t } = useAppTranslation();
   const { showToast } = useToast();
   const { themeColors } = useColors();
-  const { isLoading, error, held, supported, refetch } = useEarnTokens();
+  const { isLoading, error, held, supported, pool, refetch } = useEarnTokens();
+  const insets = useSafeAreaInsets();
+  const { open: openInAppBrowser } = useInAppBrowser();
+  const { overriddenBlockaidResponse } = useDebugStore();
+  const { recommendedFee } = useNetworkFees();
   const selectAsset = useEarnStore((state) => state.selectAsset);
   const { network } = useAuthenticationStore();
   const { pricedBalances } = useBalancesStore();
@@ -113,18 +138,44 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // sheet presents. Null while no row is pending, which no-ops the hook.
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
+  const swapProcessingBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const swapSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const swapSecurityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  // How the swap ended, recorded by the processing sheet just before it
+  // closes, so the picker can announce the new balance.
+  const swapOutcomeRef = useRef<EarnSwapOutcome | null>(null);
+
   // A completed swap leaves the user holding the reserve they came for, so
   // close the whole swap branch and drop them back on the picker -- refetching
-  // so the row they wanted moves from "Supported tokens" into "In your
-  // account". Swap's own default (reset onto the History tab) would strand
-  // them outside Earn entirely.
+  // so the row they wanted moves into "In your wallet" -- with a toast naming
+  // what they got. Swap's own default (reset onto the History tab) would
+  // strand them outside Earn entirely.
   const handleSwapProcessingClose = useCallback(() => {
+    swapProcessingBottomSheetModalRef.current?.dismiss();
     swapReviewBottomSheetModalRef.current?.dismiss();
     swapBottomSheetModalRef.current?.dismiss();
+
+    const outcome = swapOutcomeRef.current;
+    swapOutcomeRef.current = null;
+    if (outcome?.succeeded && swapOption) {
+      showToast({
+        variant: "success",
+        title: t("earnSwap.swappedToast", {
+          sourceCode: useSwapStore.getState().sourceTokenSymbol,
+          destination: formatTokenForDisplay(
+            outcome.destinationAmount,
+            swapOption.code,
+          ),
+        }),
+        toastId: "earn-swap-complete",
+      });
+    }
+
     setSwapOption(null);
     setNotEnoughOption(null);
     refetch();
-  }, [refetch]);
+  }, [refetch, showToast, swapOption, t]);
 
   const earnSwap = useEarnSwap({
     option: swapOption,
@@ -144,9 +195,31 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     )} ${t("common.available")}`;
   }, [earnSwap.sourceBalance, earnSwap.spendableAmount, t]);
 
-  // "Swap from" (design `13723:343723`) stacks over the swap sheet rather
-  // than replacing it, so its back arrow can return with the source
-  // unchanged. The swap sheet stays mounted underneath.
+  // The sell card's second line: the amount's other unit, as on the deposit
+  // screen.
+  const earnSwapSourceSecondaryText = earnSwap.converter.showFiatAmount
+    ? formatTokenForDisplay(
+        earnSwap.converter.tokenAmount || "0",
+        earnSwap.sourceTokenSymbol,
+      )
+    : formatFiatInputDisplay(earnSwap.converter.fiatAmountDisplay || "0");
+
+  // The receive card's fiat line, priced by the pool catalog: the account
+  // doesn't hold the destination yet, so there is no balance price for it.
+  const earnSwapDestinationFiatText = useMemo(() => {
+    const price = pool?.reserves.find(
+      (reserve) => reserve.assetId === swapOption?.assetId,
+    )?.priceUsd;
+    const amount = earnSwap.pathResult?.destinationAmount;
+    if (price === null || price === undefined || !amount) {
+      return undefined;
+    }
+    return formatFiatAmount(new BigNumber(amount).multipliedBy(price));
+  }, [pool, swapOption, earnSwap.pathResult]);
+
+  // "Swap from" stacks over the swap sheet rather than replacing it, so its
+  // back arrow can return with the source unchanged. The swap sheet stays
+  // mounted underneath.
   const handleSwapSourcePickerPress = useCallback(() => {
     swapFromBottomSheetModalRef.current?.present();
   }, []);
@@ -168,10 +241,23 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // opened with nothing to show left the user staring at an empty sheet with
   // their amount gone. On failure the swap sheet must simply stay put and the
   // reason surface as a toast, exactly as the amount screen does.
+  //
+  // As in main Swap, a transaction or token Blockaid couldn't scan shows the
+  // security sheet first; its Continue opens Review. The gate reads the
+  // fresh transaction scan, not the lagging render state.
   const handleSwapReview = useCallback(async () => {
     try {
-      await earnSwap.setupSwapTransaction();
-      swapReviewBottomSheetModalRef.current?.present();
+      const setup = await earnSwap.setupSwapTransaction();
+      Keyboard.dismiss();
+      const isTransactionUnableToScan = assessTransactionSecurity(
+        setup?.scanResult,
+        overriddenBlockaidResponse,
+      ).isUnableToScan;
+      if (earnSwap.isTokenUnableToScan || isTransactionUnableToScan) {
+        swapSecurityWarningBottomSheetModalRef.current?.present();
+      } else {
+        swapReviewBottomSheetModalRef.current?.present();
+      }
     } catch (setupError) {
       logger.error(
         "EarnTokenPickerScreen",
@@ -188,13 +274,47 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
         duration: 0,
       });
     }
-  }, [earnSwap, showToast, t]);
+  }, [earnSwap, overriddenBlockaidResponse, showToast, t]);
 
-  // Swap's own settings sheet is reached from `SwapAmountScreen`'s header and
-  // is route-scoped to `SWAP_STACK`; wiring it from here needs that sheet
-  // lifted out of the stack first. The control is in the design, so it is
-  // rendered and named rather than dropped -- see the branch's follow-ups.
-  const handleSwapSettingsPress = useCallback(() => {}, []);
+  // Swap settings (fee, slippage, timeout), from the gear on the swap sheet
+  // and on Review. Like main Swap, an untouched fee is first scaled to the
+  // swap's operation count: a destination without a trustline adds one.
+  const swapOperationCount = earnSwap.destination?.requiresTrustline ? 2 : 1;
+  const handleSwapSettingsPress = useCallback(() => {
+    const { swapFee, feeManuallyChanged, saveSwapFee } =
+      useSwapSettingsStore.getState();
+    if (!feeManuallyChanged && recommendedFee) {
+      const scaledTotal = new BigNumber(recommendedFee).times(
+        swapOperationCount,
+      );
+      if (!scaledTotal.eq(swapFee)) {
+        saveSwapFee(scaledTotal.toString());
+      }
+    }
+    Keyboard.dismiss();
+    waitForKeyboardDismiss().then(() => {
+      swapSettingsBottomSheetModalRef.current?.present();
+    });
+  }, [recommendedFee, swapOperationCount]);
+
+  const handleCloseSwapSettings = useCallback(() => {
+    swapSettingsBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  // A transaction already built for Review is rebuilt with the new settings,
+  // so Confirm signs what Review shows.
+  const handleSwapSettingsChange = useCallback(() => {
+    if (!earnSwap.transactionXDR) {
+      return;
+    }
+    earnSwap.setupSwapTransaction().catch((settingsError) => {
+      logger.error(
+        "EarnTokenPickerScreen",
+        "Failed to rebuild the earn swap after a settings change",
+        settingsError,
+      );
+    });
+  }, [earnSwap]);
 
   // Cross-stack navigation (Buy / Receive live outside EarnStack) needs the
   // root-level param list — the screen's own `navigation` prop is typed to
@@ -236,8 +356,8 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     return getNotEnoughVariant({ isOnrampable, isSwappable });
   }, [notEnoughOption, networkDetails, pricedBalances]);
 
-  // The sheet's header renders the deposit asset's real icon (design nodes
-  // `9457:46399`/`9457:46345`/`9457:46530`), not a generic glyph -- same
+  // The sheet's header renders the deposit asset's real icon, not a generic
+  // glyph -- same
   // fallback as `EarnTokenRow`'s: prefer the held balance's real token
   // shape, otherwise reconstruct a minimal one from catalog data (native XLM
   // decided by `isNative`, never by code -- see that row's own comment for
@@ -266,7 +386,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     });
   }, [rootNavigation]);
 
-  // Swap-within-Earn (design `13722:341980`): opens a sheet stacked OVER the
+  // Swap-within-Earn: opens a sheet stacked OVER the
   // still-visible picker, with the destination locked to the reserve the
   // user just failed to deposit. Deliberately NOT a jump to `SWAP_STACK`,
   // which would eject them from Earn and leave them to find their way back
@@ -302,11 +422,52 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // component unmounting -- the same reason `SwapAmountScreen` calls
   // `executeSwap` bare rather than awaiting it.
   const handleConfirmSwap = useCallback(() => {
+    swapSecurityWarningBottomSheetModalRef.current?.dismiss();
     swapReviewBottomSheetModalRef.current?.dismiss();
     swapFromBottomSheetModalRef.current?.dismiss();
     swapBottomSheetModalRef.current?.dismiss();
     earnSwap.executeSwap();
+    swapProcessingBottomSheetModalRef.current?.present();
   }, [earnSwap]);
+
+  // X, Close and Done on the processing sheet. Close while the swap is still
+  // in flight leaves it running; useSwapTransaction keeps handling its result.
+  const handleSwapProcessingSheetClose = useCallback(
+    (outcome: EarnSwapOutcome) => {
+      swapOutcomeRef.current = outcome;
+      earnSwap.handleProcessingScreenClose();
+    },
+    [earnSwap],
+  );
+
+  const handleCancelSwapSecurityWarning = useCallback(() => {
+    swapSecurityWarningBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  // Continue on unable-to-scan opens Review, where Confirm still signs; on a
+  // Malicious or Suspicious verdict it confirms, as Review's own "Confirm
+  // anyway" does. The same as main Swap.
+  const handleSwapProceedAnyway = useCallback(() => {
+    swapSecurityWarningBottomSheetModalRef.current?.dismiss();
+    if (earnSwap.isUnableToScan) {
+      swapReviewBottomSheetModalRef.current?.present();
+    } else {
+      handleConfirmSwap();
+    }
+  }, [earnSwap.isUnableToScan, handleConfirmSwap]);
+
+  const swapSecuritySeverity = useMemo(() => {
+    if (earnSwap.isMalicious) {
+      return SecurityLevel.MALICIOUS;
+    }
+    if (earnSwap.isSuspicious) {
+      return SecurityLevel.SUSPICIOUS;
+    }
+    if (earnSwap.isUnableToScan) {
+      return SecurityLevel.UNABLE_TO_SCAN;
+    }
+    return undefined;
+  }, [earnSwap.isMalicious, earnSwap.isSuspicious, earnSwap.isUnableToScan]);
 
   // The review sheet's footer (settings / Cancel / Confirm) is NOT part of
   // `SwapReviewBottomSheet` -- it is a separate component the sheet takes as
@@ -330,19 +491,22 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     setSwapOption(null);
   }, []);
 
-  // Design node `9457:46184`: an in-flow "Receive funds" QR sheet, presented
-  // ON TOP of the "not enough" sheet rather than replacing it -- the mock
-  // itself composites this sheet directly over the one that opened it, and
-  // this mirrors the review sheet's own security-detail sheet
-  // (`EarnAmountScreen`'s `onSecurityWarningPress`), the established pattern
-  // in this feature for stacking a sheet without dismissing the one beneath.
-  // Dismissing this sheet leaves the "not enough" sheet exactly as it was --
-  // the user never leaves Earn. Previously this navigated cross-stack to
-  // `ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN`, ejecting the user from the
-  // flow entirely.
+  // An in-flow "Receive funds" QR sheet, presented ON TOP of the "not enough"
+  // sheet rather than replacing it, the same pattern the review sheet's
+  // security-detail sheet uses. The user never leaves Earn.
   const handleReceivePress = useCallback(() => {
     receiveFundsBottomSheetModalRef.current?.present();
   }, []);
+
+  // Back returns to the "not enough" sheet underneath; X closes both.
+  const handleReceiveBack = useCallback(() => {
+    receiveFundsBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  const handleReceiveClose = useCallback(() => {
+    receiveFundsBottomSheetModalRef.current?.dismiss();
+    handleCloseNotEnoughSheet();
+  }, [handleCloseNotEnoughSheet]);
 
   // There used to be a header-right info button here that opened
   // `PoolDetailsBottomSheet`, but that button was never in the design and
@@ -350,6 +514,12 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // `PoolDetailsBottomSheet` now has its real trigger on the amount screen's
   // `PoolCard` chevron instead (mirroring the extension's
   // `EarnAmount/PoolCard.tsx`'s `onOpenDetails`) — see `EarnAmountScreen`.
+
+  const handlePoolChipPress = useCallback(() => {
+    openInAppBrowser(BLEND_LENDING_DOCS_URL).catch((err) =>
+      logger.error("EarnTokenPickerScreen", "Failed to open Blend docs", err),
+    );
+  }, [openInAppBrowser]);
 
   const handleHeldTokenPress = useCallback(
     (option: EarnTokenOption) => {
@@ -404,26 +574,6 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     );
   }
 
-  // The swap's submit lifecycle. `executeSwap` flips this the moment Confirm
-  // is pressed; without rendering it the user saw the review dismiss and the
-  // swap sheet reappear with no feedback at all -- which reads as "Confirm
-  // did nothing", even though the transaction was in flight. Regular Swap
-  // early-returns the same screen from `SwapAmountScreen`.
-  //
-  // Sits above the sheet tree deliberately: the processing screen owns the
-  // whole surface, so the sheets underneath should be gone by then.
-  if (earnSwap.isProcessing) {
-    return (
-      <SwapProcessingScreen
-        onClose={earnSwap.handleProcessingScreenClose}
-        sourceAmount={earnSwap.sourceAmount}
-        sourceToken={earnSwap.sourceToken}
-        destinationAmount={earnSwap.destinationAmount || "0"}
-        destinationToken={earnSwap.destinationToken}
-      />
-    );
-  }
-
   // Both full-screen states are gated on having NOTHING to show, not merely
   // on the flag: they early-return past the whole sheet tree below, so
   // firing one during a refresh unmounts every open bottom sheet -- which is
@@ -438,13 +588,11 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     return (
       <BaseLayout
         useSafeArea
-        insets={{ top: true, bottom: true, left: false, right: false }}
+        insets={{ top: false, bottom: true, left: false, right: false }}
       >
-        <View className="flex-1 px-6">
-          <EarnScreenHeader onClose={() => navigation.goBack()} />
-          <View className="flex-1 items-center justify-center">
-            <Spinner testID="earn-token-picker-spinner" />
-          </View>
+        <EarnScreenHeader onClose={() => navigation.goBack()} />
+        <View className="flex-1 items-center justify-center">
+          <Spinner testID="earn-token-picker-spinner" />
         </View>
       </BaseLayout>
     );
@@ -458,153 +606,146 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     return (
       <BaseLayout
         useSafeArea
-        insets={{ top: true, bottom: true, left: false, right: false }}
+        insets={{ top: false, bottom: true, left: false, right: false }}
       >
-        <View className="flex-1 px-6">
-          <EarnScreenHeader onClose={() => navigation.goBack()} />
-          <View className="flex-1 items-center justify-center">
+        <EarnScreenHeader onClose={() => navigation.goBack()} />
+        <View
+          className="flex-1 items-center justify-center gap-[24px]"
+          style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+        >
+          <View className="items-center gap-[8px]">
             <Text md medium primary textAlign="center">
               {t("earnTokenPicker.error.title")}
             </Text>
-            <View className="h-2" />
             <Text sm secondary textAlign="center">
               {t("earnTokenPicker.error.body")}
             </Text>
-            <View className="h-6" />
-            <Button
-              secondary
-              onPress={refetch}
-              testID="earn-token-picker-retry"
-            >
-              {t("earnTokenPicker.error.retry")}
-            </Button>
           </View>
+          <Button
+            secondary
+            xl
+            onPress={refetch}
+            testID="earn-token-picker-retry"
+          >
+            {t("earnTokenPicker.error.retry")}
+          </Button>
         </View>
       </BaseLayout>
     );
   }
 
-  // Figma `13701:332629` groups the list as: an "in your account" area
-  // (replaced by an empty-state block when the user holds none of the
-  // reserves), then "Supported tokens". The mock only draws the empty
-  // variant, so the held variant keeps this screen's existing section header
-  // and rows, restyled to the new spec.
   const heldSection = held.length > 0;
+  const poolLabel = pool?.name
+    ? `${t("earnTokenPicker.protocolName")} · ${pool.name}`
+    : t("earnTokenPicker.protocolName");
 
   return (
     <>
       <BaseLayout
         useSafeArea
-        backgroundColor={themeColors.background.primary}
-        insets={{ top: true, bottom: true, left: false, right: false }}
+        insets={{ top: false, bottom: false, left: false, right: false }}
       >
-        {/* Design node `13701:332635`: same blurred circle as the intro but at
-            70% fill opacity, centered low on the screen behind the disclaimer
-            rather than behind a logo. */}
-        <EarnGlow centerY={GLOW_CENTER_Y} opacity={GLOW_OPACITY} />
+        <EarnScreenHeader onClose={() => navigation.goBack()} />
 
-        <View className="flex-1 px-6">
-          <EarnScreenHeader onClose={() => navigation.goBack()} />
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerClassName="gap-[24px]"
+          contentContainerStyle={{
+            paddingHorizontal: pxValue(DEFAULT_PADDING),
+            paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
+          }}
+        >
+          <View className="gap-[4px]">
+            <Text xl medium primary>
+              {t("earnTokenPicker.heading")}
+            </Text>
+            <Text sm regular secondary>
+              {t("earnTokenPicker.subheading")}
+            </Text>
+          </View>
 
-          <View className="flex-1" style={{ marginTop: CONTENT_TOP_OFFSET }}>
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerClassName="gap-10 pb-6"
-            >
-              {/* Title block: the Blend badge, then heading + subheading.
-                  These moved OUT of the navigation header in this redesign --
-                  the header is now a bare X (see `EarnScreenHeader`). */}
-              <View className="gap-2">
-                <View
-                  className="h-8 flex-row items-center justify-center self-start gap-1 rounded-lg px-2.5 py-1"
-                  style={{ backgroundColor: themeColors.background.tertiary }}
-                >
-                  {/* A different Blend mark from the intro's outlined jar --
-                      a filled glyph on a transparent ground -- so it ships as
-                      its own asset rather than reusing `blend-logo.svg`. */}
+          <View className="gap-[24px]">
+            <View className="gap-[8px]">
+              <Text sm medium secondary>
+                {t("earnTokenPicker.depositInto")}
+              </Text>
+              {/* The pool chip opens Blend's lending docs. */}
+              <TouchableOpacity
+                onPress={handlePoolChipPress}
+                activeOpacity={0.7}
+                accessibilityRole="link"
+                accessibilityLabel={poolLabel}
+                className="h-[32px] flex-row items-center gap-[8px] self-start rounded-[8px] px-[10px] py-[4px]"
+                style={{ backgroundColor: themeColors.gray[3] }}
+                testID="earn-token-picker-pool-chip"
+              >
+                <View className="flex-row items-center gap-[4px]">
                   <Image
                     source={blendIcon}
-                    className="size-5 rounded"
+                    className="size-[16px] rounded-[4px]"
                     resizeMode="cover"
                     accessibilityIgnoresInvertColors
                   />
                   <Text md medium primary>
-                    {t("earnTokenPicker.protocolName")}
+                    {poolLabel}
                   </Text>
                 </View>
+                <Icon.LinkExternal01
+                  size={14}
+                  color={themeColors.foreground.primary}
+                />
+              </TouchableOpacity>
+            </View>
 
-                <View className="gap-1">
-                  {/* Text/LG/500 (18/26) -- SDS `Text lg` is 18/26 exactly. */}
-                  <Text lg medium primary>
-                    {t("earnTokenPicker.heading")}
-                  </Text>
-                  <Text sm regular secondary>
-                    {t("earnTokenPicker.subheading")}
-                  </Text>
+            {heldSection ? (
+              <View className="gap-[12px]">
+                <Text md medium primary>
+                  {t("earnTokenPicker.inYourWallet")}
+                </Text>
+                <View className="gap-[12px]">
+                  {held.map((option) => (
+                    <EarnTokenRow
+                      key={option.assetId}
+                      option={option}
+                      testID={`earn-token-option-${option.code}`}
+                      onPress={() => handleHeldTokenPress(option)}
+                    />
+                  ))}
                 </View>
               </View>
-
-              <View className="gap-6">
-                {heldSection ? (
-                  <View className="gap-3">
-                    <Text md medium primary>
-                      {t("earnTokenPicker.inYourAccount")}
-                    </Text>
-                    <View className="gap-3">
-                      {held.map((option) => (
-                        <EarnTokenRow
-                          key={option.assetId}
-                          option={option}
-                          testID={`earn-token-option-${option.code}`}
-                          onPress={() => handleHeldTokenPress(option)}
-                        />
-                      ))}
-                    </View>
-                  </View>
-                ) : (
-                  // Design nodes `13701:332739`/`332774`: where the held
-                  // section would be, prose explaining why it is absent.
-                  <View className="gap-1" testID="earn-token-picker-empty-held">
-                    <Text md medium primary>
-                      {t("earnTokenPicker.noSupportedAssets.title")}
-                    </Text>
-                    <Text sm regular secondary>
-                      {t("earnTokenPicker.noSupportedAssets.body")}
-                    </Text>
-                  </View>
-                )}
-
-                {supported.length > 0 && (
-                  <View className="gap-3">
-                    <Text md medium primary>
-                      {t("earnTokenPicker.supportedTokens")}
-                    </Text>
-                    <View className="gap-3">
-                      {supported.map((option) => (
-                        <EarnTokenRow
-                          key={option.assetId}
-                          option={option}
-                          testID={`earn-token-option-${option.code}`}
-                          onPress={() => handleUnheldTokenPress(option)}
-                        />
-                      ))}
-                    </View>
-                  </View>
-                )}
+            ) : (
+              // Holding none of the reserves: prose explaining why the
+              // wallet section is absent.
+              <View className="gap-[4px]" testID="earn-token-picker-empty-held">
+                <Text md medium primary>
+                  {t("earnTokenPicker.noSupportedAssets.title")}
+                </Text>
+                <Text sm regular secondary>
+                  {t("earnTokenPicker.noSupportedAssets.body")}
+                </Text>
               </View>
-            </ScrollView>
-          </View>
+            )}
 
-          {/* Node `13701:332636`: the disclaimer is pinned near the bottom of
-              the screen, well below where the list ends -- not flush under the
-              last row. Keeping it a sibling of the scroll area (rather than
-              inside it) holds it there on any device while the list scrolls. */}
-          <View className="pb-6">
-            <Text sm regular secondary textAlign="center">
-              {t("earnTokenPicker.apyDisclaimer")}
-            </Text>
+            {supported.length > 0 && (
+              <View className="gap-[12px]">
+                <Text md medium primary>
+                  {t("earnTokenPicker.otherSupportedAssets")}
+                </Text>
+                <View className="gap-[12px]">
+                  {supported.map((option) => (
+                    <EarnTokenRow
+                      key={option.assetId}
+                      option={option}
+                      testID={`earn-token-option-${option.code}`}
+                      onPress={() => handleUnheldTokenPress(option)}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
-        </View>
+        </ScrollView>
       </BaseLayout>
       <BottomSheet
         modalRef={notEnoughBottomSheetModalRef}
@@ -622,8 +763,6 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       />
       <BottomSheet
         modalRef={swapBottomSheetModalRef}
-        enableDynamicSizing={false}
-        snapPoints={["90%"]}
         analyticsEvent={AnalyticsEvent.VIEW_EARN_SWAP}
         customContent={
           swapOption && earnSwap.destination ? (
@@ -643,6 +782,8 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
               }}
               destinationLabel={swapOption.code}
               destinationAmount={earnSwap.pathResult?.destinationAmount ?? "0"}
+              sourceSecondaryText={earnSwapSourceSecondaryText}
+              destinationSecondaryText={earnSwapDestinationFiatText}
               onPercentagePress={earnSwap.handlePercentagePress}
               onSettingsPress={handleSwapSettingsPress}
               onClose={handleCloseSwap}
@@ -660,6 +801,9 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
         scrollViewFooterComponent={renderSwapReviewFooter}
         customContent={
           <SwapReviewBottomSheet
+            onSecurityWarningPress={() =>
+              swapSecurityWarningBottomSheetModalRef.current?.present()
+            }
             transactionSecurityAssessment={
               earnSwap.transactionSecurityAssessment
             }
@@ -668,6 +812,52 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
               earnSwap.destinationSecurityAssessment
             }
           />
+        }
+      />
+      <BottomSheet
+        modalRef={swapSecurityWarningBottomSheetModalRef}
+        customContent={
+          <SecurityDetailBottomSheet
+            warnings={earnSwap.securityWarnings}
+            onCancel={handleCancelSwapSecurityWarning}
+            onProceedAnyway={handleSwapProceedAnyway}
+            onClose={handleCancelSwapSecurityWarning}
+            severity={swapSecuritySeverity}
+            proceedAnywayText={
+              earnSwap.isUnableToScan
+                ? t("common.continue")
+                : t("transactionAmountScreen.confirmAnyway")
+            }
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={swapSettingsBottomSheetModalRef}
+        customContent={
+          <TransactionSettingsBottomSheet
+            context={TransactionContext.Swap}
+            onCancel={handleCloseSwapSettings}
+            onConfirm={handleCloseSwapSettings}
+            onSettingsChange={handleSwapSettingsChange}
+            operationCount={swapOperationCount}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={swapProcessingBottomSheetModalRef}
+        enablePanDownToClose={false}
+        customContent={
+          earnSwap.isProcessing &&
+          earnSwap.sourceToken &&
+          earnSwap.destinationToken ? (
+            <EarnSwapProcessingBottomSheet
+              sourceAmount={earnSwap.sourceAmount}
+              sourceToken={earnSwap.sourceToken}
+              destinationAmount={earnSwap.destinationAmount || "0"}
+              destinationToken={earnSwap.destinationToken}
+              onClose={handleSwapProcessingSheetClose}
+            />
+          ) : null
         }
       />
       <BottomSheet
@@ -688,7 +878,8 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
         modalRef={receiveFundsBottomSheetModalRef}
         customContent={
           <ReceiveFundsBottomSheet
-            bottomSheetModalRef={receiveFundsBottomSheetModalRef}
+            onBack={handleReceiveBack}
+            onClose={handleReceiveClose}
           />
         }
       />

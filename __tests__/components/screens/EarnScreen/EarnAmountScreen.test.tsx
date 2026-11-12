@@ -40,9 +40,13 @@ type SheetRefSpy = {
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace, vars-on-top, no-var, no-underscore-dangle, @typescript-eslint/naming-convention
   var __earnAmountMockSheetRefs: SheetRefSpy[];
+  // eslint-disable-next-line @typescript-eslint/no-namespace, vars-on-top, no-var, no-underscore-dangle, @typescript-eslint/naming-convention
+  var __earnAmountMockSheetContents: React.ReactElement[];
 }
 // eslint-disable-next-line no-underscore-dangle
 globalThis.__earnAmountMockSheetRefs = [];
+// eslint-disable-next-line no-underscore-dangle
+globalThis.__earnAmountMockSheetContents = [];
 
 jest.mock("components/BottomSheet", () => {
   /* eslint-disable global-require, @typescript-eslint/no-var-requires, @typescript-eslint/no-shadow */
@@ -50,14 +54,22 @@ jest.mock("components/BottomSheet", () => {
   const RNModule = require("react-native");
   /* eslint-enable global-require, @typescript-eslint/no-var-requires, @typescript-eslint/no-shadow */
 
-  const NoopSheet = (props: { modalRef?: React.RefObject<unknown> }) => {
-    const { modalRef } = props;
+  const NoopSheet = (props: {
+    modalRef?: React.RefObject<unknown>;
+    customContent?: React.ReactElement;
+  }) => {
+    const { modalRef, customContent } = props;
     ReactModule.useImperativeHandle(modalRef, () => {
       const spy: SheetRefSpy = { present: jest.fn(), dismiss: jest.fn() };
       // eslint-disable-next-line no-underscore-dangle
       globalThis.__earnAmountMockSheetRefs.push(spy);
       return spy;
     }, []);
+    // Recorded, not rendered, so a test can call a child sheet's handlers.
+    if (customContent) {
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__earnAmountMockSheetContents.push(customContent);
+    }
     // Don't render customContent — mirrors Swap's stub. The child sheets
     // (fee/review/security) are never mounted, so they need no mocks of
     // their own.
@@ -166,12 +178,13 @@ jest.mock("ducks/debug", () => ({
   useDebugStore: () => ({ overriddenBlockaidResponse: undefined }),
 }));
 
+let mockTransactionAssessment = {
+  isMalicious: false,
+  isSuspicious: false,
+  isUnableToScan: false,
+};
 jest.mock("services/blockaid/helper", () => ({
-  assessTransactionSecurity: () => ({
-    isMalicious: false,
-    isSuspicious: false,
-    isUnableToScan: false,
-  }),
+  assessTransactionSecurity: () => mockTransactionAssessment,
   extractSecurityWarnings: () => [],
 }));
 
@@ -276,6 +289,13 @@ describe("EarnAmountScreen", () => {
     jest.clearAllMocks();
     // eslint-disable-next-line no-underscore-dangle
     globalThis.__earnAmountMockSheetRefs = [];
+    // eslint-disable-next-line no-underscore-dangle
+    globalThis.__earnAmountMockSheetContents = [];
+    mockTransactionAssessment = {
+      isMalicious: false,
+      isSuspicious: false,
+      isUnableToScan: false,
+    };
     mockEarnTransactionStatus = "idle";
     mockEarnTransactionHash = null;
     mockSimulateError = null;
@@ -321,7 +341,7 @@ describe("EarnAmountScreen", () => {
   describe("CTA state machine", () => {
     it("disables the CTA with 'insufficient' when the spendable balance is zero", () => {
       setSpendable({ deposit: "0", xlm: "10" });
-      setTokenAmount("0");
+      setTokenAmount("1");
 
       const { getByTestId } = renderScreen();
       const cta = getByTestId("earn-amount-cta");
@@ -330,14 +350,17 @@ describe("EarnAmountScreen", () => {
       expect(cta.props.accessibilityState?.disabled).toBe(true);
     });
 
-    it("disables the CTA with 'enter' when the amount is zero", () => {
+    it("offers 25% / 50% / Max, without 75%, in place of the CTA while the amount is zero", () => {
       setTokenAmount("0");
 
-      const { getByTestId } = renderScreen();
-      const cta = getByTestId("earn-amount-cta");
+      const { getByTestId, queryByTestId } = renderScreen();
 
-      expect(cta).toHaveTextContent("earnAmount.enterAmount");
-      expect(cta.props.accessibilityState?.disabled).toBe(true);
+      expect(queryByTestId("earn-amount-cta")).toBeNull();
+      expect(getByTestId("earn-amount-percentage-buttons")).toBeTruthy();
+      expect(getByTestId("percentage-25")).toBeTruthy();
+      expect(getByTestId("percentage-50")).toBeTruthy();
+      expect(getByTestId("percentage-100")).toBeTruthy();
+      expect(queryByTestId("percentage-75")).toBeNull();
     });
 
     it("disables the CTA with 'insufficient' when the amount exceeds the max depositable", () => {

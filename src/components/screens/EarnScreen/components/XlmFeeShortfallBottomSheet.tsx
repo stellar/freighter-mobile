@@ -15,27 +15,30 @@ export interface XlmFeeShortfallBottomSheetProps {
   onBuy: () => void;
   /** Opens the in-flow "Receive funds" sheet on top of this one. */
   onReceive: () => void;
+  /**
+   * Whether the onramp is offered: mainnet only, as on the not-enough
+   * sheet. Without it, Receive is the one (filled) action.
+   */
+  isBuyAvailable: boolean;
 }
 
 /**
  * Sheet shown when the account has no XLM at all to cover the network fee
  * (the pre-simulation `needsXlmForFee` gate) -- distinct from the
  * measured-resource-fee shortfall, which stays a toast (`earnAmount.errors.
- * feeShortfall`/`insufficientBalanceForFee`) and is untouched by this
- * component.
+ * feeShortfall`/`insufficientBalanceForFee`).
  *
- * The XLM asset icon (not an amber warning glyph) leads the shared stacked
- * sheet header, followed by **two** stacked full-width actions -- "Buy with
- * Coinbase" (light `tertiary` pill) above "Receive XLM" (outlined
- * `secondary` pill). Structurally identical to `NotEnoughTokenBottomSheet`.
+ * The XLM icon leads the stacked sheet header, followed by "Buy with
+ * Coinbase" (filled) above "Receive XLM" (outlined); without the onramp,
+ * "Receive XLM" alone, filled.
  *
- * Pure content: mirrors `PoolDetailsBottomSheet`'s convention (the caller
- * wraps this in `components/BottomSheet` and owns the modal ref, passed
- * through here only so the close control and actions can dismiss it).
+ * Pure content: the caller wraps this in `components/BottomSheet` and owns
+ * the modal ref, passed through here only so the close control can dismiss
+ * it.
  */
 export const XlmFeeShortfallBottomSheet: React.FC<
   XlmFeeShortfallBottomSheetProps
-> = ({ bottomSheetModalRef, onBuy, onReceive }) => {
+> = ({ bottomSheetModalRef, onBuy, onReceive, isBuyAvailable }) => {
   const { t } = useAppTranslation();
 
   const handleClose = () => {
@@ -59,23 +62,26 @@ export const XlmFeeShortfallBottomSheet: React.FC<
       />
 
       <View className="mt-[24px]">
-        <Text md regular secondary textAlign="left">
+        <Text md regular secondary>
           {t("earnAmount.networkFeeSheet.body")}
         </Text>
       </View>
 
       <View className="mt-[24px] gap-[8px]">
+        {isBuyAvailable && (
+          <Button
+            secondary
+            xl
+            isFullWidth
+            onPress={onBuy}
+            testID="xlm-fee-shortfall-buy-button"
+          >
+            {t("earnAmount.networkFeeSheet.buyWithCoinbase")}
+          </Button>
+        )}
         <Button
-          tertiary
-          xl
-          isFullWidth
-          onPress={onBuy}
-          testID="xlm-fee-shortfall-buy-button"
-        >
-          {t("earnAmount.networkFeeSheet.buyWithCoinbase")}
-        </Button>
-        <Button
-          secondary
+          secondary={!isBuyAvailable}
+          tertiary={isBuyAvailable}
           xl
           isFullWidth
           onPress={onReceive}
