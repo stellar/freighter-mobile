@@ -6,10 +6,12 @@ import React from "react";
 
 const mockCreateAccount = jest.fn();
 const mockAddRecoveryPhraseSource = jest.fn();
+const mockImportRecoveryPhrase = jest.fn();
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: () => ({
     createAccount: mockCreateAccount,
     addRecoveryPhraseSource: mockAddRecoveryPhraseSource,
+    importRecoveryPhrase: mockImportRecoveryPhrase,
     isCreatingAccount: false,
     error: null,
     clearError: jest.fn(),
@@ -23,11 +25,14 @@ jest.mock("components/templates/InputPasswordTemplate", () => {
   const { TouchableOpacity } = jest.requireActual("react-native");
   return ({
     handleContinue,
+    continueButtonText,
   }: {
     handleContinue: (password: string) => void;
+    continueButtonText: string;
   }) => (
     <TouchableOpacity
       testID="continue"
+      accessibilityLabel={continueButtonText}
       onPress={() => handleContinue("hunter2")}
     />
   );
@@ -48,6 +53,31 @@ describe("VerifyPasswordScreen", () => {
     jest.clearAllMocks();
     mockCreateAccount.mockResolvedValue(undefined);
     mockAddRecoveryPhraseSource.mockResolvedValue(undefined);
+    mockImportRecoveryPhrase.mockResolvedValue(undefined);
+  });
+
+  it("imports the held phrase, under an Import button", async () => {
+    const { getByTestId } = renderScreen({
+      kind: "importPhrase",
+      pendingPhraseId: "pending-phrase-3",
+    });
+
+    expect(getByTestId("continue").props.accessibilityLabel).toBe("Import");
+
+    fireEvent.press(getByTestId("continue"));
+
+    expect(mockImportRecoveryPhrase).toHaveBeenCalledWith(
+      "hunter2",
+      "pending-phrase-3",
+    );
+    expect(mockCreateAccount).not.toHaveBeenCalled();
+    expect(mockAddRecoveryPhraseSource).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(navigation.reset).toHaveBeenCalledWith({
+        index: 0,
+        routes: [{ name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK }],
+      }),
+    );
   });
 
   it("adds a named account under the chosen phrase", async () => {
