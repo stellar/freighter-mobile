@@ -166,6 +166,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const [hasCheckedRequestsLeftOnScreen, setHasCheckedRequestsLeftOnScreen] =
     useState(false);
   const requestsRejectedAtStartRef = useRef<Set<number>>(new Set());
+  // Set when a sheet's content fails to render, until the sheet is closed
+  // (see closeSheetIfFailed).
+  const requestSheetFailedRef = useRef(false);
+  const connectionSheetFailedRef = useRef(false);
 
   const xdr = useMemo(
     () =>
@@ -785,6 +789,28 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   }, []);
 
   /**
+   * Closes a sheet whose content failed to render, once the sheet reports it
+   * has opened. A render error in a sheet's content is caught while the sheet
+   * is still mounting, and the bottom sheet ignores dismiss() until its
+   * opening animation starts, so the sheet would otherwise finish opening,
+   * empty. A sheet that closes clears the flag.
+   */
+  const closeSheetIfFailed = (
+    failedRef: { current: boolean },
+    sheetRef: React.RefObject<BottomSheetModal | null>,
+    index: number,
+  ) => {
+    if (index === -1) {
+      // eslint-disable-next-line no-param-reassign
+      failedRef.current = false;
+    } else if (failedRef.current) {
+      // eslint-disable-next-line no-param-reassign
+      failedRef.current = false;
+      sheetRef.current?.dismiss();
+    }
+  };
+
+  /**
    * The connection sheet failed to render: rejects the proposal, says so, and
    * clears the connection, which closes the sheet. Skipped while the
    * connection is being approved, whose own teardown follows.
@@ -794,6 +820,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       return;
     }
 
+    connectionSheetFailedRef.current = true;
     rejectSessionProposal({
       sessionProposal: proposalEvent,
       message: t("walletKit.sheetRenderFailedReason"),
@@ -829,6 +856,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     }
 
     hasRespondedRef.current = true;
+    requestSheetFailedRef.current = true;
     rejectSessionRequest({
       sessionRequest: requestEvent,
       message: t("walletKit.sheetRenderFailedReason"),
@@ -1673,6 +1701,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         analyticsEvent={AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS}
         bottomSheetModalProps={{
           onDismiss: handleClearDappConnection,
+          onChange: (index: number) =>
+            closeSheetIfFailed(
+              connectionSheetFailedRef,
+              dappConnectionBottomSheetModalRef,
+              index,
+            ),
         }}
         customContent={
           // Inside the sheet: sheets render through the portal host, so a
@@ -1715,6 +1749,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         enableContentPanningGesture={!isNonTransactionRequest}
         bottomSheetModalProps={{
           onDismiss: handleClearDappRequest,
+          onChange: (index: number) =>
+            closeSheetIfFailed(
+              requestSheetFailedRef,
+              dappRequestBottomSheetModalRef,
+              index,
+            ),
           enableDynamicSizing: true,
         }}
         customContent={

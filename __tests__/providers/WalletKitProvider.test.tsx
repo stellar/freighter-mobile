@@ -36,6 +36,10 @@ let mockSecuritySheetProps: SecurityDetailBottomSheetProps | undefined;
 let mockBlockaidOverride: SecurityLevel | null = null;
 /** The sheets presented, in order (see the BottomSheet mock). */
 let mockPresentedSheets: string[] = [];
+/** The sheets dismissed, in order (see the BottomSheet mock). */
+let mockDismissedSheets: string[] = [];
+/** Each sheet's onChange, by name (see the BottomSheet mock). */
+const mockSheetOnChange: Record<string, (index: number) => void> = {};
 /** Makes the request sheet's content throw while it shows a request. */
 let mockFailRequestSheet = false;
 /** Makes the connection sheet's content throw while it shows a proposal. */
@@ -118,29 +122,35 @@ jest.mock("services/analytics", () => ({
 
 // Every sheet renders its content as if presented. The request sheet and the
 // Blockaid sheet record their props, which is what the test drives. Each
-// present() is recorded in mockPresentedSheets, by the sheet's analytics event
-// or else its content's component name.
+// present() and dismiss() is recorded in mockPresentedSheets and
+// mockDismissedSheets, by the sheet's analytics event or else its content's
+// component name, and each sheet's onChange is kept in mockSheetOnChange so a
+// test can report the sheet as opened.
 jest.mock("components/BottomSheet", () => ({
   __esModule: true,
   default: ({
     customContent,
     modalRef,
     analyticsEvent,
+    bottomSheetModalProps,
   }: {
     customContent: React.ReactElement;
     modalRef?: { current: unknown };
     analyticsEvent?: string;
+    bottomSheetModalProps?: { onChange?: (index: number) => void };
   }) => {
+    const name =
+      analyticsEvent ??
+      (customContent.type as { name?: string }).name ??
+      "sheet";
+    if (bottomSheetModalProps?.onChange) {
+      mockSheetOnChange[name] = bottomSheetModalProps.onChange;
+    }
     if (modalRef) {
       // eslint-disable-next-line no-param-reassign
       modalRef.current = {
-        present: () =>
-          mockPresentedSheets.push(
-            analyticsEvent ??
-              (customContent.type as { name?: string }).name ??
-              "sheet",
-          ),
-        dismiss: () => undefined,
+        present: () => mockPresentedSheets.push(name),
+        dismiss: () => mockDismissedSheets.push(name),
       };
     }
     return customContent;
@@ -1042,5 +1052,57 @@ describe("WalletKitProvider: a dApp sheet that fails to render", () => {
     expect(useWalletKitStore.getState().event.type).toBe(
       WalletKitEventTypes.NONE,
     );
+  });
+
+  // The bottom sheet library ignores dismiss() while a sheet is still
+  // mounting, which is when a render error in its content is caught; the
+  // sheet would then finish opening, empty.
+  const dismissals = (sheet: string) =>
+    mockDismissedSheets.filter((name) => name === sheet).length;
+
+  it("closes a request sheet that failed while opening once it has opened, and not the next one", async () => {
+    const REQUEST_SHEET = AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION;
+    mockDismissedSheets = [];
+    render(provider());
+    await settle();
+    mockFailRequestSheet = true;
+    await deliver(signMessageRequest(1));
+    await settle();
+    const beforeOpened = dismissals(REQUEST_SHEET);
+
+    act(() => mockSheetOnChange[REQUEST_SHEET](0));
+
+    expect(dismissals(REQUEST_SHEET)).toBe(beforeOpened + 1);
+
+    // Closed; the next request's sheet opens and stays open.
+    act(() => mockSheetOnChange[REQUEST_SHEET](-1));
+    mockFailRequestSheet = false;
+    await actAndSettle(() => {
+      jest.runOnlyPendingTimers();
+    });
+    await deliver(signMessageRequest(2));
+    await settle();
+    const beforeNext = dismissals(REQUEST_SHEET);
+
+    act(() => mockSheetOnChange[REQUEST_SHEET](0));
+
+    expect(requestSheet().requestEvent?.id).toBe(2);
+    expect(dismissals(REQUEST_SHEET)).toBe(beforeNext);
+  });
+
+  it("closes a connection sheet that failed while opening once it has opened", async () => {
+    const CONNECTION_SHEET = AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS;
+    mockDismissedSheets = [];
+    render(provider());
+    await settle();
+    mockFailConnectionSheet = true;
+    await actAndSettle(() =>
+      useWalletKitStore.getState().setEvent(dappProposal(7)),
+    );
+    const beforeOpened = dismissals(CONNECTION_SHEET);
+
+    act(() => mockSheetOnChange[CONNECTION_SHEET](0));
+
+    expect(dismissals(CONNECTION_SHEET)).toBe(beforeOpened + 1);
   });
 });
