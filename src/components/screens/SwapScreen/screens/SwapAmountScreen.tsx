@@ -814,7 +814,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       shouldShowXlmReservePreflight({
         balanceItems,
         subentryCount: account?.subentryCount ?? 0,
-        swapFee,
+        // With a Soroban route's resource fee, as the review will charge.
+        swapFee: totalFee,
         sourceTokenId,
         destinationRequiresTrustline:
           !!destinationTokenDescriptor?.requiresTrustline,
@@ -835,7 +836,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     openSourcePicker,
     destinationTokenDescriptor,
     balanceItems,
-    swapFee,
+    totalFee,
     account,
     sourceTokenId,
     xlmReserveBottomSheetRef,

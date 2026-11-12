@@ -1240,6 +1240,69 @@ describe("SwapAmountScreen", () => {
       );
     });
 
+    it("counts a LI.FI quote's resource fee before deciding the reserve is covered", async () => {
+      // swapFee "100", subentries 0: spendable = total - 1 - fee.
+      // total 101.6 → 0.6 after the inclusion fee alone (covers 0.5), but
+      // 0.4 after the 0.2 resource fee too, which can't.
+      const xlmBalances = mockBalances.map((b) => {
+        if (!isNativeToken(b.token as Token)) return b;
+        return {
+          ...b,
+          total: new BigNumber("101.6"),
+          available: new BigNumber("1.6"),
+        };
+      });
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: xlmBalances,
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+      const lifiRoute = {
+        source: "lifi",
+        fromAmount: "1",
+        toAmount: "2",
+        paths: [{ share: "1", hops: [] }],
+        fees: [],
+        resourceFee: "0.2",
+      };
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: {
+          destinationAmount: "2",
+          quoteKey: "quote-key",
+          route: lifiRoute,
+        },
+        swapQuotes: { routes: [lifiRoute], unavailable: [] },
+        destinationToken: {
+          id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          tokenCode: "FTT",
+          issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          requiresTrustline: true,
+        },
+      } as Partial<SwapStoreState>);
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+      );
+    });
+
     it("opens XlmReserveBottomSheet when XLM is the source and initial spendable < BASE_RESERVE", async () => {
       // swapFee mock is "100", subentryCount = 0, minimumBalance = 1 XLM.
       // xlmSpendable = max(0, total - 1 - 100) = total - 101.
