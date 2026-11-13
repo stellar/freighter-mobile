@@ -27,6 +27,9 @@ export const useHasRecoveryPhrase = (): boolean => {
             "Failed to read secret sources",
             error,
           );
+          // Back to the permissive default: a false from an earlier read
+          // may be stale, e.g. a phrase was added since.
+          if (isActive) setHasPhrase(true);
         });
 
       return () => {
