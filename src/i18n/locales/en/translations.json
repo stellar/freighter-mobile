@@ -779,7 +779,7 @@
   },
   "earnIntro": {
     "title": "Put your tokens to work",
-    "subtitle": "Supply token to Blend and earn variable yield.",
+    "subtitle": "Supply tokens to Blend and earn variable yield.",
     "variableYield": {
       "title": "Earn variable yield",
       "body": "Supply supported token and earn based on current APY."
@@ -805,7 +805,8 @@
     "depositInto": "Deposit into",
     "inYourWallet": "In your wallet",
     "otherSupportedAssets": "Other supported assets",
-    "apyPill": "{{rate}} APY"
+    "apyPill": "{{rate}} APY",
+    "apyDisclaimer": "APY is variable and subject to change."
   },
   "earnPoolDetails": {
     "byBlend": "by Blend",
@@ -817,7 +818,8 @@
     "depositApy": "Deposit APY",
     "viewPoolDetails": "View pool details",
     "currentYield": "Current yield",
-    "poolLiquidity": "Pool liquidity"
+    "poolLiquidity": "Pool liquidity",
+    "poolName": "{{name}} Pool"
   },
   "earnAmount": {
     "title": "Deposit",

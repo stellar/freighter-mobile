@@ -6,6 +6,7 @@ import {
   EarnDetailsCard,
   EarnDetailsRow,
 } from "components/screens/EarnScreen/components/EarnDetailsCard";
+import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
 import SignTransactionDetailsBottomSheet, {
   SignTransactionDetailsHeader,
 } from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
@@ -143,7 +144,7 @@ export const EarnDepositDetailsBottomSheet: React.FC<
       label: t("earnDepositDetails.to"),
       value: (
         <Text md medium primary testID="earn-deposit-details-pool">
-          {pool?.name ?? "--"}
+          {pool?.name ? getPoolDisplayName(pool.name, t) : "--"}
           <Text md medium secondary>
             {` · ${t("earnTokenPicker.protocolName")}`}
           </Text>

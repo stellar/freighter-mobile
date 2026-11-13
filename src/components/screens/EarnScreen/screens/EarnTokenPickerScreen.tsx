@@ -25,6 +25,7 @@ import {
   hasSwappableBalance,
   isOnrampableAsset,
 } from "components/screens/EarnScreen/helpers";
+import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
 import { useEarnSwap } from "components/screens/EarnScreen/hooks/useEarnSwap";
 import {
   EarnTokenOption,
@@ -700,7 +701,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
 
   const heldSection = held.length > 0;
   const poolLabel = pool?.name
-    ? `${t("earnTokenPicker.protocolName")} · ${pool.name}`
+    ? `${t("earnTokenPicker.protocolName")} · ${getPoolDisplayName(pool.name, t)}`
     : t("earnTokenPicker.protocolName");
 
   return (
@@ -808,6 +809,22 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
                 </View>
               </View>
             )}
+          </View>
+
+          <View
+            className="flex-row items-start gap-[8px]"
+            testID="earn-token-picker-apy-disclaimer"
+          >
+            {/* Centres the icon on the text's first line. */}
+            <View className="py-[3px]">
+              <Icon.InfoCircle
+                size={16}
+                color={themeColors.foreground.primary}
+              />
+            </View>
+            <Text sm regular secondary style={{ flex: 1 }}>
+              {t("earnTokenPicker.apyDisclaimer")}
+            </Text>
           </View>
         </ScrollView>
       </BaseLayout>

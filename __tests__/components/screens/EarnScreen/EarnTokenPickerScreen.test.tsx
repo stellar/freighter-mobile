@@ -245,12 +245,13 @@ describe("EarnTokenPickerScreen", () => {
       expect(queryByTestId("earn-token-picker-empty-held")).toBeNull();
     });
 
-    it("drops the disclaimer and the ambient glow", () => {
+    it("ends with the APY disclaimer, without the ambient glow", () => {
       mockUseEarnTokens.supported = [makeOption("USDC")];
 
-      const { queryByText, queryByTestId } = renderScreen();
+      const { getByText, getByTestId, queryByTestId } = renderScreen();
 
-      expect(queryByText("earnTokenPicker.apyDisclaimer")).toBeNull();
+      expect(getByTestId("earn-token-picker-apy-disclaimer")).toBeTruthy();
+      expect(getByText("earnTokenPicker.apyDisclaimer")).toBeTruthy();
       expect(queryByTestId("earn-glow")).toBeNull();
     });
 
@@ -261,8 +262,10 @@ describe("EarnTokenPickerScreen", () => {
       const { getByText, getByTestId } = renderScreen();
 
       expect(getByText("earnTokenPicker.depositInto")).toBeTruthy();
+      // The pool reads "<name> Pool" (getPoolDisplayName's own tests cover
+      // the wording); `t` here echoes keys.
       expect(
-        getByText("earnTokenPicker.protocolName · Testnet v2.1"),
+        getByText("earnTokenPicker.protocolName · earnPoolDetails.poolName"),
       ).toBeTruthy();
 
       fireEvent.press(getByTestId("earn-token-picker-pool-chip"));

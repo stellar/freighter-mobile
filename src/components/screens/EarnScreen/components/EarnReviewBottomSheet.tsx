@@ -13,6 +13,7 @@ import {
   formatRate,
   projectEarnings,
 } from "components/screens/EarnScreen/helpers";
+import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
 import SignTransactionDetailsBottomSheet, {
   SignTransactionDetailsHeader,
 } from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
@@ -314,7 +315,7 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
                     {t("earnReview.to")}
                   </Text>
                   <Text lg medium primary testID="earn-review-pool">
-                    {pool?.name ?? "--"}
+                    {pool?.name ? getPoolDisplayName(pool.name, t) : "--"}
                   </Text>
                 </View>
               </View>

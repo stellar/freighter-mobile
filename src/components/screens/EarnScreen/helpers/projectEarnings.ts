@@ -5,8 +5,8 @@ import BigNumber from "bignumber.js";
  *
  * Deliberately simple interest on the deposit's current USD value: the rate is
  * a live figure that moves with pool utilization, so compounding it would imply
- * a precision the estimate does not have. The screen labels these "(est.)" and
- * the APY disclaimer carries the caveat.
+ * a precision the estimate does not have. Review labels these "(est.)", and the
+ * token picker's APY disclaimer carries the caveat.
  *
  * Returns null when either input is unavailable — a missing rate or an unpriced
  * asset means "unknown", not "zero". Callers render null as "--".

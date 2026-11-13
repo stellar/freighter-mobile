@@ -10,6 +10,7 @@ import {
   formatCompactUsd,
   formatRate,
 } from "components/screens/EarnScreen/helpers";
+import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { BLEND_LENDING_DOCS_URL } from "config/blend";
@@ -140,7 +141,7 @@ export const PoolDetailsBottomSheet: React.FC<PoolDetailsBottomSheetProps> = ({
           <View className="flex-1">
             {pool.name && (
               <Text xl medium primary numberOfLines={1}>
-                {pool.name}
+                {getPoolDisplayName(pool.name, t)}
               </Text>
             )}
             <Text sm medium secondary numberOfLines={1}>

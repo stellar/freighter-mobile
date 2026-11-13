@@ -1,5 +1,6 @@
 import blendIcon from "assets/logos/blend-icon.png";
 import { formatRate } from "components/screens/EarnScreen/helpers";
+import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { BlendCatalogPool } from "config/blendTypes";
@@ -73,7 +74,7 @@ export const PoolCard: React.FC<PoolCardProps> = ({
           <View className="flex-1">
             {pool.name && (
               <Text md medium primary numberOfLines={1}>
-                {pool.name}
+                {getPoolDisplayName(pool.name, t)}
               </Text>
             )}
             <Text sm medium secondary numberOfLines={1}>

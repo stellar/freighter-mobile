@@ -6,6 +6,7 @@ import Spinner from "components/Spinner";
 import { TokenIcon } from "components/TokenIcon";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { EarnDepositDetailsBottomSheet } from "components/screens/EarnScreen/components/EarnDepositDetailsBottomSheet";
+import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
 import { EarnTransactionStatus } from "components/screens/EarnScreen/hooks/useEarnTransaction";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -239,7 +240,7 @@ const EarnProcessingScreen: React.FC<EarnProcessingScreenProps> = ({
                 <Text xl medium secondary>
                   {` ${t("earnProcessing.to")} `}
                 </Text>
-                {pool?.name}
+                {pool?.name && getPoolDisplayName(pool.name, t)}
               </Text>
             </View>
           </View>

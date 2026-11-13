@@ -771,7 +771,8 @@
     "depositInto": "Depositar em",
     "inYourWallet": "Na sua carteira",
     "otherSupportedAssets": "Outros ativos suportados",
-    "apyPill": "{{rate}} APY"
+    "apyPill": "{{rate}} APY",
+    "apyDisclaimer": "O APY é variável e está sujeito a alterações."
   },
   "earnPoolDetails": {
     "byBlend": "por Blend",
@@ -783,7 +784,8 @@
     "depositApy": "APY de depósito",
     "viewPoolDetails": "Ver detalhes do pool",
     "currentYield": "Rendimento atual",
-    "poolLiquidity": "Liquidez do pool"
+    "poolLiquidity": "Liquidez do pool",
+    "poolName": "Pool {{name}}"
   },
   "earnAmount": {
     "title": "Depositar",

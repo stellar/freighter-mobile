@@ -15,6 +15,7 @@ import {
   isOnrampableAsset,
   needsXlmForFee,
   projectEarnings,
+  getPoolDisplayName,
 } from "components/screens/EarnScreen/helpers";
 import { NETWORKS } from "config/constants";
 
@@ -447,5 +448,23 @@ describe("getNotEnoughVariant", () => {
     expect(
       getNotEnoughVariant({ isOnrampable: false, isSwappable: false }),
     ).toBe(NotEnoughVariant.TRANSFER_ONLY);
+  });
+});
+
+describe("getPoolDisplayName", () => {
+  const t = ((key: string, options?: { name?: string }) =>
+    key === "earnPoolDetails.poolName"
+      ? `${options?.name} Pool`
+      : key) as never;
+
+  it("adds Pool to the on-chain name", () => {
+    expect(getPoolDisplayName("Fixed v2.1", t)).toBe("Fixed v2.1 Pool");
+    expect(getPoolDisplayName(" Testnet v2.1 ", t)).toBe("Testnet v2.1 Pool");
+  });
+
+  it("leaves a name that already ends in the word pool as it is", () => {
+    expect(getPoolDisplayName("YieldBlox Pool", t)).toBe("YieldBlox Pool");
+    expect(getPoolDisplayName("Fixed pool", t)).toBe("Fixed pool");
+    expect(getPoolDisplayName("Liverpool", t)).toBe("Liverpool Pool");
   });
 });

@@ -95,7 +95,7 @@ describe("PoolDetailsBottomSheet", () => {
         apy={0.1694}
       />,
     );
-    expect(getByText("Testnet v2.1")).toBeTruthy();
+    expect(getByText("Testnet v2.1 Pool")).toBeTruthy();
     expect(getByText("by Blend")).toBeTruthy();
     expect(getByText("Current yield")).toBeTruthy();
     expect(getByText("Pool liquidity")).toBeTruthy();
