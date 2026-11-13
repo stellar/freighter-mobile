@@ -20,7 +20,6 @@ const BOOLEAN_FLAGS = [
   "swap_enabled",
   "discover_enabled",
   "onramp_enabled",
-  "use_token_prices_v2",
   // Token price chart + stats on TokenDetailsScreen: the §11 kill switch.
   // Defaults ON in every build, like the extension's flag of the same name.
   "use_token_price_history",
@@ -77,7 +76,6 @@ const INITIAL_REMOTE_CONFIG_STATE =
         swap_enabled: true,
         discover_enabled: true,
         onramp_enabled: true,
-        use_token_prices_v2: true,
         use_token_price_history: true,
         // Defaults to v1 until the wallet-backend indexer is deployed for
         // every network; Amplitude flips this on to roll out v2 balances
@@ -103,7 +101,6 @@ const INITIAL_REMOTE_CONFIG_STATE =
         swap_enabled: isAndroid,
         discover_enabled: isAndroid,
         onramp_enabled: isAndroid,
-        use_token_prices_v2: true,
         // ON, matching the extension: a kill switch, not launch choreography.
         // A release must not reach users before /token-price-history and
         // /token-stats are live, since `isInitialized` is also set on a

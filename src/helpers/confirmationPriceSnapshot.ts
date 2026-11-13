@@ -2,8 +2,9 @@ import { NETWORKS } from "config/constants";
 import { TokenIdentifier, TokenPricesMap } from "config/types";
 import { fetchTokenPrices } from "services/backend";
 
+// Sent as `priceSource` on volume events. Only the freighter-backend-v2
+// endpoint remains; the value is kept so existing dashboards keep matching.
 export enum PriceSource {
-  TOKEN_PRICES_V1 = "token_prices_v1",
   TOKEN_PRICES_V2 = "token_prices_v2",
 }
 
@@ -50,17 +51,13 @@ export interface ConfirmationSnapshotHandle {
 export const startConfirmationPriceSnapshot = ({
   canonicalIds,
   network,
-  useV2,
   cachedDisplayPrices,
 }: {
   canonicalIds: TokenIdentifier[];
   network: NETWORKS;
-  useV2: boolean;
   cachedDisplayPrices: TokenPricesMap | null;
 }): ConfirmationSnapshotHandle => {
-  const source = useV2
-    ? PriceSource.TOKEN_PRICES_V2
-    : PriceSource.TOKEN_PRICES_V1;
+  const source = PriceSource.TOKEN_PRICES_V2;
 
   const controller = new AbortController();
   let succeeded = false;
@@ -71,7 +68,6 @@ export const startConfirmationPriceSnapshot = ({
   fetchTokenPrices({
     tokens: canonicalIds,
     network,
-    useV2,
     signal: controller.signal,
   })
     .then((result) => {
