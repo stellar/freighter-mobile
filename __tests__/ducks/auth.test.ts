@@ -3449,6 +3449,41 @@ describe("auth duck", () => {
           AnalyticsEvent.RECOVER_ACCOUNT_FAIL,
           { recovery_method: "secret_key", reason_code: "invalid_secret_key" },
         );
+        // Auto-lock is reset only for a valid key: the timer and the lock
+        // marker are as they were.
+        expect(usePreferencesStore.setState).not.toHaveBeenCalledWith({
+          autoLockTimer: DEFAULT_AUTO_LOCK_TIMER,
+        });
+        expect(secureDataStorage.remove).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+        );
+      });
+
+      // The new wallet's hash key must not inherit the previous timer.
+      it("resets auto-lock for a valid key before the hash key is written", async () => {
+        const { succeeded } = await runImport();
+
+        expect(succeeded).toBe(true);
+        expect(usePreferencesStore.setState).toHaveBeenCalledWith({
+          autoLockTimer: DEFAULT_AUTO_LOCK_TIMER,
+        });
+        const removeCalls = (secureDataStorage.remove as jest.Mock).mock;
+        const resetAt =
+          removeCalls.invocationCallOrder[
+            removeCalls.calls.findIndex(
+              ([key]) => key === SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+            )
+          ];
+        const setCalls = (secureDataStorage.setItem as jest.Mock).mock;
+        const hashKeyAt =
+          setCalls.invocationCallOrder[
+            setCalls.calls.findIndex(
+              ([key]) => key === SENSITIVE_STORAGE_KEYS.HASH_KEY,
+            )
+          ];
+        expect(resetAt).toBeDefined();
+        expect(hashKeyAt).toBeDefined();
+        expect(resetAt).toBeLessThan(hashKeyAt);
       });
 
       it.each([

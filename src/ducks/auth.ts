@@ -2475,6 +2475,10 @@ const signUp = async ({
     const keyPair = deriveKeyPair({ mnemonicPhrase });
     const phraseSourceId = await getPhraseSourceId(mnemonicPhrase);
 
+    // A new wallet: reset auto-lock to the default before storeAccount
+    // generates the hash key, so it doesn't inherit the previous timer.
+    // Only once the input is known good, so an invalid one changes nothing.
+    await resetAutoLockForNewWallet();
     clearAccountData();
     await clearAllData();
 
@@ -2517,6 +2521,10 @@ const importWallet = async ({
     const keyPair = deriveKeyPair({ mnemonicPhrase });
     const phraseSourceId = await getPhraseSourceId(mnemonicPhrase);
 
+    // A new wallet: reset auto-lock to the default before storeAccount
+    // generates the hash key, so it doesn't inherit the previous timer.
+    // Only once the input is known good, so an invalid one changes nothing.
+    await resetAutoLockForNewWallet();
     clearAccountData();
     await clearAllData();
 
@@ -2598,6 +2606,10 @@ const importWalletFromSecretKey = async ({
   }
 
   try {
+    // A new wallet: reset auto-lock to the default before storeAccount
+    // generates the hash key, so it doesn't inherit the previous timer.
+    // Only once the input is known good, so an invalid one changes nothing.
+    await resetAutoLockForNewWallet();
     clearAccountData();
     await clearAllData();
 
@@ -3679,12 +3691,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   signUp: async (params): Promise<boolean> => {
     set((state) => ({ ...state, isLoading: true, error: null }));
     try {
-      // Fresh wallet: reset auto-lock to the default before the hash key is
-      // generated so it doesn't inherit a previous wallet's timer.
-      await withAccountMutationLock(async () => {
-        await resetAutoLockForNewWallet();
-        await signUp(params);
-      });
+      // signUp resets auto-lock itself, once the phrase is known good.
+      await withAccountMutationLock(() => signUp(params));
       // Mirror the extension's onboarding.password_created (createAccount.fulfilled)
       // so the create-password funnel has a success side on mobile (was fail-only).
       analytics.track(AnalyticsEvent.CREATE_PASSWORD_SUCCESS);
@@ -4188,12 +4196,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // Re-import replaces the wallet: reset auto-lock to the default before
-      // the hash key is generated so it doesn't inherit the previous timer.
-      await withAccountMutationLock(async () => {
-        await resetAutoLockForNewWallet();
-        await importWallet(params);
-      });
+      // importWallet resets auto-lock itself, once the phrase is known good.
+      await withAccountMutationLock(() => importWallet(params));
       set({
         ...initialState,
         navigationRef: get().navigationRef,
@@ -4233,12 +4237,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // Replaces the wallet: reset auto-lock to the default before the hash
-      // key is generated so it doesn't inherit the previous timer.
-      await withAccountMutationLock(async () => {
-        await resetAutoLockForNewWallet();
-        await importWalletFromSecretKey(params);
-      });
+      // importWalletFromSecretKey resets auto-lock itself, once the key is
+      // known good.
+      await withAccountMutationLock(() => importWalletFromSecretKey(params));
       set({
         ...initialState,
         navigationRef: get().navigationRef,
