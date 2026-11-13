@@ -2595,13 +2595,12 @@ const importWalletFromSecretKey = async ({
     analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_SUCCESS, {
       recovery_method: "secret_key",
     });
-  } catch (error) {
-    // Scrubbed: the message can carry uncontrolled native text.
-    const importFailureMessage =
-      error instanceof Error ? error.message : String(error);
+  } catch {
+    // A fixed code, never the error text: native keychain or encrypter text
+    // could carry the key in a form scrubStrKeys misses (e.g. `key_S…`).
     analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_FAIL, {
       recovery_method: "secret_key",
-      reason_code: scrubStrKeys(importFailureMessage) ?? importFailureMessage,
+      reason_code: "store_failed",
     });
     // The previous wallet is already gone, so drop the partial writes too.
     clearAccountData();
@@ -3266,11 +3265,15 @@ const importSecretKeyLocal = async (
   authStatus: AuthStatus,
 ): Promise<void> => {
   const { secretKey, password } = params;
+  // What failure analytics gets: a fixed code set as the import goes, never
+  // the error text, which could carry the key in a form scrubStrKeys misses.
+  let reasonCode = "invalid_secret_key";
 
   try {
     const keypair = Keypair.fromSecret(secretKey);
     const publicKey = keypair.publicKey();
     const privateKey = keypair.secret();
+    reasonCode = "store_failed";
 
     const existingAccounts = await getAllAccounts();
     const accountExists = hasAccountInAccountList(existingAccounts, {
@@ -3279,6 +3282,7 @@ const importSecretKeyLocal = async (
     });
 
     if (accountExists) {
+      reasonCode = "account_already_exists";
       throw new Error(t("authStore.error.accountAlreadyExists"));
     }
 
@@ -3287,6 +3291,7 @@ const importSecretKeyLocal = async (
     // from its own key, and nothing of any phrase is written into it.
     const temporaryStore = await getTemporaryStore(authStatus);
     if (!temporaryStore) {
+      reasonCode = "temporary_store_not_found";
       throw new Error(t("authStore.error.temporaryStoreNotFound"));
     }
 
@@ -3314,13 +3319,7 @@ const importSecretKeyLocal = async (
       import_method: "secret_key",
     });
   } catch (error) {
-    // Scrub Stellar StrKeys before sending to analytics — third-party sink
-    // (Amplitude) not covered by Sentry's beforeSend.
-    const importFailureMessage =
-      error instanceof Error ? error.message : String(error);
-    analytics.trackAccountScreenImportAccountFail(
-      scrubStrKeys(importFailureMessage) ?? importFailureMessage,
-    );
+    analytics.trackAccountScreenImportAccountFail(reasonCode);
     throw error;
   }
 };

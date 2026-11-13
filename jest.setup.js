@@ -286,6 +286,7 @@ jest.mock("services/analytics", () => ({
     trackInternalSignedTransactionError: jest.fn(),
     trackSimulationError: jest.fn(),
     trackCopyPublicKey: jest.fn(),
+    trackAccountScreenImportAccountFail: jest.fn(),
     trackSendPaymentSuccess: jest.fn(),
     trackSendPaymentPathPaymentSuccess: jest.fn(),
     trackSwapSuccess: jest.fn(),

@@ -427,9 +427,10 @@ export const trackAccountScreenImportAccountFail = (error: string): void => {
   // secret-key import path (mnemonic restore emits account_recovery.* instead).
   track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT_FAIL, {
     import_method: "secret_key",
-    // Scrub inside the helper (not just at the caller): this is the secret-key
-    // import path, so a failure message is the likeliest place to embed an S…
-    // seed. Matches the other track*Error helpers.
+    // The auth store passes a fixed reason code, never error text: a raw
+    // secret key is in hand on this path, and scrubStrKeys misses a key
+    // glued to `_` or a letter. The scrub stays as a backstop, matching the
+    // other track*Error helpers.
     reason_code: scrubStrKeys(error) ?? error,
   });
 };

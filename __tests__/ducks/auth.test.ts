@@ -3137,6 +3137,90 @@ describe("auth duck", () => {
       expect(linkWalletSources).toHaveBeenCalledTimes(1);
     });
 
+    describe("importSecretKey failure analytics", () => {
+      const importKey = async (secretKey = importedSecretKey) => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        act(() => {
+          useAuthenticationStore.setState({
+            importSecretKey: originalStoreMethods.importSecretKey,
+          });
+        });
+        await act(async () => {
+          await result.current
+            .importSecretKey({ secretKey, password: mockPassword })
+            .catch(() => undefined);
+        });
+      };
+
+      beforeEach(() => {
+        dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID] = mockAccountId;
+        dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST] = JSON.stringify([
+          {
+            id: mockAccountId,
+            name: mockAccountName,
+            publicKey: mockPublicKey,
+          },
+        ]);
+      });
+
+      it("reports an invalid key", async () => {
+        mockAuthenticatedSession(mockTemporaryStore);
+
+        await importKey(`${importedSecretKey.slice(0, -1)}A`);
+
+        expect(
+          analytics.trackAccountScreenImportAccountFail,
+        ).toHaveBeenCalledWith("invalid_secret_key");
+      });
+
+      it("reports a key the wallet already holds", async () => {
+        mockAuthenticatedSession(mockTemporaryStore);
+        dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST] = JSON.stringify([
+          {
+            id: mockAccountId,
+            name: mockAccountName,
+            publicKey: importedPublicKey,
+          },
+        ]);
+
+        await importKey();
+
+        expect(
+          analytics.trackAccountScreenImportAccountFail,
+        ).toHaveBeenCalledWith("account_already_exists");
+      });
+
+      it("reports a missing session", async () => {
+        await importKey();
+
+        expect(
+          analytics.trackAccountScreenImportAccountFail,
+        ).toHaveBeenCalledWith("temporary_store_not_found");
+      });
+
+      // `key_S…` has no word boundary before the key, so scrubStrKeys
+      // would let it through.
+      it("reports a failed store with a fixed code, never the error text", async () => {
+        mockAuthenticatedSession(mockTemporaryStore);
+        sharedKeyManager.storeKey.mockRejectedValue(
+          new Error(`could not store key_${importedSecretKey}`),
+        );
+
+        await importKey();
+
+        expect(
+          analytics.trackAccountScreenImportAccountFail,
+        ).toHaveBeenCalledWith("store_failed");
+        expect(
+          JSON.stringify([
+            (analytics.track as jest.Mock).mock.calls,
+            (analytics.trackAccountScreenImportAccountFail as jest.Mock).mock
+              .calls,
+          ]),
+        ).not.toContain(importedSecretKey);
+      });
+    });
+
     it("importSecretKey leaves the active account alone when the account list write fails", async () => {
       mockAuthenticatedSession(mockTemporaryStore);
       dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID] = mockAccountId;
@@ -3339,15 +3423,17 @@ describe("auth duck", () => {
           ).toBeUndefined();
           expect(analytics.track).toHaveBeenCalledWith(
             AnalyticsEvent.RECOVER_ACCOUNT_FAIL,
-            expect.objectContaining({ recovery_method: "secret_key" }),
+            { recovery_method: "secret_key", reason_code: "store_failed" },
           );
           expect(linkWalletSources).not.toHaveBeenCalled();
         },
       );
 
+      // `key_S…` has no word boundary before the key, so scrubStrKeys
+      // would let it through.
       it("never logs or tracks the key", async () => {
         sharedKeyManager.storeKey.mockRejectedValue(
-          new Error(`could not store ${importedSecretKey}`),
+          new Error(`could not store key_${importedSecretKey}`),
         );
 
         await runImport();
