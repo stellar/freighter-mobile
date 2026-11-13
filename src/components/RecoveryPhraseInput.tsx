@@ -1,6 +1,7 @@
 import { Textarea, TextareaProps } from "components/sds/Textarea";
 import {
   normalizeAndTrimRecoveryPhrase,
+  normalizeImportSecretInput,
   normalizeRecoveryPhrase,
 } from "helpers/recoveryPhrase";
 import React, { useState, useEffect, useRef } from "react";
@@ -10,6 +11,12 @@ export interface RecoveryPhraseInputProps
   value: string;
   showMasked?: boolean;
   setValue: (text: string) => void;
+  /**
+   * Keeps the text's case and accents, collapsing only its spacing, for a
+   * field that may hold a case-sensitive secret key. Off, the text is
+   * normalized as a recovery phrase.
+   */
+  preserveCase?: boolean;
 }
 
 interface TextRange {
@@ -97,6 +104,7 @@ export const RecoveryPhraseInput: React.FC<RecoveryPhraseInputProps> = ({
   onSelectionChange,
   onKeyPress,
   setValue,
+  preserveCase = false,
   testID,
   ...restProps
 }) => {
@@ -126,9 +134,14 @@ export const RecoveryPhraseInput: React.FC<RecoveryPhraseInputProps> = ({
       actualValue.slice(edit.end);
     // Into an empty field, a pasted phrase loses its outer spaces. After
     // that, a space typed after a word is kept for the next one.
-    const newValue = actualValue
-      ? normalizeRecoveryPhrase(edited)
-      : normalizeAndTrimRecoveryPhrase(edited);
+    let newValue: string;
+    if (preserveCase) {
+      newValue = normalizeImportSecretInput(edited, { trim: !actualValue });
+    } else {
+      newValue = actualValue
+        ? normalizeRecoveryPhrase(edited)
+        : normalizeAndTrimRecoveryPhrase(edited);
+    }
 
     setActualValue(newValue);
     setValue(newValue);

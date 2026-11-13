@@ -57,6 +57,7 @@ import {
   encryptDataWithDerivedKey,
 } from "helpers/encryptPassword";
 import { findAccountById, findAccountByPublicKey } from "helpers/findAccount";
+import { removeAllKeystoreEntries } from "helpers/keyManager/ReactNativeKeychainFacade";
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { markRebrandAnnouncementSeen } from "helpers/rebrandAnnouncement";
 import {
@@ -64,6 +65,7 @@ import {
   normalizeAndTrimRecoveryPhrase,
 } from "helpers/recoveryPhrase";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
+import { settleAll } from "helpers/settleAll";
 import { scrubStrKeys } from "helpers/stellarStrKey";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
 import { t } from "i18next";
@@ -180,6 +182,18 @@ interface SignInParams {
  */
 interface ImportWalletParams {
   mnemonicPhrase: string;
+  password: string;
+}
+
+/**
+ * Parameters for importWalletFromSecretKey function
+ *
+ * @interface ImportWalletFromSecretKeyParams
+ * @property {string} secretKey - The Stellar secret key to onboard from
+ * @property {string} password - User's password for encrypting the imported wallet
+ */
+interface ImportWalletFromSecretKeyParams {
+  secretKey: string;
   password: string;
 }
 
@@ -372,6 +386,10 @@ interface AuthActions {
   signUp: (params: SignUpParams) => Promise<boolean>;
   signIn: (params: SignInParams) => Promise<void>;
   importWallet: (params: ImportWalletParams) => Promise<boolean>;
+  /** Onboards a wallet from a secret key, replacing whatever was stored. */
+  importWalletFromSecretKey: (
+    params: ImportWalletFromSecretKeyParams,
+  ) => Promise<boolean>;
   verifyMnemonicPhrase: (mnemonicPhrase: string) => boolean;
   importSecretKey: (params: ImportSecretKeyParams) => Promise<void>;
   linkSources: () => void;
@@ -1237,7 +1255,9 @@ const storeAccount = async ({
     encrypterName: ScryptEncrypter.name,
   };
 
-  const [keyStore, accountListRaw] = await Promise.all([
+  // Settled, not raced: a failed read must not leave the keystore write
+  // running past the caller's rollback, which would keep the key on device.
+  const [keyStore, accountListRaw] = await settleAll([
     keyManager.storeKey(keyMetadata),
     dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST),
   ]);
@@ -1278,7 +1298,10 @@ const storeAccount = async ({
     importedFromSecretKey,
   });
 
-  await Promise.all([
+  // Settled, not raced: when one write fails the others still finish before
+  // this throws, so a rollback after it can't be undone by a late write
+  // (e.g. the biometric password landing after the rollback removed it).
+  await settleAll([
     shouldSetActiveAccount
       ? dataStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID, keyStore.id)
       : Promise.resolve(),
@@ -1395,6 +1418,11 @@ export const clearPendingRecoveryPhrase = (pendingPhraseId?: string): void => {
  * Clears all data from the key manager, temporary store (sensitive),
  * and non-sensitive data
  *
+ * Keys are removed through the key manager's index, then every keystore
+ * entry left in the keychain is swept, indexed or not. An entry whose index
+ * write failed, or an index that lost ids, would otherwise survive the wipe,
+ * and iOS keeps keychain items across reinstalls.
+ *
  * @returns {Promise<void>}
  */
 const clearAllData = async (): Promise<void> => {
@@ -1402,17 +1430,23 @@ const clearAllData = async (): Promise<void> => {
   clearCachedWalletSources();
   clearPendingRecoveryPhrase();
 
-  const allKeys = await keyManager.loadAllKeyIds();
+  try {
+    const allKeys = await keyManager.loadAllKeyIds();
 
-  await Promise.all([
-    ...allKeys.map((key) => keyManager.removeKey(key)),
-    clearTemporaryData(),
-    clearNonSensitiveData(),
-    // clearNonSensitiveData removes the map too; this also moves the epoch,
-    // so a link pass from the replaced wallet stores nothing.
-    clearLinkStatus(),
-    dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST),
-  ]);
+    await Promise.all([
+      ...allKeys.map((key) => keyManager.removeKey(key)),
+      clearTemporaryData(),
+      clearNonSensitiveData(),
+      // clearNonSensitiveData removes the map too; this also moves the epoch,
+      // so a link pass from the replaced wallet stores nothing.
+      clearLinkStatus(),
+      dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST),
+    ]);
+  } finally {
+    // After the index-based removals, so it doesn't race their index
+    // writes, and even when one of them failed.
+    await removeAllKeystoreEntries();
+  }
 };
 
 /**
@@ -2409,6 +2443,22 @@ const signIn = async ({
 };
 
 /**
+ * Undoes a wallet setup (sign up, phrase import or key import) that failed
+ * after its wipe: the partial wallet, and the biometric password storeAccount
+ * saved. clearAllData leaves biometric storage alone, so without this the
+ * user's new password would outlive the wallet. storeAccount settles all its
+ * writes before it throws, so none of them lands after this.
+ *
+ * Only BIOMETRIC_PASSWORD goes: a failed setup never turned biometrics on,
+ * and the biometrics step saves the password again before a retry.
+ */
+const rollBackWalletSetup = async (): Promise<void> => {
+  clearAccountData();
+  await clearAllData();
+  await biometricDataStorage.remove(BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD);
+};
+
+/**
  * Signs up a new user with the provided credentials
  *
  * Creates a new wallet from the mnemonic phrase, generates a key pair,
@@ -2425,6 +2475,10 @@ const signUp = async ({
     const keyPair = deriveKeyPair({ mnemonicPhrase });
     const phraseSourceId = await getPhraseSourceId(mnemonicPhrase);
 
+    // A new wallet: reset auto-lock to the default before storeAccount
+    // generates the hash key, so it doesn't inherit the previous timer.
+    // Only once the input is known good, so an invalid one changes nothing.
+    await resetAutoLockForNewWallet();
     clearAccountData();
     await clearAllData();
 
@@ -2444,8 +2498,7 @@ const signUp = async ({
     });
   } catch (error) {
     // Clean up any partial data on error
-    clearAccountData();
-    await clearAllData();
+    await rollBackWalletSetup();
 
     throw error;
   }
@@ -2468,6 +2521,10 @@ const importWallet = async ({
     const keyPair = deriveKeyPair({ mnemonicPhrase });
     const phraseSourceId = await getPhraseSourceId(mnemonicPhrase);
 
+    // A new wallet: reset auto-lock to the default before storeAccount
+    // generates the hash key, so it doesn't inherit the previous timer.
+    // Only once the input is known good, so an invalid one changes nothing.
+    await resetAutoLockForNewWallet();
     clearAccountData();
     await clearAllData();
 
@@ -2511,10 +2568,76 @@ const importWallet = async ({
       reason_code: scrubStrKeys(importFailureMessage) ?? importFailureMessage,
     });
     // Clean up any partial data on error
+    await rollBackWalletSetup();
+
+    throw error;
+  }
+};
+
+/**
+ * Onboards a wallet from a single secret key: one imported account rooted in
+ * its own SECRET_KEY source, with no phrase. The key is checked before
+ * anything is wiped, so an invalid one leaves the device as it was. A failure
+ * after the wipe wipes again, leaving a fresh install the user can retry from.
+ *
+ * @param {ImportWalletFromSecretKeyParams} params - The secret key and password
+ * @returns {Promise<void>}
+ */
+const importWalletFromSecretKey = async ({
+  secretKey,
+  password,
+}: ImportWalletFromSecretKeyParams): Promise<void> => {
+  let keyPair: KeyPair;
+  let sourceId: string;
+
+  // Nothing about the error is logged or tracked: it could carry the key.
+  try {
+    keyPair = {
+      publicKey: Keypair.fromSecret(secretKey).publicKey(),
+      privateKey: secretKey,
+    };
+    sourceId = await getSecretKeySourceId(secretKey);
+  } catch {
+    analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_FAIL, {
+      recovery_method: "secret_key",
+      reason_code: "invalid_secret_key",
+    });
+    throw new Error(t("authStore.error.invalidSecretKey"));
+  }
+
+  try {
+    // A new wallet: reset auto-lock to the default before storeAccount
+    // generates the hash key, so it doesn't inherit the previous timer.
+    // Only once the input is known good, so an invalid one changes nothing.
+    await resetAutoLockForNewWallet();
     clearAccountData();
     await clearAllData();
 
-    throw error;
+    await storeAccount({
+      sourceId,
+      password,
+      keyPair,
+      importedFromSecretKey: true,
+    });
+    await addSecretSource({
+      id: sourceId,
+      type: SecretSourceType.SECRET_KEY,
+    });
+
+    analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_SUCCESS, {
+      recovery_method: "secret_key",
+    });
+  } catch {
+    // A fixed code, never the error text: native keychain or encrypter text
+    // could carry the key in a form scrubStrKeys misses (e.g. `key_S…`).
+    analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_FAIL, {
+      recovery_method: "secret_key",
+      reason_code: "store_failed",
+    });
+    // The previous wallet is already gone, so drop the partial writes too.
+    await rollBackWalletSetup();
+
+    throw new Error(t("authStore.error.failedToImportWallet"));
   }
 };
 
@@ -3173,11 +3296,15 @@ const importSecretKeyLocal = async (
   authStatus: AuthStatus,
 ): Promise<void> => {
   const { secretKey, password } = params;
+  // What failure analytics gets: a fixed code set as the import goes, never
+  // the error text, which could carry the key in a form scrubStrKeys misses.
+  let reasonCode = "invalid_secret_key";
 
   try {
     const keypair = Keypair.fromSecret(secretKey);
     const publicKey = keypair.publicKey();
     const privateKey = keypair.secret();
+    reasonCode = "store_failed";
 
     const existingAccounts = await getAllAccounts();
     const accountExists = hasAccountInAccountList(existingAccounts, {
@@ -3186,6 +3313,7 @@ const importSecretKeyLocal = async (
     });
 
     if (accountExists) {
+      reasonCode = "account_already_exists";
       throw new Error(t("authStore.error.accountAlreadyExists"));
     }
 
@@ -3194,6 +3322,7 @@ const importSecretKeyLocal = async (
     // from its own key, and nothing of any phrase is written into it.
     const temporaryStore = await getTemporaryStore(authStatus);
     if (!temporaryStore) {
+      reasonCode = "temporary_store_not_found";
       throw new Error(t("authStore.error.temporaryStoreNotFound"));
     }
 
@@ -3221,13 +3350,7 @@ const importSecretKeyLocal = async (
       import_method: "secret_key",
     });
   } catch (error) {
-    // Scrub Stellar StrKeys before sending to analytics — third-party sink
-    // (Amplitude) not covered by Sentry's beforeSend.
-    const importFailureMessage =
-      error instanceof Error ? error.message : String(error);
-    analytics.trackAccountScreenImportAccountFail(
-      scrubStrKeys(importFailureMessage) ?? importFailureMessage,
-    );
+    analytics.trackAccountScreenImportAccountFail(reasonCode);
     throw error;
   }
 };
@@ -3271,6 +3394,7 @@ export const getUserFacingError = (
   const safeMessages = new Set<string>([
     t("authStore.error.invalidPassword"),
     t("authStore.error.invalidMnemonicPhrase"),
+    t("authStore.error.invalidSecretKey"),
     t("authStore.error.accountAlreadyExists"),
     t("authStore.error.accountNotFound"),
     t("authStore.error.accountListNotFound"),
@@ -3567,12 +3691,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   signUp: async (params): Promise<boolean> => {
     set((state) => ({ ...state, isLoading: true, error: null }));
     try {
-      // Fresh wallet: reset auto-lock to the default before the hash key is
-      // generated so it doesn't inherit a previous wallet's timer.
-      await withAccountMutationLock(async () => {
-        await resetAutoLockForNewWallet();
-        await signUp(params);
-      });
+      // signUp resets auto-lock itself, once the phrase is known good.
+      await withAccountMutationLock(() => signUp(params));
       // Mirror the extension's onboarding.password_created (createAccount.fulfilled)
       // so the create-password funnel has a success side on mobile (was fail-only).
       analytics.track(AnalyticsEvent.CREATE_PASSWORD_SUCCESS);
@@ -4076,12 +4196,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // Re-import replaces the wallet: reset auto-lock to the default before
-      // the hash key is generated so it doesn't inherit the previous timer.
-      await withAccountMutationLock(async () => {
-        await resetAutoLockForNewWallet();
-        await importWallet(params);
-      });
+      // importWallet resets auto-lock itself, once the phrase is known good.
+      await withAccountMutationLock(() => importWallet(params));
       set({
         ...initialState,
         navigationRef: get().navigationRef,
@@ -4098,6 +4214,48 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       logger.error(
         "useAuthenticationStore.importWallet",
         "Import wallet failed",
+        error,
+      );
+      set({
+        error: getUserFacingError(
+          error,
+          "authStore.error.failedToImportWallet",
+        ),
+        isLoading: false,
+      });
+      return false;
+    }
+  },
+
+  /**
+   * Onboards a wallet from a secret key
+   *
+   * @param {ImportWalletFromSecretKeyParams} params - The secret key and password
+   * @returns {Promise<boolean>} `true` on success, `false` on failure
+   */
+  importWalletFromSecretKey: async (params): Promise<boolean> => {
+    set({ isLoading: true, error: null });
+
+    try {
+      // importWalletFromSecretKey resets auto-lock itself, once the key is
+      // known good.
+      await withAccountMutationLock(() => importWalletFromSecretKey(params));
+      set({
+        ...initialState,
+        navigationRef: get().navigationRef,
+        authStatus: AUTH_STATUS.AUTHENTICATED,
+        isLoading: false,
+      });
+
+      get().fetchActiveAccount();
+      // Link the imported key's source.
+      get().linkSources();
+      return true;
+    } catch (error) {
+      // The module function throws only its own messages, never the key's.
+      logger.error(
+        "useAuthenticationStore.importWalletFromSecretKey",
+        "Import wallet from secret key failed",
         error,
       );
       set({

@@ -213,6 +213,7 @@
     "passwordTooLong": "Must be less than 2048 characters",
     "passwordsDontMatch": "Passwords don't match",
     "importAcknowledgement": "I understand imported recovery phrase can't be recovered and must be stored securely.",
+    "importSecretKeyAcknowledgement": "I understand an imported secret key can't be recovered and must be stored securely.",
     "importWalletButtonText": "Import wallet"
   },
   "recoveryPhraseScreen": {
@@ -265,8 +266,9 @@
   },
   "importWalletScreen": {
     "title": "Import Wallet",
-    "description": "Import your wallet with the 12 or 24-word recovery phrase",
-    "textAreaPlaceholder": "Enter your recovery phrase"
+    "description": "Import your wallet using a recovery phrase or secret key",
+    "textAreaPlaceholder": "Enter your recovery phrase or secret key",
+    "invalidInput": "Enter a valid recovery phrase or secret key"
   },
   "importRecoveryPhraseScreen": {
     "title": "Import Recovery Phrase",
@@ -489,6 +491,7 @@
       "failedToLoadAccount": "Failed to load account",
       "invalidPassword": "Invalid password. Please try again.",
       "invalidMnemonicPhrase": "Invalid phrase - words must be in the correct order, lowercase, and separated by spaces",
+      "invalidSecretKey": "Invalid secret key",
       "failedToCreateAccount": "Failed to create account. Please try again.",
       "accountAlreadyExists": "Account already exists",
       "failedToImportSecretKey": "Failed to import secret key",
