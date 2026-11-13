@@ -50,6 +50,7 @@
     "buy": "Add",
     "send": "Send",
     "swap": "Swap",
+    "earn": "Earn",
     "actions": {
       "settings": "Settings",
       "myQRCode": "My QR code"
@@ -776,6 +777,109 @@
   "swapTransactionDetails": {
     "swapped": "Swapped"
   },
+  "earnIntro": {
+    "title": "Put your tokens to work",
+    "subtitle": "Supply tokens to Blend and earn variable yield.",
+    "variableYield": {
+      "title": "Earn variable yield",
+      "body": "Supply supported token and earn based on current APY."
+    },
+    "stayInControl": {
+      "title": "Stay in control",
+      "body": "Manage and withdraw your supplied token from your wallet."
+    }
+  },
+  "earnTokenPicker": {
+    "protocolName": "Blend",
+    "heading": "Choose a token",
+    "subheading": "Select a token to deposit and earn yield.",
+    "noSupportedAssets": {
+      "title": "No supported assets in your wallet",
+      "body": "Add a supported asset to start earning."
+    },
+    "error": {
+      "title": "We couldn't load Earn right now",
+      "body": "Earn is temporarily unavailable. Please try again shortly.",
+      "retry": "Try again"
+    },
+    "depositInto": "Deposit into",
+    "inYourWallet": "In your wallet",
+    "otherSupportedAssets": "Other supported assets",
+    "apyPill": "{{rate}} APY",
+    "apyDisclaimer": "APY is variable and subject to change."
+  },
+  "earnPoolDetails": {
+    "byBlend": "by Blend",
+    "description": "Description",
+    "supplied": "Supplied",
+    "borrowed": "Borrowed",
+    "backstop": "Backstop",
+    "poolDescription": "Deposit supported token into this Blend pool to earn yield. APY may change over time. Withdraw anytime.",
+    "depositApy": "Deposit APY",
+    "viewPoolDetails": "View pool details",
+    "currentYield": "Current yield",
+    "poolLiquidity": "Pool liquidity",
+    "poolName": "{{name}} Pool"
+  },
+  "earnAmount": {
+    "title": "Deposit",
+    "depositLabel": "You deposit",
+    "enterAmount": "Enter an amount",
+    "insufficientFunds": "Insufficient funds",
+    "review": "Review deposit",
+    "poolCard": {
+      "byBlend": "by Blend",
+      "accessibilityLabel": "View pool details",
+      "depositApy": "Deposit APY: {{rate}}"
+    },
+    "retryBanner": "Transaction failed. Try again.",
+    "networkFeeSheet": {
+      "title": "XLM needed for network fees",
+      "body": "Add XLM to your wallet to continue",
+      "buyWithCoinbase": "Buy with Coinbase",
+      "receive": "Receive XLM"
+    },
+    "errors": {
+      "simulationFailed": "Failed to simulate the deposit. Please try again.",
+      "feeShortfall": "Not enough XLM left for the network fee. Reduce your deposit by at least {{amount}} XLM.",
+      "insufficientBalanceForFee": "Not enough XLM to cover the network fee. Try depositing a smaller amount."
+    }
+  },
+  "earnReview": {
+    "sheetTitle": "Review deposit",
+    "title": "You are depositing",
+    "to": "To",
+    "position": "Position",
+    "estMonthlyEarnings": "Monthly earnings (est.)",
+    "estYearlyEarnings": "Yearly earnings (est.)",
+    "transactionDetails": "Transaction details",
+    "depositApy": "Deposit APY",
+    "estimatedValue": "≈ {{value}}",
+    "settings": "Transaction settings"
+  },
+  "earnNotEnough": {
+    "title": "Not enough {{tokenCode}}",
+    "bodyWithBuy": "Get {{tokenCode}} to deposit into this pool. Buy or transfer {{tokenCode}} to continue.",
+    "bodySwapOnly": "You'll need {{tokenCode}} to deposit into this pool. Swap or transfer {{tokenCode}} to continue.",
+    "bodyTransferOnly": "Get {{tokenCode}} to deposit into this pool. Transfer {{tokenCode}} to continue.",
+    "buy": "Buy {{tokenCode}}",
+    "buyWithCoinbase": "Buy with Coinbase",
+    "swap": "Swap for {{tokenCode}}",
+    "receive": "Receive {{tokenCode}}",
+    "or": "or"
+  },
+  "earnReceiveFunds": {
+    "title": "Receive funds",
+    "networkSupport": "This address supports Stellar network.",
+    "copyAddress": "Copy address"
+  },
+  "earnProcessing": {
+    "depositing": "Deposit in progress",
+    "deposited": "Deposit complete",
+    "to": "to",
+    "closeMessage": "You can close this screen. Your transaction should complete in less than a minute.",
+    "viewTransaction": "View transaction"
+  },
   "transactionTokenScreen": {
     "title": "Sending",
     "empty": "No tokens or collectibles to send"
@@ -1387,5 +1491,25 @@
     "title": "Cannot run on this device",
     "description": "This device is rooted or jailbroken, which prevents the app from protecting your wallet keys.",
     "disclaimer": "The app is disabled on compromised systems. Install and use it on a device with standard security intact."
+  },
+  "earnSwapFrom": {
+    "title": "Swap from",
+    "searchPlaceholder": "Search token or address",
+    "yourTokens": "Your tokens",
+    "noResults": "No matching tokens in your wallet."
+  },
+  "earnDepositDetails": {
+    "title": "Deposited {{tokenCode}}",
+    "to": "To",
+    "deposited": "Deposited",
+    "fee": "Fee"
+  },
+  "earnSwapProcessing": {
+    "inProgress": "Swap in progress",
+    "complete": "Swap complete"
+  },
+  "earnSwap": {
+    "swappedToast": "{{sourceCode}} swapped to {{destination}}",
+    "settings": "Swap settings"
   }
 }

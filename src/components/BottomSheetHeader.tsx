@@ -12,7 +12,8 @@ const CLOSE_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
  * Header layouts:
  * - `inline`: title and X on one row.
  * - `stacked`: optional leading element and X on top, title below.
- * - `centered`: centered title, X on the right.
+ * - `centered`: centered title, X on the right and, optionally, a back
+ *   arrow on the left.
  */
 export type BottomSheetHeaderLayout = "inline" | "stacked" | "centered";
 
@@ -24,11 +25,51 @@ export interface BottomSheetHeaderProps {
   leading?: React.ReactNode;
   /** Shows the X when set. */
   onClose?: () => void;
+  /**
+   * Shows a back arrow on the left when set, e.g. on a sheet stacked over
+   * another one, where back returns to the sheet below and X closes both.
+   * Centered layout only.
+   */
+  onBack?: () => void;
+  backTestID?: string;
   /** Disables the X, e.g. while a save is in flight. */
   closeDisabled?: boolean;
   closeTestID?: string;
   titleTestID?: string;
 }
+
+export interface BottomSheetCloseButtonProps {
+  onPress: () => void;
+  disabled?: boolean;
+  testID?: string;
+}
+
+/**
+ * The sheet header's plain X on its own, for headers whose layout
+ * `BottomSheetHeader` doesn't cover (e.g. a back or settings control on the
+ * left of a centered title).
+ */
+export const BottomSheetCloseButton: React.FC<BottomSheetCloseButtonProps> = ({
+  onPress,
+  disabled,
+  testID,
+}) => {
+  const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={CLOSE_HIT_SLOP}
+      accessibilityRole="button"
+      accessibilityLabel={t("common.close")}
+      testID={testID}
+    >
+      <Icon.X size={CLOSE_ICON_SIZE} color={themeColors.text.primary} />
+    </TouchableOpacity>
+  );
+};
 
 /**
  * Shared bottom sheet header: a title and a plain X in one of three layouts.
@@ -40,13 +81,14 @@ export const BottomSheetHeader: React.FC<BottomSheetHeaderProps> = ({
   layout,
   leading,
   onClose,
+  onBack,
+  backTestID,
   closeDisabled,
   closeTestID,
   titleTestID,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-
   const resolvedLayout: BottomSheetHeaderLayout =
     layout ?? (leading ? "stacked" : "inline");
 
@@ -55,16 +97,11 @@ export const BottomSheetHeader: React.FC<BottomSheetHeaderProps> = ({
   }
 
   const closeButton = onClose ? (
-    <TouchableOpacity
+    <BottomSheetCloseButton
       onPress={onClose}
       disabled={closeDisabled}
-      hitSlop={CLOSE_HIT_SLOP}
-      accessibilityRole="button"
-      accessibilityLabel={t("common.close")}
       testID={closeTestID}
-    >
-      <Icon.X size={CLOSE_ICON_SIZE} color={themeColors.text.primary} />
-    </TouchableOpacity>
+    />
   ) : null;
 
   const titleText = title ? (
@@ -99,6 +136,22 @@ export const BottomSheetHeader: React.FC<BottomSheetHeaderProps> = ({
   if (resolvedLayout === "centered") {
     return (
       <View className="w-full flex-row items-center justify-center">
+        {onBack && (
+          <View className="absolute left-0">
+            <TouchableOpacity
+              onPress={onBack}
+              hitSlop={CLOSE_HIT_SLOP}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.back")}
+              testID={backTestID}
+            >
+              <Icon.ArrowLeft
+                size={CLOSE_ICON_SIZE}
+                color={themeColors.text.primary}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
         <View className="flex-1 px-[32px]">{titleText}</View>
         {closeButton && <View className="absolute right-0">{closeButton}</View>}
       </View>

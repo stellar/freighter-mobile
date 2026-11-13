@@ -1,5 +1,8 @@
 import BigNumber from "bignumber.js";
-import { shouldShowXlmReservePreflight } from "components/screens/SwapScreen/helpers/swapPreflight";
+import {
+  getSwapSpendableAmount,
+  shouldShowXlmReservePreflight,
+} from "components/screens/SwapScreen/helpers/swapPreflight";
 import { calculateSpendableAmount } from "helpers/balances";
 
 // Isolate the preflight's branch logic from the spendable math.
@@ -82,5 +85,64 @@ describe("shouldShowXlmReservePreflight", () => {
         }),
       ).toBe(true);
     });
+  });
+});
+
+describe("getSwapSpendableAmount", () => {
+  beforeEach(() => mockCalc.mockReset());
+
+  const usdcBalance = { id: "USDC:GISSUER", token: { code: "USDC" } } as never;
+
+  it("leaves out the reserve a new trustline locks when XLM is swapped into it", () => {
+    mockCalc.mockReturnValue(new BigNumber("10"));
+    expect(
+      getSwapSpendableAmount({
+        sourceBalance: xlmBalance,
+        subentryCount: 1,
+        swapFee: "0.002",
+        destinationRequiresTrustline: true,
+      }).toFixed(),
+    ).toBe("9.5");
+    expect(mockCalc).toHaveBeenCalledWith({
+      balance: xlmBalance,
+      subentryCount: 1,
+      transactionFee: "0.002",
+    });
+  });
+
+  it("deducts nothing below the reserve, leaving the shortfall to the pre-flight", () => {
+    mockCalc.mockReturnValue(new BigNumber("0.4"));
+    expect(
+      getSwapSpendableAmount({
+        sourceBalance: xlmBalance,
+        subentryCount: 1,
+        swapFee: "0.002",
+        destinationRequiresTrustline: true,
+      }).toFixed(),
+    ).toBe("0.4");
+  });
+
+  it("deducts nothing when the destination already has a trustline", () => {
+    mockCalc.mockReturnValue(new BigNumber("10"));
+    expect(
+      getSwapSpendableAmount({
+        sourceBalance: xlmBalance,
+        subentryCount: 1,
+        swapFee: "0.001",
+        destinationRequiresTrustline: false,
+      }).toFixed(),
+    ).toBe("10");
+  });
+
+  it("deducts nothing from a non-XLM source, whose reserve comes from XLM", () => {
+    mockCalc.mockReturnValue(new BigNumber("25"));
+    expect(
+      getSwapSpendableAmount({
+        sourceBalance: usdcBalance,
+        subentryCount: 1,
+        swapFee: "0.002",
+        destinationRequiresTrustline: true,
+      }).toFixed(),
+    ).toBe("25");
   });
 });

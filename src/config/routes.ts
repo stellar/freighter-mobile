@@ -51,6 +51,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   BUY_XLM_STACK: "BuyXLMStack",
   SEND_PAYMENT_STACK: "SendPaymentStack",
   SWAP_STACK: "SwapStack",
+  EARN_STACK: "EarnStack",
   MANAGE_TOKENS_STACK: "ManageAssetsStack",
   MANAGE_WALLETS_STACK: "ManageWalletsStack",
   // This screen can be called on both stacks.
@@ -119,6 +120,11 @@ export const SWAP_ROUTES = {
   SWAP_AMOUNT_SCREEN: "SwapAmountScreen",
 } as const;
 
+export const EARN_ROUTES = {
+  EARN_TOKEN_PICKER_SCREEN: "EarnTokenPickerScreen",
+  EARN_AMOUNT_SCREEN: "EarnAmountScreen",
+} as const;
+
 /**
  * ALL_ROUTE_OBJECTS - Centralized export for analytics
  *
@@ -139,6 +145,7 @@ export const ALL_ROUTES_OBJECT = [
   ADD_FUNDS_ROUTES,
   SEND_PAYMENT_ROUTES,
   SWAP_ROUTES,
+  EARN_ROUTES,
 ] as const;
 
 export type RootStackParamList = {
@@ -162,6 +169,7 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<AddFundsStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: NavigatorScreenParams<SendPaymentStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SWAP_STACK]: NavigatorScreenParams<SwapStackParamList>;
+  [ROOT_NAVIGATOR_ROUTES.EARN_STACK]: NavigatorScreenParams<EarnStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN]: {
     tokenId: string;
     tokenSymbol: string;
@@ -267,5 +275,14 @@ export type SwapStackParamList = {
      * `source: "token_details"` (design §7.5). Absent for other entries.
      */
     source?: "token_details";
+  };
+};
+
+export type EarnStackParamList = {
+  [EARN_ROUTES.EARN_TOKEN_PICKER_SCREEN]: undefined;
+  [EARN_ROUTES.EARN_AMOUNT_SCREEN]: {
+    /** The reserve's asset contract address. */
+    assetId: string;
+    tokenCode: string;
   };
 };

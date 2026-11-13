@@ -1,0 +1,192 @@
+import BigNumber from "bignumber.js";
+import { AmountCard } from "components/AmountCard";
+import { BottomSheetCloseButton } from "components/BottomSheetHeader";
+import {
+  PercentageButtons,
+  PercentageOption,
+} from "components/PercentageButtons";
+import { Button } from "components/sds/Button";
+import Icon from "components/sds/Icon";
+import { Text } from "components/sds/Typography";
+import { PricedBalance, Token } from "config/types";
+import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
+import { UseTokenFiatConverterResult } from "hooks/useTokenFiatConverter";
+import React from "react";
+import { TouchableOpacity, View } from "react-native";
+
+export interface EarnSwapBottomSheetProps {
+  /** The held balance being sold. Undefined until a source is chosen. */
+  sourceBalance?: PricedBalance;
+  /** Label for the sell chip -- the source token's code. */
+  sourceLabel?: string;
+  /** "1,691.69 XLM available", or null to hide the line. */
+  availableBalanceText?: string | null;
+  /** Opens the "Swap from" source picker. */
+  onSourcePickerPress: () => void;
+  /** Drives the sell card's input + fiat toggle. */
+  converter: UseTokenFiatConverterResult;
+  /** Whether the source has a usable USD price; hides the fiat line if not. */
+  hasUsdPrice: boolean;
+  /** Small text under the sell amount (the fiat/token counterpart). */
+  sourceSecondaryText?: string;
+
+  /**
+   * The asset being deposited into the pool. Fixed, never chosen here --
+   * that is the whole point of entering swap from Earn.
+   */
+  destinationToken: Token;
+  destinationLabel: string;
+  /** Quoted receive amount, already formatted. */
+  destinationAmount: string;
+  /** Fiat counterpart of the quote, already formatted. */
+  destinationSecondaryText?: string;
+
+  onPercentagePress: (percentage: number) => void;
+  onSettingsPress: () => void;
+  onClose: () => void;
+  /** Null disables the CTA; the label still renders (e.g. "Enter an amount"). */
+  onReview: (() => void) | null;
+  ctaLabel: string;
+  isReviewLoading?: boolean;
+}
+
+/** Earn offers 25% / 50% / Max, without main Swap's 75%. */
+const EARN_SWAP_PERCENTAGES: PercentageOption[] = [25, 50, 100];
+
+/**
+ * Swap-within-Earn, entered from `NotEnoughTokenBottomSheet`'s "Swap for
+ * {CODE}" when the user lacks the asset a pool reserve needs.
+ *
+ * Presented as a sheet over the still-visible token picker rather than
+ * navigating into `SWAP_STACK`: routing away would eject the user from Earn,
+ * and they would have to find their way back to the reserve they were trying
+ * to deposit into.
+ *
+ * Two deliberate differences from `SwapAmountScreen`:
+ *
+ * - **The receive chip is locked**, with no chevron: the destination is the
+ *   pool asset, so there is nothing to choose -- see `AmountCard`'s
+ *   `isLocked`.
+ * - **The control between the cards is decorative.** A direction swap would
+ *   break the locked-destination invariant, so it renders as a static
+ *   divider.
+ *
+ * With no amount yet, the bottom row offers the 25% / 50% / Max shortcuts;
+ * once there is one, the CTA takes their place.
+ */
+export const EarnSwapBottomSheet: React.FC<EarnSwapBottomSheetProps> = ({
+  sourceBalance,
+  sourceLabel,
+  availableBalanceText,
+  onSourcePickerPress,
+  converter,
+  hasUsdPrice,
+  sourceSecondaryText,
+  destinationToken,
+  destinationLabel,
+  destinationAmount,
+  destinationSecondaryText,
+  onPercentagePress,
+  onSettingsPress,
+  onClose,
+  onReview,
+  ctaLabel,
+  isReviewLoading,
+}) => {
+  const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+  const hasAmount = new BigNumber(converter.tokenAmount || "0").gt(0);
+
+  return (
+    <View className="gap-[24px]" testID="earn-swap-bottom-sheet">
+      {/* Settings at the left, centred title, and the shared sheet X at the
+          right -- a layout `BottomSheetHeader` itself doesn't offer. */}
+      <View className="flex-row items-center justify-between">
+        <TouchableOpacity
+          onPress={onSettingsPress}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={t("earnSwap.settings")}
+          testID="earn-swap-settings"
+        >
+          <Icon.Settings04 size={24} color={themeColors.text.primary} />
+        </TouchableOpacity>
+
+        <View className="flex-1 items-center">
+          <Text lg semiBold primary>
+            {t("swapScreen.title")}
+          </Text>
+        </View>
+
+        <BottomSheetCloseButton onPress={onClose} testID="earn-swap-close" />
+      </View>
+
+      <View className="gap-[12px]">
+        <AmountCard
+          mode="editable"
+          testID="earn-swap-sell-card"
+          label={t("swapScreen.youSell")}
+          selectedToken={sourceBalance}
+          pickerLabel={sourceLabel ?? t("swapScreen.selectToken")}
+          onPickerPress={onSourcePickerPress}
+          pickerTestID="earn-swap-sell-pill"
+          inputTestID="earn-swap-amount-input"
+          focusTriggerTestID="earn-swap-amount-focus-trigger"
+          autoFocus
+          availableBalanceText={availableBalanceText}
+          converter={converter}
+          hasUsdPrice={hasUsdPrice}
+          secondaryAmountText={sourceSecondaryText}
+        />
+
+        <AmountCard
+          mode="readonly"
+          testID="earn-swap-receive-card"
+          label={t("swapScreen.youReceive")}
+          selectedToken={destinationToken}
+          pickerLabel={destinationLabel}
+          // Fixed to the pool asset -- see the component doc.
+          isLocked
+          onPickerPress={() => {}}
+          pickerTestID="earn-swap-receive-pill"
+          primaryAmount={destinationAmount}
+          secondaryAmount={destinationSecondaryText}
+        />
+
+        {/* Static divider overlapping both cards' edges. `pointerEvents`
+            "none" so it never steals a tap from the card beneath it. */}
+        <View
+          pointerEvents="none"
+          className="absolute inset-x-0 top-1/2 -mt-[20px] items-center"
+        >
+          <View className="size-[40px] items-center justify-center rounded-full bg-base-0">
+            <Icon.ChevronDown size={16} color={themeColors.text.primary} />
+          </View>
+        </View>
+      </View>
+
+      {hasAmount ? (
+        <Button
+          secondary
+          xl
+          isFullWidth
+          disabled={!onReview}
+          isLoading={isReviewLoading}
+          onPress={onReview ?? undefined}
+          testID="earn-swap-review-button"
+        >
+          {ctaLabel}
+        </Button>
+      ) : (
+        <PercentageButtons
+          onPress={onPercentagePress}
+          percentages={EARN_SWAP_PERCENTAGES}
+          testID="earn-swap-percentage-buttons"
+        />
+      )}
+    </View>
+  );
+};
+
+export default EarnSwapBottomSheet;

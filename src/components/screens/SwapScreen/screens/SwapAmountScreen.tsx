@@ -21,6 +21,7 @@ import {
   buildSellSecondaryText,
   buildSourceBalanceRight,
   computeDestinationFiat,
+  getSwapSpendableAmount,
   recordTokenId,
   shouldShowXlmReservePreflight,
 } from "components/screens/SwapScreen/helpers";
@@ -47,11 +48,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
-import {
-  BASE_RESERVE,
-  DEFAULT_DECIMALS,
-  TransactionContext,
-} from "config/constants";
+import { DEFAULT_DECIMALS, TransactionContext } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { FormattedSearchTokenRecord } from "config/types";
@@ -60,8 +57,6 @@ import { useDebugStore } from "ducks/debug";
 import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { isNativeAssetId } from "helpers/assetIdentity";
-import { calculateSpendableAmount } from "helpers/balances";
 import { formatFiatAmount } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -168,26 +163,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const spendableAmount = useMemo(() => {
     if (!sourceBalance || !account) return null;
 
-    const baseSpendable = calculateSpendableAmount({
-      balance: sourceBalance,
+    // Leaves out the 0.5 XLM a new trustline locks when XLM is swapped into
+    // a token without one (see the helper).
+    return getSwapSpendableAmount({
+      sourceBalance,
       subentryCount: account.subentryCount || 0,
-      transactionFee: swapFee,
+      swapFee,
+      destinationRequiresTrustline:
+        !!destinationTokenDescriptor?.requiresTrustline,
     });
-
-    // Swapping XLM → a new token locks BASE_RESERVE (0.5 XLM) for the new
-    // trustline, so that XLM isn't actually spendable. Reserve it up-front
-    // (so the percentage buttons + insufficient-balance check exclude it).
-    // Only when there's at least 0.5 XLM spendable to begin with — below
-    // that, leave the value untouched and let the XlmReserveBottomSheet
-    // pre-flight surface the shortfall as usual.
-    const swappingXlmToNewToken =
-      isNativeAssetId(sourceBalance.id) &&
-      !!destinationTokenDescriptor?.requiresTrustline;
-    if (swappingXlmToNewToken && baseSpendable.gte(BASE_RESERVE)) {
-      return baseSpendable.minus(BASE_RESERVE);
-    }
-
-    return baseSpendable;
   }, [
     sourceBalance,
     account,

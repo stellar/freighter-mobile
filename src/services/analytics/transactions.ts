@@ -15,6 +15,8 @@ import type {
   TransactionSuccessEvent,
   SwapSuccessEvent,
   TransactionErrorEvent,
+  EarnDepositSuccessEvent,
+  EarnDepositErrorEvent,
 } from "services/analytics/types";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
@@ -461,6 +463,35 @@ export const trackGrantAccessBlocked = (
   track(AnalyticsEvent.GRANT_DAPP_ACCESS_BLOCKED, {
     ...originProps(domain),
     reason_code: reason,
+  });
+};
+
+// earn.deposit_completed carries asset_code + pool_id + apy. NO amount/fiat
+// value -- product decision (matches payment.completed / swap.completed's
+// no-amount shape), non-negotiable per the cross-platform funnel agreement.
+// Named earn.deposit_completed (not earn_deposit.completed) to match the
+// extension's event name -- the two platforms must land in the same
+// Amplitude funnel.
+export const trackEarnDepositSuccess = (
+  data: EarnDepositSuccessEvent,
+): void => {
+  track(AnalyticsEvent.EARN_DEPOSIT_SUCCESS, {
+    asset_code: data.assetCode,
+    pool_id: data.poolId,
+    apy: data.apy,
+  });
+};
+
+// earn.deposit_failed carries the same identifiers plus reason_code. Like
+// trackTransactionError, reason_code is the machine-readable Horizon result
+// code (falling back to "unknown") -- never the free-text error message, to
+// avoid unbounded reason_code cardinality.
+export const trackEarnDepositFail = (data: EarnDepositErrorEvent): void => {
+  track(AnalyticsEvent.EARN_DEPOSIT_FAIL, {
+    asset_code: data.assetCode,
+    pool_id: data.poolId,
+    apy: data.apy,
+    reason_code: data.errorCode ?? "unknown",
   });
 };
 

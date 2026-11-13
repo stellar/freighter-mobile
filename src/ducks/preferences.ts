@@ -12,6 +12,14 @@ interface PreferencesState {
   setIsMemoValidationEnabled: (isMemoValidationEnabled: boolean) => void;
   isBiometricsEnabled: boolean | undefined;
   setIsBiometricsEnabled: (isBiometricsEnabled: boolean) => void;
+  /**
+   * Whether the user has already seen the Earn intro sheet. Global (not
+   * per-account) and once-per-install by design — the `persist` middleware
+   * below gives us that for free, so it is never reset from anywhere else in
+   * the app.
+   */
+  hasSeenEarnIntro: boolean;
+  setHasSeenEarnIntro: (hasSeenEarnIntro: boolean) => void;
   autoLockTimer: AUTO_LOCK_TIMER;
   setAutoLockTimer: (autoLockTimer: AUTO_LOCK_TIMER) => void;
   hydrateAutoLockTimer: () => Promise<void>;
@@ -21,6 +29,7 @@ const INITIAL_PREFERENCES_STATE = {
   isHideDustEnabled: true,
   isMemoValidationEnabled: true,
   isBiometricsEnabled: undefined,
+  hasSeenEarnIntro: false,
   autoLockTimer: DEFAULT_AUTO_LOCK_TIMER,
 };
 
@@ -43,6 +52,8 @@ export const usePreferencesStore = create<PreferencesState>()(
         set({ isMemoValidationEnabled }),
       setIsBiometricsEnabled: (isBiometricsEnabled: boolean) =>
         set({ isBiometricsEnabled }),
+      setHasSeenEarnIntro: (hasSeenEarnIntro: boolean) =>
+        set({ hasSeenEarnIntro }),
       setAutoLockTimer: (autoLockTimer: AUTO_LOCK_TIMER) => {
         const previousAutoLockTimer = get().autoLockTimer;
         set({ autoLockTimer });
@@ -101,6 +112,7 @@ export const usePreferencesStore = create<PreferencesState>()(
         isHideDustEnabled: state.isHideDustEnabled,
         isMemoValidationEnabled: state.isMemoValidationEnabled,
         isBiometricsEnabled: state.isBiometricsEnabled,
+        hasSeenEarnIntro: state.hasSeenEarnIntro,
       }),
     },
   ),
