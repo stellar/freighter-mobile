@@ -8,6 +8,7 @@ import {
   NETWORKS,
   STORAGE_KEYS,
   SENSITIVE_STORAGE_KEYS,
+  BIOMETRIC_STORAGE_KEYS,
   LoginType,
 } from "config/constants";
 import { logger } from "config/logger";
@@ -125,6 +126,7 @@ jest.mock("services/storage/storageFactory", () => ({
     getItem: jest.fn(),
     setItem: jest.fn(),
     checkIfExists: jest.fn(),
+    remove: jest.fn(),
   },
 }));
 
@@ -3072,6 +3074,69 @@ describe("auth duck", () => {
       expect(linkWalletSources).not.toHaveBeenCalled();
     });
 
+    // The order of the biometric password's save and its removal.
+    const biometricPasswordWriteOrder = () => {
+      const savedAt = (
+        biometricDataStorage.setItem as jest.Mock
+      ).mock.calls.findIndex(
+        ([key]) => key === BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+      );
+      const removedAt = (
+        biometricDataStorage.remove as jest.Mock
+      ).mock.calls.findIndex(
+        ([key]) => key === BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+      );
+      return {
+        saved:
+          savedAt === -1
+            ? undefined
+            : (biometricDataStorage.setItem as jest.Mock).mock
+                .invocationCallOrder[savedAt],
+        removed:
+          removedAt === -1
+            ? undefined
+            : (biometricDataStorage.remove as jest.Mock).mock
+                .invocationCallOrder[removedAt],
+      };
+    };
+
+    // Fails the source registration, which runs after storeAccount saved
+    // the biometric password.
+    const failSourceRegistration = () =>
+      (dataStorage.setItem as jest.Mock).mockImplementation(
+        (key: STORAGE_KEYS, value: string) => {
+          if (key === STORAGE_KEYS.SECRET_SOURCES) {
+            return Promise.reject(new Error("write failed"));
+          }
+          dataStorageMemory[key] = value;
+          return Promise.resolve();
+        },
+      );
+
+    it.each(["signUp", "importWallet"] as const)(
+      "a failed %s removes the biometric password it saved",
+      async (action) => {
+        failSourceRegistration();
+        const { result } = renderHook(() => useAuthenticationStore());
+        act(() => {
+          useAuthenticationStore.setState({
+            [action]: originalStoreMethods[action],
+          });
+        });
+
+        await act(async () => {
+          await result.current[action]({
+            mnemonicPhrase: mockMnemonicPhrase,
+            password: mockPassword,
+          });
+        });
+
+        const { saved, removed } = biometricPasswordWriteOrder();
+        expect(saved).toBeDefined();
+        expect(removed).toBeGreaterThan(saved as number);
+      },
+    );
+
     it("importSecretKey records the key as its own source and stamps no phrase into its keystore", async () => {
       mockAuthenticatedSession(mockTemporaryStore);
       dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID] = mockAccountId;
@@ -3359,6 +3424,11 @@ describe("auth duck", () => {
           AnalyticsEvent.RECOVER_ACCOUNT_SUCCESS,
           { recovery_method: "secret_key" },
         );
+        expect(biometricDataStorage.setItem).toHaveBeenCalledWith(
+          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+          mockPassword,
+        );
+        expect(biometricDataStorage.remove).not.toHaveBeenCalled();
       });
 
       it("leaves the wallet untouched when the key is invalid", async () => {
@@ -3426,8 +3496,186 @@ describe("auth duck", () => {
             { recovery_method: "secret_key", reason_code: "store_failed" },
           );
           expect(linkWalletSources).not.toHaveBeenCalled();
+          expect(biometricDataStorage.remove).toHaveBeenCalledWith(
+            BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+          );
         },
       );
+
+      // One of storeAccount's writes fails while the biometric save is still
+      // running. The removal must wait for it, or the save would land after
+      // the rollback and leave the password behind.
+      it("removes the biometric password only after its save has finished", async () => {
+        let finishSave: () => void = () => {};
+        (biometricDataStorage.setItem as jest.Mock).mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              finishSave = resolve;
+            }),
+        );
+        (dataStorage.setItem as jest.Mock).mockImplementation(
+          (key: STORAGE_KEYS, value: string) => {
+            if (key === STORAGE_KEYS.ACTIVE_ACCOUNT_ID) {
+              return Promise.reject(new Error("write failed"));
+            }
+            dataStorageMemory[key] = value;
+            return Promise.resolve();
+          },
+        );
+        const { result } = renderHook(() => useAuthenticationStore());
+        act(() => {
+          useAuthenticationStore.setState({
+            importWalletFromSecretKey:
+              originalStoreMethods.importWalletFromSecretKey,
+          });
+        });
+
+        let succeeded: boolean | undefined;
+        let pending: Promise<void> = Promise.resolve();
+        act(() => {
+          pending = result.current
+            .importWalletFromSecretKey({
+              secretKey: importedSecretKey,
+              password: mockPassword,
+            })
+            .then((value) => {
+              succeeded = value;
+            });
+        });
+        await act(async () => {
+          await new Promise((resolve) => {
+            setTimeout(resolve, 0);
+          });
+        });
+
+        expect(biometricDataStorage.setItem).toHaveBeenCalledWith(
+          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+          mockPassword,
+        );
+        expect(biometricDataStorage.remove).not.toHaveBeenCalled();
+
+        await act(async () => {
+          finishSave();
+          await pending;
+        });
+
+        expect(succeeded).toBe(false);
+        expect(biometricDataStorage.remove).toHaveBeenCalledWith(
+          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+        );
+      });
+
+      /** Starts the import without waiting for it. */
+      const startImport = () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        act(() => {
+          useAuthenticationStore.setState({
+            importWalletFromSecretKey:
+              originalStoreMethods.importWalletFromSecretKey,
+          });
+        });
+        let succeeded: boolean | undefined;
+        let pending: Promise<void> = Promise.resolve();
+        act(() => {
+          pending = result.current
+            .importWalletFromSecretKey({
+              secretKey: importedSecretKey,
+              password: mockPassword,
+            })
+            .then((value) => {
+              succeeded = value;
+            });
+        });
+        return { pending, succeeded: () => succeeded };
+      };
+
+      /** Lets every promise that can run, run. */
+      const flush = () =>
+        act(async () => {
+          await new Promise((resolve) => {
+            setTimeout(resolve, 0);
+          });
+        });
+
+      // The active-account write fails while the temporary store is still
+      // being written. Rolling back then would let that write bring the
+      // session back after the wipe.
+      it("waits for the temporary-store write before rolling back", async () => {
+        let finishTemporaryStore: () => void = () => {};
+        const setSecureItem = secureDataStorage.setItem as jest.Mock;
+        const originalSetSecureItem = setSecureItem.getMockImplementation();
+        setSecureItem.mockImplementation((key: SENSITIVE_STORAGE_KEYS) =>
+          key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE
+            ? new Promise<void>((resolve) => {
+                finishTemporaryStore = resolve;
+              })
+            : Promise.resolve(),
+        );
+        (dataStorage.setItem as jest.Mock).mockImplementation(
+          (key: STORAGE_KEYS, value: string) => {
+            if (key === STORAGE_KEYS.ACTIVE_ACCOUNT_ID) {
+              return Promise.reject(new Error("write failed"));
+            }
+            dataStorageMemory[key] = value;
+            return Promise.resolve();
+          },
+        );
+
+        try {
+          const run = startImport();
+          await flush();
+
+          expect(setSecureItem).toHaveBeenCalledWith(
+            SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
+            expect.anything(),
+          );
+          // Only the wipe before storing has run.
+          expect(clearTemporaryData).toHaveBeenCalledTimes(1);
+
+          await act(async () => {
+            finishTemporaryStore();
+            await run.pending;
+          });
+
+          expect(run.succeeded()).toBe(false);
+          expect(clearTemporaryData).toHaveBeenCalledTimes(2);
+        } finally {
+          setSecureItem.mockImplementation(originalSetSecureItem);
+        }
+      });
+
+      // The account-list read fails while the key is still being stored.
+      // Rolling back then would let the keystore write land after the wipe.
+      it("waits for the keystore write before rolling back", async () => {
+        let finishStoreKey: () => void = () => {};
+        sharedKeyManager.storeKey.mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishStoreKey = () => resolve({ id: "imported-account-id" });
+            }),
+        );
+        (dataStorage.getItem as jest.Mock).mockImplementation(
+          (key: STORAGE_KEYS) =>
+            key === STORAGE_KEYS.ACCOUNT_LIST
+              ? Promise.reject(new Error("read failed"))
+              : Promise.resolve(dataStorageMemory[key] ?? null),
+        );
+
+        const run = startImport();
+        await flush();
+
+        expect(sharedKeyManager.storeKey).toHaveBeenCalledTimes(1);
+        // Only the wipe before storing has listed the keys.
+        expect(sharedKeyManager.loadAllKeyIds).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+          finishStoreKey();
+          await run.pending;
+        });
+
+        expect(run.succeeded()).toBe(false);
+        expect(sharedKeyManager.loadAllKeyIds).toHaveBeenCalledTimes(2);
+      });
 
       // `key_S…` has no word boundary before the key, so scrubStrKeys
       // would let it through.

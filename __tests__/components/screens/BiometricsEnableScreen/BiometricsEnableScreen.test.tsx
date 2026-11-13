@@ -23,12 +23,14 @@ const mockSignUp = jest.fn();
 const mockImportWallet = jest.fn();
 const mockImportWalletFromSecretKey = jest.fn();
 const mockEnableBiometrics = jest.fn();
+const mockStoreBiometricPassword = jest.fn();
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: () => ({
     isLoading: false,
     signUp: mockSignUp,
     importWallet: mockImportWallet,
     importWalletFromSecretKey: mockImportWalletFromSecretKey,
+    storeBiometricPassword: mockStoreBiometricPassword,
     enableBiometrics: mockEnableBiometrics,
   }),
 }));
@@ -294,6 +296,49 @@ describe("BiometricsOnboardingScreen", () => {
       expect(mockImportWallet).not.toHaveBeenCalled();
     });
 
+    // A failed setup removes the biometric password, which the check reads,
+    // so each attempt saves it again from login data first.
+    it.each([BiometricsSource.ONBOARDING, BiometricsSource.IMPORT_WALLET])(
+      "saves the password before the biometric check (%s)",
+      async (source) => {
+        passBiometricCheck("biometric-password");
+        mockSignUp.mockResolvedValue(true);
+        mockImportWallet.mockResolvedValue(true);
+        const { getByText } = renderScreen(source);
+
+        fireEvent.press(getByText("Enable Face ID"));
+
+        await waitFor(() =>
+          expect(mockSetIsBiometricsEnabled).toHaveBeenCalledWith(true),
+        );
+        expect(mockStoreBiometricPassword).toHaveBeenCalledWith("password1");
+        expect(
+          mockStoreBiometricPassword.mock.invocationCallOrder[0],
+        ).toBeLessThan(mockEnableBiometrics.mock.invocationCallOrder[0]);
+      },
+    );
+
+    it("saves the password again on a retry after a failed setup", async () => {
+      passBiometricCheck("biometric-password");
+      mockSignUp.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+      const { getByText } = renderScreen();
+
+      fireEvent.press(getByText("Enable Face ID"));
+      await waitFor(() =>
+        expect(mockNotifySetupFailed).toHaveBeenCalledTimes(1),
+      );
+      await act(async () => {
+        await jest.runOnlyPendingTimersAsync();
+      });
+
+      fireEvent.press(getByText("Enable Face ID"));
+      await waitFor(() =>
+        expect(mockSetIsBiometricsEnabled).toHaveBeenCalledWith(true),
+      );
+      expect(mockStoreBiometricPassword).toHaveBeenCalledTimes(2);
+      expect(mockSignUp).toHaveBeenCalledTimes(2);
+    });
+
     it("leaves biometrics off and keeps the phrase when setup fails", async () => {
       passBiometricCheck("biometric-password");
       mockSignUp.mockResolvedValue(false);
@@ -454,6 +499,8 @@ describe("BiometricsOnboardingScreen", () => {
 
       expect(mockEnableBiometrics).toHaveBeenCalledTimes(1);
       expect(overlay().phase).toBe("hidden");
+      // The wallet and its biometric password already exist after onboarding.
+      expect(mockStoreBiometricPassword).not.toHaveBeenCalled();
     });
   });
 });

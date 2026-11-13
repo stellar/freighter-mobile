@@ -65,6 +65,7 @@ import {
   normalizeAndTrimRecoveryPhrase,
 } from "helpers/recoveryPhrase";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
+import { settleAll } from "helpers/settleAll";
 import { scrubStrKeys } from "helpers/stellarStrKey";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
 import { t } from "i18next";
@@ -1254,7 +1255,9 @@ const storeAccount = async ({
     encrypterName: ScryptEncrypter.name,
   };
 
-  const [keyStore, accountListRaw] = await Promise.all([
+  // Settled, not raced: a failed read must not leave the keystore write
+  // running past the caller's rollback, which would keep the key on device.
+  const [keyStore, accountListRaw] = await settleAll([
     keyManager.storeKey(keyMetadata),
     dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST),
   ]);
@@ -1295,7 +1298,10 @@ const storeAccount = async ({
     importedFromSecretKey,
   });
 
-  await Promise.all([
+  // Settled, not raced: when one write fails the others still finish before
+  // this throws, so a rollback after it can't be undone by a late write
+  // (e.g. the biometric password landing after the rollback removed it).
+  await settleAll([
     shouldSetActiveAccount
       ? dataStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID, keyStore.id)
       : Promise.resolve(),
@@ -2437,6 +2443,22 @@ const signIn = async ({
 };
 
 /**
+ * Undoes a wallet setup (sign up, phrase import or key import) that failed
+ * after its wipe: the partial wallet, and the biometric password storeAccount
+ * saved. clearAllData leaves biometric storage alone, so without this the
+ * user's new password would outlive the wallet. storeAccount settles all its
+ * writes before it throws, so none of them lands after this.
+ *
+ * Only BIOMETRIC_PASSWORD goes: a failed setup never turned biometrics on,
+ * and the biometrics step saves the password again before a retry.
+ */
+const rollBackWalletSetup = async (): Promise<void> => {
+  clearAccountData();
+  await clearAllData();
+  await biometricDataStorage.remove(BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD);
+};
+
+/**
  * Signs up a new user with the provided credentials
  *
  * Creates a new wallet from the mnemonic phrase, generates a key pair,
@@ -2472,8 +2494,7 @@ const signUp = async ({
     });
   } catch (error) {
     // Clean up any partial data on error
-    clearAccountData();
-    await clearAllData();
+    await rollBackWalletSetup();
 
     throw error;
   }
@@ -2539,8 +2560,7 @@ const importWallet = async ({
       reason_code: scrubStrKeys(importFailureMessage) ?? importFailureMessage,
     });
     // Clean up any partial data on error
-    clearAccountData();
-    await clearAllData();
+    await rollBackWalletSetup();
 
     throw error;
   }
@@ -2603,8 +2623,7 @@ const importWalletFromSecretKey = async ({
       reason_code: "store_failed",
     });
     // The previous wallet is already gone, so drop the partial writes too.
-    clearAccountData();
-    await clearAllData();
+    await rollBackWalletSetup();
 
     throw new Error(t("authStore.error.failedToImportWallet"));
   }
