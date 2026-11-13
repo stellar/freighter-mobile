@@ -57,6 +57,7 @@ import {
   encryptDataWithDerivedKey,
 } from "helpers/encryptPassword";
 import { findAccountById, findAccountByPublicKey } from "helpers/findAccount";
+import { removeAllKeystoreEntries } from "helpers/keyManager/ReactNativeKeychainFacade";
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { markRebrandAnnouncementSeen } from "helpers/rebrandAnnouncement";
 import {
@@ -1411,6 +1412,11 @@ export const clearPendingRecoveryPhrase = (pendingPhraseId?: string): void => {
  * Clears all data from the key manager, temporary store (sensitive),
  * and non-sensitive data
  *
+ * Keys are removed through the key manager's index, then every keystore
+ * entry left in the keychain is swept, indexed or not. An entry whose index
+ * write failed, or an index that lost ids, would otherwise survive the wipe,
+ * and iOS keeps keychain items across reinstalls.
+ *
  * @returns {Promise<void>}
  */
 const clearAllData = async (): Promise<void> => {
@@ -1418,17 +1424,23 @@ const clearAllData = async (): Promise<void> => {
   clearCachedWalletSources();
   clearPendingRecoveryPhrase();
 
-  const allKeys = await keyManager.loadAllKeyIds();
+  try {
+    const allKeys = await keyManager.loadAllKeyIds();
 
-  await Promise.all([
-    ...allKeys.map((key) => keyManager.removeKey(key)),
-    clearTemporaryData(),
-    clearNonSensitiveData(),
-    // clearNonSensitiveData removes the map too; this also moves the epoch,
-    // so a link pass from the replaced wallet stores nothing.
-    clearLinkStatus(),
-    dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST),
-  ]);
+    await Promise.all([
+      ...allKeys.map((key) => keyManager.removeKey(key)),
+      clearTemporaryData(),
+      clearNonSensitiveData(),
+      // clearNonSensitiveData removes the map too; this also moves the epoch,
+      // so a link pass from the replaced wallet stores nothing.
+      clearLinkStatus(),
+      dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST),
+    ]);
+  } finally {
+    // After the index-based removals, so it doesn't race their index
+    // writes, and even when one of them failed.
+    await removeAllKeystoreEntries();
+  }
 };
 
 /**

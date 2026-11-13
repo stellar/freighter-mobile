@@ -46,6 +46,7 @@ import {
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { AppState } from "react-native";
+import * as Keychain from "react-native-keychain";
 import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
 import { analytics } from "services/analytics";
 import { deriveAuthKeypair } from "services/auth/deriveAuthKeypair";
@@ -3328,6 +3329,10 @@ describe("auth duck", () => {
           );
           // Wiped before storing, and again to drop the partial writes.
           expect(clearNonSensitiveData).toHaveBeenCalledTimes(2);
+          // Each wipe also sweeps keystore entries the index doesn't list.
+          expect(Keychain.getAllGenericPasswordServices).toHaveBeenCalledTimes(
+            2,
+          );
           expect(dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST]).toBeUndefined();
           expect(
             dataStorageMemory[STORAGE_KEYS.SECRET_SOURCES],
