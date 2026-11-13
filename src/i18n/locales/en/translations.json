@@ -56,12 +56,7 @@
     },
     "manageAccount": {
       "addWallet": "Add wallet",
-      "renameWallet": "Rename wallet",
-      "copyAddress": "Copy address",
-      "viewOnExplorer": "View on stellar.expert"
-    },
-    "account": {
-      "imported": "Imported"
+      "copyAddress": "Copy address"
     }
   },
   "tabBar": {
@@ -87,7 +82,9 @@
     "deleteAccount": "Delete account",
     "deleteAccountDisclaimer": "Accounts on the Stellar network are immutable and cannot be deleted. However you can remove any account from your Varial App at any time using the 'Delete account' option. Verify your recovery phrase works before you do this.",
     "deleteAccountConfirmTitle": "Are you sure?",
-    "deleteAccountConfirmMessage": "Make sure you have your recovery phrase in a safe place. You will not be able to recover your wallet without it."
+    "deleteAccountConfirmMessage": "Make sure you have your recovery phrase in a safe place. You will not be able to recover your wallet without it.",
+    "accountsRecovery": "Accounts & recovery",
+    "manageYourAccounts": "Manage your accounts"
   },
   "preferences": {
     "usageDataSharing": {
@@ -216,6 +213,7 @@
     "passwordTooLong": "Must be less than 2048 characters",
     "passwordsDontMatch": "Passwords don't match",
     "importAcknowledgement": "I understand imported recovery phrase can't be recovered and must be stored securely.",
+    "importSecretKeyAcknowledgement": "I understand an imported secret key can't be recovered and must be stored securely.",
     "importWalletButtonText": "Import wallet"
   },
   "recoveryPhraseScreen": {
@@ -268,8 +266,15 @@
   },
   "importWalletScreen": {
     "title": "Import Wallet",
-    "description": "Import your wallet with the 12 or 24-word recovery phrase",
-    "textAreaPlaceholder": "Enter your recovery phrase"
+    "description": "Import your wallet using a recovery phrase or secret key",
+    "textAreaPlaceholder": "Enter your recovery phrase or secret key",
+    "invalidInput": "Enter a valid recovery phrase or secret key"
+  },
+  "importRecoveryPhraseScreen": {
+    "title": "Import Recovery Phrase",
+    "description": "Add a wallet with its 12 or 24-word recovery phrase",
+    "textAreaPlaceholder": "Enter your recovery phrase",
+    "importButton": "Import"
   },
   "rebrandAnnouncementScreen": {
     "title": "Freighter is now Varial",
@@ -479,12 +484,14 @@
       "noKeyPairFound": "No key pair found",
       "noRecoveryPhrase": "No recovery phrase to derive from",
       "unknownRecoveryPhrase": "Unknown recovery phrase",
+      "recoveryPhraseNotFound": "Recovery phrase not found",
       "failedToSignUp": "Failed to sign up",
       "failedToSignIn": "Failed to sign in",
       "failedToImportWallet": "Failed to import wallet",
       "failedToLoadAccount": "Failed to load account",
       "invalidPassword": "Invalid password. Please try again.",
       "invalidMnemonicPhrase": "Invalid phrase - words must be in the correct order, lowercase, and separated by spaces",
+      "invalidSecretKey": "Invalid secret key",
       "failedToCreateAccount": "Failed to create account. Please try again.",
       "accountAlreadyExists": "Account already exists",
       "failedToImportSecretKey": "Failed to import secret key",
@@ -513,7 +520,11 @@
       "sessionExpiredTitle": "Session expired",
       "sessionExpiredMessage": "Your session is no longer valid. Please sign in again.",
       "disableBiometricsFailedTitle": "Couldn't disable biometrics",
-      "disableBiometricsFailedMessage": "We couldn't verify your identity. Please try again."
+      "disableBiometricsFailedMessage": "We couldn't verify your identity. Please try again.",
+      "pendingRecoveryPhraseMissing": "The new recovery phrase is no longer available. Start again.",
+      "recoveryPhraseAlreadyHeld": "This recovery phrase is already in your wallet",
+      "failedToAddRecoveryPhrase": "Failed to add the recovery phrase. Please try again.",
+      "failedToImportRecoveryPhrase": "Failed to import the recovery phrase. Please try again."
     },
     "account": "Account {{number}}",
     "faceId": {
@@ -594,7 +605,6 @@
     "alreadyInWallet": "This collectible is already in your wallet",
     "showHidden": "Show hidden"
   },
-
   "collectibles": {
     "errors": {
       "collectionNotFound": "Collection not found for the given address.",
@@ -903,20 +913,41 @@
     "checkMemoRequirements": "Check the destination account memo requirements and include it in the transaction."
   },
   "addAnotherWalletScreen": {
-    "title": "Add wallet",
+    "title": "Add account",
+    "subtitle": "Choose how to add a wallet.",
     "actions": {
-      "createNewWallet": "Create a new wallet",
-      "createNewWalletDescription": "Create a wallet from your seed phrase",
-      "importSecretKey": "Import a Stellar secret key",
-      "importSecretKeyDescription": "Add a wallet using a secret key"
+      "createNewWallet": "Create new wallet",
+      "createNewWalletDescription": "Using an existing or new recovery phrase",
+      "importRecoveryPhrase": "Import Recovery Phrase",
+      "importRecoveryPhraseDescription": "Import wallets using a recovery phrase.",
+      "importSecretKey": "Import Secret Key",
+      "importSecretKeyDescription": "Import a wallet using its secret key."
     }
+  },
+  "createWalletScreen": {
+    "title": "Create new wallet",
+    "subtitle": "Create with a new or existing recovery phrase",
+    "addAccount": "Add account",
+    "addAccountTo": "Add account to {{label}}",
+    "newRecoveryPhrase": "New recovery phrase",
+    "newRecoveryPhraseDescription": "Create a wallet with a new recovery phrase",
+    "setAccountName": "Set account name",
+    "create": "Create",
+    "next": "Next"
+  },
+  "backupRecoveryPhraseScreen": {
+    "title": "Back Up Your New Recovery Phrase",
+    "description": "Your recovery phrase is the only way to restore your new wallet.",
+    "descriptionEmphasis": "Keep it safe.",
+    "create": "Create"
   },
   "verifyPasswordScreen": {
     "title": "Verify Password",
     "verifyPasswordTemplateTitle": "Enter your password",
     "verifyPasswordTemplateDescription": "Enter your account password to verify your account.",
     "actions": {
-      "createNewWallet": "Create New Wallet"
+      "createNewWallet": "Create New Wallet",
+      "importRecoveryPhrase": "Import"
     }
   },
   "logout": "Log out",
@@ -1389,5 +1420,42 @@
     "title": "Cannot run on this device",
     "description": "This device is rooted or jailbroken, which prevents the app from protecting your wallet keys.",
     "disclaimer": "The app is disabled on compromised systems. Install and use it on a device with standard security intact."
+  },
+  "accountsRecoveryScreen": {
+    "title": "Accounts & recovery",
+    "recoveryPhraseLabel": "Recovery phrase {{number}}",
+    "secretKeyLabel": "Secret key {{number}}",
+    "otherAccounts": "Other accounts",
+    "editAccount": "Edit {{name}}"
+  },
+  "editAccountScreen": {
+    "title": "Edit account",
+    "accountName": "Account name",
+    "secretKey": "Secret key",
+    "unlockToReveal": "Unlock to reveal",
+    "viewOnExplorer": "View on block explorer"
+  },
+  "revealSecretScreen": {
+    "consentBannerBody": "Anyone with it can take control of your wallet.",
+    "consentSubtitle": "Keep it secure. You'll need it to restore your wallet.",
+    "tapToCopy": "Tap to copy",
+    "recoveryPhrase": {
+      "title": "Show recovery phrase",
+      "revealedTitle": "Your recovery phrase",
+      "bannerTitle": "Never share your recovery phrase",
+      "revealedBannerBody": "Anyone with it can take control of your wallet.",
+      "heading": "Your recovery phrase controls this wallet",
+      "acknowledgement": "I understand that sharing my recovery phrase could result in <strong>permanent loss of funds</strong>.",
+      "action": "Reveal recovery phrase"
+    },
+    "secretKey": {
+      "title": "Show secret key",
+      "revealedTitle": "Your secret key",
+      "bannerTitle": "Never share your secret key",
+      "revealedBannerBody": "Anyone with this key can access your account and funds. Keep it private and store it securely.",
+      "heading": "Your secret key controls this wallet",
+      "acknowledgement": "I understand that sharing my secret key could result in <strong>permanent loss of funds</strong>.",
+      "action": "Reveal secret key"
+    }
   }
 }

@@ -6,7 +6,6 @@ import { Account } from "config/types";
 import { AccountFiatTotal } from "ducks/accountsFiatTotals";
 import { getTotalUsdLabel } from "helpers/balances";
 import { truncateAddress } from "helpers/stellar";
-import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useCallback } from "react";
 import {
@@ -18,7 +17,8 @@ import {
 
 interface AccountItemRowProps {
   account: Account;
-  handleSelectAccount: (publicKey: string) => Promise<void>;
+  /** Absent, the row is a plain listing rather than a button. */
+  handleSelectAccount?: (publicKey: string) => Promise<void>;
   isSelected: boolean;
   isAccountSwitching: boolean;
   isSwitchingToThisAccount: boolean;
@@ -35,7 +35,7 @@ interface AccountItemRowProps {
 
 /**
  * One wallet row in the manage-accounts list: avatar with a selected badge,
- * name, truncated address (plus an "Imported" tag when applicable) and the
+ * name, truncated address and the
  * account's USD total — a spinner while the total is loading, and a
  * switching overlay while this account is being switched to.
  */
@@ -50,7 +50,6 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   testID,
 }) => {
   const { themeColors } = useColors();
-  const { t } = useAppTranslation();
 
   const truncatedPublicKey = truncateAddress(account.publicKey);
   const showSelectedBadge =
@@ -73,21 +72,21 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
       hasPrices: false,
     });
 
-  // Announce what the row shows — name, imported marker and USD total (only
+  // Announce what the row shows: name and USD total (only
   // once one is actually displayed, never a placeholder $0.00 mid-load).
   // The truncated address is deliberately left out: spoken character soup
   // identifies the account worse than its name does.
   const rowAccessibilityLabel = [
     account.name,
-    account.importedFromSecretKey ? t("home.account.imported") : null,
     isTotalLoading ? null : fiatTotalLabel,
   ]
     .filter(Boolean)
     .join(", ");
 
   const handleSelectAccountPress = useCallback(() => {
-    handleSelectAccount(account.publicKey);
+    handleSelectAccount?.(account.publicKey);
   }, [account.publicKey, handleSelectAccount]);
+  const isSelectable = !!handleSelectAccount;
 
   const renderFiatTotal = () => {
     if (isTotalLoading) {
@@ -115,16 +114,17 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
     >
       <TouchableOpacity
         className="flex-row items-center gap-[16px]"
-        onPress={handleSelectAccountPress}
-        disabled={isAccountSwitching}
+        onPress={isSelectable ? handleSelectAccountPress : undefined}
+        disabled={isAccountSwitching || !isSelectable}
         delayPressIn={DEFAULT_PRESS_DELAY}
         testID={testID ? `${testID}-select` : undefined}
-        accessibilityRole="button"
+        accessibilityRole={isSelectable ? "button" : undefined}
         accessibilityLabel={rowAccessibilityLabel}
-        accessibilityState={{
-          selected: showSelectedBadge,
-          disabled: isAccountSwitching,
-        }}
+        accessibilityState={
+          isSelectable
+            ? { selected: showSelectedBadge, disabled: isAccountSwitching }
+            : { selected: showSelectedBadge }
+        }
       >
         <View>
           <Avatar size="lg" publicAddress={account.publicKey} />
@@ -144,18 +144,11 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
           <Text md primary medium numberOfLines={1}>
             {account.name}
           </Text>
-          <View className="flex-row items-center">
-            <View className="shrink">
-              <Text sm secondary numberOfLines={1}>
-                {truncatedPublicKey}
-              </Text>
-            </View>
-            {account.importedFromSecretKey && (
-              <Text sm secondary>
-                {` • ${t("home.account.imported")}`}
-              </Text>
-            )}
-          </View>
+          {/* No "Imported" tag: the group header says where the account
+              comes from. */}
+          <Text sm secondary numberOfLines={1}>
+            {truncatedPublicKey}
+          </Text>
         </View>
         {renderFiatTotal()}
       </TouchableOpacity>

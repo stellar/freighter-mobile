@@ -1,4 +1,6 @@
 import {
+  isValidImportMnemonic,
+  normalizeImportSecretInput,
   normalizeRecoveryPhrase,
   normalizeAndTrimRecoveryPhrase,
 } from "helpers/recoveryPhrase";
@@ -95,6 +97,51 @@ describe("recoveryPhrase helpers", () => {
 
     it("should handle only whitespace and line breaks", () => {
       expect(normalizeAndTrimRecoveryPhrase("\n  \t\n  \n")).toBe("");
+    });
+  });
+
+  describe("isValidImportMnemonic", () => {
+    const twelveWords = `${"abandon ".repeat(11)}about`;
+    const twentyFourWords = `${"abandon ".repeat(23)}art`;
+
+    it("accepts a valid 12-word phrase", () => {
+      expect(isValidImportMnemonic(twelveWords)).toBe(true);
+    });
+
+    it("accepts a valid 24-word phrase", () => {
+      expect(isValidImportMnemonic(twentyFourWords)).toBe(true);
+    });
+
+    it("accepts a valid phrase in capitals with stray whitespace", () => {
+      expect(isValidImportMnemonic(`  ${twelveWords.toUpperCase()}\n`)).toBe(
+        true,
+      );
+    });
+
+    it("refuses a phrase whose checksum fails", () => {
+      expect(isValidImportMnemonic("abandon ".repeat(12).trim())).toBe(false);
+    });
+
+    it("refuses a valid BIP-39 length other than 12 or 24", () => {
+      expect(isValidImportMnemonic(`${"abandon ".repeat(14)}address`)).toBe(
+        false,
+      );
+    });
+
+    it("refuses an empty phrase", () => {
+      expect(isValidImportMnemonic("   ")).toBe(false);
+    });
+  });
+
+  describe("normalizeImportSecretInput", () => {
+    it("keeps case and accents, collapsing only spacing", () => {
+      expect(normalizeImportSecretInput("SAbc\n  Déf ")).toBe("SAbc Déf ");
+    });
+
+    it("trims when asked", () => {
+      expect(normalizeImportSecretInput("  SABC \n", { trim: true })).toBe(
+        "SABC",
+      );
     });
   });
 });

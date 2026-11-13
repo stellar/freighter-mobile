@@ -65,6 +65,11 @@ export enum AnalyticsEvent {
   VIEW_ABOUT = "about",
   VIEW_SECURITY = "security",
   VIEW_SHOW_RECOVERY_PHRASE = "show_recovery_phrase",
+  VIEW_UNLOCK_RECOVERY_PHRASE = "unlock_recovery_phrase",
+  VIEW_UNLOCK_SECRET_KEY = "unlock_secret_key",
+  VIEW_SHOW_SECRET_KEY = "show_secret_key",
+  VIEW_ACCOUNTS_RECOVERY = "accounts_recovery",
+  VIEW_EDIT_ACCOUNT = "edit_account",
   VIEW_MANAGE_CONNECTED_APPS = "manage_connected_apps",
   VIEW_MANAGE_TOKENS = "manage_assets",
   VIEW_ADD_TOKEN = "add_asset",
@@ -386,6 +391,21 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_SHOW_RECOVERY_PHRASE]: {
     flow: AnalyticsFlow.SECURITY,
   },
+  [AnalyticsEvent.VIEW_UNLOCK_RECOVERY_PHRASE]: {
+    flow: AnalyticsFlow.SECURITY,
+  },
+  [AnalyticsEvent.VIEW_UNLOCK_SECRET_KEY]: {
+    flow: AnalyticsFlow.SECURITY,
+  },
+  [AnalyticsEvent.VIEW_SHOW_SECRET_KEY]: {
+    flow: AnalyticsFlow.SECURITY,
+  },
+  [AnalyticsEvent.VIEW_ACCOUNTS_RECOVERY]: {
+    flow: AnalyticsFlow.SETTINGS,
+  },
+  [AnalyticsEvent.VIEW_EDIT_ACCOUNT]: {
+    flow: AnalyticsFlow.SETTINGS,
+  },
   [AnalyticsEvent.VIEW_IMPORT_SECRET_KEY]: {
     flow: AnalyticsFlow.SECURITY,
   },
@@ -575,6 +595,11 @@ const getRoutesWithoutAnalytics = (): Set<string> => {
   // (VIEW_SCAN_QR_CODE / VIEW_ACCOUNT_QR_CODE), so the route itself must not
   // auto-track a generic view event.
   excludedRoutes.add("ScanReceiveScreen");
+
+  // The reveal screen names itself from the step it's on (unlock_* first,
+  // then show_* once the password is accepted). Tracking the route on
+  // navigate would count a reveal before the password was checked.
+  excludedRoutes.add("RevealSecretScreen");
 
   return excludedRoutes;
 };

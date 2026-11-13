@@ -174,15 +174,16 @@ describe("AccountItemRow", () => {
     expect(getByTestId("account-row-0-selected-badge")).toBeTruthy();
   });
 
-  it("marks imported accounts", () => {
-    const { getByText } = renderWithProviders(
+  // The switcher's group header says where an account comes from.
+  it("doesn't tag imported accounts", () => {
+    const { queryByText } = renderWithProviders(
       <AccountItemRow
         {...defaultProps}
         account={{ ...mockAccount, importedFromSecretKey: true }}
       />,
     );
 
-    expect(getByText(/Imported/)).toBeTruthy();
+    expect(queryByText(/Imported/)).toBeNull();
   });
 
   it("announces the row's visible content, skipping the total while it loads", () => {
@@ -195,7 +196,7 @@ describe("AccountItemRow", () => {
     );
 
     expect(getByTestId("account-row-0-select").props.accessibilityLabel).toBe(
-      "my account 1, Imported, $1,149.23",
+      "my account 1, $1,149.23",
     );
 
     // While the total is loading (spinner), no placeholder $0.00 is spoken.
@@ -210,5 +211,17 @@ describe("AccountItemRow", () => {
     expect(getByTestId("account-row-0-select").props.accessibilityLabel).toBe(
       "my account 1",
     );
+  });
+
+  it("is a plain listing, not a button, without a select handler", () => {
+    const { handleSelectAccount, ...listingProps } = defaultProps;
+    const { getByTestId } = renderWithProviders(
+      <AccountItemRow {...listingProps} />,
+    );
+
+    const row = getByTestId("account-row-0-select");
+    expect(row.props.accessibilityRole).toBeUndefined();
+    fireEvent.press(row);
+    expect(handleSelectAccount).not.toHaveBeenCalled();
   });
 });

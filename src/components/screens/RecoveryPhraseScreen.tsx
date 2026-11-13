@@ -160,7 +160,9 @@ const FadeLayer: React.FC<FadeLayerProps> = ({
  * back. While "Copied" shows, the button takes no taps and doesn't
  * highlight, since a tap would do nothing new.
  */
-const CopyPhraseButton: React.FC<{ onCopy: () => void }> = ({ onCopy }) => {
+export const CopyPhraseButton: React.FC<{ onCopy: () => void }> = ({
+  onCopy,
+}) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const [isCopied, setIsCopied] = useState(false);

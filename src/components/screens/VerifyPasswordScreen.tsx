@@ -14,11 +14,25 @@ type VerifyPasswordScreenProps = NativeStackScreenProps<
   typeof MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN
 >;
 
+/**
+ * The password step of Create new wallet and Import Recovery Phrase.
+ * Confirms with the password, or Face ID when it's on, then creates what the
+ * route names: an account under an existing phrase, the held new phrase and
+ * its first account, or the held imported phrase and its accounts.
+ */
 const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
   navigation,
+  route,
 }) => {
-  const { createAccount, isCreatingAccount, error, clearError } =
-    useAuthenticationStore();
+  const {
+    createAccount,
+    addRecoveryPhraseSource,
+    importRecoveryPhrase,
+    isCreatingAccount,
+    error,
+    clearError,
+  } = useAuthenticationStore();
+  const target = route.params;
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const { t } = useAppTranslation();
 
@@ -39,15 +53,40 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
     (password: string) => {
       if (isCreatingAccount) return;
 
-      createAccount(password).then(() => {
-        navigation.reset({
-          index: 0,
-          // @ts-expect-error: This is a valid route.
-          routes: [{ name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK }],
-        });
-      });
+      const create = (() => {
+        switch (target.kind) {
+          case "newPhrase":
+            return addRecoveryPhraseSource(
+              password,
+              target.pendingPhraseId,
+              target.accountName,
+            );
+          case "importPhrase":
+            return importRecoveryPhrase(password, target.pendingPhraseId);
+          default:
+            return createAccount(password, target.sourceId, target.accountName);
+        }
+      })();
+
+      create
+        .then(() => {
+          navigation.reset({
+            index: 0,
+            // @ts-expect-error: This is a valid route.
+            routes: [{ name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK }],
+          });
+        })
+        // The store has set `error`, which the template shows.
+        .catch(() => {});
     },
-    [createAccount, isCreatingAccount, navigation],
+    [
+      addRecoveryPhraseSource,
+      createAccount,
+      importRecoveryPhrase,
+      isCreatingAccount,
+      navigation,
+      target,
+    ],
   );
 
   return (
@@ -56,7 +95,11 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
       error={error}
       isLoading={isCreatingAccount}
       handleContinue={handleUnlock}
-      continueButtonText={t("verifyPasswordScreen.actions.createNewWallet")}
+      continueButtonText={
+        target.kind === "importPhrase"
+          ? t("verifyPasswordScreen.actions.importRecoveryPhrase")
+          : t("verifyPasswordScreen.actions.createNewWallet")
+      }
       title={t("verifyPasswordScreen.verifyPasswordTemplateTitle")}
       description={t("verifyPasswordScreen.verifyPasswordTemplateDescription")}
       showLogo={false}

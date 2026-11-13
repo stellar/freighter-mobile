@@ -44,6 +44,11 @@ import { usePreferencesStore } from "ducks/preferences";
 import { usePricesStore } from "ducks/prices";
 import { useRecentProtocolsStore } from "ducks/recentProtocols";
 import { useWalletKitStore } from "ducks/walletKit";
+import { withAccountMutationLock } from "helpers/accountMutationLock";
+import {
+  getNextDefaultAccountName,
+  normalizeAccountName,
+} from "helpers/accountName";
 import { clearAllWebViewData } from "helpers/browser";
 import {
   deriveKeyFromPassword,
@@ -52,9 +57,15 @@ import {
   encryptDataWithDerivedKey,
 } from "helpers/encryptPassword";
 import { findAccountById, findAccountByPublicKey } from "helpers/findAccount";
+import { removeAllKeystoreEntries } from "helpers/keyManager/ReactNativeKeychainFacade";
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { markRebrandAnnouncementSeen } from "helpers/rebrandAnnouncement";
+import {
+  isValidImportMnemonic,
+  normalizeAndTrimRecoveryPhrase,
+} from "helpers/recoveryPhrase";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
+import { settleAll } from "helpers/settleAll";
 import { scrubStrKeys } from "helpers/stellarStrKey";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
 import { t } from "i18next";
@@ -66,6 +77,7 @@ import {
   getDerivationIndices,
   lowestUnusedIndex,
   markDerivationIndexUsed,
+  releaseDerivationIndex,
 } from "services/auth/derivationIndices";
 import { deriveAuthKeypair } from "services/auth/deriveAuthKeypair";
 import { linkWalletSources } from "services/auth/linkSources";
@@ -76,7 +88,9 @@ import {
   getHeldMnemonic,
   getPhraseSourceId,
   getSecretKeySourceId,
+  getSecretSources,
   pinFirstSource,
+  removeSecretSource,
 } from "services/auth/secretSources";
 import { getWalletSources } from "services/auth/walletSources";
 import { clearCachedWalletSources } from "services/auth/walletSourcesCache";
@@ -172,6 +186,18 @@ interface ImportWalletParams {
 }
 
 /**
+ * Parameters for importWalletFromSecretKey function
+ *
+ * @interface ImportWalletFromSecretKeyParams
+ * @property {string} secretKey - The Stellar secret key to onboard from
+ * @property {string} password - User's password for encrypting the imported wallet
+ */
+interface ImportWalletFromSecretKeyParams {
+  secretKey: string;
+  password: string;
+}
+
+/**
  * Parameters for storeAccount function
  *
  * @interface StoreAccountParams
@@ -185,6 +211,7 @@ interface ImportWalletParams {
  * @property {boolean} [shouldRefreshHashKey] - Whether to refresh the hash key (optional)
  * @property {boolean} [shouldSetActiveAccount] - Whether to set this account as active (optional)
  * @property {number} [accountNumber] - The account number for derivation (optional)
+ * @property {string} [accountName] - The name the user chose (optional)
  */
 interface StoreAccountParams {
   /**
@@ -215,6 +242,11 @@ interface StoreAccountParams {
   shouldRefreshHashKey?: boolean;
   shouldSetActiveAccount?: boolean;
   accountNumber?: number;
+  /**
+   * The name the user chose. Absent or blank, `accountNumber`'s name, else
+   * the next default name not already in use.
+   */
+  accountName?: string;
 }
 
 /**
@@ -354,6 +386,10 @@ interface AuthActions {
   signUp: (params: SignUpParams) => Promise<boolean>;
   signIn: (params: SignInParams) => Promise<void>;
   importWallet: (params: ImportWalletParams) => Promise<boolean>;
+  /** Onboards a wallet from a secret key, replacing whatever was stored. */
+  importWalletFromSecretKey: (
+    params: ImportWalletFromSecretKeyParams,
+  ) => Promise<boolean>;
   verifyMnemonicPhrase: (mnemonicPhrase: string) => boolean;
   importSecretKey: (params: ImportSecretKeyParams) => Promise<void>;
   linkSources: () => void;
@@ -363,9 +399,32 @@ interface AuthActions {
   /**
    * Adds an account at its phrase's lowest unused derivation index. `sourceId`
    * names the phrase; absent, the active account's phrase is used, else the
-   * pinned source, else the first held.
+   * pinned source, else the first held. `accountName` names it; absent or
+   * blank, the next default name.
    */
-  createAccount: (password: string, sourceId?: string) => Promise<void>;
+  createAccount: (
+    password: string,
+    sourceId?: string,
+    accountName?: string,
+  ) => Promise<void>;
+  /**
+   * Stores the phrase `generatePendingRecoveryPhrase` is holding as a new
+   * phrase source and adds its first account, which becomes active.
+   */
+  addRecoveryPhraseSource: (
+    password: string,
+    pendingPhraseId: string,
+    accountName?: string,
+  ) => Promise<void>;
+  /**
+   * Stores the phrase `holdPendingRecoveryPhrase` is holding as a new phrase
+   * source, with its index 0 and every funded index up to 49. The first
+   * becomes active; nothing already in the wallet changes.
+   */
+  importRecoveryPhrase: (
+    password: string,
+    pendingPhraseId: string,
+  ) => Promise<void>;
   selectAccount: (publicKey: string) => Promise<void>;
   selectNetwork: (network: NETWORKS) => Promise<void>;
   initializeNetwork: () => Promise<void>;
@@ -1161,6 +1220,7 @@ const storeAccount = async ({
   password,
   keyPair,
   accountNumber,
+  accountName: requestedAccountName,
   shouldRefreshHashKey = true,
   shouldSetActiveAccount = true,
   importedFromSecretKey = false,
@@ -1195,7 +1255,9 @@ const storeAccount = async ({
     encrypterName: ScryptEncrypter.name,
   };
 
-  const [keyStore, accountListRaw] = await Promise.all([
+  // Settled, not raced: a failed read must not leave the keystore write
+  // running past the caller's rollback, which would keep the key on device.
+  const [keyStore, accountListRaw] = await settleAll([
     keyManager.storeKey(keyMetadata),
     dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST),
   ]);
@@ -1214,9 +1276,16 @@ const storeAccount = async ({
   const accountList = accountListRaw
     ? (JSON.parse(accountListRaw) as Account[])
     : [];
-  const accountName = t("authStore.account", {
-    number: accountNumber ?? accountList.length + 1,
-  });
+  const formatAccountName = (number: number) =>
+    t("authStore.account", { number });
+  const accountName =
+    normalizeAccountName(requestedAccountName) ??
+    (accountNumber !== undefined
+      ? formatAccountName(accountNumber)
+      : getNextDefaultAccountName(
+          accountList.map(({ name }) => name),
+          formatAccountName,
+        ));
 
   // Listed before it is made active. An active id with no list entry makes
   // signIn recreate the account without knowing its source, so a write that
@@ -1229,7 +1298,10 @@ const storeAccount = async ({
     importedFromSecretKey,
   });
 
-  await Promise.all([
+  // Settled, not raced: when one write fails the others still finish before
+  // this throws, so a rollback after it can't be undone by a late write
+  // (e.g. the biometric password landing after the rollback removed it).
+  await settleAll([
     shouldSetActiveAccount
       ? dataStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID, keyStore.id)
       : Promise.resolve(),
@@ -1268,27 +1340,113 @@ const deriveKeyPair = (params: DeriveKeypairParams) => {
   };
 };
 
+/*
+  A phrase for a new source in this wallet, generated or typed, held until
+  the user confirms with their password. Module state rather than store
+  state, so it never shows up in a store snapshot, a selector or navigation
+  params, and the screens never pass it back: `addRecoveryPhraseSource` and
+  `importRecoveryPhrase` read it from here. Cleared once stored, when the
+  flow is left, and on lock, log out or wipe.
+
+  Each generation gets an id the screens carry instead of the phrase. The
+  backup screen keeps the phrase it showed while the held one can be
+  replaced underneath it (a second generation, e.g. from a double tap), so
+  confirming must name the generation the user saw.
+*/
+let pendingRecoveryPhrase: { mnemonicPhrase: string; id: string } | null = null;
+let pendingRecoveryPhraseCount = 0;
+
+/**
+ * Holds a phrase the user typed until `importRecoveryPhrase` stores it, in
+ * the same slot a generated phrase uses. A second call replaces it.
+ *
+ * @param {string} mnemonicPhrase - The phrase, already normalized
+ * @returns The id of this hold, for the screens to pass along
+ */
+export const holdPendingRecoveryPhrase = (mnemonicPhrase: string): string => {
+  pendingRecoveryPhraseCount += 1;
+  pendingRecoveryPhrase = {
+    mnemonicPhrase,
+    // Unique within the process, which is all it has to be: the phrase never
+    // outlives it.
+    id: `pending-phrase-${pendingRecoveryPhraseCount}`,
+  };
+  return pendingRecoveryPhrase.id;
+};
+
+/**
+ * Generates the phrase for a new source in an existing wallet and holds it
+ * until `addRecoveryPhraseSource` stores it. Nothing is persisted. A second
+ * call replaces the held phrase, so backing out and starting over never
+ * stores the abandoned one.
+ *
+ * @returns The id of this generation, for the screens to pass along
+ */
+export const generatePendingRecoveryPhrase = (): string =>
+  holdPendingRecoveryPhrase(
+    StellarHDWallet.generateMnemonic({ entropyBits: 128 }),
+  );
+
+/**
+ * The held phrase, if it's still the one generation `pendingPhraseId` made.
+ *
+ * @param {string} pendingPhraseId - The id `generatePendingRecoveryPhrase` returned
+ */
+export const getPendingRecoveryPhrase = (
+  pendingPhraseId: string,
+): string | null =>
+  pendingPhraseId && pendingRecoveryPhrase?.id === pendingPhraseId
+    ? pendingRecoveryPhrase.mnemonicPhrase
+    : null;
+
+/**
+ * Drops the held phrase without storing it. With an id, only if it's still
+ * that generation, so a screen going away can't drop a newer one.
+ *
+ * @param {string} [pendingPhraseId] - Limits the clear to that generation (optional)
+ */
+export const clearPendingRecoveryPhrase = (pendingPhraseId?: string): void => {
+  if (
+    pendingPhraseId === undefined ||
+    pendingRecoveryPhrase?.id === pendingPhraseId
+  ) {
+    pendingRecoveryPhrase = null;
+  }
+};
+
 /**
  * Clears all data from the key manager, temporary store (sensitive),
  * and non-sensitive data
+ *
+ * Keys are removed through the key manager's index, then every keystore
+ * entry left in the keychain is swept, indexed or not. An entry whose index
+ * write failed, or an index that lost ids, would otherwise survive the wipe,
+ * and iOS keeps keychain items across reinstalls.
  *
  * @returns {Promise<void>}
  */
 const clearAllData = async (): Promise<void> => {
   clearDerivedKeyCache();
   clearCachedWalletSources();
+  clearPendingRecoveryPhrase();
 
-  const allKeys = await keyManager.loadAllKeyIds();
+  try {
+    const allKeys = await keyManager.loadAllKeyIds();
 
-  await Promise.all([
-    ...allKeys.map((key) => keyManager.removeKey(key)),
-    clearTemporaryData(),
-    clearNonSensitiveData(),
-    // clearNonSensitiveData removes the map too; this also moves the epoch,
-    // so a link pass from the replaced wallet stores nothing.
-    clearLinkStatus(),
-    dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST),
-  ]);
+    await Promise.all([
+      ...allKeys.map((key) => keyManager.removeKey(key)),
+      clearTemporaryData(),
+      clearNonSensitiveData(),
+      // clearNonSensitiveData removes the map too; this also moves the epoch,
+      // so a link pass from the replaced wallet stores nothing.
+      clearLinkStatus(),
+      dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST),
+    ]);
+  } finally {
+    // After the index-based removals, so it doesn't race their index
+    // writes, and even when one of them failed.
+    await removeAllKeystoreEntries();
+  }
 };
 
 /**
@@ -1340,6 +1498,69 @@ const getKeyFromKeyManager = async (
   });
 
   return result;
+};
+
+const FUNDED_LOOKUP_TIMEOUT_MS = 5_000;
+
+/**
+ * Resolves to null once the lookup has taken `FUNDED_LOOKUP_TIMEOUT_MS`.
+ * Horizon's loadAccount takes no abort signal, so the request itself runs on;
+ * only the wait for it ends.
+ */
+const withFundedLookupTimeout = <T>(lookup: Promise<T>): Promise<T | null> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), FUNDED_LOOKUP_TIMEOUT_MS);
+  });
+  return Promise.race([lookup, timeout]).finally(() => clearTimeout(timer));
+};
+
+/** How many indices a phrase import checks: 0, plus 1 to 49 if funded. */
+const PHRASE_IMPORT_DISCOVERY_DEPTH = 50;
+const MAX_LOOKUPS_IN_FLIGHT = 10;
+
+/**
+ * The indices from `from` to `to` (inclusive) whose accounts are funded on
+ * mainnet, ascending. At most MAX_LOOKUPS_IN_FLIGHT lookups run at once. A
+ * lookup that fails or times out counts as unfunded.
+ *
+ * @param {StellarHDWallet} wallet - The phrase's wallet
+ * @param {number} from - The first index to check
+ * @param {number} to - The last index to check
+ * @returns {Promise<number[]>} The funded indices
+ */
+const discoverFundedIndices = async (
+  wallet: StellarHDWallet,
+  from: number,
+  to: number,
+): Promise<number[]> => {
+  const indices = Array.from({ length: to - from + 1 }, (_, i) => from + i);
+  const funded = new Set<number>();
+  let next = 0;
+
+  const worker = async () => {
+    while (next < indices.length) {
+      const index = indices[next];
+      next += 1;
+      // getAccount resolves to null on any failure, never rejects.
+      // eslint-disable-next-line no-await-in-loop
+      const account = await withFundedLookupTimeout(
+        getAccount(wallet.getPublicKey(index), NETWORKS.PUBLIC),
+      );
+      if (account) {
+        funded.add(index);
+      }
+    }
+  };
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(MAX_LOOKUPS_IN_FLIGHT, indices.length) },
+      worker,
+    ),
+  );
+
+  return indices.filter((index) => funded.has(index));
 };
 
 /**
@@ -1402,9 +1623,12 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
     return;
   }
 
-  // Only make network calls for accounts we don't have locally
+  // Only make network calls for accounts we don't have locally. Bounded:
+  // this runs under the account-mutation lock, and a stalled lookup would
+  // hold off a wipe. A lookup that times out reads as unfunded, as a failed
+  // one does.
   const promises = accountsToVerify.map((keyPair) =>
-    getAccount(keyPair.publicKey, NETWORKS.PUBLIC),
+    withFundedLookupTimeout(getAccount(keyPair.publicKey, NETWORKS.PUBLIC)),
   );
 
   const result = await Promise.all(promises);
@@ -2219,6 +2443,22 @@ const signIn = async ({
 };
 
 /**
+ * Undoes a wallet setup (sign up, phrase import or key import) that failed
+ * after its wipe: the partial wallet, and the biometric password storeAccount
+ * saved. clearAllData leaves biometric storage alone, so without this the
+ * user's new password would outlive the wallet. storeAccount settles all its
+ * writes before it throws, so none of them lands after this.
+ *
+ * Only BIOMETRIC_PASSWORD goes: a failed setup never turned biometrics on,
+ * and the biometrics step saves the password again before a retry.
+ */
+const rollBackWalletSetup = async (): Promise<void> => {
+  clearAccountData();
+  await clearAllData();
+  await biometricDataStorage.remove(BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD);
+};
+
+/**
  * Signs up a new user with the provided credentials
  *
  * Creates a new wallet from the mnemonic phrase, generates a key pair,
@@ -2235,6 +2475,10 @@ const signUp = async ({
     const keyPair = deriveKeyPair({ mnemonicPhrase });
     const phraseSourceId = await getPhraseSourceId(mnemonicPhrase);
 
+    // A new wallet: reset auto-lock to the default before storeAccount
+    // generates the hash key, so it doesn't inherit the previous timer.
+    // Only once the input is known good, so an invalid one changes nothing.
+    await resetAutoLockForNewWallet();
     clearAccountData();
     await clearAllData();
 
@@ -2254,8 +2498,7 @@ const signUp = async ({
     });
   } catch (error) {
     // Clean up any partial data on error
-    clearAccountData();
-    await clearAllData();
+    await rollBackWalletSetup();
 
     throw error;
   }
@@ -2278,6 +2521,10 @@ const importWallet = async ({
     const keyPair = deriveKeyPair({ mnemonicPhrase });
     const phraseSourceId = await getPhraseSourceId(mnemonicPhrase);
 
+    // A new wallet: reset auto-lock to the default before storeAccount
+    // generates the hash key, so it doesn't inherit the previous timer.
+    // Only once the input is known good, so an invalid one changes nothing.
+    await resetAutoLockForNewWallet();
     clearAccountData();
     await clearAllData();
 
@@ -2321,10 +2568,76 @@ const importWallet = async ({
       reason_code: scrubStrKeys(importFailureMessage) ?? importFailureMessage,
     });
     // Clean up any partial data on error
+    await rollBackWalletSetup();
+
+    throw error;
+  }
+};
+
+/**
+ * Onboards a wallet from a single secret key: one imported account rooted in
+ * its own SECRET_KEY source, with no phrase. The key is checked before
+ * anything is wiped, so an invalid one leaves the device as it was. A failure
+ * after the wipe wipes again, leaving a fresh install the user can retry from.
+ *
+ * @param {ImportWalletFromSecretKeyParams} params - The secret key and password
+ * @returns {Promise<void>}
+ */
+const importWalletFromSecretKey = async ({
+  secretKey,
+  password,
+}: ImportWalletFromSecretKeyParams): Promise<void> => {
+  let keyPair: KeyPair;
+  let sourceId: string;
+
+  // Nothing about the error is logged or tracked: it could carry the key.
+  try {
+    keyPair = {
+      publicKey: Keypair.fromSecret(secretKey).publicKey(),
+      privateKey: secretKey,
+    };
+    sourceId = await getSecretKeySourceId(secretKey);
+  } catch {
+    analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_FAIL, {
+      recovery_method: "secret_key",
+      reason_code: "invalid_secret_key",
+    });
+    throw new Error(t("authStore.error.invalidSecretKey"));
+  }
+
+  try {
+    // A new wallet: reset auto-lock to the default before storeAccount
+    // generates the hash key, so it doesn't inherit the previous timer.
+    // Only once the input is known good, so an invalid one changes nothing.
+    await resetAutoLockForNewWallet();
     clearAccountData();
     await clearAllData();
 
-    throw error;
+    await storeAccount({
+      sourceId,
+      password,
+      keyPair,
+      importedFromSecretKey: true,
+    });
+    await addSecretSource({
+      id: sourceId,
+      type: SecretSourceType.SECRET_KEY,
+    });
+
+    analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_SUCCESS, {
+      recovery_method: "secret_key",
+    });
+  } catch {
+    // A fixed code, never the error text: native keychain or encrypter text
+    // could carry the key in a form scrubStrKeys misses (e.g. `key_S…`).
+    analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_FAIL, {
+      recovery_method: "secret_key",
+      reason_code: "store_failed",
+    });
+    // The previous wallet is already gone, so drop the partial writes too.
+    await rollBackWalletSetup();
+
+    throw new Error(t("authStore.error.failedToImportWallet"));
   }
 };
 
@@ -2440,6 +2753,42 @@ const loadPrivateKeyFromKeyManager = async (
 };
 
 /**
+ * Writes a lazily loaded private key into the temporary store, under the
+ * account-mutation lock and onto a fresh read of the store. The copy
+ * getActiveAccount read can predate an add or import that finished since,
+ * and writing it back would drop that account's key or phrase.
+ *
+ * Takes the lock, so it must not run inside a holder: getActiveAccount runs
+ * only from store actions, after their locked part.
+ *
+ * @param {AuthStatus} authStatus - Current auth status, gating the session read
+ * @param {string} accountId - The account the key belongs to
+ * @param {string} privateKey - The key to cache
+ * @returns {Promise<void>}
+ */
+const cachePrivateKey = (
+  authStatus: AuthStatus,
+  accountId: string,
+  privateKey: string,
+): Promise<void> =>
+  withAccountMutationLock(async () => {
+    const [temporaryStore, hashKey] = await Promise.all([
+      getTemporaryStore(authStatus),
+      getHashKey(),
+    ]);
+    // Gone since the read: a wipe got there first.
+    if (!temporaryStore || !hashKey) {
+      return;
+    }
+    await updateTemporaryStoreWithPrivateKey(
+      temporaryStore,
+      accountId,
+      privateKey,
+      hashKey,
+    );
+  });
+
+/**
  * Gets the active account data by combining temporary store sensitive data with account list information
  *
  * Retrieves the active account ID, loads account information from storage,
@@ -2513,12 +2862,7 @@ const getActiveAccount = async (
 
         if (derivedKey) {
           privateKey = derivedKey;
-          await updateTemporaryStoreWithPrivateKey(
-            temporaryStore,
-            activeAccountId,
-            privateKey,
-            hashKey,
-          );
+          await cachePrivateKey(authStatus, activeAccountId, privateKey);
         }
 
         // If still not found and account was imported from secret key, try loading from key manager
@@ -2528,12 +2872,7 @@ const getActiveAccount = async (
 
           if (loadedKey) {
             privateKey = loadedKey;
-            await updateTemporaryStoreWithPrivateKey(
-              temporaryStore,
-              activeAccountId,
-              privateKey,
-              hashKey,
-            );
+            await cachePrivateKey(authStatus, activeAccountId, privateKey);
           }
         }
       } catch (e) {
@@ -2613,12 +2952,14 @@ const hasAccountInAccountList = (
  * @param {string} password - The user's password, verified against the active keystore first
  * @param {AuthStatus} authStatus - Current auth status, gating the session read
  * @param {string} [requestedSourceId] - The phrase source to derive from (optional)
+ * @param {string} [accountName] - The new account's name; absent or blank, the next default name (optional)
  * @returns {Promise<void>}
  */
 const createAccount = async (
   password: string,
   authStatus: AuthStatus,
   requestedSourceId?: string,
+  accountName?: string,
 ): Promise<void> => {
   // Verifies the password before anything is derived: the new keystore is
   // encrypted with it, so a wrong one must fail here, not produce a keystore
@@ -2712,8 +3053,236 @@ const createAccount = async (
     derivationIndex,
     password,
     keyPair,
+    accountName,
     shouldRefreshHashKey: false,
   });
+};
+
+/**
+ * Stores the held phrase as a new phrase source and derives its first
+ * account, at index 0, which becomes active. The wallet it joins may hold any
+ * mix of sources, or no phrase at all (a secret-key wallet), so the password
+ * is checked against the active keystore, as an import checks it.
+ *
+ * Unlike sign-up, this adds to a live wallet: it never clears data, and the
+ * new phrase joins the phrases the session already holds.
+ *
+ * @param {string} password - The user's password, verified against the active keystore first
+ * @param {AuthStatus} authStatus - Current auth status, gating the session read
+ * @param {string} pendingPhraseId - The generation the user backed up; refused if another replaced it
+ * @param {string} [accountName] - The new account's name; absent or blank, the next default name (optional)
+ * @returns {Promise<void>}
+ */
+const addRecoveryPhraseSource = async (
+  password: string,
+  authStatus: AuthStatus,
+  pendingPhraseId: string,
+  accountName?: string,
+): Promise<void> => {
+  // A replaced generation reads as missing: the held phrase isn't the one
+  // the user saw.
+  const mnemonicPhrase = getPendingRecoveryPhrase(pendingPhraseId);
+  if (!mnemonicPhrase) {
+    throw new Error(t("authStore.error.pendingRecoveryPhraseMissing"));
+  }
+
+  // The new keystore is encrypted with the password, so a wrong one must
+  // fail here, not produce a keystore the wallet can never open.
+  await getKeyFromKeyManager(password);
+
+  const temporaryStore = await getTemporaryStore(authStatus);
+  if (!temporaryStore) {
+    throw new Error(t("authStore.error.temporaryStoreNotFound"));
+  }
+
+  const sourceId = await getPhraseSourceId(mnemonicPhrase);
+  const keyPair = deriveKeyPair({ mnemonicPhrase });
+
+  // A generated phrase colliding is not a real case, but these checks are
+  // what keep two sources or two accounts from sharing an id or an address.
+  if ((await getSecretSources())[sourceId]) {
+    throw new Error(t("authStore.error.recoveryPhraseAlreadyHeld"));
+  }
+  if (hasAccountInAccountList(await getAllAccounts(), keyPair)) {
+    throw new Error(t("authStore.error.accountAlreadyExists"));
+  }
+
+  await storeAccount({
+    mnemonicPhrase,
+    phraseSourceId: sourceId,
+    sourceId,
+    derivationIndex: 0,
+    password,
+    keyPair,
+    accountName,
+    shouldRefreshHashKey: false,
+  });
+  await addSecretSource({
+    id: sourceId,
+    type: SecretSourceType.PHRASE,
+  });
+
+  clearPendingRecoveryPhrase();
+};
+
+/** What `prepareRecoveryPhraseImport` found, for `storeImportedRecoveryPhrase`. */
+interface RecoveryPhraseImportPlan {
+  mnemonicPhrase: string;
+  sourceId: string;
+  wallet: StellarHDWallet;
+  /** 0, then every funded index, ascending. */
+  indices: number[];
+}
+
+/**
+ * The read-only half of a phrase import, run before the account-mutation
+ * lock: checks the held phrase and the password, refuses a phrase already
+ * held, and looks up which of the phrase's first 50 indices are funded. Up to
+ * 50 mainnet lookups at 5s each would hold the lock for as long as they take,
+ * so they run outside it, and `storeImportedRecoveryPhrase` checks again
+ * under it.
+ *
+ * @param {string} password - The user's password, verified against the active keystore
+ * @param {AuthStatus} authStatus - Current auth status, gating the session read
+ * @param {string} pendingPhraseId - The hold the import screen made
+ * @returns {Promise<RecoveryPhraseImportPlan>} The phrase, its source id and the indices to store
+ */
+const prepareRecoveryPhraseImport = async (
+  password: string,
+  authStatus: AuthStatus,
+  pendingPhraseId: string,
+): Promise<RecoveryPhraseImportPlan> => {
+  const heldPhrase = getPendingRecoveryPhrase(pendingPhraseId);
+  if (!heldPhrase) {
+    throw new Error(t("authStore.error.pendingRecoveryPhraseMissing"));
+  }
+  const mnemonicPhrase = normalizeAndTrimRecoveryPhrase(heldPhrase);
+  if (!isValidImportMnemonic(mnemonicPhrase)) {
+    throw new Error(t("authStore.error.invalidMnemonicPhrase"));
+  }
+
+  // The new keystores are encrypted with the password, so a wrong one must
+  // fail here, not produce keystores the wallet can never open.
+  await getKeyFromKeyManager(password);
+
+  const temporaryStore = await getTemporaryStore(authStatus);
+  if (!temporaryStore) {
+    throw new Error(t("authStore.error.temporaryStoreNotFound"));
+  }
+
+  const sourceId = await getPhraseSourceId(mnemonicPhrase);
+  // Checked before discovery to skip the lookups for a held phrase.
+  if ((await getSecretSources())[sourceId]) {
+    throw new Error(t("authStore.error.recoveryPhraseAlreadyHeld"));
+  }
+
+  const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
+  const fundedIndices = await discoverFundedIndices(
+    wallet,
+    1,
+    PHRASE_IMPORT_DISCOVERY_DEPTH - 1,
+  );
+
+  return { mnemonicPhrase, sourceId, wallet, indices: [0, ...fundedIndices] };
+};
+
+/**
+ * The write half of a phrase import, run under the account-mutation lock:
+ * stores the phrase as a new source with an account at each planned index,
+ * the first of which becomes active. Nothing already in the wallet changes.
+ * Every refusal comes before the first write.
+ *
+ * The source is registered first, so a failure after some accounts are
+ * stored leaves them under a labeled group and a retry is refused as held.
+ * If no account was listed, the source and its indices are removed again so
+ * a retry starts clean, and the previous account is made active again.
+ *
+ * @param {RecoveryPhraseImportPlan} plan - What `prepareRecoveryPhraseImport` found
+ * @param {string} password - The user's password, already verified
+ * @param {string} pendingPhraseId - The hold the import screen made
+ * @returns {Promise<void>}
+ */
+const storeImportedRecoveryPhrase = async (
+  { mnemonicPhrase, sourceId, wallet, indices }: RecoveryPhraseImportPlan,
+  password: string,
+  pendingPhraseId: string,
+): Promise<void> => {
+  // A lock or log out while the lookups ran drops the held phrase; so does
+  // starting over with another one.
+  if (getPendingRecoveryPhrase(pendingPhraseId) === null) {
+    throw new Error(t("authStore.error.pendingRecoveryPhraseMissing"));
+  }
+
+  // Checked again: an import or add that finished while the lookups ran may
+  // have stored this phrase or one of its accounts since.
+  if ((await getSecretSources())[sourceId]) {
+    throw new Error(t("authStore.error.recoveryPhraseAlreadyHeld"));
+  }
+
+  // Collisions are refused, never merged: if any address this phrase would
+  // add is already in the wallet (say, imported earlier as a secret key),
+  // nothing is added.
+  const allAccounts = await getAllAccounts();
+  const held = new Set(allAccounts.map(({ publicKey }) => publicKey));
+  if (indices.some((index) => held.has(wallet.getPublicKey(index)))) {
+    throw new Error(t("authStore.error.accountAlreadyExists"));
+  }
+
+  const previousActiveId = await dataStorage.getItem(
+    STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
+  );
+
+  try {
+    await addSecretSource({ id: sourceId, type: SecretSourceType.PHRASE });
+
+    // Sequential: each one reads and appends the account list, and the key
+    // manager's id index is a read-modify-write too.
+    await indices.reduce(async (previous, index) => {
+      await previous;
+      await storeAccount({
+        mnemonicPhrase,
+        phraseSourceId: sourceId,
+        sourceId,
+        derivationIndex: index,
+        password,
+        keyPair: {
+          publicKey: wallet.getPublicKey(index),
+          privateKey: wallet.getSecret(index),
+        },
+        shouldRefreshHashKey: false,
+        // The phrase's first account is the one to land on.
+        shouldSetActiveAccount: index === 0,
+      });
+    }, Promise.resolve());
+  } catch (error) {
+    try {
+      const listedAny = (await getAllAccounts()).some(
+        (account) => account.sourceId === sourceId,
+      );
+      if (!listedAny) {
+        await removeSecretSource(sourceId);
+        await indices.reduce(async (previous, index) => {
+          await previous;
+          await releaseDerivationIndex({ sourceId, index });
+        }, Promise.resolve());
+      }
+      if (previousActiveId) {
+        await dataStorage.setItem(
+          STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
+          previousActiveId,
+        );
+      }
+    } catch (rollbackError) {
+      logger.error(
+        "importRecoveryPhrase",
+        "Failed to roll back a failed phrase import",
+        rollbackError,
+      );
+    }
+    throw error;
+  }
+
+  clearPendingRecoveryPhrase(pendingPhraseId);
 };
 
 /**
@@ -2727,11 +3296,15 @@ const importSecretKeyLocal = async (
   authStatus: AuthStatus,
 ): Promise<void> => {
   const { secretKey, password } = params;
+  // What failure analytics gets: a fixed code set as the import goes, never
+  // the error text, which could carry the key in a form scrubStrKeys misses.
+  let reasonCode = "invalid_secret_key";
 
   try {
     const keypair = Keypair.fromSecret(secretKey);
     const publicKey = keypair.publicKey();
     const privateKey = keypair.secret();
+    reasonCode = "store_failed";
 
     const existingAccounts = await getAllAccounts();
     const accountExists = hasAccountInAccountList(existingAccounts, {
@@ -2740,6 +3313,7 @@ const importSecretKeyLocal = async (
     });
 
     if (accountExists) {
+      reasonCode = "account_already_exists";
       throw new Error(t("authStore.error.accountAlreadyExists"));
     }
 
@@ -2748,6 +3322,7 @@ const importSecretKeyLocal = async (
     // from its own key, and nothing of any phrase is written into it.
     const temporaryStore = await getTemporaryStore(authStatus);
     if (!temporaryStore) {
+      reasonCode = "temporary_store_not_found";
       throw new Error(t("authStore.error.temporaryStoreNotFound"));
     }
 
@@ -2775,13 +3350,7 @@ const importSecretKeyLocal = async (
       import_method: "secret_key",
     });
   } catch (error) {
-    // Scrub Stellar StrKeys before sending to analytics — third-party sink
-    // (Amplitude) not covered by Sentry's beforeSend.
-    const importFailureMessage =
-      error instanceof Error ? error.message : String(error);
-    analytics.trackAccountScreenImportAccountFail(
-      scrubStrKeys(importFailureMessage) ?? importFailureMessage,
-    );
+    analytics.trackAccountScreenImportAccountFail(reasonCode);
     throw error;
   }
 };
@@ -2825,12 +3394,15 @@ export const getUserFacingError = (
   const safeMessages = new Set<string>([
     t("authStore.error.invalidPassword"),
     t("authStore.error.invalidMnemonicPhrase"),
+    t("authStore.error.invalidSecretKey"),
     t("authStore.error.accountAlreadyExists"),
     t("authStore.error.accountNotFound"),
     t("authStore.error.accountListNotFound"),
     t("authStore.error.noActiveAccount"),
     t("authStore.error.noRecoveryPhrase"),
     t("authStore.error.unknownRecoveryPhrase"),
+    t("authStore.error.pendingRecoveryPhraseMissing"),
+    t("authStore.error.recoveryPhraseAlreadyHeld"),
     t("authStore.error.authenticationExpired"),
     t("authStore.error.failedToReEncryptData"),
     t("authStore.error.failedToDecryptData"),
@@ -2930,6 +3502,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
    */
   logout: (shouldWipeAllData = false) => {
     set((state) => ({ ...state, isLoading: true, error: null }));
+    clearPendingRecoveryPhrase();
 
     // We'll use setTimeout to handle the async operations
     // This avoids the issue with void return expectations from zustand
@@ -3020,19 +3593,30 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             // Clear all recent protocols data
             useRecentProtocolsStore.getState().clearRecentProtocols();
 
-            await clearTemporaryData();
-            await clearNonSensitiveData();
-            await clearLinkStatus();
-            await dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST);
+            // Under the lock, so an add, import or switch in flight finishes
+            // first and none of them writes its account back into the wiped
+            // wallet. The WalletConnect and WebView cleanup above stays
+            // outside: it waits on the network and holds no account state.
+            await withAccountMutationLock(async () => {
+              // A holder that finished since the top of the wipe may have
+              // cached its session key or sources again.
+              clearDerivedKeyCache();
+              clearCachedWalletSources();
 
-            // Reset auto-lock so the next wallet on this device doesn't
-            // inherit the previous user's timer. The awaited secure-mirror
-            // write (source of truth for getAuthStatus / generateHashKey)
-            // means an interrupted wipe can't leave a weaker policy — e.g.
-            // NONE's never-expire — behind for the next wallet.
-            await resetAutoLockForNewWallet();
+              await clearTemporaryData();
+              await clearNonSensitiveData();
+              await clearLinkStatus();
+              await dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST);
 
-            await clearBiometricsData();
+              // Reset auto-lock so the next wallet on this device doesn't
+              // inherit the previous user's timer. The awaited secure-mirror
+              // write (source of truth for getAuthStatus / generateHashKey)
+              // means an interrupted wipe can't leave a weaker policy — e.g.
+              // NONE's never-expire — behind for the next wallet.
+              await resetAutoLockForNewWallet();
+
+              await clearBiometricsData();
+            });
 
             set({ isLoading: false });
           }
@@ -3060,6 +3644,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
    */
   softLock: async (options?: { suppressBiometricPrompt?: boolean }) => {
     Keyboard.dismiss();
+    // A phrase not yet confirmed doesn't outlive the session that made it.
+    clearPendingRecoveryPhrase();
 
     // Atomic update: RootNavigator must never see LOCKED && !isSoftLocked
     // (it would unmount the preserved tree). Clear account so the decrypted
@@ -3105,10 +3691,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   signUp: async (params): Promise<boolean> => {
     set((state) => ({ ...state, isLoading: true, error: null }));
     try {
-      // Fresh wallet: reset auto-lock to the default before the hash key is
-      // generated so it doesn't inherit a previous wallet's timer.
-      await resetAutoLockForNewWallet();
-      await signUp(params);
+      // signUp resets auto-lock itself, once the phrase is known good.
+      await withAccountMutationLock(() => signUp(params));
       // Mirror the extension's onboarding.password_created (createAccount.fulfilled)
       // so the create-password funnel has a success side on mobile (was fail-only).
       analytics.track(AnalyticsEvent.CREATE_PASSWORD_SUCCESS);
@@ -3161,18 +3745,26 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       const currentAuthStatus = get().authStatus;
       const shouldCreateTempStore = currentAuthStatus !== AUTH_STATUS.LOCKED;
 
-      const { phraseSigners } = await signIn({
-        ...params,
-        shouldCreateTempStore,
-      });
+      // Sign-in rebuilds or merges into the temporary store and can append
+      // and attribute accounts, so it holds the lock. The account load below
+      // runs after it, outside.
+      const { phraseSigners } = await withAccountMutationLock(async () => {
+        const signedIn = await signIn({
+          ...params,
+          shouldCreateTempStore,
+        });
 
-      // Clear the persisted LOCKED marker and stale backgrounded-at timestamp
-      // before flipping to AUTHENTICATED — awaited so the auto-lock funnel
-      // can't observe the old values and re-lock the fresh session.
-      await Promise.all([
-        secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS),
-        clearBackgroundedAt(),
-      ]);
+        // Clear the persisted LOCKED marker and stale backgrounded-at
+        // timestamp before flipping to AUTHENTICATED — awaited so the
+        // auto-lock funnel can't observe the old values and re-lock the
+        // fresh session.
+        await Promise.all([
+          secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS),
+          clearBackgroundedAt(),
+        ]);
+
+        return signedIn;
+      });
 
       // Password verified — unblock navigation immediately.
       // getActiveAccount is slow (derivePrivateKeyFromMnemonic) so we run it
@@ -3604,10 +4196,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // Re-import replaces the wallet: reset auto-lock to the default before
-      // the hash key is generated so it doesn't inherit the previous timer.
-      await resetAutoLockForNewWallet();
-      await importWallet(params);
+      // importWallet resets auto-lock itself, once the phrase is known good.
+      await withAccountMutationLock(() => importWallet(params));
       set({
         ...initialState,
         navigationRef: get().navigationRef,
@@ -3624,6 +4214,48 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       logger.error(
         "useAuthenticationStore.importWallet",
         "Import wallet failed",
+        error,
+      );
+      set({
+        error: getUserFacingError(
+          error,
+          "authStore.error.failedToImportWallet",
+        ),
+        isLoading: false,
+      });
+      return false;
+    }
+  },
+
+  /**
+   * Onboards a wallet from a secret key
+   *
+   * @param {ImportWalletFromSecretKeyParams} params - The secret key and password
+   * @returns {Promise<boolean>} `true` on success, `false` on failure
+   */
+  importWalletFromSecretKey: async (params): Promise<boolean> => {
+    set({ isLoading: true, error: null });
+
+    try {
+      // importWalletFromSecretKey resets auto-lock itself, once the key is
+      // known good.
+      await withAccountMutationLock(() => importWalletFromSecretKey(params));
+      set({
+        ...initialState,
+        navigationRef: get().navigationRef,
+        authStatus: AUTH_STATUS.AUTHENTICATED,
+        isLoading: false,
+      });
+
+      get().fetchActiveAccount();
+      // Link the imported key's source.
+      get().linkSources();
+      return true;
+    } catch (error) {
+      // The module function throws only its own messages, never the key's.
+      logger.error(
+        "useAuthenticationStore.importWalletFromSecretKey",
+        "Import wallet from secret key failed",
         error,
       );
       set({
@@ -3809,7 +4441,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isRenamingAccount: true });
 
     try {
-      await renameAccount(params);
+      await withAccountMutationLock(() => renameAccount(params));
       await Promise.all([get().fetchActiveAccount(), get().getAllAccounts()]);
       set({ isRenamingAccount: false });
     } catch (error) {
@@ -3854,11 +4486,17 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     }
   },
 
-  createAccount: async (password: string, sourceId?: string) => {
+  createAccount: async (
+    password: string,
+    sourceId?: string,
+    accountName?: string,
+  ) => {
     set({ isCreatingAccount: true, error: null });
 
     try {
-      await createAccount(password, get().authStatus, sourceId);
+      await withAccountMutationLock(() =>
+        createAccount(password, get().authStatus, sourceId, accountName),
+      );
 
       // The new account becomes active: drop the previous account's data so
       // nothing (e.g. priced balances) carries over into its first render.
@@ -3896,6 +4534,100 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     }
   },
 
+  addRecoveryPhraseSource: async (
+    password: string,
+    pendingPhraseId: string,
+    accountName?: string,
+  ) => {
+    set({ isCreatingAccount: true, error: null });
+
+    try {
+      await withAccountMutationLock(() =>
+        addRecoveryPhraseSource(
+          password,
+          get().authStatus,
+          pendingPhraseId,
+          accountName,
+        ),
+      );
+
+      // The new account becomes active, as on createAccount.
+      clearAccountData({ keepAccountsFiatTotals: true });
+
+      await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
+
+      analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT, {
+        number_of_accounts: get().allAccounts.length,
+        source: "new_phrase",
+      });
+
+      // The new phrase is a source of its own.
+      get().linkSources();
+
+      set({ isCreatingAccount: false, error: null });
+    } catch (error) {
+      logger.error(
+        "useAuthenticationStore.addRecoveryPhraseSource",
+        "Failed to add recovery phrase",
+        error,
+      );
+      set({
+        error: getUserFacingError(
+          error,
+          "authStore.error.failedToAddRecoveryPhrase",
+        ),
+        isCreatingAccount: false,
+      });
+      throw error;
+    }
+  },
+
+  importRecoveryPhrase: async (password: string, pendingPhraseId: string) => {
+    set({ isCreatingAccount: true, error: null });
+
+    try {
+      // The lookups run first, outside the lock; the checks that matter
+      // run again inside it, before anything is written.
+      const plan = await prepareRecoveryPhraseImport(
+        password,
+        get().authStatus,
+        pendingPhraseId,
+      );
+      await withAccountMutationLock(() =>
+        storeImportedRecoveryPhrase(plan, password, pendingPhraseId),
+      );
+
+      // The phrase's first account becomes active, as on createAccount.
+      clearAccountData({ keepAccountsFiatTotals: true });
+
+      await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
+
+      analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT, {
+        number_of_accounts: get().allAccounts.length,
+        source: "imported_phrase",
+      });
+
+      // The imported phrase is a source of its own.
+      get().linkSources();
+
+      set({ isCreatingAccount: false, error: null });
+    } catch (error) {
+      logger.error(
+        "useAuthenticationStore.importRecoveryPhrase",
+        "Failed to import recovery phrase",
+        error,
+      );
+      set({
+        error: getUserFacingError(
+          error,
+          "authStore.error.failedToImportRecoveryPhrase",
+        ),
+        isCreatingAccount: false,
+      });
+      throw error;
+    }
+  },
+
   selectAccount: async (publicKey: string) => {
     set({ isSwitchingAccount: true, error: null });
     try {
@@ -3915,8 +4647,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       // dropping them would flash $0.00 rows in the sheet mid-switch (the
       // switch itself force-refreshes them in the background).
       clearAccountData({ keepAccountsFiatTotals: true });
-      await selectAccount(publicKey);
+      await withAccountMutationLock(() => selectAccount(publicKey));
       const activeAccount = await getActiveAccount(authStatus);
+      // A soft-lock may have engaged while the switch waited on the lock or
+      // loaded the key (softLock clears account to null). Don't put the
+      // private key back into a locked store; the next unlock reloads it.
+      if (get().isSoftLocked) {
+        set({ isSwitchingAccount: false });
+        return;
+      }
       set({ account: activeAccount, isSwitchingAccount: false });
     } catch (error) {
       logger.error(
@@ -3960,7 +4699,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      await importSecretKeyLocal(params, get().authStatus);
+      await withAccountMutationLock(() =>
+        importSecretKeyLocal(params, get().authStatus),
+      );
 
       // The imported account becomes active: drop the previous account's
       // data so nothing (e.g. priced balances) carries over into its first
@@ -4075,6 +4816,123 @@ export const getActiveMnemonicPhrase = async (): Promise<string | null> => {
     );
     return null;
   }
+};
+
+const assertAuthenticated = (): void => {
+  if (
+    useAuthenticationStore.getState().authStatus !== AUTH_STATUS.AUTHENTICATED
+  ) {
+    throw new Error(t("authStore.error.authenticationExpired"));
+  }
+};
+
+/**
+ * Returns one account's secret key for Edit account's reveal. `accountId` is
+ * the account's keystore id, so the password is checked against that
+ * account's own keystore, even though the session is unlocked, and the key
+ * comes from the same decrypt. Only a keystore the key manager lists is ever
+ * opened.
+ *
+ * @param {Object} input - The input parameters
+ * @param {string} input.accountId - The account's keystore id (`Account.id`)
+ * @param {string} input.password - The wallet password
+ * @returns {Promise<string>} The account's secret key
+ * @throws {Error} When the wallet is locked, the account isn't held, or the password is wrong
+ */
+export const revealAccountSecretKey = async ({
+  accountId,
+  password,
+}: {
+  accountId: string;
+  password: string;
+}): Promise<string> => {
+  assertAuthenticated();
+
+  const key = await getKeyFromKeyManager(password, accountId);
+
+  // A lock that landed during the decrypt keeps the key from leaving.
+  assertAuthenticated();
+
+  if (!key.privateKey) {
+    throw new Error(t("authStore.error.noKeyPairFound"));
+  }
+
+  return key.privateKey;
+};
+
+/**
+ * Returns a recovery phrase for Edit account's reveal, after checking the
+ * password against a keystore. Every keystore shares the wallet password.
+ *
+ * With a `sourceId`, the phrase that roots that account: it must be a phrase
+ * source the wallet records. The session's held copy is used when there is
+ * one; otherwise the phrase is read from one of the source's own keystores
+ * and kept only if it derives to `sourceId`. Without one, the wallet's
+ * default phrase, as Settings → Security shows it.
+ *
+ * @param {Object} input - The input parameters
+ * @param {string} input.password - The wallet password
+ * @param {string} [input.sourceId] - The phrase source to reveal (optional)
+ * @returns {Promise<string>} The recovery phrase
+ * @throws {Error} When the wallet is locked, the password is wrong, or the phrase isn't found
+ */
+export const revealRecoveryPhrase = async ({
+  password,
+  sourceId,
+}: {
+  password: string;
+  sourceId?: string;
+}): Promise<string> => {
+  assertAuthenticated();
+
+  const notFound = () => new Error(t("authStore.error.recoveryPhraseNotFound"));
+
+  if (!sourceId) {
+    await getKeyFromKeyManager(password);
+    const mnemonic = await getActiveMnemonicPhrase();
+    if (!mnemonic) {
+      throw notFound();
+    }
+    return mnemonic;
+  }
+
+  const source = (await getSecretSources())[sourceId];
+  if (source?.type !== SecretSourceType.PHRASE) {
+    throw notFound();
+  }
+
+  const sourceAccountIds = (await getAllAccounts())
+    .filter((account) => account.sourceId === sourceId)
+    .map(({ id }) => id);
+
+  // Checks the password first, so a wrong one reads as a wrong password
+  // rather than as a missing phrase.
+  await getKeyFromKeyManager(password, sourceAccountIds[0]);
+
+  const store = await getTemporaryStore(
+    useAuthenticationStore.getState().authStatus,
+  );
+  let mnemonic = getHeldMnemonic({
+    mnemonics: store?.mnemonics ?? {},
+    sourceId,
+  })?.mnemonic;
+
+  if (!mnemonic) {
+    const read = await readPhraseFromKeystores(sourceAccountIds, password);
+    if (read && (await getPhraseSourceId(read)) === sourceId) {
+      mnemonic = read;
+    }
+  }
+
+  // Nothing may await between this check and the return (see
+  // getActiveMnemonicPhrase).
+  assertAuthenticated();
+
+  if (!mnemonic) {
+    throw notFound();
+  }
+
+  return mnemonic;
 };
 
 /**

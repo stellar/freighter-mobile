@@ -15,6 +15,8 @@ export interface ImportRecoveryPhraseTemplateProps {
   isSubmitting?: boolean;
   /** The field's text input, for the screen to focus once it has slid in. */
   inputRef?: React.Ref<TextInput>;
+  /** Keeps the field's case, for a screen that also takes a secret key. */
+  preserveCase?: boolean;
   testID?: string;
 }
 
@@ -39,6 +41,7 @@ export const ImportRecoveryPhraseTemplate: React.FC<
   error,
   isSubmitting,
   inputRef,
+  preserveCase,
   testID,
 }) => (
   <OnboardLayout
@@ -59,6 +62,7 @@ export const ImportRecoveryPhraseTemplate: React.FC<
         placeholder={placeholder}
         error={error}
         ref={inputRef}
+        preserveCase={preserveCase}
       />
     </View>
   </OnboardLayout>

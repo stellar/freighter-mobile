@@ -56,12 +56,7 @@
     },
     "manageAccount": {
       "addWallet": "Adicionar carteira",
-      "renameWallet": "Renomear carteira",
-      "copyAddress": "Copiar endereço",
-      "viewOnExplorer": "Ver no stellar.expert"
-    },
-    "account": {
-      "imported": "Importada"
+      "copyAddress": "Copiar endereço"
     }
   },
   "tabBar": {
@@ -87,7 +82,9 @@
     "deleteAccount": "Excluir conta",
     "deleteAccountDisclaimer": "As contas na rede Stellar são imutáveis e não podem ser excluídas. No entanto, você pode remover qualquer conta do seu aplicativo Varial a qualquer momento usando a opção 'Excluir conta'. Verifique se sua frase de recuperação funciona antes de fazer isso.",
     "deleteAccountConfirmTitle": "Tem certeza?",
-    "deleteAccountConfirmMessage": "Certifique-se de que você tem sua frase de recuperação em um local seguro. Você não conseguirá recuperar sua carteira sem ela."
+    "deleteAccountConfirmMessage": "Certifique-se de que você tem sua frase de recuperação em um local seguro. Você não conseguirá recuperar sua carteira sem ela.",
+    "accountsRecovery": "Contas e recuperação",
+    "manageYourAccounts": "Gerencie suas contas"
   },
   "preferences": {
     "usageDataSharing": {
@@ -182,6 +179,7 @@
     "passwordTooLong": "Deve ter menos de 2048 caracteres",
     "passwordsDontMatch": "As senhas não coincidem",
     "importAcknowledgement": "Entendo que a frase de recuperação importada não pode ser recuperada e deve ser guardada com segurança.",
+    "importSecretKeyAcknowledgement": "Entendo que a chave secreta importada não pode ser recuperada e deve ser guardada com segurança.",
     "importWalletButtonText": "Importar carteira"
   },
   "recoveryPhraseScreen": {
@@ -234,8 +232,15 @@
   },
   "importWalletScreen": {
     "title": "Importar Carteira",
-    "description": "Importe sua carteira com a frase de recuperação de 12 ou 24 palavras",
-    "textAreaPlaceholder": "Digite sua frase de recuperação"
+    "description": "Importe sua carteira usando uma frase de recuperação ou chave secreta",
+    "textAreaPlaceholder": "Digite sua frase de recuperação ou chave secreta",
+    "invalidInput": "Digite uma frase de recuperação ou chave secreta válida"
+  },
+  "importRecoveryPhraseScreen": {
+    "title": "Importar frase de recuperação",
+    "description": "Adicione uma carteira com a frase de recuperação de 12 ou 24 palavras",
+    "textAreaPlaceholder": "Digite sua frase de recuperação",
+    "importButton": "Importar"
   },
   "rebrandAnnouncementScreen": {
     "title": "O Freighter agora é Varial",
@@ -445,12 +450,14 @@
       "noKeyPairFound": "Nenhum par de chaves encontrado",
       "noRecoveryPhrase": "Nenhuma frase de recuperação para derivar",
       "unknownRecoveryPhrase": "Frase de recuperação desconhecida",
+      "recoveryPhraseNotFound": "Frase de recuperação não encontrada",
       "failedToSignUp": "Falha ao criar conta",
       "failedToSignIn": "Falha ao entrar",
       "failedToImportWallet": "Falha ao importar carteira",
       "failedToLoadAccount": "Falha ao carregar conta",
       "invalidPassword": "Senha inválida. Por favor, tente novamente.",
       "invalidMnemonicPhrase": "Frase inválida - as palavras devem estar na ordem correta, em minúsculas e separadas por espaços",
+      "invalidSecretKey": "Chave secreta inválida",
       "failedToCreateAccount": "Falha ao criar conta. Por favor, tente novamente.",
       "accountAlreadyExists": "Conta já existe",
       "failedToImportSecretKey": "Falha ao importar chave secreta",
@@ -479,7 +486,11 @@
       "sessionExpiredTitle": "Sessão expirada",
       "sessionExpiredMessage": "Sua sessão não é mais válida. Por favor, entre novamente.",
       "disableBiometricsFailedTitle": "Não foi possível desativar a biometria",
-      "disableBiometricsFailedMessage": "Não conseguimos verificar sua identidade. Por favor, tente novamente."
+      "disableBiometricsFailedMessage": "Não conseguimos verificar sua identidade. Por favor, tente novamente.",
+      "pendingRecoveryPhraseMissing": "A nova frase de recuperação não está mais disponível. Comece novamente.",
+      "recoveryPhraseAlreadyHeld": "Esta frase de recuperação já está na sua carteira",
+      "failedToAddRecoveryPhrase": "Falha ao adicionar a frase de recuperação. Por favor, tente novamente.",
+      "failedToImportRecoveryPhrase": "Falha ao importar a frase de recuperação. Por favor, tente novamente."
     },
     "account": "Conta {{number}}",
     "faceId": {
@@ -560,7 +571,6 @@
     "alreadyInWallet": "Este colecionável já está na sua carteira",
     "showHidden": "Mostrar ocultos"
   },
-
   "collectibles": {
     "errors": {
       "collectionNotFound": "Coleção não encontrada para o endereço fornecido.",
@@ -869,20 +879,41 @@
     "checkMemoRequirements": "Verifique os requisitos de memo da conta de destino e inclua-o na transação."
   },
   "addAnotherWalletScreen": {
-    "title": "Adicionar carteira",
+    "title": "Adicionar conta",
+    "subtitle": "Escolha como adicionar uma carteira.",
     "actions": {
-      "createNewWallet": "Criar uma nova carteira",
-      "createNewWalletDescription": "Criar uma carteira a partir da sua frase de recuperação",
-      "importSecretKey": "Importar uma chave secreta Stellar",
-      "importSecretKeyDescription": "Adicionar uma carteira usando uma chave secreta"
+      "createNewWallet": "Criar nova carteira",
+      "createNewWalletDescription": "Usando uma frase de recuperação existente ou nova",
+      "importRecoveryPhrase": "Importar frase de recuperação",
+      "importRecoveryPhraseDescription": "Importe carteiras usando uma frase de recuperação.",
+      "importSecretKey": "Importar chave secreta",
+      "importSecretKeyDescription": "Importe uma carteira usando a chave secreta dela."
     }
+  },
+  "createWalletScreen": {
+    "title": "Criar nova carteira",
+    "subtitle": "Crie com uma frase de recuperação nova ou existente",
+    "addAccount": "Adicionar conta",
+    "addAccountTo": "Adicionar conta a {{label}}",
+    "newRecoveryPhrase": "Nova frase de recuperação",
+    "newRecoveryPhraseDescription": "Crie uma carteira com uma nova frase de recuperação",
+    "setAccountName": "Definir nome da conta",
+    "create": "Criar",
+    "next": "Próximo"
+  },
+  "backupRecoveryPhraseScreen": {
+    "title": "Faça backup da sua nova frase de recuperação",
+    "description": "Sua frase de recuperação é a única forma de restaurar sua nova carteira.",
+    "descriptionEmphasis": "Guarde-a em segurança.",
+    "create": "Criar"
   },
   "verifyPasswordScreen": {
     "title": "Verificar Senha",
     "verifyPasswordTemplateTitle": "Digite sua senha",
     "verifyPasswordTemplateDescription": "Digite sua senha para verificar sua conta.",
     "actions": {
-      "createNewWallet": "Criar nova carteira"
+      "createNewWallet": "Criar nova carteira",
+      "importRecoveryPhrase": "Importar"
     }
   },
   "logout": "Sair",
@@ -1389,5 +1420,42 @@
     "title": "Não é possível executar neste dispositivo",
     "description": "Este dispositivo possui root ou jailbreak, o que impede o aplicativo de proteger as chaves da sua carteira.",
     "disclaimer": "O aplicativo está desabilitado em sistemas comprometidos. Instale e use-o em um dispositivo com segurança padrão intacta."
+  },
+  "accountsRecoveryScreen": {
+    "title": "Contas e recuperação",
+    "recoveryPhraseLabel": "Frase de recuperação {{number}}",
+    "secretKeyLabel": "Chave secreta {{number}}",
+    "otherAccounts": "Outras contas",
+    "editAccount": "Editar {{name}}"
+  },
+  "editAccountScreen": {
+    "title": "Editar conta",
+    "accountName": "Nome da conta",
+    "secretKey": "Chave secreta",
+    "unlockToReveal": "Desbloqueie para revelar",
+    "viewOnExplorer": "Ver no explorador de blocos"
+  },
+  "revealSecretScreen": {
+    "consentBannerBody": "Qualquer pessoa que a tenha pode assumir o controle da sua carteira.",
+    "consentSubtitle": "Guarde-a em segurança. Você precisará dela para restaurar sua carteira.",
+    "tapToCopy": "Toque para copiar",
+    "recoveryPhrase": {
+      "title": "Mostrar frase de recuperação",
+      "revealedTitle": "Sua frase de recuperação",
+      "bannerTitle": "Nunca compartilhe sua frase de recuperação",
+      "revealedBannerBody": "Qualquer pessoa que a tenha pode assumir o controle da sua carteira.",
+      "heading": "Sua frase de recuperação controla esta carteira",
+      "acknowledgement": "Entendo que compartilhar minha frase de recuperação pode resultar na <strong>perda permanente de fundos</strong>.",
+      "action": "Revelar frase de recuperação"
+    },
+    "secretKey": {
+      "title": "Mostrar chave secreta",
+      "revealedTitle": "Sua chave secreta",
+      "bannerTitle": "Nunca compartilhe sua chave secreta",
+      "revealedBannerBody": "Qualquer pessoa com esta chave pode acessar sua conta e seus fundos. Mantenha-a privada e guarde-a em segurança.",
+      "heading": "Sua chave secreta controla esta carteira",
+      "acknowledgement": "Entendo que compartilhar minha chave secreta pode resultar na <strong>perda permanente de fundos</strong>.",
+      "action": "Revelar chave secreta"
+    }
   }
 }

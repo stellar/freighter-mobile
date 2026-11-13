@@ -244,6 +244,66 @@ describe("getSigningIdentity", () => {
     expect((await getSigningIdentity())?.sourceId).toBe(phraseAId);
   });
 
+  describe("when the pinned source is not held", () => {
+    // A phrase and an imported key, neither of them the pinned source.
+    const unlockWithoutPin = async (status: Record<string, string>) => {
+      await unlock({
+        accounts: { "key-imported": importedSecret },
+        mnemonics: { [phraseAId]: phraseA.mnemonic },
+        order: [],
+      });
+      await setPinnedSourceId("f".repeat(64));
+      memory[STORAGE_KEYS.SOURCE_LINK_STATUS] = JSON.stringify(status);
+    };
+
+    it("signs with a linked source over a phrase another user owns", async () => {
+      await unlockWithoutPin({
+        [phraseAId]: "conflict",
+        [importedId]: "linked",
+      });
+
+      expect((await getSigningIdentity())?.sourceId).toBe(importedId);
+      expect(await getPinnedSourceId()).toBe("f".repeat(64));
+    });
+
+    it("signs with an unconfirmed source over one another user owns", async () => {
+      await unlockWithoutPin({ [phraseAId]: "conflict" });
+
+      expect((await getSigningIdentity())?.sourceId).toBe(importedId);
+    });
+
+    it("prefers a linked source over an unconfirmed phrase", async () => {
+      await unlockWithoutPin({ [importedId]: "linked" });
+
+      expect((await getSigningIdentity())?.sourceId).toBe(importedId);
+    });
+
+    it("returns null when every held source belongs to another user", async () => {
+      await unlockWithoutPin({
+        [phraseAId]: "conflict",
+        [importedId]: "conflict",
+      });
+
+      expect(await getSigningIdentity()).toBeNull();
+    });
+  });
+
+  it("signs with the held pinned source whatever the link status says", async () => {
+    await unlock({
+      accounts: {
+        "key-a0": phraseA.accounts[0].secret,
+        "key-imported": importedSecret,
+      },
+      mnemonics: { [phraseAId]: phraseA.mnemonic },
+      order: [phrase, key],
+    });
+    memory[STORAGE_KEYS.SOURCE_LINK_STATUS] = JSON.stringify({
+      [importedId]: "linked",
+    });
+
+    expect((await getSigningIdentity())?.sourceId).toBe(phraseAId);
+  });
+
   it("signs as the earliest registered source, without pinning it, when the wallet has no pin", async () => {
     // Held sources list phrases first, so the key is not the first held one.
     await unlock({

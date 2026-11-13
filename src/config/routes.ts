@@ -95,12 +95,18 @@ export const SETTINGS_ROUTES = {
   YOUR_RECOVERY_PHRASE_SCREEN: "YourRecoveryPhraseScreen",
   BIOMETRICS_SETTINGS_SCREEN: "BiometricsSettingsScreen",
   AUTO_LOCK_TIMER_SCREEN: "AutoLockTimerScreen",
+  ACCOUNTS_RECOVERY_SCREEN: "AccountsRecoveryScreen",
+  EDIT_ACCOUNT_SCREEN: "EditAccountScreen",
+  REVEAL_SECRET_SCREEN: "RevealSecretScreen",
 } as const;
 
 export const MANAGE_WALLETS_ROUTES = {
   ADD_ANOTHER_WALLET_SCREEN: "AddAnotherWalletScreen",
+  CREATE_WALLET_SCREEN: "CreateWalletScreen",
+  BACKUP_RECOVERY_PHRASE_SCREEN: "BackupRecoveryPhraseScreen",
   VERIFY_PASSWORD_SCREEN: "VerifyPasswordScreen",
   IMPORT_SECRET_KEY_SCREEN: "ImportSecretKeyScreen",
+  IMPORT_RECOVERY_PHRASE_SCREEN: "ImportRecoveryPhraseScreen",
 } as const;
 
 export const ADD_FUNDS_ROUTES = {
@@ -196,6 +202,15 @@ export type ManageTokensStackParamList = {
   [MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN]: undefined;
 };
 
+/**
+ * What the reveal screen shows: one account's secret key (`accountId` is
+ * `Account.id`), or a recovery phrase (`sourceId` names the phrase source;
+ * without one, the wallet's default phrase).
+ */
+export type RevealSecretParams =
+  | { kind: "secretKey"; accountId: string }
+  | { kind: "recoveryPhrase"; sourceId?: string };
+
 export type SettingsStackParamList = {
   [SETTINGS_ROUTES.SETTINGS_SCREEN]: undefined;
   [SETTINGS_ROUTES.PREFERENCES_SCREEN]: undefined;
@@ -210,12 +225,36 @@ export type SettingsStackParamList = {
   [SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN]: undefined;
   [SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN]: undefined;
   [SETTINGS_ROUTES.AUTO_LOCK_TIMER_SCREEN]: undefined;
+  [SETTINGS_ROUTES.ACCOUNTS_RECOVERY_SCREEN]: undefined;
+  [SETTINGS_ROUTES.EDIT_ACCOUNT_SCREEN]: {
+    /** `Account.id`: two accounts can share a public key. */
+    accountId: string;
+  };
+  [SETTINGS_ROUTES.REVEAL_SECRET_SCREEN]: RevealSecretParams;
 };
+
+/**
+ * What the password step creates once it's confirmed: an account under an
+ * existing phrase, the first account of the phrase the backup step showed,
+ * or the accounts of a phrase the user typed. A phrase itself never travels
+ * in params; the auth store holds it.
+ */
+export type CreateWalletTarget =
+  | { kind: "existingPhrase"; sourceId: string; accountName: string }
+  | { kind: "newPhrase"; pendingPhraseId: string; accountName: string }
+  | { kind: "importPhrase"; pendingPhraseId: string };
 
 export type ManageWalletsStackParamList = {
   [MANAGE_WALLETS_ROUTES.ADD_ANOTHER_WALLET_SCREEN]: undefined;
-  [MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN]: undefined;
+  [MANAGE_WALLETS_ROUTES.CREATE_WALLET_SCREEN]: undefined;
+  [MANAGE_WALLETS_ROUTES.BACKUP_RECOVERY_PHRASE_SCREEN]: {
+    /** Names the held phrase's generation; the phrase itself stays out of params. */
+    pendingPhraseId: string;
+    accountName: string;
+  };
+  [MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN]: CreateWalletTarget;
   [MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN]: undefined;
+  [MANAGE_WALLETS_ROUTES.IMPORT_RECOVERY_PHRASE_SCREEN]: undefined;
 };
 
 export type AddFundsStackParamList = {

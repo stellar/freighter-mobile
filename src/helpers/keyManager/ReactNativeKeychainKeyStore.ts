@@ -99,7 +99,15 @@ export class ReactNativeKeychainKeyStore implements KeyStore {
 
     for (const encryptedKey of keys) {
       await this.keyStore.setKey(encryptedKey.id, encryptedKey);
-      await this.keyStore.addToKeyIndex(encryptedKey.id);
+      try {
+        await this.keyStore.addToKeyIndex(encryptedKey.id);
+      } catch (error) {
+        // Wipes find keys through the index, so an unindexed entry would
+        // outlive every later wipe. removeKey logs and swallows its own
+        // failure, so the index error is the one the caller sees.
+        await this.keyStore.removeKey(encryptedKey.id);
+        throw error;
+      }
       keysMetadata.push(getKeyMetadata(encryptedKey));
     }
 
