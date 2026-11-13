@@ -1,7 +1,10 @@
 import { act, fireEvent, waitFor, within } from "@testing-library/react-native";
 import { BiometricsOnboardingScreen } from "components/screens/BiometricsEnableScreen/BiometricsEnableScreen";
 import { BiometricsSource } from "config/constants";
-import { useWalletSetupOverlayStore } from "ducks/walletSetupOverlay";
+import {
+  SETTING_UP_MIN_MS,
+  useWalletSetupOverlayStore,
+} from "ducks/walletSetupOverlay";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { BIOMETRY_TYPE } from "react-native-keychain";
@@ -87,9 +90,19 @@ const deferred = <T,>() => {
 };
 
 describe("BiometricsOnboardingScreen", () => {
+  afterEach(async () => {
+    await act(async () => {
+      await jest.runOnlyPendingTimersAsync();
+    });
+    jest.useRealTimers();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockEnableBiometrics.mockReset();
+    // Wallet setup holds its title for a minimum time; fake timers keep
+    // that wait inside each test.
+    jest.useFakeTimers();
     mockBiometryType = BIOMETRY_TYPE.FACE_ID;
     mockLoginSecret = {
       mnemonicPhrase: "abandon ability able",
@@ -341,7 +354,7 @@ describe("BiometricsOnboardingScreen", () => {
       expect(overlay().flow).toBe("create");
 
       await settle(() => signUp.resolve(true));
-      expect(overlay().phase).toBe("ready");
+      await waitFor(() => expect(overlay().phase).toBe("ready"));
     });
 
     it("shows Importing your wallet when Skip imports", async () => {
@@ -424,6 +437,8 @@ describe("BiometricsOnboardingScreen", () => {
       unmount();
 
       await settle(() => signUp.resolve(true));
+      // The setting-up title's minimum time.
+      await act(() => jest.advanceTimersByTimeAsync(SETTING_UP_MIN_MS));
 
       expect(overlay().phase).toBe("ready");
     });
