@@ -184,6 +184,7 @@ export const BiometricsOnboardingScreen: React.FC<
     signUp,
     importWallet,
     importWalletFromSecretKey,
+    storeBiometricPassword,
     enableBiometrics: enableBiometricsAction,
   } = useAuthenticationStore();
   const { setIsBiometricsEnabled, biometryType } = useBiometrics();
@@ -232,6 +233,11 @@ export const BiometricsOnboardingScreen: React.FC<
     }
 
     try {
+      // The biometric check reads the password from biometric storage. A
+      // failed setup removes it there, so each attempt saves it again from
+      // login data, which a failure keeps; otherwise a retry would find none.
+      await storeBiometricPassword(password);
+
       // The callback runs once the biometric check has passed, so the wallet
       // setup screen comes up then, not when Enable is tapped.
       await enableBiometricsAction((biometricPassword) =>
@@ -278,6 +284,7 @@ export const BiometricsOnboardingScreen: React.FC<
     signUp,
     importWallet,
     importWalletFromSecretKey,
+    storeBiometricPassword,
     enableBiometricsAction,
     navigation,
     mnemonicPhrase,
