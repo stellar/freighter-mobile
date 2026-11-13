@@ -184,6 +184,18 @@ interface ImportWalletParams {
 }
 
 /**
+ * Parameters for importWalletFromSecretKey function
+ *
+ * @interface ImportWalletFromSecretKeyParams
+ * @property {string} secretKey - The Stellar secret key to onboard from
+ * @property {string} password - User's password for encrypting the imported wallet
+ */
+interface ImportWalletFromSecretKeyParams {
+  secretKey: string;
+  password: string;
+}
+
+/**
  * Parameters for storeAccount function
  *
  * @interface StoreAccountParams
@@ -372,6 +384,10 @@ interface AuthActions {
   signUp: (params: SignUpParams) => Promise<boolean>;
   signIn: (params: SignInParams) => Promise<void>;
   importWallet: (params: ImportWalletParams) => Promise<boolean>;
+  /** Onboards a wallet from a secret key, replacing whatever was stored. */
+  importWalletFromSecretKey: (
+    params: ImportWalletFromSecretKeyParams,
+  ) => Promise<boolean>;
   verifyMnemonicPhrase: (mnemonicPhrase: string) => boolean;
   importSecretKey: (params: ImportSecretKeyParams) => Promise<void>;
   linkSources: () => void;
@@ -2519,6 +2535,71 @@ const importWallet = async ({
 };
 
 /**
+ * Onboards a wallet from a single secret key: one imported account rooted in
+ * its own SECRET_KEY source, with no phrase. The key is checked before
+ * anything is wiped, so an invalid one leaves the device as it was. A failure
+ * after the wipe wipes again, leaving a fresh install the user can retry from.
+ *
+ * @param {ImportWalletFromSecretKeyParams} params - The secret key and password
+ * @returns {Promise<void>}
+ */
+const importWalletFromSecretKey = async ({
+  secretKey,
+  password,
+}: ImportWalletFromSecretKeyParams): Promise<void> => {
+  let keyPair: KeyPair;
+  let sourceId: string;
+
+  // Nothing about the error is logged or tracked: it could carry the key.
+  try {
+    keyPair = {
+      publicKey: Keypair.fromSecret(secretKey).publicKey(),
+      privateKey: secretKey,
+    };
+    sourceId = await getSecretKeySourceId(secretKey);
+  } catch {
+    analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_FAIL, {
+      recovery_method: "secret_key",
+      reason_code: "invalid_secret_key",
+    });
+    throw new Error(t("authStore.error.invalidSecretKey"));
+  }
+
+  try {
+    clearAccountData();
+    await clearAllData();
+
+    await storeAccount({
+      sourceId,
+      password,
+      keyPair,
+      importedFromSecretKey: true,
+    });
+    await addSecretSource({
+      id: sourceId,
+      type: SecretSourceType.SECRET_KEY,
+    });
+
+    analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_SUCCESS, {
+      recovery_method: "secret_key",
+    });
+  } catch (error) {
+    // Scrubbed: the message can carry uncontrolled native text.
+    const importFailureMessage =
+      error instanceof Error ? error.message : String(error);
+    analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_FAIL, {
+      recovery_method: "secret_key",
+      reason_code: scrubStrKeys(importFailureMessage) ?? importFailureMessage,
+    });
+    // The previous wallet is already gone, so drop the partial writes too.
+    clearAccountData();
+    await clearAllData();
+
+    throw new Error(t("authStore.error.failedToImportWallet"));
+  }
+};
+
+/**
  * Updates the temporary store with a private key for a specific account
  *
  * @param {TemporaryStore} temporaryStore - The current temporary store
@@ -3271,6 +3352,7 @@ export const getUserFacingError = (
   const safeMessages = new Set<string>([
     t("authStore.error.invalidPassword"),
     t("authStore.error.invalidMnemonicPhrase"),
+    t("authStore.error.invalidSecretKey"),
     t("authStore.error.accountAlreadyExists"),
     t("authStore.error.accountNotFound"),
     t("authStore.error.accountListNotFound"),
@@ -4098,6 +4180,51 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       logger.error(
         "useAuthenticationStore.importWallet",
         "Import wallet failed",
+        error,
+      );
+      set({
+        error: getUserFacingError(
+          error,
+          "authStore.error.failedToImportWallet",
+        ),
+        isLoading: false,
+      });
+      return false;
+    }
+  },
+
+  /**
+   * Onboards a wallet from a secret key
+   *
+   * @param {ImportWalletFromSecretKeyParams} params - The secret key and password
+   * @returns {Promise<boolean>} `true` on success, `false` on failure
+   */
+  importWalletFromSecretKey: async (params): Promise<boolean> => {
+    set({ isLoading: true, error: null });
+
+    try {
+      // Replaces the wallet: reset auto-lock to the default before the hash
+      // key is generated so it doesn't inherit the previous timer.
+      await withAccountMutationLock(async () => {
+        await resetAutoLockForNewWallet();
+        await importWalletFromSecretKey(params);
+      });
+      set({
+        ...initialState,
+        navigationRef: get().navigationRef,
+        authStatus: AUTH_STATUS.AUTHENTICATED,
+        isLoading: false,
+      });
+
+      get().fetchActiveAccount();
+      // Link the imported key's source.
+      get().linkSources();
+      return true;
+    } catch (error) {
+      // The module function throws only its own messages, never the key's.
+      logger.error(
+        "useAuthenticationStore.importWalletFromSecretKey",
+        "Import wallet from secret key failed",
         error,
       );
       set({

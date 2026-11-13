@@ -18,20 +18,27 @@ jest.mock("services/storage/storageFactory", () => ({
 
 const mockSignUp = jest.fn();
 const mockImportWallet = jest.fn();
+const mockImportWalletFromSecretKey = jest.fn();
 const mockEnableBiometrics = jest.fn();
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: () => ({
     isLoading: false,
     signUp: mockSignUp,
     importWallet: mockImportWallet,
+    importWalletFromSecretKey: mockImportWalletFromSecretKey,
     enableBiometrics: mockEnableBiometrics,
   }),
 }));
 
 const mockClearLoginData = jest.fn();
+const SECRET_KEY = "SBUV3MRWKNS6AYKZ6E6MOUVF2OYMON3MIUASWL3JLY5E3ISDJFELYBRZ";
+let mockLoginSecret: {
+  mnemonicPhrase: string | null;
+  secretKey: string | null;
+} = { mnemonicPhrase: "abandon ability able", secretKey: null };
 jest.mock("ducks/loginData", () => ({
   useLoginDataStore: () => ({
-    mnemonicPhrase: "abandon ability able",
+    ...mockLoginSecret,
     password: "password1",
     clearLoginData: mockClearLoginData,
   }),
@@ -84,6 +91,10 @@ describe("BiometricsOnboardingScreen", () => {
     jest.clearAllMocks();
     mockEnableBiometrics.mockReset();
     mockBiometryType = BIOMETRY_TYPE.FACE_ID;
+    mockLoginSecret = {
+      mnemonicPhrase: "abandon ability able",
+      secretKey: null,
+    };
     useWalletSetupOverlayStore.setState(
       useWalletSetupOverlayStore.getInitialState(),
       true,
@@ -171,6 +182,24 @@ describe("BiometricsOnboardingScreen", () => {
     expect(mockSignUp).not.toHaveBeenCalled();
   });
 
+  it("imports from the secret key when Import Wallet kept one", async () => {
+    mockLoginSecret = { mnemonicPhrase: null, secretKey: SECRET_KEY };
+    mockImportWalletFromSecretKey.mockResolvedValue(true);
+    const { getByText } = renderScreen(BiometricsSource.IMPORT_WALLET);
+
+    fireEvent.press(getByText("Skip for now"));
+
+    await waitFor(() =>
+      expect(mockImportWalletFromSecretKey).toHaveBeenCalledWith({
+        secretKey: SECRET_KEY,
+        password: "password1",
+      }),
+    );
+    expect(mockImportWallet).not.toHaveBeenCalled();
+    expect(mockSignUp).not.toHaveBeenCalled();
+    await waitFor(() => expect(mockClearLoginData).toHaveBeenCalledTimes(1));
+  });
+
   // Enable sets the wallet up with the password the biometric check hands
   // back. Only a setup that succeeds may turn biometrics on and drop the
   // phrase and password from memory.
@@ -232,6 +261,24 @@ describe("BiometricsOnboardingScreen", () => {
       });
       expect(mockSignUp).not.toHaveBeenCalled();
       expect(mockClearLoginData).toHaveBeenCalledTimes(1);
+    });
+
+    it("imports the secret key with the password the check returns", async () => {
+      mockLoginSecret = { mnemonicPhrase: null, secretKey: SECRET_KEY };
+      passBiometricCheck("biometric-password");
+      mockImportWalletFromSecretKey.mockResolvedValue(true);
+      const { getByText } = renderScreen(BiometricsSource.IMPORT_WALLET);
+
+      fireEvent.press(getByText("Enable Face ID"));
+
+      await waitFor(() =>
+        expect(mockSetIsBiometricsEnabled).toHaveBeenCalledWith(true),
+      );
+      expect(mockImportWalletFromSecretKey).toHaveBeenCalledWith({
+        secretKey: SECRET_KEY,
+        password: "biometric-password",
+      });
+      expect(mockImportWallet).not.toHaveBeenCalled();
     });
 
     it("leaves biometrics off and keeps the phrase when setup fails", async () => {

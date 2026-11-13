@@ -7,6 +7,7 @@ import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
+import { useHasRecoveryPhrase } from "hooks/useHasRecoveryPhrase";
 import React, { useCallback } from "react";
 import { View } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
@@ -20,6 +21,8 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { biometryType } = useBiometrics();
+  // A wallet onboarded from a secret key has no phrase to show.
+  const hasPhrase = useHasRecoveryPhrase();
 
   const biometryTitle: Record<BIOMETRY_TYPE, string> = {
     [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.title"),
@@ -37,8 +40,9 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
     return <Icon.Fingerprint01 color={themeColors.foreground.primary} />;
   }, [biometryType, themeColors]);
 
-  const listItems = [
-    {
+  const listItems = [];
+  if (hasPhrase) {
+    listItems.push({
       icon: <Icon.FileLock02 color={themeColors.foreground.primary} />,
       title: t("securityScreen.showRecoveryPhrase"),
       titleColor: themeColors.text.primary,
@@ -48,8 +52,8 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
         <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),
       testID: "show-recovery-phrase-button",
-    },
-  ];
+    });
+  }
   if (biometryType) {
     listItems.push({
       icon: getBiometryIcon(),

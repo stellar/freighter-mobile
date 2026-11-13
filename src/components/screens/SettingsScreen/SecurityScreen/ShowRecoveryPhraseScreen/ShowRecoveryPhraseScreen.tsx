@@ -7,13 +7,16 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { LoginType } from "config/constants";
+import { logger } from "config/logger";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { getActiveMnemonicPhrase, useAuthenticationStore } from "ducks/auth";
 import { useLoginDataStore } from "ducks/loginData";
+import { hasRecoveryPhrase } from "helpers/hasRecoveryPhrase";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, ScrollView, StyleSheet } from "react-native";
+import { getSecretSources } from "services/auth/secretSources";
 
 type ShowRecoveryPhraseScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -39,6 +42,30 @@ const ShowRecoveryPhraseScreen: React.FC<ShowRecoveryPhraseScreenProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const { getKeyFromKeyManager, signInMethod } = useAuthenticationStore();
   const { setMnemonicPhrase } = useLoginDataStore();
+
+  // Security hides the way here for a wallet with no phrase (one onboarded
+  // from a secret key); anything that still lands here goes back.
+  useEffect(() => {
+    let isActive = true;
+
+    getSecretSources()
+      .then((map) => {
+        if (isActive && !hasRecoveryPhrase(Object.values(map))) {
+          navigation.goBack();
+        }
+      })
+      .catch((sourcesError: unknown) => {
+        logger.error(
+          "ShowRecoveryPhraseScreen",
+          "Failed to read secret sources",
+          sourcesError,
+        );
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [navigation]);
 
   const showRecoveryPhraseAction = async (password: string) => {
     try {

@@ -3,7 +3,10 @@ import { RecoveryPhraseInput } from "components/RecoveryPhraseInput";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { logger } from "config/logger";
-import { normalizeAndTrimRecoveryPhrase } from "helpers/recoveryPhrase";
+import {
+  normalizeAndTrimRecoveryPhrase,
+  normalizeImportSecretInput,
+} from "helpers/recoveryPhrase";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useSecureClipboard } from "hooks/useSecureClipboard";
@@ -24,6 +27,11 @@ interface RecoveryPhraseFieldProps {
   error?: string | null;
   /** The field's text input, for a screen that focuses it itself. */
   ref?: React.Ref<TextInput>;
+  /**
+   * Keeps typed and pasted text's case, for a field that also takes a
+   * secret key. See RecoveryPhraseInput.
+   */
+  preserveCase?: boolean;
   testID?: string;
 }
 
@@ -50,6 +58,7 @@ export const RecoveryPhraseField: React.FC<RecoveryPhraseFieldProps> = ({
   placeholder,
   error,
   ref,
+  preserveCase = false,
   testID,
 }) => {
   const { t } = useAppTranslation();
@@ -69,7 +78,9 @@ export const RecoveryPhraseField: React.FC<RecoveryPhraseFieldProps> = ({
   const handlePaste = () => {
     getClipboardText()
       .then((clipboardText) => {
-        const phrase = normalizeAndTrimRecoveryPhrase(clipboardText);
+        const phrase = preserveCase
+          ? normalizeImportSecretInput(clipboardText, { trim: true })
+          : normalizeAndTrimRecoveryPhrase(clipboardText);
         if (!phrase) return undefined;
 
         onChangeText(phrase);
@@ -105,6 +116,7 @@ export const RecoveryPhraseField: React.FC<RecoveryPhraseFieldProps> = ({
           setValue={onChangeText}
           contextMenuHidden
           showMasked={isMasked}
+          preserveCase={preserveCase}
           isError={!!error}
           ref={ref}
           onFocus={() => setIsFocused(true)}

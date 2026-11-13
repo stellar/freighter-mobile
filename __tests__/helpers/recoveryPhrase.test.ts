@@ -1,5 +1,6 @@
 import {
   isValidImportMnemonic,
+  normalizeImportSecretInput,
   normalizeRecoveryPhrase,
   normalizeAndTrimRecoveryPhrase,
 } from "helpers/recoveryPhrase";
@@ -129,6 +130,18 @@ describe("recoveryPhrase helpers", () => {
 
     it("refuses an empty phrase", () => {
       expect(isValidImportMnemonic("   ")).toBe(false);
+    });
+  });
+
+  describe("normalizeImportSecretInput", () => {
+    it("keeps case and accents, collapsing only spacing", () => {
+      expect(normalizeImportSecretInput("SAbc\n  Déf ")).toBe("SAbc Déf ");
+    });
+
+    it("trims when asked", () => {
+      expect(normalizeImportSecretInput("  SABC \n", { trim: true })).toBe(
+        "SABC",
+      );
     });
   });
 });
