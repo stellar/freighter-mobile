@@ -44,6 +44,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { BLEND_LENDING_DOCS_URL } from "config/blend";
 import {
   DEFAULT_PADDING,
+  MIN_TRANSACTION_FEE,
   NATIVE_TOKEN_CODE,
   TransactionContext,
   mapNetworkToNetworkDetails,
@@ -76,6 +77,7 @@ import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HeldBalanceItem } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useToast } from "providers/ToastProvider";
@@ -113,6 +115,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   const { open: openInAppBrowser } = useInAppBrowser();
   const { overriddenBlockaidResponse } = useDebugStore();
   const { recommendedFee } = useNetworkFees();
+  const { account } = useGetActiveAccount();
   const selectAsset = useEarnStore((state) => state.selectAsset);
   const { network } = useAuthenticationStore();
   const { pricedBalances } = useBalancesStore();
@@ -363,10 +366,29 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     const targetIdentifier = notEnoughOption.balance
       ? getTokenIdentifier(notEnoughOption.balance)
       : notEnoughOption.assetId;
-    const isSwappable = hasSwappableBalance(pricedBalances, targetIdentifier);
+    // Swapping into a reserve the account has no trustline for opens one
+    // first, in the same transaction: a second operation for the fee, and
+    // another base reserve of XLM.
+    const requiresTrustline =
+      !notEnoughOption.isNative && !notEnoughOption.balance;
+    const isSwappable = hasSwappableBalance({
+      balances: pricedBalances,
+      targetIdentifier,
+      subentryCount: account?.subentryCount ?? 0,
+      transactionFee: new BigNumber(recommendedFee || MIN_TRANSACTION_FEE)
+        .times(requiresTrustline ? 2 : 1)
+        .toFixed(),
+      requiresTrustline,
+    });
 
     return getNotEnoughVariant({ isOnrampable, isSwappable });
-  }, [notEnoughOption, networkDetails, pricedBalances]);
+  }, [
+    notEnoughOption,
+    networkDetails,
+    pricedBalances,
+    account?.subentryCount,
+    recommendedFee,
+  ]);
 
   // The sheet's header renders the deposit asset's real icon, not a generic
   // glyph -- same

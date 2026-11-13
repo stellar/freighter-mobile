@@ -309,24 +309,53 @@ describe("isOnrampableAsset", () => {
 });
 
 describe("hasSwappableBalance", () => {
-  const classic = (code: string, issuer: string, total: string) =>
+  const classic = (
+    code: string,
+    issuer: string,
+    total: string,
+    available?: string,
+  ) =>
     ({
       total: new BigNumber(total),
+      ...(available === undefined
+        ? {}
+        : { available: new BigNumber(available) }),
       token: { code, issuer: { key: issuer } },
     }) as never;
 
   // Real NativeToken always carries `type: "native"` (config/types.ts) — the
   // native() mock includes it so this fixture matches production shape, per
   // the type-based discriminant used by hasSwappableBalance (see helper file
-  // for why a code-based check is unsafe).
-  const native = (total: string) =>
+  // for why a code-based check is unsafe). `minimumBalance` is the
+  // server-derived reserve; without it the reserve falls back to
+  // (2 + subentryCount) × 0.5 = 1 XLM here.
+  const native = (total: string, minimumBalance?: string) =>
     ({
       total: new BigNumber(total),
+      ...(minimumBalance === undefined
+        ? {}
+        : { minimumBalance: new BigNumber(minimumBalance) }),
       token: { type: "native", code: "XLM" },
     }) as never;
 
+  const check = (
+    balances: Record<string, never>,
+    {
+      targetIdentifier = "USDC:GISSUER",
+      requiresTrustline = false,
+    }: { targetIdentifier?: string; requiresTrustline?: boolean } = {},
+  ) =>
+    hasSwappableBalance({
+      balances,
+      targetIdentifier,
+      subentryCount: 0,
+      transactionFee: "0.00001",
+      requiresTrustline,
+    });
+
   it("counts native XLM, the most common swap source", () => {
-    expect(hasSwappableBalance({ XLM: native("10") }, "USDC:GISSUER")).toBe(
+    expect(check({ XLM: native("10") })).toBe(true);
+    expect(check({ XLM: native("10") }, { requiresTrustline: true })).toBe(
       true,
     );
   });
@@ -336,27 +365,50 @@ describe("hasSwappableBalance", () => {
   // the "is this a classic token" check — a regression that inverted the
   // `issuer in balance.token` guard would have passed the whole suite.
   it("counts a held classic asset other than the target as swappable", () => {
-    expect(
-      hasSwappableBalance(
-        { "AQUA:GISSUER2": classic("AQUA", "GISSUER2", "100") },
-        "USDC:GISSUER",
-      ),
-    ).toBe(true);
+    expect(check({ "AQUA:GISSUER2": classic("AQUA", "GISSUER2", "100") })).toBe(
+      true,
+    );
   });
 
   it("excludes the target asset itself so dust does not look swappable", () => {
-    expect(
-      hasSwappableBalance(
-        { "USDC:GISSUER": classic("USDC", "GISSUER", "0.001") },
-        "USDC:GISSUER",
-      ),
-    ).toBe(false);
+    expect(check({ "USDC:GISSUER": classic("USDC", "GISSUER", "0.001") })).toBe(
+      false,
+    );
   });
 
   it("excludes zero balances", () => {
-    expect(hasSwappableBalance({ XLM: native("0") }, "USDC:GISSUER")).toBe(
-      false,
-    );
+    expect(check({ XLM: native("0") })).toBe(false);
+  });
+
+  it("leaves out the XLM the account must keep as its minimum balance", () => {
+    expect(check({ XLM: native("1", "1") })).toBe(false);
+    expect(check({ XLM: native("1.2", "1") })).toBe(true);
+  });
+
+  it("needs XLM headroom for the trustline a new token opens", () => {
+    // 0.39999 XLM spendable: enough to swap, not to open a trustline too.
+    expect(check({ XLM: native("1.4", "1") })).toBe(true);
+    expect(
+      check({ XLM: native("1.4", "1") }, { requiresTrustline: true }),
+    ).toBe(false);
+    expect(
+      check({ XLM: native("1.6", "1") }, { requiresTrustline: true }),
+    ).toBe(true);
+  });
+
+  it("can't swap another token into one that needs a trustline without that XLM", () => {
+    const balances = {
+      XLM: native("1.2", "1"),
+      "AQUA:GISSUER2": classic("AQUA", "GISSUER2", "100"),
+    };
+    expect(check(balances)).toBe(true);
+    expect(check(balances, { requiresTrustline: true })).toBe(false);
+  });
+
+  it("counts a classic asset's available amount, not its total", () => {
+    expect(
+      check({ "AQUA:GISSUER2": classic("AQUA", "GISSUER2", "100", "0") }),
+    ).toBe(false);
   });
 
   it("excludes Soroban-only tokens, which Swap cannot path-payment", () => {
@@ -365,9 +417,7 @@ describe("hasSwappableBalance", () => {
       contractId: "CABC",
       token: { code: "ABC", issuer: { key: "CABC" } },
     } as never;
-    expect(hasSwappableBalance({ "ABC:CABC": soroban }, "USDC:GISSUER")).toBe(
-      false,
-    );
+    expect(check({ "ABC:CABC": soroban })).toBe(false);
   });
 });
 
@@ -391,8 +441,9 @@ describe("getNotEnoughVariant", () => {
   });
 
   it("falls back to transfer, which always works", () => {
-    // Not in the designs but reachable: an empty account on a non-onrampable
-    // asset. A sheet with no actions would be worse.
+    // Reachable once nothing is spendable, e.g. XLM at its minimum balance,
+    // on an asset the onramp can't sell. A sheet with no actions would be
+    // worse.
     expect(
       getNotEnoughVariant({ isOnrampable: false, isSwappable: false }),
     ).toBe(NotEnoughVariant.TRANSFER_ONLY);

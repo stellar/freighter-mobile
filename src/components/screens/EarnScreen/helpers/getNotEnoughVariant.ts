@@ -1,7 +1,8 @@
 import BigNumber from "bignumber.js";
-import { NetworkDetails, NETWORKS } from "config/constants";
+import { BASE_RESERVE, NetworkDetails, NETWORKS } from "config/constants";
 import { PricedBalanceMap } from "config/types";
 import { isNativeToken } from "helpers/assetIdentity";
+import { calculateSpendableAmount } from "helpers/balances";
 
 /**
  * Assets the Coinbase onramp can sell, by code.
@@ -32,7 +33,15 @@ export const isOnrampableAsset = (
 ) => EARN_ONRAMP_ASSETS.has(code) && networkDetails.network === NETWORKS.PUBLIC;
 
 /**
- * Does the account hold anything it could swap into the target asset?
+ * Does the account hold anything it could actually swap into the target
+ * asset?
+ *
+ * Only what is spendable counts, as on main Swap (`calculateSpendableAmount`):
+ * XLM above the account's minimum balance and the swap's fee, and other
+ * classic assets' available amount. Opening the target's trustline locks
+ * another `BASE_RESERVE` of XLM whichever token is swapped, so a target that
+ * needs one also requires more XLM headroom than that; main Swap draws the
+ * same line before it shows its reserve sheet.
  *
  * Swap is classic-only — it builds a Horizon `pathPaymentStrictSend` and
  * rejects contract-ID assets outright — so a Soroban-only balance is not a
@@ -49,11 +58,45 @@ export const isOnrampableAsset = (
  * `targetIdentifier` is excluded so a dust balance of the target itself never
  * makes the account look like it can swap into what it already has.
  */
-export const hasSwappableBalance = (
-  balances: PricedBalanceMap,
-  targetIdentifier: string,
-) =>
-  Object.entries(balances).some(([identifier, balance]) => {
+export const hasSwappableBalance = ({
+  balances,
+  targetIdentifier,
+  subentryCount,
+  transactionFee,
+  requiresTrustline,
+}: {
+  balances: PricedBalanceMap;
+  targetIdentifier: string;
+  /** Sizes XLM's minimum balance when the balance doesn't carry it. */
+  subentryCount: number;
+  /** The swap's total fee, in XLM. */
+  transactionFee: string;
+  /** Whether the swap must open a trustline for the target first. */
+  requiresTrustline: boolean;
+}) => {
+  const entries = Object.entries(balances);
+  const xlmBalance = entries.find(
+    ([, balance]) => "token" in balance && isNativeToken(balance.token),
+  )?.[1];
+  const spendableXlm = xlmBalance
+    ? calculateSpendableAmount({
+        balance: xlmBalance,
+        subentryCount,
+        transactionFee,
+      })
+    : new BigNumber(0);
+
+  if (requiresTrustline && spendableXlm.lte(BASE_RESERVE)) {
+    return false;
+  }
+  const xlmLeftToSwap = requiresTrustline
+    ? spendableXlm.minus(BASE_RESERVE)
+    : spendableXlm;
+
+  return entries.some(([identifier, balance]) => {
+    if (identifier === targetIdentifier) {
+      return false;
+    }
     // Contract-only (Soroban) balances are not swappable.
     if ("contractId" in balance) {
       return false;
@@ -64,15 +107,15 @@ export const hasSwappableBalance = (
     if (!("token" in balance)) {
       return false;
     }
-    const isNative = isNativeToken(balance.token);
-    if (!isNative && !("issuer" in balance.token)) {
+    if (isNativeToken(balance.token)) {
+      return xlmLeftToSwap.gt(0);
+    }
+    if (!("issuer" in balance.token)) {
       return false;
     }
-    if (!new BigNumber(balance.total).gt(0)) {
-      return false;
-    }
-    return identifier !== targetIdentifier;
+    return calculateSpendableAmount({ balance }).gt(0);
   });
+};
 
 export const getNotEnoughVariant = ({
   isOnrampable,

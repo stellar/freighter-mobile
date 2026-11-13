@@ -1,6 +1,7 @@
 import BigNumber from "bignumber.js";
 import { buildEarnSwapDestination } from "components/screens/EarnScreen/helpers";
 import { EarnTokenOption } from "components/screens/EarnScreen/hooks/useEarnTokens";
+import { getSwapSpendableAmount } from "components/screens/SwapScreen/helpers";
 import {
   useSwapAmountError,
   useSwapBalances,
@@ -15,7 +16,6 @@ import { useDebugStore } from "ducks/debug";
 import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { calculateSpendableAmount } from "helpers/balances";
 import { HeldBalanceItem, useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
@@ -218,12 +218,23 @@ export const useEarnSwap = ({
     if (!sourceBalance || !account) {
       return null;
     }
-    return calculateSpendableAmount({
-      balance: sourceBalance,
+    // As on main Swap, Max and the balance check leave out the 0.5 XLM a
+    // new trustline locks. The "not enough" sheet only offers a swap into a
+    // new token when the account has more XLM headroom than that
+    // (`hasSwappableBalance`).
+    return getSwapSpendableAmount({
+      sourceBalance,
       subentryCount: account.subentryCount || 0,
-      transactionFee: swapFee,
+      swapFee,
+      destinationRequiresTrustline:
+        !!destinationTokenDescriptor?.requiresTrustline,
     });
-  }, [sourceBalance, account, swapFee]);
+  }, [
+    sourceBalance,
+    account,
+    swapFee,
+    destinationTokenDescriptor?.requiresTrustline,
+  ]);
 
   const { amountError } = useSwapAmountError({
     sourceBalance,

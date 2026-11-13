@@ -10,6 +10,38 @@ type BalanceItem = PricedBalance & {
 };
 
 /**
+ * What the source balance can actually put into a swap: its spendable amount
+ * (`calculateSpendableAmount`), minus the BASE_RESERVE (0.5 XLM) a new
+ * trustline locks when XLM itself is swapped into a token without one. That
+ * keeps the reserve out of the percentage buttons and the insufficient-balance
+ * check. Below BASE_RESERVE nothing is deducted, and the reserve pre-flight
+ * below surfaces the shortfall instead.
+ */
+export const getSwapSpendableAmount = ({
+  sourceBalance,
+  subentryCount,
+  swapFee,
+  destinationRequiresTrustline,
+}: {
+  sourceBalance: PricedBalance & { id: string };
+  subentryCount: number;
+  swapFee: string;
+  destinationRequiresTrustline: boolean;
+}): BigNumber => {
+  const baseSpendable = calculateSpendableAmount({
+    balance: sourceBalance,
+    subentryCount,
+    transactionFee: swapFee,
+  });
+  const swappingXlmToNewToken =
+    isNativeAssetId(sourceBalance.id) && destinationRequiresTrustline;
+  if (swappingXlmToNewToken && baseSpendable.gte(BASE_RESERVE)) {
+    return baseSpendable.minus(BASE_RESERVE);
+  }
+  return baseSpendable;
+};
+
+/**
  * Pure pre-flight predicate: when the destination is a new token (a
  * trustline must be added), the user needs BASE_RESERVE (0.5 XLM) of XLM
  * headroom to cover the new trustline's reserve bump. If they don't, the
