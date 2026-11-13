@@ -1,6 +1,6 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { fireEvent } from "@testing-library/react-native";
+import { act, fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import { UNKNOWN_RESOURCE_FEE_FLOOR_XLM } from "components/screens/EarnScreen/helpers";
 import EarnAmountScreen from "components/screens/EarnScreen/screens/EarnAmountScreen";
@@ -760,6 +760,108 @@ describe("EarnAmountScreen", () => {
     });
   });
 
+  describe("Review matches the build", () => {
+    // Sheets record their content on every render; the last one is current.
+    const latestSheetContent = (propName: string) =>
+      // eslint-disable-next-line no-underscore-dangle
+      [...globalThis.__earnAmountMockSheetContents]
+        .reverse()
+        .find((content) => propName in (content.props as object)) as
+        | React.ReactElement<Record<string, unknown>>
+        | undefined;
+
+    const rerenderScreen = (rerender: (ui: React.ReactElement) => void) =>
+      rerender(
+        <EarnAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+    it("shows Review the amount the deposit was built with, even after the field changes", async () => {
+      const { getByTestId, rerender } = renderScreen();
+
+      await fireEvent.press(getByTestId("earn-amount-cta"));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      setTokenAmount("5");
+      rerenderScreen(rerender);
+
+      expect(latestSheetContent("onSettingsPress")?.props.tokenAmount).toBe(
+        "10",
+      );
+    });
+
+    it("keeps Review closed when the amount changed while the deposit was being built", async () => {
+      let resolveSimulate: (value: unknown) => void = () => {};
+      mockSimulate.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSimulate = resolve;
+          }),
+      );
+      const { getByTestId, rerender } = renderScreen();
+
+      fireEvent.press(getByTestId("earn-amount-cta"));
+      setTokenAmount("5");
+      rerenderScreen(rerender);
+      await act(async () => {
+        resolveSimulate({ preparedXdr: "prepared-xdr", scanResult: undefined });
+        await Promise.resolve();
+      });
+
+      // eslint-disable-next-line no-underscore-dangle
+      const [, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+      expect(reviewSheet.present).not.toHaveBeenCalled();
+    });
+
+    it("rebuilds a settings change with the reviewed amount, from a sheet without a memo", async () => {
+      const { getByTestId, rerender } = renderScreen();
+      await fireEvent.press(getByTestId("earn-amount-cta"));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      setTokenAmount("5");
+      rerenderScreen(rerender);
+      const settingsSheet = latestSheetContent("onSettingsChange");
+      expect(settingsSheet?.props.showMemo).toBe(false);
+      (settingsSheet?.props.onSettingsChange as () => void)();
+
+      expect(mockSimulate).toHaveBeenCalledTimes(2);
+      expect(mockSimulate).toHaveBeenLastCalledWith(
+        expect.objectContaining({ amount: "10" }),
+      );
+    });
+
+    it("only confirms a finished build", () => {
+      renderScreen();
+      const confirm = () =>
+        (
+          latestSheetContent("onSettingsPress")?.props.onConfirm as () => void
+        )();
+
+      // Nothing staged yet, e.g. after a failed rebuild.
+      confirm();
+      expect(mockSubmitEarnTransaction).not.toHaveBeenCalled();
+
+      act(() => {
+        useTransactionBuilderStore.setState({
+          transactionXDR: "prepared-xdr",
+          isBuilding: true,
+        });
+      });
+      expect(latestSheetContent("onSettingsPress")?.props.isRebuilding).toBe(
+        true,
+      );
+      confirm();
+      expect(mockSubmitEarnTransaction).not.toHaveBeenCalled();
+
+      act(() => {
+        useTransactionBuilderStore.setState({ isBuilding: false });
+      });
+      confirm();
+      expect(mockSubmitEarnTransaction).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("security sheet over Review", () => {
     const pressSecuritySheetContinue = () => {
       // eslint-disable-next-line no-underscore-dangle
@@ -793,6 +895,7 @@ describe("EarnAmountScreen", () => {
         isSuspicious: true,
         isUnableToScan: false,
       };
+      useTransactionBuilderStore.setState({ transactionXDR: "prepared-xdr" });
       renderScreen();
 
       pressSecuritySheetContinue();

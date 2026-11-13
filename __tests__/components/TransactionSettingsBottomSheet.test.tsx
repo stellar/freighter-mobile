@@ -281,6 +281,30 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
     });
   });
 
+  it("leaves the memo out when showMemo is false, and never saves one", async () => {
+    const { queryByPlaceholderText, getByText } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+        showMemo={false}
+      />,
+    );
+
+    expect(
+      queryByPlaceholderText("transactionSettings.memoPlaceholder"),
+    ).toBeNull();
+
+    fireEvent.press(getByText("common.save"));
+
+    await waitFor(() => {
+      expect(mockOnSettingsChange).toHaveBeenCalled();
+      expect(mockOnConfirm).toHaveBeenCalled();
+    });
+    expect(mockTransactionSettingsState.saveMemo).not.toHaveBeenCalled();
+  });
+
   it("should rebuild transaction with memo for memo-required address", async () => {
     const mockOnSettingsChangeForMemo = jest.fn().mockImplementation(() => {
       const currentSettings = mockTransactionSettingsState;

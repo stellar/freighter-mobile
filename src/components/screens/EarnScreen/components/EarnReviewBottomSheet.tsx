@@ -45,11 +45,18 @@ import type { SecurityAssessment } from "services/blockaid/types";
 export interface EarnReviewBottomSheetProps {
   bottomSheetModalRef: React.RefObject<BottomSheetModal | null>;
   /**
-   * The amount entered on the amount screen, in display (non-raw) units.
-   * Guaranteed by `EarnAmountScreen`'s CTA handler to already match the
-   * staged XDR in `transactionBuilder` — see the component doc below.
+   * The amount the staged XDR in `transactionBuilder` was built with, in
+   * display (non-raw) units. `EarnAmountScreen` records it when it opens
+   * Review, so a later edit of the amount field can't change what this sheet
+   * shows.
    */
   tokenAmount: string;
+  /**
+   * True while the staged transaction is being rebuilt, after a settings
+   * change. Confirm and the settings button wait for it, so Confirm never
+   * signs the transaction the rebuild is replacing.
+   */
+  isRebuilding?: boolean;
   transactionSecurityAssessment: SecurityAssessment;
   onSecurityWarningPress: () => void;
   onConfirm: () => void;
@@ -83,6 +90,7 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
   onSecurityWarningPress,
   onConfirm,
   onSettingsPress,
+  isRebuilding = false,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -212,10 +220,16 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
     bottomSheetModalRef.current?.dismiss();
   }, [bottomSheetModalRef]);
 
+  // Nothing to sign while a rebuild is under way, or after one failed.
+  const canConfirm = !isRebuilding && !!transactionXDR;
+
   const handleConfirm = useCallback(() => {
+    if (!canConfirm) {
+      return;
+    }
     bottomSheetModalRef.current?.dismiss();
     onConfirm();
-  }, [bottomSheetModalRef, onConfirm]);
+  }, [bottomSheetModalRef, onConfirm, canConfirm]);
 
   const detailRows: EarnDetailsRow[] = [
     {
@@ -338,12 +352,14 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
           {onSettingsPress && (
             <TouchableOpacity
               onPress={onSettingsPress}
+              disabled={isRebuilding}
               className="items-center justify-center border border-gray-6 bg-background-primary"
               // Sized to sit flush beside the xl Buttons next to it.
               style={{
                 height: pxValue(BUTTON_THEME.height.xl),
                 borderRadius: pxValue(BUTTON_THEME.height.xl / 2),
                 width: pxValue(BUTTON_THEME.height.xl),
+                opacity: isRebuilding ? 0.5 : 1,
               }}
               accessibilityRole="button"
               accessibilityLabel={t("earnReview.settings")}
@@ -373,6 +389,8 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
               xl
               isFullWidth
               onPress={handleConfirm}
+              disabled={!canConfirm}
+              isLoading={isRebuilding}
               testID="earn-review-confirm-button"
             >
               {t("common.confirm")}
@@ -394,6 +412,7 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
           <TextButton
             text={t("transactionAmountScreen.confirmAnyway")}
             onPress={handleConfirm}
+            disabled={!canConfirm}
             variant={isMalicious ? "error" : "secondary"}
             testID="earn-review-confirm-anyway-button"
           />

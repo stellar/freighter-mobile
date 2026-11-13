@@ -46,6 +46,9 @@ jest.mock("ducks/balances", () => ({
   })),
 }));
 
+// The staged transaction Confirm signs; null after a failed rebuild.
+let mockTransactionXDR: string | null = "AAAAstaged";
+
 // Selector-style mock (matches how the component reads this store) —
 // mirrors the pattern in useSimulateEarnDeposit.test.ts.
 jest.mock("ducks/transactionBuilder", () => ({
@@ -55,6 +58,7 @@ jest.mock("ducks/transactionBuilder", () => ({
     const state = {
       sorobanInclusionFeeXlm: "0.00001",
       sorobanResourceFeeXlm: "0.05463",
+      transactionXDR: mockTransactionXDR,
     };
     return selector ? selector(state) : state;
   },
@@ -78,6 +82,7 @@ describe("EarnReviewBottomSheet", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockTransactionXDR = "AAAAstaged";
     useEarnStore.getState().resetEarn();
     useEarnStore
       .getState()
@@ -226,6 +231,41 @@ describe("EarnReviewBottomSheet", () => {
     await user.press(getByTestId("earn-review-confirm-button"));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits for a settings rebuild before Confirm or the settings button work", async () => {
+    const user = userEvent.setup();
+    const onConfirm = jest.fn();
+    const onSettingsPress = jest.fn();
+
+    const { getByTestId } = renderWithProviders(
+      <EarnReviewBottomSheet
+        {...defaultProps}
+        onConfirm={onConfirm}
+        onSettingsPress={onSettingsPress}
+        isRebuilding
+      />,
+    );
+
+    await user.press(getByTestId("earn-review-confirm-button"));
+    await user.press(getByTestId("earn-review-settings-button"));
+
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onSettingsPress).not.toHaveBeenCalled();
+  });
+
+  it("has nothing to confirm after a rebuild failed", async () => {
+    mockTransactionXDR = null;
+    const user = userEvent.setup();
+    const onConfirm = jest.fn();
+
+    const { getByTestId } = renderWithProviders(
+      <EarnReviewBottomSheet {...defaultProps} onConfirm={onConfirm} />,
+    );
+
+    await user.press(getByTestId("earn-review-confirm-button"));
+
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 
   it("dismisses without confirming on Cancel", async () => {

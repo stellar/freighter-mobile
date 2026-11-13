@@ -74,7 +74,13 @@ import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import { useToast } from "providers/ToastProvider";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Keyboard, TextInput, View } from "react-native";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
@@ -115,6 +121,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   const { overriddenBlockaidResponse } = useDebugStore();
 
   const { resetTransaction } = useTransactionBuilderStore();
+  const isBuilding = useTransactionBuilderStore((state) => state.isBuilding);
   const { transactionFee, transactionTimeout } = useTransactionSettingsStore();
   const { recommendedFee, networkCongestion, feePresets } = useNetworkFees();
 
@@ -239,6 +246,15 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     error: simulateError,
     scanResult,
   } = useSimulateEarnDeposit();
+
+  // The amount the staged transaction was built with, recorded when Review
+  // opens. Review, a settings rebuild and the processing screen all use it,
+  // never the live field, which the user can keep editing while a build runs.
+  const [reviewedAmount, setReviewedAmount] = useState<string | null>(null);
+  const latestTokenAmountRef = useRef(tokenAmount);
+  useEffect(() => {
+    latestTokenAmountRef.current = tokenAmount;
+  }, [tokenAmount]);
 
   // `scanResult` is undefined both before any simulation has run and when the
   // scan itself was unavailable (e.g. testnet, where Blockaid throws
@@ -397,7 +413,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     const freshSettings = useTransactionSettingsStore.getState();
     simulate({
       assetId,
-      amount: tokenAmount,
+      amount: reviewedAmount ?? tokenAmount,
       decimals: depositDecimals,
       transactionFee: freshSettings.transactionFee,
       transactionTimeout: freshSettings.transactionTimeout,
@@ -409,6 +425,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     account?.publicKey,
     simulate,
     assetId,
+    reviewedAmount,
     tokenAmount,
     depositDecimals,
     network,
@@ -437,8 +454,15 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
    * it both sets the processing flag and kicks off the sign/submit work.
    */
   const handleConfirmDeposit = useCallback(() => {
+    // Every confirm path ends here. A build still running, or one that
+    // failed, leaves nothing that matches Review to sign.
+    const { isBuilding: isBuildingNow, transactionXDR } =
+      useTransactionBuilderStore.getState();
+    if (isSimulating || isBuildingNow || !transactionXDR) {
+      return;
+    }
     submitEarnTransaction();
-  }, [submitEarnTransaction]);
+  }, [submitEarnTransaction, isSimulating]);
 
   // Close during "submitting": returns Home WITHOUT waiting for the result.
   // There is no background-submission infrastructure to show the outcome
@@ -570,9 +594,10 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       return;
     }
 
+    const amountToReview = tokenAmount;
     const result = await simulate({
       assetId,
-      amount: tokenAmount,
+      amount: amountToReview,
       decimals: depositDecimals,
       transactionFee,
       transactionTimeout,
@@ -583,6 +608,13 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     if (!result) {
       // On failure, the effect above surfaces `simulateError` as a toast —
       // nothing further to do here.
+      return;
+    }
+
+    // The field changed while the deposit was being built, so the build no
+    // longer matches it. Review stays closed; the CTA is back for the new
+    // amount.
+    if (latestTokenAmountRef.current !== amountToReview) {
       return;
     }
 
@@ -614,21 +646,18 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       }
       shortfall = getXlmFeeShortfall({
         spendableXlm: spendableXlm.toFixed(),
-        amount: tokenAmount || "0",
+        amount: amountToReview || "0",
         resourceFee: sorobanResourceFeeXlm ?? UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
       });
     }
 
-    // INVARIANT Review and Task 13's Confirm rely on: the staged XDR in
-    // `transactionBuilder` always corresponds to the currently displayed
-    // `tokenAmount` by the time Review opens. This check never adjusts
-    // `tokenAmount` — on a shortfall it blocks here and asks the user to
-    // reduce the amount themselves, rather than correcting it and
-    // re-simulating (as an earlier design did). The invariant therefore
-    // holds trivially on this path: nothing changes the displayed amount
-    // without a matching re-simulation, and this branch either opens Review
-    // with the amount `simulate` was just called with, or doesn't open it
-    // at all.
+    // INVARIANT Review and Confirm rely on: the staged XDR in
+    // `transactionBuilder` was built with `reviewedAmount`, the amount Review
+    // shows. This check never adjusts the amount — on a shortfall it blocks
+    // here and asks the user to reduce it themselves, rather than correcting
+    // it and re-simulating (as an earlier design did). So this branch either
+    // opens Review with the amount `simulate` was just called with, or
+    // doesn't open it at all.
     if (new BigNumber(shortfall).gt(0)) {
       showToast({
         variant: "error",
@@ -641,6 +670,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       return;
     }
 
+    setReviewedAmount(amountToReview);
     openReviewSheet();
   }, [
     ctaState.disabled,
@@ -706,7 +736,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     return (
       <EarnProcessingScreen
         status={earnTransactionStatus}
-        tokenAmount={tokenAmount}
+        tokenAmount={reviewedAmount ?? tokenAmount}
         transactionHash={earnTransactionHash}
         onCloseWhileSubmitting={handleCloseEarnProcessingWhileSubmitting}
         onDone={handleEarnProcessingDone}
@@ -813,7 +843,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         customContent={
           <EarnReviewBottomSheet
             bottomSheetModalRef={earnReviewBottomSheetModalRef}
-            tokenAmount={tokenAmount}
+            tokenAmount={reviewedAmount ?? tokenAmount}
+            isRebuilding={isSimulating || isBuilding}
             transactionSecurityAssessment={transactionSecurityAssessment}
             onSecurityWarningPress={() =>
               transactionSecurityWarningBottomSheetModalRef.current?.present()
@@ -828,6 +859,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         customContent={
           <TransactionSettingsBottomSheet
             context={TransactionContext.Send}
+            showMemo={false}
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleEarnSettingsChange}

@@ -61,6 +61,11 @@ type TransactionSettingsBottomSheetProps = {
    * total below 2 × the network per-op minimum). Defaults to 1 (single-op).
    */
   operationCount?: number;
+  /**
+   * Whether a send shows the memo field. A Blend deposit passes `false`: it's
+   * a Soroban transaction, which can't carry a memo. Defaults to `true`.
+   */
+  showMemo?: boolean;
 };
 
 // Constants
@@ -75,7 +80,8 @@ const PRESET_PRIORITIES: Array<keyof FeePresets> = [
  * TransactionSettingsBottomSheet Component
  *
  * A bottom sheet for editing a transaction's settings: fee, timeout and memo
- * for a send, or fee, timeout and slippage for a swap.
+ * for a send, or fee, timeout and slippage for a swap. `showMemo={false}`
+ * leaves the memo out for a transaction that can't carry one.
  *
  * The memo is disabled, with the reason shown beside the field, when the
  * destination can't take one: an M or W address already carries its mux id, a
@@ -96,6 +102,7 @@ const TransactionSettingsBottomSheet: React.FC<
   context,
   onSettingsChange,
   operationCount = 1,
+  showMemo = true,
 }) => {
   // All hooks at the top
   const { t } = useAppTranslation();
@@ -267,7 +274,7 @@ const TransactionSettingsBottomSheet: React.FC<
       : [
           TransactionSetting.Fee,
           TransactionSetting.Timeout,
-          TransactionSetting.Memo,
+          ...(showMemo ? [TransactionSetting.Memo] : []),
         ];
 
   // Each op needs at least MIN_TRANSACTION_FEE, so a multi-op transaction (e.g.
