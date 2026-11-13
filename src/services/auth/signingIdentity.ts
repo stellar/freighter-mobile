@@ -1,6 +1,7 @@
 import { Keypair } from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
 import { SecretSourceType } from "config/types";
+import { getLinkStatus } from "services/auth/linkStatus";
 import {
   getFirstSourceId,
   getPinnedSourceId,
@@ -43,9 +44,14 @@ export interface SigningIdentity {
  * - The pinned source is held: sign with it. With no pin, as after a failed
  *   pin write, the earliest registered source stands in for it (the source
  *   the next registration or unlock will pin).
- * - That source is not held, as after a restore that recovered only some
- *   sources: sign with the first held source (phrases first) and leave the
- *   pin alone. The pin moves only from what the server returns.
+ * - That source is not held, as when it failed to derive this unlock: sign
+ *   with a held source the server listed in this wallet's cluster
+ *   ("linked"), else one it has not answered for yet, phrases first in each
+ *   case. Never sign with a source the server reported as another user's
+ *   ("conflict"): that would speak as that user. With only those held,
+ *   return null. The pin stays put, so a source that failed to derive this
+ *   unlock cannot move it; moving it waits for account removal, the first
+ *   way a pinned source can leave the wallet for good.
  * - Nothing pinned and nothing registered, as for an upgraded wallet before
  *   its first sign-in: sign with the first held phrase, the source the
  *   migration will pin, or return null when no phrase derived. Nothing is
@@ -81,8 +87,13 @@ export const getSigningIdentity = async (): Promise<SigningIdentity | null> => {
       "The pinned source is not held",
       new Error("The pinned source is not held"),
     );
-    const [{ id: firstHeldId }] = sources;
-    return { sourceId: firstHeldId, keypair: signers.get(firstHeldId)! };
+    const status = await getLinkStatus();
+    const fallback =
+      sources.find(({ id }) => status[id] === "linked") ??
+      sources.find(({ id }) => status[id] === undefined);
+    return fallback
+      ? { sourceId: fallback.id, keypair: signers.get(fallback.id)! }
+      : null;
   } catch (error) {
     // A locked or empty wallet is handled above, so anything reaching here
     // is unexpected (a PBKDF2 failure, a storage read error). Log it:
