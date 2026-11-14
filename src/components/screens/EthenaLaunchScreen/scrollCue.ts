@@ -1,7 +1,7 @@
 import { pxValue } from "helpers/dimensions";
 
 /** How far below the bar the scroll cue comes to rest when tapped. */
-const CUE_REST_BELOW_BAR = 60;
+const CUE_REST_BELOW_BAR = 20;
 
 /**
  * The scroll offset that brings the cue to rest just below the bar, so the

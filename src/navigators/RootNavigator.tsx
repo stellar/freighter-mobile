@@ -411,7 +411,13 @@ export const RootNavigator = () => {
                 <RootStack.Screen
                   name={ROOT_NAVIGATOR_ROUTES.ETHENA_LAUNCH_SCREEN}
                   component={EthenaLaunchScreen}
-                  options={{ headerShown: false, animation: "fade" }}
+                  options={{
+                    headerShown: false,
+                    animation: "fade",
+                    // iOS fades over 500ms by default; 150ms matches Android's
+                    // fade (iOS only, Android ignores it).
+                    animationDuration: 150,
+                  }}
                 />
                 <RootStack.Screen
                   name={AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN}

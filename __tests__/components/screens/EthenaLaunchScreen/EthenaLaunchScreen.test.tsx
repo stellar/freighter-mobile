@@ -309,7 +309,7 @@ describe("EthenaLaunchScreen", () => {
 
     expect(
       screen.UNSAFE_getByType(ScrollView).instance.scrollTo,
-    ).toHaveBeenCalledWith({ y: 760 - 104 - pxValue(60), animated: true });
+    ).toHaveBeenCalledWith({ y: 760 - 104 - pxValue(20), animated: true });
   });
 
   it("shows the bar's fade only once the page has scrolled", () => {
