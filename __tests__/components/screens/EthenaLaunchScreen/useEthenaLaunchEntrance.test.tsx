@@ -1,4 +1,5 @@
 import { act, render, screen } from "@testing-library/react-native";
+import { ETHENA_LAUNCH_FADE_MS } from "components/screens/EthenaLaunchScreen/ethenaLaunchConfig";
 import { useEthenaLaunchEntrance } from "components/screens/EthenaLaunchScreen/useEthenaLaunchEntrance";
 import { pxValue } from "helpers/dimensions";
 import React from "react";
@@ -12,8 +13,9 @@ jest.mock("react-native-reanimated", () => ({
   useReducedMotion: () => mockReduceMotion(),
 }));
 
-// The promo's route fades in over 150ms; the entrance starts as it ends.
-const FADE_IN = 150;
+// The entrance starts as the promo's route finishes fading in (its length per
+// platform is pinned in ethenaLaunchConfig.test.ts).
+const FADE_IN = ETHENA_LAUNCH_FADE_MS;
 
 const Harness = () => {
   const { waveStyle, coinsStyle, introStyle, cueStyle } =

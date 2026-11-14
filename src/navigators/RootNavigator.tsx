@@ -419,8 +419,8 @@ export const RootNavigator = () => {
                   options={{
                     headerShown: false,
                     animation: "fade",
-                    // iOS only: its fade defaults to 500ms; this matches
-                    // Android's. The promo's entrance is timed to it.
+                    // iOS only, set to its own default so the fade and the
+                    // promo's entrance, which is timed to it, stay in step.
                     animationDuration: ETHENA_LAUNCH_FADE_MS,
                   }}
                 />

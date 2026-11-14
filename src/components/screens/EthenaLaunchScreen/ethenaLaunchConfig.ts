@@ -2,15 +2,17 @@ import SusdeLogo from "assets/logos/susde.svg";
 import UsdeLogo from "assets/logos/usde.svg";
 import { PALETTE } from "config/theme";
 import React from "react";
+import { Platform } from "react-native";
 import { SvgProps } from "react-native-svg";
 
 export const ETHENA_DOCS_URL = "https://docs.ethena.fi/";
 
 /**
- * How long the promo's route fades in and out, in ms. Android's native fade
- * takes this long, and iOS is set to match. The entrance starts as it ends.
+ * How long the promo's route fades in and out, in ms: each platform's own
+ * fade (the native stack's default on iOS, react-native-screens' fixed fade on
+ * Android). The entrance starts as it ends.
  */
-export const ETHENA_LAUNCH_FADE_MS = 150;
+export const ETHENA_LAUNCH_FADE_MS = Platform.OS === "ios" ? 500 : 150;
 
 /**
  * The promo is the same black page with light text in both themes, so its
