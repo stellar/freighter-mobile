@@ -41,7 +41,6 @@ import {
   markEthenaLaunchPromoEligibility,
   shouldShowEthenaLaunchPromo,
 } from "helpers/ethenaLaunchPromo";
-import { isE2ETest } from "helpers/isEnv";
 import {
   getStackBottomNavigateOptions,
   getScreenOptionsNoHeader,
@@ -168,11 +167,8 @@ export const RootNavigator = () => {
       const isWelcomePending = await shouldShowRebrandAnnouncement();
       // A launch that owes the rebrand announcement shows only that; the
       // Ethena launch promo stays owed until the next launch.
-      // TEMP (UX check, revert before merge): outside E2E builds, every
-      // launch owes the promo.
       const isPromoPending =
-        !isWelcomePending &&
-        (!isE2ETest || (await shouldShowEthenaLaunchPromo()));
+        !isWelcomePending && (await shouldShowEthenaLaunchPromo());
 
       // Fetch the real auth status from storage and overwrite the initial
       // NOT_AUTHENTICATED default before any navigation decision is made.
