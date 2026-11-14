@@ -263,6 +263,16 @@ export enum AnalyticsEvent {
   // carries source (close | continue | back)
   REBRAND_ANNOUNCEMENT_DISMISSED = "rebrand.announcement_dismissed",
 
+  // Ethena launch promo (USDe and sUSDe)
+  // carries source (launch | banner)
+  ETHENA_LAUNCH_PROMO_VIEWED = "ethena_launch.promo_viewed",
+  // carries token (USDe | sUSDe)
+  ETHENA_LAUNCH_SWAP_TAPPED = "ethena_launch.swap_tapped",
+  // carries token (USDe | sUSDe)
+  ETHENA_LAUNCH_RECEIVE_TAPPED = "ethena_launch.receive_tapped",
+  ETHENA_LAUNCH_LEARN_MORE_TAPPED = "ethena_launch.learn_more_tapped",
+  ETHENA_LAUNCH_BANNER_DISMISSED = "ethena_launch.banner_dismissed",
+
   // Platform-only events (retained; renamed to the shared grammar)
   QR_SCAN_SUCCESS = "qr_scan.completed",
   // carries reason_code

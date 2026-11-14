@@ -13,6 +13,7 @@ import { DebugTrigger } from "components/debug/DebugTrigger";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { getNavigationHeaderHeight } from "components/layout/CustomNavigationHeader";
 import ConnectedApps from "components/screens/HomeScreen/ConnectedApps";
+import { EthenaLaunchBanner } from "components/screens/HomeScreen/EthenaLaunchBanner";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import Icon from "components/sds/Icon";
 import { Display, DISPLAY_SIZES } from "components/sds/Typography";
@@ -41,6 +42,7 @@ import { fsValue } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useEthenaLaunchBanner } from "hooks/useEthenaLaunchBanner";
 import { useFilteredCollectibles } from "hooks/useFilteredCollectibles";
 import { useFloatingTabBarClearance } from "hooks/useFloatingTabBarClearance";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -190,6 +192,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     // Prefetch the wallets-list USD totals in the background so the account
     // list opens with final values instead of loading placeholders.
     useWarmUpAccountsFiatTotals();
+
+    const { isVisible: isEthenaBannerVisible, dismiss: dismissEthenaBanner } =
+      useEthenaLaunchBanner();
+    const openEthenaLaunchPromo = useCallback(() => {
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.ETHENA_LAUNCH_SCREEN, {
+        source: "banner",
+      });
+    }, [navigation]);
 
     const navigateToBuyXLM = useCallback(() => {
       // Navigation analytics already tracked by useNavigationAnalytics
@@ -403,8 +413,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           </View>
 
           {/* 24pt from the total above and from the tabs below (Figma
-              662:9780); the tab row pads its own sides. */}
-          <View className="flex-row gap-[12px] w-full px-[16px] mt-[24px] mb-[24px]">
+              662:9780); the tab row pads its own sides. With the Ethena
+              banner up, 16pt to the banner and 8pt from it to the tabs. */}
+          <View
+            className={`flex-row gap-[12px] w-full px-[16px] mt-[24px] ${
+              isEthenaBannerVisible ? "mb-[16px]" : "mb-[24px]"
+            }`}
+          >
             <HomeActionButton
               Icon={Icon.Plus}
               title={t("home.buy")}
@@ -428,6 +443,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
               />
             )}
           </View>
+
+          {isEthenaBannerVisible && (
+            <View className="px-[16px] mb-[8px]">
+              <EthenaLaunchBanner
+                onPress={openEthenaLaunchPromo}
+                onDismiss={dismissEthenaBanner}
+              />
+            </View>
+          )}
 
           <TokensCollectiblesTabs
             // Should disable inner scrolling here since the whole Home screen is scrollable

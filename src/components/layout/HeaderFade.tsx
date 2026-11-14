@@ -1,3 +1,4 @@
+import { getThemeColors } from "config/colors";
 import { ColorScheme, DEFAULT_COLOR_SCHEME } from "config/theme";
 import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
@@ -42,17 +43,28 @@ const getHeaderFade = (scheme: ColorScheme) => {
   };
 };
 
+interface HeaderFadeProps {
+  /**
+   * Draws the fade in this scheme whatever the device's is, for a page that
+   * looks the same in both themes.
+   */
+  colorScheme?: ColorScheme;
+}
+
 /**
  * The background of a main tab's header (Home, History, Discover): the page
  * color, fading out over its last points so content scrolling up dissolves
  * under it. It fills its parent, so the header sets the height. Figma also
  * blurs the light one by 1pt, too little to see, so it's left out.
  */
-export const HeaderFade: React.FC = () => {
+export const HeaderFade: React.FC<HeaderFadeProps> = ({ colorScheme }) => {
   const { themeColors } = useColors();
-  const scheme = useColorScheme() ?? DEFAULT_COLOR_SCHEME;
+  const deviceScheme = useColorScheme() ?? DEFAULT_COLOR_SCHEME;
+  const scheme = colorScheme ?? deviceScheme;
   const { height, stops } = getHeaderFade(scheme);
-  const color = themeColors.base[0];
+  const color = colorScheme
+    ? getThemeColors(colorScheme).base[0]
+    : themeColors.base[0];
   const gradientId = `header-fade-${useId().replace(/:/g, "")}`;
 
   return (

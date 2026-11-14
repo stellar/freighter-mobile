@@ -10,6 +10,8 @@ import { WalletSetupOverlay } from "components/WalletSetupOverlay";
 import AddCollectibleScreen from "components/screens/AddCollectibleScreen";
 import { BiometricsOnboardingScreen } from "components/screens/BiometricsEnableScreen/BiometricsEnableScreen";
 import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScreen";
+import { EthenaLaunchScreen } from "components/screens/EthenaLaunchScreen";
+import { ETHENA_LAUNCH_FADE_MS } from "components/screens/EthenaLaunchScreen/ethenaLaunchConfig";
 import { ForceUpdateScreen } from "components/screens/ForceUpdateScreen/ForceUpdateScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import { MaintenanceScreen } from "components/screens/MaintenanceScreen/MaintenanceScreen";
@@ -36,6 +38,10 @@ import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletSetupOverlayStore } from "ducks/walletSetupOverlay";
 import { isDeviceJailbroken } from "helpers/deviceSecurity";
 import {
+  markEthenaLaunchPromoEligibility,
+  shouldShowEthenaLaunchPromo,
+} from "helpers/ethenaLaunchPromo";
+import {
   getStackBottomNavigateOptions,
   getScreenOptionsNoHeader,
   getScreenBottomNavigateOptions,
@@ -50,6 +56,10 @@ import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useAppUpdate } from "hooks/useAppUpdate";
 import { useBiometrics } from "hooks/useBiometrics";
+import {
+  canShowEthenaLaunchPromo,
+  useEthenaLaunchPromoAutoShow,
+} from "hooks/useEthenaLaunchPromoAutoShow";
 import { useMaintenanceMode } from "hooks/useMaintenanceMode";
 import {
   AuthNavigator,
@@ -107,6 +117,9 @@ export const RootNavigator = () => {
   const [showForceUpdate, setShowForceUpdate] = useState(false);
   const [isRebrandAnnouncementPending, setIsRebrandAnnouncementPending] =
     useState(false);
+  const [isEthenaLaunchPromoPending, setIsEthenaLaunchPromoPending] =
+    useState(false);
+  const [isSplashFinished, setIsSplashFinished] = useState(false);
   const [isJailbroken, setIsJailbroken] = useState(false);
   const { t } = useAppTranslation();
   const { checkBiometrics, isBiometricsEnabled } = useBiometrics();
@@ -150,12 +163,18 @@ export const RootNavigator = () => {
       // Settle the one-time rebrand announcement before any wallet can be created,
       // and read the answer now so the overlay can render without a flash.
       await markRebrandAnnouncementEligibility();
+      await markEthenaLaunchPromoEligibility();
       const isWelcomePending = await shouldShowRebrandAnnouncement();
+      // A launch that owes the rebrand announcement shows only that; the
+      // Ethena launch promo stays owed until the next launch.
+      const isPromoPending =
+        !isWelcomePending && (await shouldShowEthenaLaunchPromo());
 
       // Fetch the real auth status from storage and overwrite the initial
       // NOT_AUTHENTICATED default before any navigation decision is made.
       const freshAuthStatus = await getAuthStatus();
       setIsRebrandAnnouncementPending(isWelcomePending);
+      setIsEthenaLaunchPromoPending(isPromoPending);
       setIsAuthStatusReady(true);
 
       triggerFaceIdOnboarding(
@@ -189,10 +208,11 @@ export const RootNavigator = () => {
     }
   }, [showFullScreenUpdateNotice]);
 
-  // A wallet wipe settles the flag in storage; drop the in-memory answer too.
+  // A wallet wipe settles the flags in storage; drop the in-memory answers too.
   useEffect(() => {
     if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
       setIsRebrandAnnouncementPending(false);
+      setIsEthenaLaunchPromoPending(false);
     }
   }, [authStatus]);
 
@@ -222,6 +242,31 @@ export const RootNavigator = () => {
       setIsRebrandAnnouncementPending(false);
     }
   }, [showRebrandAnnouncement]);
+
+  // Open the one-time Ethena launch promo once the wallet is unlocked and Home
+  // is up and uncovered: after the splash (so its entrance plays on screen),
+  // and never under the lock overlay or over the wallet setup screen, the
+  // rebrand announcement, or the update and maintenance screens.
+  const handleSplashFinished = useCallback(() => setIsSplashFinished(true), []);
+  const showEthenaLaunchPromo = useCallback(() => {
+    setIsEthenaLaunchPromoPending(false);
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.ETHENA_LAUNCH_SCREEN, {
+      source: "launch",
+    });
+  }, [navigation]);
+  useEthenaLaunchPromoAutoShow({
+    isPending: isEthenaLaunchPromoPending,
+    canShow: canShowEthenaLaunchPromo({
+      authStatus,
+      isSoftLocked,
+      isSplashFinished,
+      isWalletSetupOverlayUp,
+      isRebrandAnnouncementUp: showRebrandAnnouncement,
+      isForceUpdateUp: showForceUpdate,
+      isMaintenanceUp: showMaintenanceScreen,
+    }),
+    show: showEthenaLaunchPromo,
+  });
 
   // Make the stack re-render when auth status changes
   const initialRouteName = useMemo(() => {
@@ -365,6 +410,17 @@ export const RootNavigator = () => {
                   )}
                 />
                 <RootStack.Screen
+                  name={ROOT_NAVIGATOR_ROUTES.ETHENA_LAUNCH_SCREEN}
+                  component={EthenaLaunchScreen}
+                  options={{
+                    headerShown: false,
+                    animation: "fade",
+                    // iOS only, set to its own default so the fade and the
+                    // promo's entrance, which is timed to it, stay in step.
+                    animationDuration: ETHENA_LAUNCH_FADE_MS,
+                  }}
+                />
+                <RootStack.Screen
                   name={AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN}
                   component={BiometricsOnboardingScreen}
                   options={getScreenBottomNavigateOptions("")}
@@ -403,5 +459,9 @@ export const RootNavigator = () => {
     );
   };
 
-  return <SplashOverlay ready={!initializing}>{renderContent()}</SplashOverlay>;
+  return (
+    <SplashOverlay ready={!initializing} onFinished={handleSplashFinished}>
+      {renderContent()}
+    </SplashOverlay>
+  );
 };

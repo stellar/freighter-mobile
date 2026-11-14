@@ -50,6 +50,7 @@ describe("Discover Analytics", () => {
         URL_BAR: "url_bar",
         TAB_OVERVIEW: "tab_overview",
         AUTOMATIC: "automatic",
+        ETHENA_LAUNCH_PROMO: "ethena_launch_promo",
       });
     });
   });

@@ -74,6 +74,21 @@ describe("SplashOverlay", () => {
     ).toBeNull();
   });
 
+  it("tells the app once the splash has finished", () => {
+    const onFinished = jest.fn();
+    render(
+      <SplashOverlay ready onFinished={onFinished}>
+        <Text>Wallet</Text>
+      </SplashOverlay>,
+    );
+    expect(onFinished).not.toHaveBeenCalled();
+
+    act(() => mockFinishSplash());
+    act(() => mockFinishSplash());
+
+    expect(onFinished).toHaveBeenCalledTimes(1);
+  });
+
   it("tells the splash when the app is ready", () => {
     renderOverlay(false);
     expect(mockSplashReady).toBe(false);

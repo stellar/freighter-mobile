@@ -20,6 +20,12 @@ export enum ScreenTransition {
 export type ScanReceiveTab = "scan" | "receive";
 
 /**
+ * How the Ethena launch promo was opened: on its own at launch, or from the
+ * Home banner.
+ */
+export type EthenaLaunchPromoSource = "launch" | "banner";
+
+/**
  * ROUTE NAMING CONVENTIONS FOR ANALYTICS
  *
  * ⚠️  IMPORTANT: Route names are automatically used for analytics tracking!
@@ -60,6 +66,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
   COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
   ADD_COLLECTIBLE_SCREEN: "AddCollectibleScreen",
+  ETHENA_LAUNCH_SCREEN: "EthenaLaunchScreen",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
@@ -143,7 +150,9 @@ export const ALL_ROUTES_OBJECT = [
 
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;
-  [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]:
+    | NavigatorScreenParams<MainTabStackParamList>
+    | undefined;
   [ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK]: NavigatorScreenParams<ManageTokensStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]:
@@ -171,6 +180,9 @@ export type RootStackParamList = {
     tokenId: string;
   };
   [ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.ETHENA_LAUNCH_SCREEN]: {
+    source: EthenaLaunchPromoSource;
+  };
 };
 
 export type AuthStackParamList = {
