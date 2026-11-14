@@ -1,7 +1,8 @@
 import { useIsFocused } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { act, fireEvent, screen } from "@testing-library/react-native";
 import { EthenaLaunchScreen } from "components/screens/EthenaLaunchScreen";
+import { EthenaLaunchHero } from "components/screens/EthenaLaunchScreen/EthenaLaunchHero";
 import {
   EthenaLaunchPromoSource,
   ROOT_NAVIGATOR_ROUTES,
@@ -9,11 +10,12 @@ import {
 } from "config/routes";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { pxValue } from "helpers/dimensions";
 import { markEthenaLaunchPromoSeen } from "helpers/ethenaLaunchPromo";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import * as RN from "react-native";
-import { StatusBar, StyleSheet } from "react-native";
+import { Dimensions, ScrollView, StatusBar, StyleSheet } from "react-native";
 import { analytics } from "services/analytics";
 
 jest.mock("@react-native-async-storage/async-storage");
@@ -271,5 +273,67 @@ describe("EthenaLaunchScreen", () => {
     expect(styleOf("ethena-launch-receive-usde")).toMatchObject({
       borderColor: "#343434",
     });
+  });
+
+  // No fake timers below: the screen mounts a StatusBar (see the burst test).
+  it("starts the entrance when the transition in ends", () => {
+    const navigation = renderScreen();
+    const isPlaying = () =>
+      screen.UNSAFE_getByType(EthenaLaunchHero).props.isEntrancePlaying;
+    const [event, onTransitionEnd] = navigation.addListener.mock
+      .calls[0] as unknown as [
+      string,
+      (transition: { data: { closing: boolean } }) => void,
+    ];
+
+    expect(event).toBe("transitionEnd");
+    expect(isPlaying()).toBe(false);
+
+    act(() => onTransitionEnd({ data: { closing: true } }));
+    expect(isPlaying()).toBe(false);
+
+    act(() => onTransitionEnd({ data: { closing: false } }));
+    expect(isPlaying()).toBe(true);
+  });
+
+  it("scrolls the tokens into view when the cue is tapped", () => {
+    renderScreen();
+    const layout = (testID: string, y: number, height: number) =>
+      fireEvent(screen.getByTestId(testID), "layout", {
+        nativeEvent: { layout: { x: 0, y, width: 402, height } },
+      });
+
+    layout("ethena-launch-bar", 0, 104);
+    layout("ethena-launch-cue", 760, 50);
+    fireEvent.press(screen.getByTestId("ethena-launch-cue"));
+
+    expect(
+      screen.UNSAFE_getByType(ScrollView).instance.scrollTo,
+    ).toHaveBeenCalledWith({ y: 760 - 104 - pxValue(60), animated: true });
+  });
+
+  it("shows the bar's fade only once the page has scrolled", () => {
+    renderScreen();
+    const scrollTo = (y: number) =>
+      fireEvent.scroll(screen.getByTestId("ethena-launch-scroll"), {
+        nativeEvent: { contentOffset: { x: 0, y } },
+      });
+
+    expect(screen.queryByTestId("header-fade")).toBeNull();
+
+    scrollTo(10);
+    expect(screen.getByTestId("header-fade")).toBeTruthy();
+
+    scrollTo(0);
+    expect(screen.queryByTestId("header-fade")).toBeNull();
+  });
+
+  it("keeps the hero at least one screen tall, with the cue in normal flow", () => {
+    renderScreen();
+
+    expect(styleOf("ethena-launch-hero")).toMatchObject({
+      minHeight: Dimensions.get("window").height,
+    });
+    expect(styleOf("ethena-launch-cue").position).not.toBe("absolute");
   });
 });

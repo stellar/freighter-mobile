@@ -1,6 +1,7 @@
 import { images } from "assets/images";
 import EthenaLaunchWave from "assets/images/ethena-launch-wave.svg";
 import { ETHENA_LAUNCH_COLORS } from "components/screens/EthenaLaunchScreen/ethenaLaunchConfig";
+import { useEthenaLaunchEntrance } from "components/screens/EthenaLaunchScreen/useEthenaLaunchEntrance";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { DEFAULT_PADDING } from "config/constants";
@@ -15,6 +16,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import Animated from "react-native-reanimated";
 
 // The wave is drawn wider than the page and clipped to its box; the box sits
 // 23pt left of center so the strokes sweep in from the left edge.
@@ -85,12 +87,17 @@ const styles = StyleSheet.create({
   },
   cue: {
     alignItems: "center",
-    gap: pxValue(8),
     marginBottom: pxValue(64),
+  },
+  cueButton: {
+    alignItems: "center",
+    gap: pxValue(8),
   },
 });
 
 interface EthenaLaunchHeroProps {
+  /** Starts the entrance; the parts wait at their start frame until then. */
+  isEntrancePlaying: boolean;
   onCuePress: () => void;
   /** The cue's y within the hero, which starts the scroll content. */
   onCueLayout: (y: number) => void;
@@ -101,16 +108,19 @@ interface EthenaLaunchHeroProps {
  * the scroll cue at the bottom. At least one screen tall.
  */
 export const EthenaLaunchHero: React.FC<EthenaLaunchHeroProps> = ({
+  isEntrancePlaying,
   onCuePress,
   onCueLayout,
 }) => {
   const { t } = useAppTranslation();
   const { height: windowHeight } = useWindowDimensions();
+  const { waveStyle, coinsStyle, introStyle, cueStyle } =
+    useEthenaLaunchEntrance(isEntrancePlaying);
 
   return (
     <View testID="ethena-launch-hero" style={{ minHeight: windowHeight }}>
-      <View
-        style={styles.waveBox}
+      <Animated.View
+        style={[styles.waveBox, waveStyle]}
         pointerEvents="none"
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
@@ -120,10 +130,10 @@ export const EthenaLaunchHero: React.FC<EthenaLaunchHeroProps> = ({
           height={pxValue(WAVE_ART.height)}
           style={styles.waveArt}
         />
-      </View>
+      </Animated.View>
 
-      <View
-        style={styles.coinsRow}
+      <Animated.View
+        style={[styles.coinsRow, coinsStyle]}
         pointerEvents="none"
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
@@ -136,9 +146,9 @@ export const EthenaLaunchHero: React.FC<EthenaLaunchHeroProps> = ({
           />
           <Image source={images.ethenaLaunchCoinDark} style={styles.darkCoin} />
         </View>
-      </View>
+      </Animated.View>
 
-      <View style={styles.intro}>
+      <Animated.View style={[styles.intro, introStyle]}>
         <Display
           sm
           medium
@@ -151,27 +161,33 @@ export const EthenaLaunchHero: React.FC<EthenaLaunchHeroProps> = ({
         <Text md color={ETHENA_LAUNCH_COLORS.textSecondary} textAlign="center">
           {t("ethenaLaunchScreen.subtitle")}
         </Text>
-      </View>
+      </Animated.View>
 
       <View style={styles.spacer} />
 
-      <TouchableOpacity
-        testID="ethena-launch-cue"
-        style={styles.cue}
-        onPress={onCuePress}
+      {/* The fade sits on a wrapper: TouchableOpacity animates its own
+          opacity on press and would override it. */}
+      <Animated.View
+        style={[styles.cue, cueStyle]}
         onLayout={(event: LayoutChangeEvent) =>
           onCueLayout(event.nativeEvent.layout.y)
         }
-        accessibilityRole="button"
       >
-        <Text md medium color={ETHENA_LAUNCH_COLORS.textSecondary}>
-          {t("ethenaLaunchScreen.scrollCue")}
-        </Text>
-        <Icon.ChevronDown
-          size={pxValue(CUE_ICON_SIZE)}
-          color={ETHENA_LAUNCH_COLORS.icon}
-        />
-      </TouchableOpacity>
+        <TouchableOpacity
+          testID="ethena-launch-cue"
+          style={styles.cueButton}
+          onPress={onCuePress}
+          accessibilityRole="button"
+        >
+          <Text md medium color={ETHENA_LAUNCH_COLORS.textSecondary}>
+            {t("ethenaLaunchScreen.scrollCue")}
+          </Text>
+          <Icon.ChevronDown
+            size={pxValue(CUE_ICON_SIZE)}
+            color={ETHENA_LAUNCH_COLORS.icon}
+          />
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 };

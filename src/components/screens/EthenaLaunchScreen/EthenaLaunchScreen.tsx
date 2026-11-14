@@ -2,6 +2,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { NavigationHeaderBar } from "components/layout/CustomNavigationHeader";
+import { HeaderFade } from "components/layout/HeaderFade";
 import { EthenaLaunchHero } from "components/screens/EthenaLaunchScreen/EthenaLaunchHero";
 import { EthenaTokenSection } from "components/screens/EthenaLaunchScreen/EthenaTokenSection";
 import {
@@ -10,6 +11,7 @@ import {
   ETHENA_LAUNCH_TOKENS,
   EthenaLaunchToken,
 } from "components/screens/EthenaLaunchScreen/ethenaLaunchConfig";
+import { getScrollCueTargetY } from "components/screens/EthenaLaunchScreen/scrollCue";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
@@ -24,8 +26,11 @@ import { pxValue } from "helpers/dimensions";
 import { markEthenaLaunchPromoSeen } from "helpers/ethenaLaunchPromo";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  LayoutChangeEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -89,12 +94,42 @@ export const EthenaLaunchScreen: React.FC<EthenaLaunchScreenProps> = ({
     (state) => state.setShowTabOverview,
   );
   const lastActionAt = useRef(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const cueY = useRef(0);
+  const barBottom = useRef(0);
+  const [isEntrancePlaying, setIsEntrancePlaying] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const { source } = route.params;
 
   useEffect(() => {
     markEthenaLaunchPromoSeen();
     analytics.track(AnalyticsEvent.ETHENA_LAUNCH_PROMO_VIEWED, { source });
   }, [source]);
+
+  // The entrance waits for the fade-in to finish, so it plays on screen.
+  useEffect(
+    () =>
+      navigation.addListener("transitionEnd", (event) => {
+        if (!event.data.closing) {
+          setIsEntrancePlaying(true);
+        }
+      }),
+    [navigation],
+  );
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      setIsScrolled(event.nativeEvent.contentOffset.y > 0);
+    },
+    [],
+  );
+
+  const handleCuePress = useCallback(() => {
+    scrollRef.current?.scrollTo({
+      y: getScrollCueTargetY(cueY.current, barBottom.current),
+      animated: true,
+    });
+  }, []);
 
   const runOnce = useCallback((action: () => void) => {
     const now = Date.now();
@@ -166,8 +201,19 @@ export const EthenaLaunchScreen: React.FC<EthenaLaunchScreenProps> = ({
           screen pushed over it (Receive) gets the theme's status bar back. */}
       {isFocused && <StatusBar barStyle="light-content" />}
 
-      <ScrollView testID="ethena-launch-scroll">
-        <EthenaLaunchHero onCuePress={() => {}} onCueLayout={() => {}} />
+      <ScrollView
+        ref={scrollRef}
+        testID="ethena-launch-scroll"
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
+        <EthenaLaunchHero
+          isEntrancePlaying={isEntrancePlaying}
+          onCuePress={handleCuePress}
+          onCueLayout={(y) => {
+            cueY.current = y;
+          }}
+        />
 
         <View style={{ paddingBottom: pxValue(32) + insets.bottom }}>
           {ETHENA_LAUNCH_TOKENS.map((token) => (
@@ -199,7 +245,15 @@ export const EthenaLaunchScreen: React.FC<EthenaLaunchScreenProps> = ({
         </View>
       </ScrollView>
 
-      <View style={styles.bar}>
+      <View
+        testID="ethena-launch-bar"
+        style={styles.bar}
+        onLayout={(event: LayoutChangeEvent) => {
+          barBottom.current = event.nativeEvent.layout.height;
+        }}
+      >
+        {/* Home's header fade, once content scrolls up under the bar. */}
+        {isScrolled && <HeaderFade colorScheme="dark" />}
         <NavigationHeaderBar
           isTransparent
           right={
