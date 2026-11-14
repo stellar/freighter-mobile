@@ -290,6 +290,11 @@
     "receive": "Receive {{code}}",
     "learnMore": "Learn more about Ethena"
   },
+  "ethenaLaunchBanner": {
+    "title": "Meet Ethena on Stellar",
+    "subtitle": "USDe and sUSDe are now available.",
+    "dismissAccessibilityLabel": "Dismiss banner"
+  },
   "lockScreen": {
     "title": "Welcome back",
     "description": "Enter password to unlock Varial",

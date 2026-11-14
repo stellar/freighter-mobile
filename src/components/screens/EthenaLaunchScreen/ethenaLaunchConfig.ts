@@ -17,6 +17,18 @@ export const ETHENA_LAUNCH_COLORS = {
   icon: PALETTE.dark.gray["09"],
 } as const;
 
+/**
+ * The Home banner that opens the promo looks the same in both themes too. Dark
+ * mode adds an outline so the card stands out on the black page.
+ */
+export const ETHENA_LAUNCH_BANNER_COLORS = {
+  background: "#070908",
+  title: PALETTE.dark.base["01"],
+  subtitle: PALETTE.dark.gray[10],
+  dismiss: PALETTE.dark.gray[10],
+  darkModeOutline: PALETTE.dark.gray["04"],
+} as const;
+
 export interface EthenaLaunchToken {
   id: "usde" | "susde";
   code: "USDe" | "sUSDe";
