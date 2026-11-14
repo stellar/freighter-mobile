@@ -55,7 +55,10 @@ import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useAppUpdate } from "hooks/useAppUpdate";
 import { useBiometrics } from "hooks/useBiometrics";
-import { useEthenaLaunchPromoAutoShow } from "hooks/useEthenaLaunchPromoAutoShow";
+import {
+  canShowEthenaLaunchPromo,
+  useEthenaLaunchPromoAutoShow,
+} from "hooks/useEthenaLaunchPromoAutoShow";
 import { useMaintenanceMode } from "hooks/useMaintenanceMode";
 import {
   AuthNavigator,
@@ -239,9 +242,10 @@ export const RootNavigator = () => {
     }
   }, [showRebrandAnnouncement]);
 
-  // Open the one-time Ethena launch promo once Home is up and uncovered: after
-  // the splash (so its entrance plays on screen), and never over the wallet
-  // setup screen or the rebrand announcement.
+  // Open the one-time Ethena launch promo once the wallet is unlocked and Home
+  // is up and uncovered: after the splash (so its entrance plays on screen),
+  // and never under the lock overlay or over the wallet setup screen, the
+  // rebrand announcement, or the update and maintenance screens.
   const handleSplashFinished = useCallback(() => setIsSplashFinished(true), []);
   const showEthenaLaunchPromo = useCallback(() => {
     setIsEthenaLaunchPromoPending(false);
@@ -251,11 +255,15 @@ export const RootNavigator = () => {
   }, [navigation]);
   useEthenaLaunchPromoAutoShow({
     isPending: isEthenaLaunchPromoPending,
-    canShow:
-      showAuthenticatedStack &&
-      isSplashFinished &&
-      !isWalletSetupOverlayUp &&
-      !showRebrandAnnouncement,
+    canShow: canShowEthenaLaunchPromo({
+      authStatus,
+      isSoftLocked,
+      isSplashFinished,
+      isWalletSetupOverlayUp,
+      isRebrandAnnouncementUp: showRebrandAnnouncement,
+      isForceUpdateUp: showForceUpdate,
+      isMaintenanceUp: showMaintenanceScreen,
+    }),
     show: showEthenaLaunchPromo,
   });
 

@@ -1,4 +1,39 @@
+import { AUTH_STATUS, AuthStatus } from "config/types";
 import { useEffect, useRef } from "react";
+
+/** What RootNavigator knows about the screen when deciding on the promo. */
+export interface EthenaLaunchPromoGate {
+  authStatus: AuthStatus;
+  /** The lock overlay covers a kept authenticated tree. */
+  isSoftLocked: boolean;
+  isSplashFinished: boolean;
+  isWalletSetupOverlayUp: boolean;
+  isRebrandAnnouncementUp: boolean;
+  /** These replace the navigator entirely while they're up. */
+  isForceUpdateUp: boolean;
+  isMaintenanceUp: boolean;
+}
+
+/**
+ * Whether the promo can open now: the wallet is unlocked and Home is on
+ * screen with nothing over it, so its entrance plays where it's seen.
+ */
+export const canShowEthenaLaunchPromo = ({
+  authStatus,
+  isSoftLocked,
+  isSplashFinished,
+  isWalletSetupOverlayUp,
+  isRebrandAnnouncementUp,
+  isForceUpdateUp,
+  isMaintenanceUp,
+}: EthenaLaunchPromoGate): boolean =>
+  authStatus === AUTH_STATUS.AUTHENTICATED &&
+  !isSoftLocked &&
+  isSplashFinished &&
+  !isWalletSetupOverlayUp &&
+  !isRebrandAnnouncementUp &&
+  !isForceUpdateUp &&
+  !isMaintenanceUp;
 
 interface UseEthenaLaunchPromoAutoShowParams {
   /** The promo is owed this launch (and the rebrand announcement isn't). */
