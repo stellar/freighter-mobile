@@ -336,4 +336,15 @@ describe("EthenaLaunchScreen", () => {
     });
     expect(styleOf("ethena-launch-cue").position).not.toBe("absolute");
   });
+
+  it("keeps the cue clear of the intro on short screens", () => {
+    renderScreen();
+
+    // The space between them grows on tall screens and never drops below
+    // the app's default spacing on short ones.
+    expect(styleOf("ethena-launch-cue-spacer")).toMatchObject({
+      flex: 1,
+      minHeight: pxValue(24),
+    });
+  });
 });

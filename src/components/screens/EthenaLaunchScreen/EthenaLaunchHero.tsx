@@ -81,9 +81,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   // Pushes the cue to the bottom of the first screen when there's room, and
-  // lets it follow the intro instead of overlapping it when there isn't.
+  // lets it follow the intro instead of overlapping it when there isn't,
+  // still a default gap away on the shortest screens.
   spacer: {
     flex: 1,
+    minHeight: pxValue(DEFAULT_PADDING),
   },
   cue: {
     alignItems: "center",
@@ -163,7 +165,7 @@ export const EthenaLaunchHero: React.FC<EthenaLaunchHeroProps> = ({
         </Text>
       </Animated.View>
 
-      <View style={styles.spacer} />
+      <View testID="ethena-launch-cue-spacer" style={styles.spacer} />
 
       {/* The fade sits on a wrapper: TouchableOpacity animates its own
           opacity on press and would override it. */}
