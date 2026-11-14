@@ -12,9 +12,12 @@ jest.mock("react-native-reanimated", () => ({
   useReducedMotion: () => mockReduceMotion(),
 }));
 
-const Harness = ({ isPlaying }: { isPlaying: boolean }) => {
+// The promo's route fades in over 150ms; the entrance starts as it ends.
+const FADE_IN = 150;
+
+const Harness = () => {
   const { waveStyle, coinsStyle, introStyle, cueStyle } =
-    useEthenaLaunchEntrance(isPlaying);
+    useEthenaLaunchEntrance();
 
   return (
     <>
@@ -41,11 +44,6 @@ const advance = (ms: number) =>
     jest.advanceTimersByTime(ms);
   });
 
-const play = () => {
-  const { rerender } = render(<Harness isPlaying={false} />);
-  rerender(<Harness isPlaying />);
-};
-
 describe("useEthenaLaunchEntrance", () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -56,9 +54,9 @@ describe("useEthenaLaunchEntrance", () => {
     jest.useRealTimers();
   });
 
-  it("holds every part at its start frame until it plays", () => {
-    render(<Harness isPlaying={false} />);
-    advance(1000);
+  it("holds every part at its start frame while the promo fades in", () => {
+    render(<Harness />);
+    advance(FADE_IN - 10);
 
     expect(opacityOf("wave")).toBe(0);
     expect(transformOf("wave").translateX).toBeCloseTo(-pxValue(20));
@@ -68,9 +66,9 @@ describe("useEthenaLaunchEntrance", () => {
     expect(opacityOf("cue")).toBe(0);
   });
 
-  it("ends with every part in place after a second", () => {
-    play();
-    advance(1000);
+  it("plays on its own, with no event to wait for, and ends a second after the fade-in", () => {
+    render(<Harness />);
+    advance(FADE_IN + 1000);
 
     expect(opacityOf("wave")).toBe(1);
     expect(transformOf("wave").translateX).toBeCloseTo(0);
@@ -80,9 +78,9 @@ describe("useEthenaLaunchEntrance", () => {
     expect(opacityOf("cue")).toBe(1);
   });
 
-  it("moves the art in over its first 800ms", () => {
-    play();
-    advance(400);
+  it("moves the art in over the 800ms after the fade-in", () => {
+    render(<Harness />);
+    advance(FADE_IN + 400);
 
     const waveShift = transformOf("wave").translateX;
     const coinsRise = transformOf("coins").translateY;
@@ -98,14 +96,14 @@ describe("useEthenaLaunchEntrance", () => {
     expect(opacityOf("coins")).toBe(1);
   });
 
-  it("fades the intro in from 200ms and the cue from 400ms", () => {
-    play();
+  it("fades the intro in from 200ms and the cue from 400ms after the fade-in", () => {
+    render(<Harness />);
 
-    advance(150);
+    advance(FADE_IN + 150);
     expect(opacityOf("intro")).toBe(0);
     expect(opacityOf("cue")).toBe(0);
 
-    advance(200); // 350ms
+    advance(200); // 350ms into the entrance
     expect(opacityOf("intro")).toBeGreaterThan(0);
     expect(opacityOf("intro")).toBeLessThan(1);
     expect(opacityOf("cue")).toBe(0);
@@ -122,7 +120,7 @@ describe("useEthenaLaunchEntrance", () => {
   it("shows the end frame at once under Reduce Motion", () => {
     mockReduceMotion.mockReturnValue(true);
 
-    render(<Harness isPlaying={false} />);
+    render(<Harness />);
 
     expect(opacityOf("wave")).toBe(1);
     expect(transformOf("wave").translateX).toBeCloseTo(0);

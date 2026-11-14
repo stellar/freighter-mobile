@@ -1,5 +1,6 @@
+import { ETHENA_LAUNCH_FADE_MS } from "components/screens/EthenaLaunchScreen/ethenaLaunchConfig";
 import { pxValue } from "helpers/dimensions";
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import {
   Easing,
   useAnimatedStyle,
@@ -20,11 +21,12 @@ const WAVE_SHIFT = pxValue(20);
 const COINS_RISE = pxValue(40);
 
 /**
- * Animated styles for the promo's entrance. Every part holds its start frame
- * until `isPlaying` turns true, then the timeline plays once. Under the
+ * Animated styles for the promo's entrance. The timeline is handed to the UI
+ * thread as the promo mounts and starts as its fade-in ends, so a busy JS
+ * thread (Home loading right after an unlock) can't hold it back. Under the
  * system's Reduce Motion setting every part starts at its end frame.
  */
-export const useEthenaLaunchEntrance = (isPlaying: boolean) => {
+export const useEthenaLaunchEntrance = () => {
   const isReduceMotionEnabled = useReducedMotion();
   const initial = isReduceMotionEnabled ? 1 : 0;
   const artMove = useSharedValue(initial);
@@ -33,23 +35,25 @@ export const useEthenaLaunchEntrance = (isPlaying: boolean) => {
   const cueFade = useSharedValue(initial);
   const hasPlayed = useRef(isReduceMotionEnabled);
 
-  useEffect(() => {
-    if (!isPlaying || hasPlayed.current) {
+  // A layout effect runs as the promo commits, before any JS work queued
+  // behind it.
+  useLayoutEffect(() => {
+    if (hasPlayed.current) {
       return;
     }
     hasPlayed.current = true;
 
-    artMove.value = withTiming(1, { duration: ART_DURATION, easing: MOVE });
-    artFade.value = withTiming(1, { duration: ART_DURATION, easing: FADE });
-    introFade.value = withDelay(
-      INTRO.delay,
-      withTiming(1, { duration: INTRO.duration, easing: FADE }),
-    );
-    cueFade.value = withDelay(
-      CUE.delay,
-      withTiming(1, { duration: CUE.duration, easing: FADE }),
-    );
-  }, [isPlaying, artMove, artFade, introFade, cueFade]);
+    const after = (delay: number, duration: number, easing: typeof MOVE) =>
+      withDelay(
+        ETHENA_LAUNCH_FADE_MS + delay,
+        withTiming(1, { duration, easing }),
+      );
+
+    artMove.value = after(0, ART_DURATION, MOVE);
+    artFade.value = after(0, ART_DURATION, FADE);
+    introFade.value = after(INTRO.delay, INTRO.duration, FADE);
+    cueFade.value = after(CUE.delay, CUE.duration, FADE);
+  }, [artMove, artFade, introFade, cueFade]);
 
   const waveStyle = useAnimatedStyle(() => ({
     opacity: artFade.value,

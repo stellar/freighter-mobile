@@ -97,7 +97,6 @@ export const EthenaLaunchScreen: React.FC<EthenaLaunchScreenProps> = ({
   const scrollRef = useRef<ScrollView>(null);
   const cueY = useRef(0);
   const barBottom = useRef(0);
-  const [isEntrancePlaying, setIsEntrancePlaying] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { source } = route.params;
 
@@ -105,17 +104,6 @@ export const EthenaLaunchScreen: React.FC<EthenaLaunchScreenProps> = ({
     markEthenaLaunchPromoSeen();
     analytics.track(AnalyticsEvent.ETHENA_LAUNCH_PROMO_VIEWED, { source });
   }, [source]);
-
-  // The entrance waits for the fade-in to finish, so it plays on screen.
-  useEffect(
-    () =>
-      navigation.addListener("transitionEnd", (event) => {
-        if (!event.data.closing) {
-          setIsEntrancePlaying(true);
-        }
-      }),
-    [navigation],
-  );
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -208,7 +196,6 @@ export const EthenaLaunchScreen: React.FC<EthenaLaunchScreenProps> = ({
         scrollEventThrottle={16}
       >
         <EthenaLaunchHero
-          isEntrancePlaying={isEntrancePlaying}
           onCuePress={handleCuePress}
           onCueLayout={(y) => {
             cueY.current = y;

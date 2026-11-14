@@ -7,6 +7,12 @@ import { SvgProps } from "react-native-svg";
 export const ETHENA_DOCS_URL = "https://docs.ethena.fi/";
 
 /**
+ * How long the promo's route fades in and out, in ms. Android's native fade
+ * takes this long, and iOS is set to match. The entrance starts as it ends.
+ */
+export const ETHENA_LAUNCH_FADE_MS = 150;
+
+/**
  * The promo is the same black page with light text in both themes, so its
  * colors come from the dark palette whatever the device's scheme is.
  */

@@ -1,8 +1,7 @@
 import { useIsFocused } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { act, fireEvent, screen } from "@testing-library/react-native";
+import { fireEvent, screen } from "@testing-library/react-native";
 import { EthenaLaunchScreen } from "components/screens/EthenaLaunchScreen";
-import { EthenaLaunchHero } from "components/screens/EthenaLaunchScreen/EthenaLaunchHero";
 import {
   EthenaLaunchPromoSource,
   ROOT_NAVIGATOR_ROUTES,
@@ -276,24 +275,21 @@ describe("EthenaLaunchScreen", () => {
   });
 
   // No fake timers below: the screen mounts a StatusBar (see the burst test).
-  it("starts the entrance when the transition in ends", () => {
-    const navigation = renderScreen();
-    const isPlaying = () =>
-      screen.UNSAFE_getByType(EthenaLaunchHero).props.isEntrancePlaying;
-    const [event, onTransitionEnd] = navigation.addListener.mock
-      .calls[0] as unknown as [
-      string,
-      (transition: { data: { closing: boolean } }) => void,
-    ];
+  it("draws the wave from a bitmap that fills its box", () => {
+    renderScreen();
 
-    expect(event).toBe("transitionEnd");
-    expect(isPlaying()).toBe(false);
-
-    act(() => onTransitionEnd({ data: { closing: true } }));
-    expect(isPlaying()).toBe(false);
-
-    act(() => onTransitionEnd({ data: { closing: false } }));
-    expect(isPlaying()).toBe(true);
+    // A bitmap, since drawing the wave's ~200 gradient strokes as SVG took
+    // over a second on 3x screens. Sized explicitly: an Image otherwise keeps
+    // the asset's own size.
+    // Decorative, so hidden from screen readers.
+    const wave = screen.getByTestId("ethena-launch-wave", {
+      includeHiddenElements: true,
+    });
+    expect(wave.type).toBe("Image");
+    expect(StyleSheet.flatten(wave.props.style)).toMatchObject({
+      width: "100%",
+      height: "100%",
+    });
   });
 
   it("scrolls the tokens into view when the cue is tapped", () => {

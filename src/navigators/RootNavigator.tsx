@@ -11,6 +11,7 @@ import AddCollectibleScreen from "components/screens/AddCollectibleScreen";
 import { BiometricsOnboardingScreen } from "components/screens/BiometricsEnableScreen/BiometricsEnableScreen";
 import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScreen";
 import { EthenaLaunchScreen } from "components/screens/EthenaLaunchScreen";
+import { ETHENA_LAUNCH_FADE_MS } from "components/screens/EthenaLaunchScreen/ethenaLaunchConfig";
 import { ForceUpdateScreen } from "components/screens/ForceUpdateScreen/ForceUpdateScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import { MaintenanceScreen } from "components/screens/MaintenanceScreen/MaintenanceScreen";
@@ -418,9 +419,9 @@ export const RootNavigator = () => {
                   options={{
                     headerShown: false,
                     animation: "fade",
-                    // iOS fades over 500ms by default; 150ms matches Android's
-                    // fade (iOS only, Android ignores it).
-                    animationDuration: 150,
+                    // iOS only: its fade defaults to 500ms; this matches
+                    // Android's. The promo's entrance is timed to it.
+                    animationDuration: ETHENA_LAUNCH_FADE_MS,
                   }}
                 />
                 <RootStack.Screen

@@ -1,5 +1,4 @@
 import { images } from "assets/images";
-import EthenaLaunchWave from "assets/images/ethena-launch-wave.svg";
 import { ETHENA_LAUNCH_COLORS } from "components/screens/EthenaLaunchScreen/ethenaLaunchConfig";
 import { useEthenaLaunchEntrance } from "components/screens/EthenaLaunchScreen/useEthenaLaunchEntrance";
 import Icon from "components/sds/Icon";
@@ -18,15 +17,10 @@ import {
 } from "react-native";
 import Animated from "react-native-reanimated";
 
-// The wave is drawn wider than the page and clipped to its box; the box sits
-// 23pt left of center so the strokes sweep in from the left edge.
+// The wave's box is wider than the page and sits 23pt left of center, so the
+// strokes sweep in from the left edge. Its bitmap fills the box: drawn as SVG,
+// its ~200 gradient strokes took over a second to appear on 3x screens.
 const WAVE_BOX = { width: 630, height: 355, top: 155, centerOffset: -23 };
-const WAVE_ART = {
-  width: 927.235,
-  height: 561.721,
-  left: -193.03,
-  top: -96.35,
-};
 const COINS_TOP = 180;
 const COINS_BOX = { width: 306, height: 299 };
 // The light coin is drawn first so the dark one overlaps it.
@@ -42,12 +36,11 @@ const styles = StyleSheet.create({
     marginLeft: pxValue(WAVE_BOX.centerOffset - WAVE_BOX.width / 2),
     width: pxValue(WAVE_BOX.width),
     height: pxValue(WAVE_BOX.height),
-    overflow: "hidden",
   },
+  // Explicit sizes: an Image otherwise keeps the asset's own size.
   waveArt: {
-    position: "absolute",
-    left: pxValue(WAVE_ART.left),
-    top: pxValue(WAVE_ART.top),
+    width: "100%",
+    height: "100%",
   },
   coinsRow: {
     paddingTop: pxValue(COINS_TOP),
@@ -98,8 +91,6 @@ const styles = StyleSheet.create({
 });
 
 interface EthenaLaunchHeroProps {
-  /** Starts the entrance; the parts wait at their start frame until then. */
-  isEntrancePlaying: boolean;
   onCuePress: () => void;
   /** The cue's y within the hero, which starts the scroll content. */
   onCueLayout: (y: number) => void;
@@ -110,14 +101,13 @@ interface EthenaLaunchHeroProps {
  * the scroll cue at the bottom. At least one screen tall.
  */
 export const EthenaLaunchHero: React.FC<EthenaLaunchHeroProps> = ({
-  isEntrancePlaying,
   onCuePress,
   onCueLayout,
 }) => {
   const { t } = useAppTranslation();
   const { height: windowHeight } = useWindowDimensions();
   const { waveStyle, coinsStyle, introStyle, cueStyle } =
-    useEthenaLaunchEntrance(isEntrancePlaying);
+    useEthenaLaunchEntrance();
 
   return (
     <View testID="ethena-launch-hero" style={{ minHeight: windowHeight }}>
@@ -127,9 +117,9 @@ export const EthenaLaunchHero: React.FC<EthenaLaunchHeroProps> = ({
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <EthenaLaunchWave
-          width={pxValue(WAVE_ART.width)}
-          height={pxValue(WAVE_ART.height)}
+        <Image
+          testID="ethena-launch-wave"
+          source={images.ethenaLaunchWave}
           style={styles.waveArt}
         />
       </Animated.View>
