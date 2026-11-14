@@ -30,12 +30,14 @@ const styles = StyleSheet.create({
     borderRadius: pxValue(CARD_RADIUS),
     overflow: "hidden",
   },
+  // An explicit height: Image would otherwise keep the asset's own height,
+  // which falls short of the card wherever its text renders taller.
   glow: {
     position: "absolute",
     top: 0,
     right: 0,
-    bottom: 0,
     width: pxValue(GLOW_WIDTH),
+    height: "100%",
   },
   content: {
     padding: pxValue(CARD_PADDING),
@@ -80,6 +82,7 @@ export const EthenaLaunchBanner: React.FC<EthenaLaunchBannerProps> = ({
   return (
     <View testID="ethena-launch-banner" style={styles.card}>
       <Image
+        testID="ethena-launch-banner-glow"
         source={images.ethenaLaunchBannerGlow}
         style={styles.glow}
         resizeMode="stretch"

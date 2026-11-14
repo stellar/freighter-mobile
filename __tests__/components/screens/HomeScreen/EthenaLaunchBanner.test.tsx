@@ -88,6 +88,19 @@ describe("EthenaLaunchBanner", () => {
     },
   );
 
+  it("stretches the glow over the card's full height", () => {
+    renderBanner();
+
+    // An Image sizes a bundled asset to the asset's own height (78pt here)
+    // unless its style sets one, which left a strip under the glow on cards
+    // taller than that, as on Android.
+    expect(styleOf("ethena-launch-banner-glow")).toMatchObject({
+      top: 0,
+      right: 0,
+      height: "100%",
+    });
+  });
+
   it("keeps its text clear of the ✕", () => {
     renderBanner();
 
