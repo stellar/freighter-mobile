@@ -10,6 +10,7 @@ import { WalletSetupOverlay } from "components/WalletSetupOverlay";
 import AddCollectibleScreen from "components/screens/AddCollectibleScreen";
 import { BiometricsOnboardingScreen } from "components/screens/BiometricsEnableScreen/BiometricsEnableScreen";
 import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScreen";
+import { EthenaLaunchScreen } from "components/screens/EthenaLaunchScreen";
 import { ForceUpdateScreen } from "components/screens/ForceUpdateScreen/ForceUpdateScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import { MaintenanceScreen } from "components/screens/MaintenanceScreen/MaintenanceScreen";
@@ -363,6 +364,11 @@ export const RootNavigator = () => {
                   options={getScreenBottomNavigateOptions(
                     t("addCollectibleScreen.title"),
                   )}
+                />
+                <RootStack.Screen
+                  name={ROOT_NAVIGATOR_ROUTES.ETHENA_LAUNCH_SCREEN}
+                  component={EthenaLaunchScreen}
+                  options={{ headerShown: false, animation: "fade" }}
                 />
                 <RootStack.Screen
                   name={AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN}

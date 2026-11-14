@@ -32,6 +32,7 @@ export const DISCOVER_ANALYTICS_SOURCE = {
   URL_BAR: "url_bar",
   TAB_OVERVIEW: "tab_overview",
   AUTOMATIC: "automatic",
+  ETHENA_LAUNCH_PROMO: "ethena_launch_promo",
 } as const;
 
 export type DiscoverAnalyticsSource =
