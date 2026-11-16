@@ -182,6 +182,7 @@ export const RootNavigator = () => {
         freshAuthStatus,
         checkBiometrics,
         isBiometricsEnabled ?? false,
+        isPromoPending,
       );
     };
 
