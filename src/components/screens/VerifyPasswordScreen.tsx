@@ -100,6 +100,7 @@ const VerifyPasswordScreen: React.FC<VerifyPasswordScreenProps> = ({
           ? t("verifyPasswordScreen.actions.importRecoveryPhrase")
           : t("verifyPasswordScreen.actions.createNewWallet")
       }
+      continueButtonTestID="verify-password-continue"
       title={t("verifyPasswordScreen.verifyPasswordTemplateTitle")}
       description={t("verifyPasswordScreen.verifyPasswordTemplateDescription")}
       showLogo={false}

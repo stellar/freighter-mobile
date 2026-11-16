@@ -126,6 +126,7 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
             disabled={!isFormValid}
             onPress={handleImport}
             isLoading={isLoading}
+            testID="import-secret-key-submit"
           >
             {t("importSecretKeyScreen.importButton")}
           </Button>

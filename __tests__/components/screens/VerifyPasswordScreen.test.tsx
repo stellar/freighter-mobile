@@ -26,13 +26,16 @@ jest.mock("components/templates/InputPasswordTemplate", () => {
   return ({
     handleContinue,
     continueButtonText,
+    continueButtonTestID,
   }: {
     handleContinue: (password: string) => void;
     continueButtonText: string;
+    continueButtonTestID?: string;
   }) => (
     <TouchableOpacity
       testID="continue"
       accessibilityLabel={continueButtonText}
+      accessibilityHint={continueButtonTestID}
       onPress={() => handleContinue("hunter2")}
     />
   );
@@ -54,6 +57,18 @@ describe("VerifyPasswordScreen", () => {
     mockCreateAccount.mockResolvedValue(undefined);
     mockAddRecoveryPhraseSource.mockResolvedValue(undefined);
     mockImportRecoveryPhrase.mockResolvedValue(undefined);
+  });
+
+  it("gives the continue button the id e2e flows tap", () => {
+    const { getByTestId } = renderScreen({
+      kind: "importPhrase",
+      pendingPhraseId: "pending-phrase-3",
+    });
+
+    // The mock surfaces continueButtonTestID as the hint.
+    expect(getByTestId("continue").props.accessibilityHint).toBe(
+      "verify-password-continue",
+    );
   });
 
   it("imports the held phrase, under an Import button", async () => {
