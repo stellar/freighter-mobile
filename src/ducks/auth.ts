@@ -189,7 +189,6 @@ interface ImportWalletParams {
  * @property {boolean} [importedFromSecretKey] - Whether the account was imported from an external secret key (optional)
  * @property {boolean} [shouldRefreshHashKey] - Whether to refresh the hash key (optional)
  * @property {boolean} [shouldSetActiveAccount] - Whether to set this account as active (optional)
- * @property {number} [accountNumber] - The account number for derivation (optional)
  * @property {string} [accountName] - The name the user chose (optional)
  */
 interface StoreAccountParams {
@@ -220,10 +219,9 @@ interface StoreAccountParams {
   importedFromSecretKey?: boolean;
   shouldRefreshHashKey?: boolean;
   shouldSetActiveAccount?: boolean;
-  accountNumber?: number;
   /**
-   * The name the user chose. Absent or blank, `accountNumber`'s name, else
-   * the next default name not already in use.
+   * The name the user chose. Absent or blank, the next default name not
+   * already in use.
    */
   accountName?: string;
 }
@@ -1185,7 +1183,6 @@ const storeAccount = async ({
   derivationIndex,
   password,
   keyPair,
-  accountNumber,
   accountName: requestedAccountName,
   shouldRefreshHashKey = true,
   shouldSetActiveAccount = true,
@@ -1244,12 +1241,10 @@ const storeAccount = async ({
     t("authStore.account", { number });
   const accountName =
     normalizeAccountName(requestedAccountName) ??
-    (accountNumber !== undefined
-      ? formatAccountName(accountNumber)
-      : getNextDefaultAccountName(
-          accountList.map(({ name }) => name),
-          formatAccountName,
-        ));
+    getNextDefaultAccountName(
+      accountList.map(({ name }) => name),
+      formatAccountName,
+    );
 
   // Listed before it is made active. An active id with no list entry makes
   // signIn recreate the account without knowing its source, so a write that
@@ -1522,6 +1517,9 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
     return;
   }
 
+  // Grows as the batch is named, so its accounts skip each other's names too.
+  const takenNames = existingAccounts.map(({ name }) => name);
+
   // Store each key sequentially. The key manager maintains a shared allKeyIds
   // index via read-modify-write. Parallel storeKey calls race on that index and
   // cause some IDs to be silently dropped, producing the key-manager desync bug.
@@ -1531,10 +1529,12 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
         Array<{ account: Account; privateKey: string; id: string }>
       >,
       keyPair,
-      index,
     ) => {
       const acc = await accPromise;
-      const accountNumber = existingAccounts.length + index + 1;
+      const name = getNextDefaultAccountName(takenNames, (number) =>
+        t("authStore.account", { number }),
+      );
+      takenNames.push(name);
 
       const keyStore = await keyManager.storeKey({
         key: {
@@ -1558,7 +1558,7 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
         account: {
           id: keyStore.id,
           sourceId: phraseSourceId,
-          name: t("authStore.account", { number: accountNumber }),
+          name,
           publicKey: keyPair.publicKey,
           importedFromSecretKey: false,
         },
@@ -2925,7 +2925,6 @@ const importSecretKeyLocal = async (
         publicKey,
         privateKey,
       },
-      accountNumber: existingAccounts.length + 1,
       shouldRefreshHashKey: false,
       shouldSetActiveAccount: true,
       importedFromSecretKey: true,

@@ -210,8 +210,11 @@ jest.mock("services/auth/linkStatus", () => ({
   getLinkConflicts: jest.fn(() => Promise.resolve([])),
 }));
 
+// Returns the key, plus the number for numbered names, so default account
+// names stay distinguishable.
 jest.mock("i18next", () => ({
-  t: (key: string) => key,
+  t: (key: string, options?: { number?: number }) =>
+    options?.number === undefined ? key : `${key} ${options.number}`,
 }));
 
 jest.mock("ducks/walletKit", () => ({
@@ -3126,6 +3129,43 @@ describe("auth duck", () => {
       expect(linkWalletSources).toHaveBeenCalledTimes(1);
     });
 
+    it("importSecretKey skips a default name already in use", async () => {
+      mockAuthenticatedSession(mockTemporaryStore);
+      dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID] = mockAccountId;
+      // One account, renamed to the name the next import would default to.
+      dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST] = JSON.stringify([
+        {
+          id: mockAccountId,
+          name: "authStore.account 2",
+          publicKey: mockPublicKey,
+        },
+      ]);
+      sharedKeyManager.storeKey.mockResolvedValue({
+        id: "imported-account-id",
+      });
+      const { result } = renderHook(() => useAuthenticationStore());
+      act(() => {
+        useAuthenticationStore.setState({
+          importSecretKey: originalStoreMethods.importSecretKey,
+        });
+      });
+
+      await act(async () => {
+        await result.current.importSecretKey({
+          secretKey: importedSecretKey,
+          password: mockPassword,
+        });
+      });
+
+      const accounts = JSON.parse(
+        dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST],
+      ) as Account[];
+      expect(accounts.map(({ name }) => name)).toEqual([
+        "authStore.account 2",
+        "authStore.account 3",
+      ]);
+    });
+
     it("importSecretKey leaves the active account alone when the account list write fails", async () => {
       mockAuthenticatedSession(mockTemporaryStore);
       dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID] = mockAccountId;
@@ -4949,6 +4989,11 @@ describe("auth duck", () => {
           publicKeyAt(mockMnemonicPhrase, 1),
           publicKeyAt(mockMnemonicPhrase, 2),
         ]);
+        expect(storedAccounts().map(({ name }) => name)).toEqual([
+          "authStore.account 1",
+          "authStore.account 2",
+          "authStore.account 3",
+        ]);
         expect(storedIndices()).toEqual({ [mockPhraseSourceId]: [0, 1, 2] });
       });
 
@@ -4984,8 +5029,7 @@ describe("auth duck", () => {
             );
           });
 
-          // The i18next mock returns the key.
-          expect(storedAccounts()[1].name).toBe("authStore.account");
+          expect(storedAccounts()[1].name).toBe("authStore.account 2");
         });
       });
 
