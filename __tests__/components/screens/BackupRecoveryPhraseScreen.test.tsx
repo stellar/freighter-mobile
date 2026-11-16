@@ -56,7 +56,7 @@ describe("BackupRecoveryPhraseScreen", () => {
     const { getByText, queryByText } = renderScreen();
 
     expect(mockGetPending).toHaveBeenCalledWith(PENDING_ID);
-    expect(getByText("Back Up Your New Recovery Phrase")).toBeTruthy();
+    expect(getByText("Back up your Recovery Phrase")).toBeTruthy();
     WORDS.forEach((word) => expect(queryByText(word)).toBeNull());
   });
 
@@ -71,7 +71,7 @@ describe("BackupRecoveryPhraseScreen", () => {
       hideNotification: true,
     });
 
-    fireEvent.press(getByText("Create"));
+    fireEvent.press(getByText("Create a wallet"));
     // The phrase stays in the store, out of the params.
     expect(navigation.navigate).toHaveBeenCalledWith(
       MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN,

@@ -173,13 +173,27 @@ const CreateWalletScreen: React.FC<CreateWalletScreenProps> = ({
           />
           {sources && (
             <View className="gap-4" testID="create-wallet">
+              <AddWalletOption
+                icon={
+                  <Icon.Plus
+                    size={ADD_WALLET_OPTION_ICON_SIZE}
+                    color={themeColors.foreground.secondary}
+                  />
+                }
+                title={t("createWalletScreen.newRecoveryPhrase")}
+                description={t(
+                  "createWalletScreen.newRecoveryPhraseDescription",
+                )}
+                onPress={() => startNaming({ kind: "newPhrase" })}
+                testID="create-wallet-generate"
+              />
               {phraseGroups.map((group) => (
                 <View
                   key={group.key}
                   className="bg-background-tertiary rounded-[16px] p-4 gap-4"
                   testID="create-wallet-group"
                 >
-                  <Text sm secondary>
+                  <Text sm medium secondary>
                     {group.label}
                   </Text>
                   {group.accounts.map((account) => (
@@ -214,26 +228,12 @@ const CreateWalletScreen: React.FC<CreateWalletScreenProps> = ({
                         color={themeColors.foreground.secondary}
                       />
                     </AddWalletOptionIcon>
-                    <Text md medium primary>
+                    <Text md semiBold primary>
                       {t("createWalletScreen.addAccount")}
                     </Text>
                   </TouchableOpacity>
                 </View>
               ))}
-              <AddWalletOption
-                icon={
-                  <Icon.Plus
-                    size={ADD_WALLET_OPTION_ICON_SIZE}
-                    color={themeColors.foreground.secondary}
-                  />
-                }
-                title={t("createWalletScreen.newRecoveryPhrase")}
-                description={t(
-                  "createWalletScreen.newRecoveryPhraseDescription",
-                )}
-                onPress={() => startNaming({ kind: "newPhrase" })}
-                testID="create-wallet-generate"
-              />
             </View>
           )}
         </View>

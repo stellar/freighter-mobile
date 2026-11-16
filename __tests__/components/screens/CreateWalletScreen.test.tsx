@@ -133,6 +133,18 @@ describe("CreateWalletScreen", () => {
     expect(queryByText("Imported")).toBeNull();
   });
 
+  it("offers Generate new recovery phrase above the phrases", async () => {
+    const { findAllByTestId, getByText } = renderScreen();
+
+    const rows = await findAllByTestId(/^create-wallet-(generate|group)$/);
+    expect(rows.map((row) => row.props.testID)).toEqual([
+      "create-wallet-generate",
+      "create-wallet-group",
+      "create-wallet-group",
+    ]);
+    expect(getByText("Generate new recovery phrase")).toBeTruthy();
+  });
+
   it("offers only a new phrase in a wallet with none", async () => {
     (getSecretSources as jest.Mock).mockResolvedValue({
       "key-1": phraseSources["key-1"],

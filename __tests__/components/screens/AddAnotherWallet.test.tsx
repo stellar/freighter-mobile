@@ -36,7 +36,7 @@ describe("AddAnotherWalletScreen", () => {
   it("offers only the ways mobile supports", () => {
     const { getByText, queryByText } = renderScreen();
 
-    expect(getByText("Add account")).toBeTruthy();
+    expect(getByText("Add accounts")).toBeTruthy();
     expect(queryByText("Import Recovery Phrase")).toBeNull();
     expect(queryByText("Connect Hardware Wallet")).toBeNull();
   });

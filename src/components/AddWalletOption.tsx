@@ -54,11 +54,11 @@ const AddWalletOption: React.FC<AddWalletOptionProps> = ({
     >
       <AddWalletOptionIcon>{icon}</AddWalletOptionIcon>
       <View className="flex-1">
-        <Text md medium primary>
+        <Text md semiBold primary>
           {title}
         </Text>
         {description ? (
-          <Text sm color={themeColors.foreground.secondary}>
+          <Text sm medium color={themeColors.foreground.secondary}>
             {description}
           </Text>
         ) : null}

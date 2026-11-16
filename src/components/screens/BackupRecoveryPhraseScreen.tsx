@@ -13,6 +13,7 @@ import {
   getPendingRecoveryPhrase,
 } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import { useSecureClipboard } from "hooks/useSecureClipboard";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
@@ -24,9 +25,9 @@ type BackupRecoveryPhraseScreenProps = NativeStackScreenProps<
 >;
 
 /**
- * Back Up Your New Recovery Phrase: the phrase Create new wallet generated,
+ * Back up your Recovery Phrase: the phrase Create new wallet generated,
  * hidden until the user asks to see it, then with Tap to copy, the warning,
- * and Create, which goes on to the password step.
+ * and Create a wallet, which goes on to the password step.
  *
  * The phrase is read from the auth store by its generation id, and the
  * store holds it until the password step stores it. Leaving this screen
@@ -40,6 +41,7 @@ const BackupRecoveryPhraseScreen: React.FC<BackupRecoveryPhraseScreenProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { copyToClipboard } = useSecureClipboard();
+  const { themeColors } = useColors();
   const { pendingPhraseId, accountName } = route.params;
   const [phrase] = useState(() => getPendingRecoveryPhrase(pendingPhraseId));
   const [isRevealed, setIsRevealed] = useState(false);
@@ -73,9 +75,9 @@ const BackupRecoveryPhraseScreen: React.FC<BackupRecoveryPhraseScreenProps> = ({
     <OnboardTitle>{t("backupRecoveryPhraseScreen.title")}</OnboardTitle>
   );
   const description = (
-    <Text md secondary>
+    <Text md primary>
       {t("backupRecoveryPhraseScreen.description")}{" "}
-      <Text md semiBold primary>
+      <Text md semiBold color={themeColors.status.error}>
         {t("backupRecoveryPhraseScreen.descriptionEmphasis")}
       </Text>
     </Text>

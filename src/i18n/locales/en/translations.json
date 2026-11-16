@@ -902,7 +902,7 @@
     "checkMemoRequirements": "Check the destination account memo requirements and include it in the transaction."
   },
   "addAnotherWalletScreen": {
-    "title": "Add account",
+    "title": "Add accounts",
     "subtitle": "Choose how to add a wallet.",
     "actions": {
       "createNewWallet": "Create new wallet",
@@ -916,17 +916,17 @@
     "subtitle": "Create with a new or existing recovery phrase",
     "addAccount": "Add account",
     "addAccountTo": "Add account to {{label}}",
-    "newRecoveryPhrase": "New recovery phrase",
+    "newRecoveryPhrase": "Generate new recovery phrase",
     "newRecoveryPhraseDescription": "Create a wallet with a new recovery phrase",
     "setAccountName": "Set account name",
     "create": "Create",
     "next": "Next"
   },
   "backupRecoveryPhraseScreen": {
-    "title": "Back Up Your New Recovery Phrase",
+    "title": "Back up your Recovery Phrase",
     "description": "Your recovery phrase is the only way to restore your new wallet.",
     "descriptionEmphasis": "Keep it safe.",
-    "create": "Create"
+    "create": "Create a wallet"
   },
   "verifyPasswordScreen": {
     "title": "Verify Password",

@@ -868,7 +868,7 @@
     "checkMemoRequirements": "Verifique os requisitos de memo da conta de destino e inclua-o na transação."
   },
   "addAnotherWalletScreen": {
-    "title": "Adicionar conta",
+    "title": "Adicionar contas",
     "subtitle": "Escolha como adicionar uma carteira.",
     "actions": {
       "createNewWallet": "Criar nova carteira",
@@ -882,17 +882,17 @@
     "subtitle": "Crie com uma frase de recuperação nova ou existente",
     "addAccount": "Adicionar conta",
     "addAccountTo": "Adicionar conta a {{label}}",
-    "newRecoveryPhrase": "Nova frase de recuperação",
+    "newRecoveryPhrase": "Gerar nova frase de recuperação",
     "newRecoveryPhraseDescription": "Crie uma carteira com uma nova frase de recuperação",
     "setAccountName": "Definir nome da conta",
     "create": "Criar",
     "next": "Próximo"
   },
   "backupRecoveryPhraseScreen": {
-    "title": "Faça backup da sua nova frase de recuperação",
+    "title": "Faça backup da sua frase de recuperação",
     "description": "Sua frase de recuperação é a única forma de restaurar sua nova carteira.",
     "descriptionEmphasis": "Guarde-a em segurança.",
-    "create": "Criar"
+    "create": "Criar uma carteira"
   },
   "verifyPasswordScreen": {
     "title": "Verificar Senha",
