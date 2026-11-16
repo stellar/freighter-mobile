@@ -489,6 +489,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     });
   }, [lacksXlmForTotalFee, transactionHash, totalFee, setActiveError, t]);
 
+  // A failed quote stores its key too, so it settles; amountError stops the
+  // request, so it never settles and must not count as pending.
+  const isQuotePending =
+    !!currentQuoteKey &&
+    new BigNumber(sourceAmount || "0").gt(0) &&
+    !amountError &&
+    !isQuoteCurrent &&
+    pathErrorQuoteKey !== currentQuoteKey;
+
   const {
     ctaState,
     ctaLabel,
@@ -504,6 +513,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     pathError,
     amountError,
     currentQuoteKey,
+    isQuotePending,
   });
   const isCtaDisabled = isCtaStateDisabled || lacksXlmForTotalFee;
 
@@ -1082,6 +1092,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           destinationTokenDescriptor ? receiveSmallText : formatFiatAmount("0")
         }
         placeholderActive={!destinationTokenDescriptor}
+        isAmountLoading={isQuotePending}
       />
 
       {isQuoteCurrent && destinationTokenDescriptor && (
