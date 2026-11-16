@@ -1,5 +1,5 @@
 import { SplashAnimation } from "components/SplashAnimation/SplashAnimation";
-import React, { useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 const styles = StyleSheet.create({
@@ -9,6 +9,8 @@ const styles = StyleSheet.create({
 interface SplashOverlayProps {
   /** True once the app has initialised; passed through to the animation. */
   ready: boolean;
+  /** Called once, when the splash has finished and uncovered the app. */
+  onFinished?: () => void;
   children: React.ReactNode;
 }
 
@@ -25,9 +27,20 @@ interface SplashOverlayProps {
  */
 export const SplashOverlay: React.FC<SplashOverlayProps> = ({
   ready,
+  onFinished,
   children,
 }) => {
   const [finished, setFinished] = useState(false);
+  const hasFinished = useRef(false);
+
+  const handleFinished = useCallback(() => {
+    if (hasFinished.current) {
+      return;
+    }
+    hasFinished.current = true;
+    setFinished(true);
+    onFinished?.();
+  }, [onFinished]);
 
   return (
     <View style={styles.flex}>
@@ -39,7 +52,7 @@ export const SplashOverlay: React.FC<SplashOverlayProps> = ({
         {children}
       </View>
       {!finished && (
-        <SplashAnimation ready={ready} onFinished={() => setFinished(true)} />
+        <SplashAnimation ready={ready} onFinished={handleFinished} />
       )}
     </View>
   );

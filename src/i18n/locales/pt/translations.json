@@ -244,6 +244,23 @@
     "closeAccessibilityLabel": "Fechar",
     "illustrationAccessibilityLabel": "O logotipo do Varial"
   },
+  "ethenaLaunchScreen": {
+    "title": "Conheça a Ethena na Stellar",
+    "subtitle": "Descubra USDe e sUSDe,\nagora disponíveis na Stellar.",
+    "scrollCue": "Role para descobrir os tokens",
+    "usdeName": "Dólar sintético",
+    "usdeDescription": "Um dólar sintético projetado para manter o valor de US$ 1.",
+    "susdeName": "USDe em staking",
+    "susdeDescription": "Uma versão de USDe em staking que acumula recompensas variáveis do protocolo.",
+    "swapTo": "Trocar para {{code}}",
+    "receive": "Receber {{code}}",
+    "learnMore": "Saiba mais sobre a Ethena"
+  },
+  "ethenaLaunchBanner": {
+    "title": "Conheça a Ethena na Stellar",
+    "subtitle": "USDe e sUSDe já estão disponíveis.",
+    "dismissAccessibilityLabel": "Dispensar banner"
+  },
   "lockScreen": {
     "title": "Bem vindo de volta",
     "description": "Digite a senha para desbloquear o Varial",

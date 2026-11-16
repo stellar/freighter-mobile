@@ -387,6 +387,11 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  * REBRAND_ANNOUNCEMENT_STATUS Gate for the one-time rebrand announcement: "pending" for wallets that existed
  * before the first Varial launch, "seen" otherwise or once shown. Survives wallet wipes. @see helpers/rebrandAnnouncement
  *
+ * ETHENA_LAUNCH_PROMO_STATUS Gate for the one-time Ethena launch promo: "pending" for wallets that existed
+ * when the launch version first ran, "seen" otherwise or once shown. Survives wallet wipes. @see helpers/ethenaLaunchPromo
+ *
+ * ETHENA_LAUNCH_BANNER_DISMISSED "true" once the Ethena launch banner on Home has been dismissed. A wallet wipe clears it.
+ *
  * APP_UPDATE_DISMISSED_REQUIRED_VERSION The version that the user has dismissed the app update notice for.
  * This is used to prevent the app update full screen notice from being shown again after the user has dismissed it.
  * It stores the version that the user has dismissed the notice for so it can be shown again if the user updates to a new version and falls behind again in the future.
@@ -410,6 +415,8 @@ export enum STORAGE_KEYS {
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   HAS_SEEN_DISCOVER_WELCOME = "hasSeenDiscoverWelcome",
   REBRAND_ANNOUNCEMENT_STATUS = "rebrandAnnouncementStatus",
+  ETHENA_LAUNCH_PROMO_STATUS = "ethenaLaunchPromoStatus",
+  ETHENA_LAUNCH_BANNER_DISMISSED = "ethenaLaunchBannerDismissed",
   APP_UPDATE_DISMISSED_REQUIRED_VERSION = "appUpdateDismissedRequiredVersion",
 }
 

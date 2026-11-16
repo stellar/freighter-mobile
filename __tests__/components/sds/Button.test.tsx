@@ -5,6 +5,7 @@ import Icon from "components/sds/Icon";
 import { pxValue } from "helpers/dimensions";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import * as RN from "react-native";
 import { StyleSheet } from "react-native";
 
 const mockVerifyActionWithBiometrics = jest.fn((callback) => callback());
@@ -370,6 +371,47 @@ describe("Button", () => {
       expect(StyleSheet.flatten(textElement.props.style)).toMatchObject({
         color: LIGHT_BUTTON_COLORS.disabled.text,
       });
+    });
+  });
+
+  describe("Pinned color scheme", () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    it("draws a pinned scheme's colors whatever the device scheme is", () => {
+      jest.spyOn(RN, "useColorScheme").mockReturnValue("light");
+      const DARK_BUTTON_COLORS = getButtonColors("dark");
+      // The schemes have to differ here, or this test couldn't tell them apart.
+      expect(DARK_BUTTON_COLORS.secondary.background).not.toBe(
+        LIGHT_BUTTON_COLORS.secondary.background,
+      );
+      expect(DARK_BUTTON_COLORS.tertiary.text).not.toBe(
+        LIGHT_BUTTON_COLORS.tertiary.text,
+      );
+
+      const { getByTestId, getByText } = renderWithProviders(
+        <>
+          <Button secondary colorScheme="dark" testID="swap-button">
+            Swap to USDe
+          </Button>
+          <Button tertiary colorScheme="dark" testID="receive-button">
+            Receive USDe
+          </Button>
+        </>,
+      );
+
+      expect(getByTestId("swap-button").props.style).toMatchObject({
+        backgroundColor: DARK_BUTTON_COLORS.secondary.background,
+      });
+      expect(
+        StyleSheet.flatten(getByText("Swap to USDe").props.style),
+      ).toMatchObject({ color: DARK_BUTTON_COLORS.secondary.text });
+      expect(getByTestId("receive-button").props.style).toMatchObject({
+        backgroundColor: DARK_BUTTON_COLORS.tertiary.background,
+        borderColor: DARK_BUTTON_COLORS.tertiary.border,
+      });
+      expect(
+        StyleSheet.flatten(getByText("Receive USDe").props.style),
+      ).toMatchObject({ color: DARK_BUTTON_COLORS.tertiary.text });
     });
   });
 
