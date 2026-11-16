@@ -1585,6 +1585,42 @@ describe("auth duck", () => {
         });
       });
 
+      it("marks the Ethena launch promo seen before a wipe leads into onboarding", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          return Promise.resolve(null);
+        });
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+            account: mockAccount,
+            logout: originalStoreMethods.logout,
+            setNavigationRef: originalStoreMethods.setNavigationRef,
+          });
+        });
+
+        act(() => {
+          result.current.setNavigationRef(mockNavigationRef);
+        });
+
+        await act(async () => {
+          result.current.logout(true);
+          await new Promise((resolve) => {
+            setTimeout(resolve, 300);
+          });
+        });
+
+        expect(dataStorage.setItem).toHaveBeenCalledWith(
+          "ethenaLaunchPromoStatus",
+          "seen",
+        );
+      });
+
       it("should call resetRoot to AUTH_STACK on logout(true) even though ...initialState clears navigationRef", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
 
