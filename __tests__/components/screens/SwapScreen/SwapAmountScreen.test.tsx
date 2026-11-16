@@ -2273,4 +2273,79 @@ describe("SwapAmountScreen", () => {
       expect(sheet?.dismiss).toHaveBeenCalled();
     });
   });
+
+  describe("quote pending", () => {
+    // Shimmer hides itself from accessibility.
+    const HIDDEN = { includeHiddenElements: true };
+    const renderScreen = () =>
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+    it("shimmers the receive amount and spins the CTA before the first quote request fires, then shows the quote", () => {
+      // The debounce gap: an amount is entered, nothing requested or stored yet.
+      setSwapStoreState({ sourceAmount: "1", destinationAmount: "0" });
+      const { getByTestId, queryByTestId, rerender } = renderScreen();
+
+      expect(getByTestId("amount-card-amount-loading", HIDDEN)).toBeTruthy();
+      expect(getByTestId("swap-continue-button")).toHaveTextContent(
+        "Review swap",
+      );
+      expect(getByTestId("button-loading-indicator")).toBeTruthy();
+
+      setSwapStoreState({
+        sourceAmount: "1",
+        destinationAmount: "2",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+      rerender(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(queryByTestId("amount-card-amount-loading", HIDDEN)).toBeNull();
+      expect(queryByTestId("button-loading-indicator")).toBeNull();
+    });
+
+    it("shimmers while the stored quote is for older inputs", () => {
+      setSwapStoreState({
+        pathResult: { destinationAmount: "2", quoteKey: "older-key" },
+      });
+      const { getByTestId } = renderScreen();
+
+      expect(getByTestId("amount-card-amount-loading", HIDDEN)).toBeTruthy();
+    });
+
+    it("does not shimmer once the quote for these inputs failed", () => {
+      setSwapStoreState({
+        destinationAmount: "0",
+        pathError: "No path found between these tokens",
+        pathErrorQuoteKey: "quote-key",
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("amount-card-amount-loading", HIDDEN)).toBeNull();
+      expect(queryByTestId("button-loading-indicator")).toBeNull();
+    });
+
+    it("does not shimmer when the amount exceeds the balance", () => {
+      setSwapStoreState({
+        sourceAmount: "999999999",
+        sourceAmountDisplay: "999999999",
+        destinationAmount: "0",
+      });
+      const { getByTestId, queryByTestId } = renderScreen();
+
+      expect(getByTestId("swap-continue-button")).toHaveTextContent(
+        "Insufficient balance",
+      );
+      expect(queryByTestId("amount-card-amount-loading", HIDDEN)).toBeNull();
+    });
+
+    it("does not shimmer with no amount entered", () => {
+      setSwapStoreState({ sourceAmount: "0", destinationAmount: "0" });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("amount-card-amount-loading", HIDDEN)).toBeNull();
+    });
+  });
 });

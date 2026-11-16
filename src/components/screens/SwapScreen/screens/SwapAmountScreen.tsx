@@ -413,6 +413,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     trendingListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [sourceTokenId, destinationTokenDescriptor?.id, trendingListRef]);
 
+  // A failed quote stores its key too, so it settles; amountError stops the
+  // request, so it never settles and must not count as pending.
+  const isQuotePending =
+    !!currentQuoteKey &&
+    new BigNumber(sourceAmount || "0").gt(0) &&
+    !amountError &&
+    pathResult?.quoteKey !== currentQuoteKey &&
+    pathErrorQuoteKey !== currentQuoteKey;
+
   const { ctaState, ctaLabel, isCtaDisabled } = useSwapCtaState({
     sourceBalance,
     destinationTokenDescriptor,
@@ -424,6 +433,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     pathError,
     amountError,
     currentQuoteKey,
+    isQuotePending,
   });
 
   const showQuoteUnavailable =
@@ -986,6 +996,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           destinationTokenDescriptor ? receiveSmallText : formatFiatAmount("0")
         }
         placeholderActive={!destinationTokenDescriptor}
+        isAmountLoading={isQuotePending}
       />
 
       {showQuoteUnavailable && (
