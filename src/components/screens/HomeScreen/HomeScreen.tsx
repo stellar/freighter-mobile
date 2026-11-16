@@ -194,7 +194,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     useWarmUpAccountsFiatTotals();
 
     const { isVisible: isEthenaBannerVisible, dismiss: dismissEthenaBanner } =
-      useEthenaLaunchBanner();
+      useEthenaLaunchBanner(network);
     const openEthenaLaunchPromo = useCallback(() => {
       navigation.navigate(ROOT_NAVIGATOR_ROUTES.ETHENA_LAUNCH_SCREEN, {
         source: "banner",

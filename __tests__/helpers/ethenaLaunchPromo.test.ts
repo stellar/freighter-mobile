@@ -1,4 +1,4 @@
-import { STORAGE_KEYS } from "config/constants";
+import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import {
   dismissEthenaLaunchBanner,
@@ -118,19 +118,35 @@ describe("ethenaLaunchPromo", () => {
   describe("shouldShowEthenaLaunchPromo", () => {
     it("is true only while pending", async () => {
       givenStorage({ status: PENDING, accountList: oneAccount });
-      await expect(shouldShowEthenaLaunchPromo()).resolves.toBe(true);
+      await expect(shouldShowEthenaLaunchPromo(NETWORKS.PUBLIC)).resolves.toBe(
+        true,
+      );
 
       givenStorage({ status: SEEN, accountList: oneAccount });
-      await expect(shouldShowEthenaLaunchPromo()).resolves.toBe(false);
+      await expect(shouldShowEthenaLaunchPromo(NETWORKS.PUBLIC)).resolves.toBe(
+        false,
+      );
 
       givenStorage({ status: null, accountList: oneAccount });
-      await expect(shouldShowEthenaLaunchPromo()).resolves.toBe(false);
+      await expect(shouldShowEthenaLaunchPromo(NETWORKS.PUBLIC)).resolves.toBe(
+        false,
+      );
+    });
+
+    it("waits for a launch on Mainnet", async () => {
+      givenStorage({ status: PENDING, accountList: oneAccount });
+
+      await expect(shouldShowEthenaLaunchPromo(NETWORKS.TESTNET)).resolves.toBe(
+        false,
+      );
     });
 
     it("fails closed when storage fails", async () => {
       mockGetItem.mockRejectedValue(new Error("disk"));
 
-      await expect(shouldShowEthenaLaunchPromo()).resolves.toBe(false);
+      await expect(shouldShowEthenaLaunchPromo(NETWORKS.PUBLIC)).resolves.toBe(
+        false,
+      );
       expect(logger.error).toHaveBeenCalled();
     });
   });

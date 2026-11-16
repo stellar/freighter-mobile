@@ -1,5 +1,6 @@
-import { STORAGE_KEYS } from "config/constants";
+import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
+import { isMainnet } from "helpers/networks";
 import { hasExistingAccounts } from "helpers/rebrandAnnouncement";
 import { dataStorage } from "services/storage/storageFactory";
 
@@ -45,8 +46,20 @@ export const markEthenaLaunchPromoEligibility = async (): Promise<void> => {
   }
 };
 
-/** Whether the promo is still owed. Fails closed on storage errors. */
-export const shouldShowEthenaLaunchPromo = async (): Promise<boolean> => {
+/**
+ * Whether the promo opens on its own this launch: it's still owed and the
+ * wallet is on Mainnet. Fails closed on storage errors.
+ *
+ * @param network - The network the launch started on
+ */
+export const shouldShowEthenaLaunchPromo = async (
+  network: NETWORKS,
+): Promise<boolean> => {
+  // Off Mainnet it stays owed, for a later launch on Mainnet.
+  if (!isMainnet(network)) {
+    return false;
+  }
+
   try {
     const status = await dataStorage.getItem(
       STORAGE_KEYS.ETHENA_LAUNCH_PROMO_STATUS,

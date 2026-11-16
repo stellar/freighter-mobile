@@ -168,7 +168,10 @@ export const RootNavigator = () => {
       // A launch that owes the rebrand announcement shows only that; the
       // Ethena launch promo stays owed until the next launch.
       const isPromoPending =
-        !isWelcomePending && (await shouldShowEthenaLaunchPromo());
+        !isWelcomePending &&
+        (await shouldShowEthenaLaunchPromo(
+          useAuthenticationStore.getState().network,
+        ));
 
       // Fetch the real auth status from storage and overwrite the initial
       // NOT_AUTHENTICATED default before any navigation decision is made.

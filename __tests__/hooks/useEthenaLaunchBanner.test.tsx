@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { NETWORKS } from "config/constants";
 import {
   dismissEthenaLaunchBanner,
   isEthenaLaunchBannerDismissed,
@@ -33,7 +34,7 @@ describe("useEthenaLaunchBanner", () => {
   it("stays hidden while the dismissal flag loads", () => {
     mockIsDismissed.mockReturnValue(new Promise(() => {}));
 
-    const { result } = renderHook(() => useEthenaLaunchBanner());
+    const { result } = renderHook(() => useEthenaLaunchBanner(NETWORKS.PUBLIC));
 
     expect(result.current.isVisible).toBe(false);
   });
@@ -41,7 +42,7 @@ describe("useEthenaLaunchBanner", () => {
   it("shows when the banner hasn't been dismissed", async () => {
     mockIsDismissed.mockResolvedValue(false);
 
-    const { result } = renderHook(() => useEthenaLaunchBanner());
+    const { result } = renderHook(() => useEthenaLaunchBanner(NETWORKS.PUBLIC));
 
     await waitFor(() => expect(result.current.isVisible).toBe(true));
   });
@@ -49,7 +50,18 @@ describe("useEthenaLaunchBanner", () => {
   it("stays hidden once dismissed", async () => {
     mockIsDismissed.mockResolvedValue(true);
 
-    const { result } = renderHook(() => useEthenaLaunchBanner());
+    const { result } = renderHook(() => useEthenaLaunchBanner(NETWORKS.PUBLIC));
+    await flush();
+
+    expect(result.current.isVisible).toBe(false);
+  });
+
+  it("stays hidden off Mainnet", async () => {
+    mockIsDismissed.mockResolvedValue(false);
+
+    const { result } = renderHook(() =>
+      useEthenaLaunchBanner(NETWORKS.TESTNET),
+    );
     await flush();
 
     expect(result.current.isVisible).toBe(false);
@@ -58,7 +70,7 @@ describe("useEthenaLaunchBanner", () => {
   it("stays hidden when the flag can't be read", async () => {
     mockIsDismissed.mockRejectedValue(new Error("disk"));
 
-    const { result } = renderHook(() => useEthenaLaunchBanner());
+    const { result } = renderHook(() => useEthenaLaunchBanner(NETWORKS.PUBLIC));
     await flush();
 
     expect(result.current.isVisible).toBe(false);
@@ -66,7 +78,7 @@ describe("useEthenaLaunchBanner", () => {
 
   it("hides at once, persists and tracks a dismissal", async () => {
     mockIsDismissed.mockResolvedValue(false);
-    const { result } = renderHook(() => useEthenaLaunchBanner());
+    const { result } = renderHook(() => useEthenaLaunchBanner(NETWORKS.PUBLIC));
     await waitFor(() => expect(result.current.isVisible).toBe(true));
 
     act(() => result.current.dismiss());
