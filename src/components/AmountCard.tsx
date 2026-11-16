@@ -1,6 +1,7 @@
 import BigNumber from "bignumber.js";
 import { TokenIconWithBadge } from "components/TokenIconWithBadge";
 import Icon from "components/sds/Icon";
+import Shimmer from "components/sds/Shimmer";
 import { Display, Text } from "components/sds/Typography";
 import { Balance, PricedBalance, Token } from "config/types";
 import { fsValue, pxValue } from "helpers/dimensions";
@@ -120,6 +121,8 @@ type AmountCardReadOnlyProps = AmountCardCommonProps & {
   /** When true, render primaryAmount in the secondary text color (placeholder
    *  state — e.g. "0" before a destination is picked). */
   placeholderActive?: boolean;
+  /** Shimmers both amount lines in place of the text. */
+  isAmountLoading?: boolean;
 };
 
 export type AmountCardProps = AmountCardEditableProps | AmountCardReadOnlyProps;
@@ -419,6 +422,7 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
   primaryAmount,
   secondaryAmount,
   placeholderActive,
+  isAmountLoading,
 }) => {
   const { themeColors } = useColors();
   const amountFontSize = getAmountFontSize(primaryAmount.length);
@@ -429,23 +433,36 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
       <HeaderRow label={label} availableBalanceText={availableBalanceText} />
 
       <View className="flex-row items-center justify-between">
-        <Display
-          style={{
-            flex: 1,
-            fontSize: amountFontSize,
-            lineHeight: pxValue(AMOUNT_LINE_HEIGHT),
-            letterSpacing: AMOUNT_LETTER_SPACING,
-            fontWeight: "500",
-            color: placeholderActive
-              ? themeColors.text.secondary
-              : themeColors.text.primary,
-          }}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.6}
-        >
-          {primaryAmount}
-        </Display>
+        {isAmountLoading ? (
+          <View
+            style={{ flex: 1, height: pxValue(AMOUNT_LINE_HEIGHT) }}
+            className="justify-center"
+          >
+            <Shimmer
+              testID="amount-card-amount-loading"
+              width={pxValue(96)}
+              height={pxValue(24)}
+            />
+          </View>
+        ) : (
+          <Display
+            style={{
+              flex: 1,
+              fontSize: amountFontSize,
+              lineHeight: pxValue(AMOUNT_LINE_HEIGHT),
+              letterSpacing: AMOUNT_LETTER_SPACING,
+              fontWeight: "500",
+              color: placeholderActive
+                ? themeColors.text.secondary
+                : themeColors.text.primary,
+            }}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            {primaryAmount}
+          </Display>
+        )}
 
         <PickerChip
           token={selectedToken}
@@ -457,7 +474,12 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
         />
       </View>
 
-      {!!secondaryAmount && (
+      {isAmountLoading && (
+        <View style={{ height: pxValue(20) }} className="flex-row items-center">
+          <Shimmer width={pxValue(56)} height={pxValue(14)} />
+        </View>
+      )}
+      {!isAmountLoading && !!secondaryAmount && (
         <View className="flex-row items-center">
           <Text
             sm
