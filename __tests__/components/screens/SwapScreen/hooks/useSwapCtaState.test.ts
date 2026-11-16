@@ -29,6 +29,7 @@ const props = (quoteKey: string, currentQuoteKey: string | null) => ({
   pathError: null,
   amountError: null,
   currentQuoteKey,
+  isQuotePending: false,
 });
 
 describe("useSwapCtaState — quote freshness", () => {
@@ -58,5 +59,33 @@ describe("useSwapCtaState — failed quote", () => {
     expect(result.current.ctaState.kind).toBe("review");
     expect(result.current.ctaLabel).toBe("swapScreen.cta.review");
     expect(result.current.isCtaDisabled).toBe(true);
+  });
+});
+
+describe("useSwapCtaState — first quote pending", () => {
+  it("shows loading in the debounce gap, before any quote is stored", () => {
+    const { result } = renderHook(() =>
+      useSwapCtaState({
+        ...props("k1", "k1"),
+        pathResult: null,
+        isQuotePending: true,
+      }),
+    );
+
+    expect(result.current.ctaState.kind).toBe("loading");
+    expect(result.current.ctaLabel).toBe("swapScreen.cta.review");
+  });
+
+  it("keeps insufficient ahead of a pending quote", () => {
+    const { result } = renderHook(() =>
+      useSwapCtaState({
+        ...props("k1", "k1"),
+        spendableAmount: new BigNumber("5"),
+        pathResult: null,
+        isQuotePending: true,
+      }),
+    );
+
+    expect(result.current.ctaState.kind).toBe("insufficient");
   });
 });

@@ -11,7 +11,7 @@ import { useMemo } from "react";
  *   select       either side empty  ──► navigate to the missing picker
  *   enter        sides set, amount == 0  ──► focus the Sell input
  *   insufficient amount exceeds spendable  ──► disabled
- *   loading      path-finding in flight  ──► spinner
+ *   loading      no quote for these inputs yet  ──► spinner
  *   review       path resolved, amount valid  ──► open Review sheet
  *                (also the disabled label when the quote failed)
  */
@@ -44,6 +44,7 @@ export const useSwapCtaState = ({
   pathError,
   amountError,
   currentQuoteKey,
+  isQuotePending,
 }: {
   sourceBalance: PricedBalance | undefined;
   destinationTokenDescriptor: DestinationTokenDescriptor | null;
@@ -56,6 +57,8 @@ export const useSwapCtaState = ({
   amountError: string | null;
   /** `swapQuoteKey` of the current inputs. */
   currentQuoteKey: string | null;
+  /** Covers the debounce gap, before path-finding starts. */
+  isQuotePending: boolean;
 }): { ctaState: SwapCtaState; ctaLabel: string; isCtaDisabled: boolean } => {
   const { t } = useAppTranslation();
 
@@ -76,7 +79,9 @@ export const useSwapCtaState = ({
       return { kind: "insufficient" };
     }
 
-    if (isLoadingPath || isBuilding) return { kind: "loading" };
+    if (isLoadingPath || isBuilding || isQuotePending) {
+      return { kind: "loading" };
+    }
 
     if (pathResult && !pathError) {
       // An older quote stays in the store until the debounced re-quote lands.
@@ -101,6 +106,7 @@ export const useSwapCtaState = ({
     pathResult,
     pathError,
     currentQuoteKey,
+    isQuotePending,
   ]);
 
   const ctaLabel = useMemo(() => {
