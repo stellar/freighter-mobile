@@ -55,7 +55,7 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
           />
           <AddWalletOption
             icon={
-              <Icon.Key01
+              <Icon.Key02
                 size={ADD_WALLET_OPTION_ICON_SIZE}
                 color={iconColor}
               />
