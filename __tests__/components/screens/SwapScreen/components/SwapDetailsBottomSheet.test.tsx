@@ -149,6 +149,15 @@ describe("SwapDetailsBottomSheet", () => {
     expect(within(row).getByText("+2")).toBeTruthy();
   });
 
+  it("lays the provider chips out in one horizontally scrolling row", () => {
+    const { getByTestId } = renderSheet(splitRoute);
+    fireEvent.press(getByTestId("swap-details-route-row"));
+
+    const row = getByTestId("swap-route-providers");
+    expect(row.props.horizontal).toBe(true);
+    expect(within(row).getAllByTestId("swap-route-provider")).toHaveLength(2);
+  });
+
   it("classic stand-in: one path at 100%, no pool count", () => {
     const { getByTestId, getByText, queryByTestId } = renderSheet(classicRoute);
 

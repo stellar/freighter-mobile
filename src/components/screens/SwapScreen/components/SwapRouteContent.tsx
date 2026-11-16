@@ -16,6 +16,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState } from "react";
 import { TouchableOpacity, View } from "react-native";
+import { ScrollView } from "react-native-gesture-handler";
 
 const RouteTokenLabel: React.FC<{ token: SwapRouteToken }> = ({ token }) => (
   <View className="flex-row items-center gap-[4px]">
@@ -192,20 +193,26 @@ export const SwapRouteContent: React.FC<SwapRouteContentProps> = ({
         <Text sm secondary>
           {t("swapScreen.route.providers")}
         </Text>
-        <View className="flex-row flex-wrap gap-[8px]">
-          {routeView.providers.map((venue) => (
-            <View
-              key={venue.name}
-              className="flex-row items-center gap-[6px] rounded-full bg-background-tertiary pl-[4px] pr-[10px] py-[4px]"
-              testID="swap-route-provider"
-            >
-              <SwapVenueIcon venue={venue} size={24} />
-              <Text sm medium>
-                {venue.name}
-              </Text>
-            </View>
-          ))}
-        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          testID="swap-route-providers"
+        >
+          <View className="flex-row gap-[8px]">
+            {routeView.providers.map((venue) => (
+              <View
+                key={venue.name}
+                className="flex-row items-center gap-[6px] rounded-full bg-background-tertiary pl-[4px] pr-[10px] py-[4px]"
+                testID="swap-route-provider"
+              >
+                <SwapVenueIcon venue={venue} size={24} />
+                <Text sm medium>
+                  {venue.name}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
       </View>
     </View>
   );
