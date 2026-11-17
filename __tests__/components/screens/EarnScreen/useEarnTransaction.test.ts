@@ -92,6 +92,7 @@ describe("useEarnTransaction", () => {
       pool: { id: "pool-1" },
       selectedAssetCode: "USDC",
       selectedAssetApy: 0.05,
+      didSwapInFlow: false,
     });
   });
 
@@ -158,6 +159,7 @@ describe("useEarnTransaction", () => {
       assetCode: "USDC",
       poolId: "pool-1",
       apy: 0.05,
+      viaSwap: false,
     });
     expect(mockTrackEarnDepositFail).not.toHaveBeenCalled();
   });
@@ -280,6 +282,12 @@ describe("useEarnTransaction", () => {
   // calls before navigating Home mid-submit.
   describe("abandonment guard", () => {
     it("does NOT call setSubmitFailed or write status when a submit resolves successfully AFTER being abandoned", async () => {
+      mockGetEarnState.mockReturnValue({
+        pool: { id: "pool-1" },
+        selectedAssetCode: "USDC",
+        selectedAssetApy: 0.05,
+        didSwapInFlow: true,
+      });
       mockSignTransaction.mockReturnValue("signed-xdr");
       let resolveSubmit: (outcome: SubmitTransactionOutcome) => void = () => {};
       mockSubmitTransaction.mockImplementation(
@@ -299,10 +307,17 @@ describe("useEarnTransaction", () => {
       // The submit is now suspended awaiting `submitTransaction` — this is
       // the abandonment window. Abandon it exactly like
       // `handleCloseEarnProcessingWhileSubmitting` does when the user
-      // closes mid-submit, BEFORE the network call resolves.
+      // closes mid-submit, BEFORE the network call resolves. Leaving Earn
+      // then resets the earn duck.
       expect(result.current.status).toBe("submitting");
       act(() => {
         result.current.abandon();
+      });
+      mockGetEarnState.mockReturnValue({
+        pool: null,
+        selectedAssetCode: "",
+        selectedAssetApy: null,
+        didSwapInFlow: false,
       });
 
       await act(async () => {
@@ -316,8 +331,14 @@ describe("useEarnTransaction", () => {
       // And it must not silently flip status to "success" either.
       expect(result.current.status).toBe("submitting");
       expect(result.current.transactionHash).toBeNull();
-      // Nor should an abandoned submit fire a business-outcome event.
-      expect(mockTrackEarnDepositSuccess).not.toHaveBeenCalled();
+      // The deposit still went through, so it is still reported, with what
+      // was picked when it started: leaving Earn has reset the earn duck.
+      expect(mockTrackEarnDepositSuccess).toHaveBeenCalledWith({
+        assetCode: "USDC",
+        poolId: "pool-1",
+        apy: 0.05,
+        viaSwap: true,
+      });
     });
 
     it("does NOT call setSubmitFailed or write status when a submit rejects AFTER being abandoned", async () => {
@@ -349,7 +370,10 @@ describe("useEarnTransaction", () => {
       expect(mockSetSubmitFailed).not.toHaveBeenCalled();
       expect(result.current.status).toBe("submitting");
       expect(result.current.error).toBeNull();
-      expect(mockTrackEarnDepositFail).not.toHaveBeenCalled();
+      // The failure is still reported.
+      expect(mockTrackEarnDepositFail).toHaveBeenCalledWith(
+        expect.objectContaining({ assetCode: "USDC", poolId: "pool-1" }),
+      );
     });
 
     it("reset() is a no-op while status is submitting (hardening against the same bug class)", async () => {

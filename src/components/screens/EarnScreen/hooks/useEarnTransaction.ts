@@ -61,7 +61,8 @@ interface UseEarnTransactionResult {
    * persists across mounts, so without this guard a submit abandoned by
    * navigating Home mid-flight could resolve later and flip
    * `lastSubmitFailed` out of order, surfacing a misleading retry banner in
-   * an unrelated later Earn session.
+   * an unrelated later Earn session. Its outcome is still reported to
+   * analytics, as the extension does.
    *
    * Mirrors the `get().requestId === newRequestId` guard already used
    * around every async write in `ducks/transactionBuilder.ts` (see e.g. its
@@ -138,6 +139,18 @@ export const useEarnTransaction = ({
     const requestId = nextRequestIdRef.current;
     activeRequestIdRef.current = requestId;
 
+    // The outcome is reported even when the user closes before it settles,
+    // and leaving Earn resets the earn duck, so read what the deposit is
+    // about now. No amount/fiat value on either event by design (product
+    // decision, non-negotiable) -- only the identifiers.
+    const { pool, selectedAssetCode, selectedAssetApy, didSwapInFlow } =
+      useEarnStore.getState();
+    const depositIdentifiers = {
+      assetCode: selectedAssetCode,
+      poolId: pool?.id,
+      apy: selectedAssetApy,
+    };
+
     setStatus("submitting");
     setError(null);
     setTransactionHash(null);
@@ -181,6 +194,11 @@ export const useEarnTransaction = ({
         throw submitFailure;
       }
 
+      analytics.trackEarnDepositSuccess({
+        ...depositIdentifiers,
+        viaSwap: didSwapInFlow,
+      });
+
       // The `await` above is the abandonment window: the user may have
       // closed away from this submit (or, in principle, started another)
       // while it was in flight. Skip every write below — including
@@ -192,28 +210,7 @@ export const useEarnTransaction = ({
       setTransactionHash(hash);
       setSubmitFailed(false);
       setStatus("success");
-
-      // No amount/fiat value on this event by design (product decision,
-      // non-negotiable) -- only the identifiers, matching payment.completed /
-      // swap.completed's shape.
-      const { pool, selectedAssetCode, selectedAssetApy } =
-        useEarnStore.getState();
-      analytics.trackEarnDepositSuccess({
-        assetCode: selectedAssetCode,
-        poolId: pool?.id,
-        apy: selectedAssetApy,
-      });
     } catch (err) {
-      if (activeRequestIdRef.current !== requestId) {
-        return;
-      }
-
-      const message = err instanceof Error ? err.message : String(err);
-      logger.error("useEarnTransaction", "Deposit submission failed", err);
-      setError(message);
-      setSubmitFailed(true);
-      setStatus("error");
-
       // Result codes come off this attempt's own submit outcome, carried on
       // the thrown error. Absent for a signing failure (there's no Horizon
       // result yet) -- reason_code falls back to "unknown" in that case, same
@@ -223,15 +220,21 @@ export const useEarnTransaction = ({
           ? (err as Error & { resultCodes?: SubmitResultCodes | null })
               .resultCodes
           : undefined;
-      const { pool, selectedAssetCode, selectedAssetApy } =
-        useEarnStore.getState();
       analytics.trackEarnDepositFail({
-        assetCode: selectedAssetCode,
-        poolId: pool?.id,
-        apy: selectedAssetApy,
+        ...depositIdentifiers,
         errorCode:
           submitResultCodes?.operations?.[0] || submitResultCodes?.transaction,
       });
+
+      if (activeRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error("useEarnTransaction", "Deposit submission failed", err);
+      setError(message);
+      setSubmitFailed(true);
+      setStatus("error");
     }
   }, [account, network, signTransaction, submitTransaction, setSubmitFailed]);
 

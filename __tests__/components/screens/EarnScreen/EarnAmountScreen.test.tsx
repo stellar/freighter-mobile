@@ -87,14 +87,26 @@ jest.mock("components/screens/EarnScreen/screens", () => {
   // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
   const RNModule = require("react-native");
   return {
-    EarnProcessingScreen: ({ status }: { status: string }) => (
-      <RNModule.View
-        testID="earn-processing-mock"
-        accessibilityLabel={status}
-      />
+    EarnProcessingScreen: ({
+      status,
+      onCloseWhileSubmitting,
+    }: {
+      status: string;
+      onCloseWhileSubmitting: () => void;
+    }) => (
+      <RNModule.View testID="earn-processing-mock" accessibilityLabel={status}>
+        <RNModule.Pressable
+          testID="earn-processing-close"
+          onPress={onCloseWhileSubmitting}
+        />
+      </RNModule.View>
     ),
   };
 });
+
+// The Earn funnel events all go through `track` (mocked in jest.setup.js);
+// asserting on it checks the event name and the payload the extension uses.
+const { track: mockTrack } = jest.requireMock("services/analytics/core");
 
 const mockSimulate = jest.fn();
 const mockSubmitEarnTransaction = jest.fn();
@@ -423,6 +435,10 @@ describe("EarnAmountScreen", () => {
       const [feeSheet] = globalThis.__earnAmountMockSheetRefs;
       expect(feeSheet.present).toHaveBeenCalledTimes(1);
       expect(mockSimulate).not.toHaveBeenCalled();
+      expect(mockTrack).toHaveBeenCalledWith(
+        "earn.xlm_fee_insufficient_shown",
+        { asset_code: "USDC", reason: "no_xlm" },
+      );
     });
 
     it("does not trip the gate once there is any spendable XLM, even far less than a Blend submit's resource fee", async () => {
@@ -534,6 +550,10 @@ describe("EarnAmountScreen", () => {
       expect(mockSimulate).toHaveBeenCalledTimes(1);
       expect(feeSheet.present).toHaveBeenCalledTimes(1);
       expect(reviewSheet.present).not.toHaveBeenCalled();
+      expect(mockTrack).toHaveBeenCalledWith(
+        "earn.xlm_fee_insufficient_shown",
+        { asset_code: "USDC", reason: "fee_not_covered" },
+      );
       // The reduce-your-deposit toast is for XLM deposits only.
       expect(mockShowToast).not.toHaveBeenCalledWith(
         expect.objectContaining({ toastId: "earn-fee-shortfall" }),
@@ -677,6 +697,60 @@ describe("EarnAmountScreen", () => {
       expect(mockShowToast).toHaveBeenCalledWith(
         expect.objectContaining({ title: "Error(Contract, #10)" }),
       );
+    });
+
+    it("reports the failure with the pool's own reason", () => {
+      mockSimulateError = "HostError: Error(Contract, #1206)";
+
+      renderScreen();
+
+      expect(mockTrack).toHaveBeenCalledWith("earn.simulation_failed", {
+        asset_code: "USDC",
+        reason_code: "HostError: Error(Contract, #1206)",
+      });
+    });
+  });
+
+  describe("funnel events", () => {
+    it("reports Max, but not 25% or 50%", () => {
+      setTokenAmount("0");
+      const { getByTestId } = renderScreen();
+
+      fireEvent.press(getByTestId("percentage-25"));
+      fireEvent.press(getByTestId("percentage-50"));
+      expect(mockTrack).not.toHaveBeenCalledWith(
+        "earn.max_amount_selected",
+        expect.anything(),
+      );
+
+      fireEvent.press(getByTestId("percentage-100"));
+      expect(mockTrack).toHaveBeenCalledWith("earn.max_amount_selected", {
+        asset_code: "USDC",
+        percent: 100,
+      });
+    });
+
+    it("reports opening the pool details", () => {
+      const { getByTestId } = renderScreen();
+
+      fireEvent.press(getByTestId("earn-amount-pool-card-row"));
+
+      expect(mockTrack).toHaveBeenCalledWith("earn.pool_details_opened", {
+        pool_id: POOL_ID,
+      });
+    });
+
+    it("reports closing the processing screen before the deposit settles", () => {
+      mockEarnTransactionStatus = "submitting";
+      const { getByTestId } = renderScreen();
+
+      fireEvent.press(getByTestId("earn-processing-close"));
+
+      expect(mockTrack).toHaveBeenCalledWith(
+        "earn.deposit_processing_dismissed",
+        { asset_code: "USDC", pool_id: POOL_ID },
+      );
+      expect(mockAbandonEarnTransaction).toHaveBeenCalled();
     });
   });
 

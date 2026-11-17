@@ -64,6 +64,20 @@ describe("earn duck", () => {
     expect(useEarnStore.getState().lastSubmitFailed).toBe(false);
   });
 
+  it("remembers a swap in the flow until the flow resets, whichever token is picked", () => {
+    useEarnStore.getState().setDidSwapInFlow(true);
+    useEarnStore.getState().selectAsset({
+      assetId: "CANOTHERASSET",
+      apy: 0.05,
+      code: "XLM",
+      decimals: 7,
+    });
+    expect(useEarnStore.getState().didSwapInFlow).toBe(true);
+
+    useEarnStore.getState().resetEarn();
+    expect(useEarnStore.getState().didSwapInFlow).toBe(false);
+  });
+
   it("keeps a null rate null rather than coercing it to zero", () => {
     useEarnStore
       .getState()

@@ -2,6 +2,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { act, fireEvent } from "@testing-library/react-native";
 import { EarnSwapFromBottomSheet } from "components/screens/EarnScreen/components/EarnSwapFromBottomSheet";
+import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
 import EarnTokenPickerScreen from "components/screens/EarnScreen/screens/EarnTokenPickerScreen";
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { usePreferencesStore } from "ducks/preferences";
@@ -43,10 +44,16 @@ jest.mock("components/BottomSheet", () => {
 
   const NoopSheet = (props: { modalRef?: React.RefObject<unknown> }) => {
     const { modalRef } = props;
+    // Keeps the latest props, so handlers read the screen's current state.
+    const entryRef = ReactModule.useRef(null as CapturedSheet | null);
+    if (entryRef.current) {
+      entryRef.current.props = props;
+    }
     ReactModule.useImperativeHandle(modalRef, () => {
       const spy: SheetRefSpy = { present: jest.fn(), dismiss: jest.fn() };
+      entryRef.current = { ref: spy, props };
       // eslint-disable-next-line no-underscore-dangle
-      globalThis.__earnTokenPickerMockSheets.push({ ref: spy, props });
+      globalThis.__earnTokenPickerMockSheets.push(entryRef.current);
       return spy;
     }, []);
     // Don't render customContent -- the real NotEnoughTokenBottomSheet /
@@ -354,6 +361,88 @@ describe("EarnTokenPickerScreen", () => {
       expect(mockDismissToast).toHaveBeenCalledWith(
         "failed-to-setup-transaction",
       );
+    });
+  });
+
+  describe("funnel events", () => {
+    // `track` is mocked in jest.setup.js.
+    const { track: mockTrack } = jest.requireMock("services/analytics/core");
+
+    const notEnoughSheetProps = () => {
+      // eslint-disable-next-line no-underscore-dangle
+      const sheets = globalThis.__earnTokenPickerMockSheets;
+      const sheet = sheets.find(
+        ({ props }) =>
+          (props.customContent as React.ReactElement | undefined)?.type ===
+          NotEnoughTokenBottomSheet,
+      );
+      return (
+        sheet?.props.customContent as React.ReactElement<{
+          onBuy: () => void;
+          onSwap: () => void;
+          onReceive: () => void;
+        }>
+      ).props;
+    };
+
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+    });
+
+    it("reports picking a held token", () => {
+      mockUseEarnTokens.held = [makeOption("XLM", "100")];
+      const { getByTestId } = renderScreen();
+
+      fireEvent.press(getByTestId("earn-token-option-XLM"));
+
+      expect(mockTrack).toHaveBeenCalledWith("earn.token_selected", {
+        asset_code: "XLM",
+        pool_id: "CPOOLFAKE",
+        apy: 0.1694,
+      });
+    });
+
+    it("reports the Not enough sheet with the buttons it shows", () => {
+      mockUseEarnTokens.supported = [makeOption("EURC")];
+      const { getByTestId } = renderScreen();
+
+      fireEvent.press(getByTestId("earn-token-option-EURC"));
+
+      // Testnet and nothing to swap from: Receive is the only way.
+      expect(mockTrack).toHaveBeenCalledWith(
+        "earn.balance_insufficient_shown",
+        { asset_code: "EURC", variant: "transfer-only" },
+      );
+    });
+
+    it("reports the button picked on the Not enough sheet", () => {
+      mockUseEarnTokens.supported = [makeOption("EURC")];
+      const { getByTestId } = renderScreen();
+      fireEvent.press(getByTestId("earn-token-option-EURC"));
+
+      act(() => {
+        notEnoughSheetProps().onReceive();
+      });
+      expect(mockTrack).toHaveBeenCalledWith("earn.funding_action_selected", {
+        asset_code: "EURC",
+        action: "transfer",
+      });
+
+      act(() => {
+        notEnoughSheetProps().onBuy();
+      });
+      expect(mockTrack).toHaveBeenCalledWith("earn.funding_action_selected", {
+        asset_code: "EURC",
+        action: "buy",
+      });
+
+      act(() => {
+        notEnoughSheetProps().onSwap();
+      });
+      expect(mockTrack).toHaveBeenCalledWith("earn.funding_action_selected", {
+        asset_code: "EURC",
+        action: "swap",
+      });
     });
   });
 });

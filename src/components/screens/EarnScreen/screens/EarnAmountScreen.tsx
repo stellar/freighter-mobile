@@ -83,6 +83,13 @@ import React, {
   useState,
 } from "react";
 import { BackHandler, Keyboard, TextInput, View } from "react-native";
+import {
+  trackEarnDepositDismissed,
+  trackEarnMaxAmountSelected,
+  trackEarnPoolDetailsOpened,
+  trackEarnSimulationFailed,
+  trackEarnXlmFeeInsufficientShown,
+} from "services/analytics/earn";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
   assessTransactionSecurity,
@@ -304,6 +311,10 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     }
     if (simulateError !== previousSimulateErrorRef.current) {
       previousSimulateErrorRef.current = simulateError;
+      trackEarnSimulationFailed({
+        assetCode: tokenCode,
+        message: simulateError,
+      });
       // A balance rejection on an XLM deposit is the fee, not the amount:
       // the CTA already gates anything above the spendable balance, so
       // what is left is a deposit that cannot also pay for itself. Every
@@ -320,7 +331,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         duration: 0,
       });
     }
-  }, [simulateError, showToast, isXlm, t]);
+  }, [simulateError, showToast, isXlm, t, tokenCode]);
 
   // The error toasts stay up until dismissed (`duration: 0`). Both are
   // about the amount that was just tried, so editing it, or leaving the
@@ -352,6 +363,10 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
 
   const handlePercentagePress = useCallback(
     (percentage: number) => {
+      if (percentage === 100) {
+        trackEarnMaxAmountSelected({ assetCode: tokenCode });
+      }
+
       const targetAmount = getPercentageDepositAmount({
         maxDepositable: availableBalance,
         pct: percentage,
@@ -373,6 +388,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       setTokenAmount(targetAmount);
     },
     [
+      tokenCode,
       availableBalance,
       depositDecimals,
       showFiatAmount,
@@ -402,8 +418,9 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
 
   // The pool card is the only route into `PoolDetailsBottomSheet`.
   const handleOpenPoolDetails = useCallback(() => {
+    trackEarnPoolDetailsOpened({ poolId: pool?.id ?? "" });
     presentOverDismissedKeyboard(poolDetailsBottomSheetModalRef);
-  }, [presentOverDismissedKeyboard]);
+  }, [presentOverDismissedKeyboard, pool?.id]);
 
   // Review sheet's footer gear -- same
   // `TransactionSettingsBottomSheet`/`TransactionContext.Send` reuse as the
@@ -499,6 +516,10 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   // surface here OR corrupt a later Earn session's retry banner. This is
   // intentional, matching the flow's spec, not an oversight.
   const handleCloseEarnProcessingWhileSubmitting = useCallback(() => {
+    trackEarnDepositDismissed({
+      assetCode: tokenCode,
+      poolId: pool?.id ?? "",
+    });
     abandonEarnTransaction();
     navigation.reset({
       index: 0,
@@ -513,7 +534,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         },
       ],
     });
-  }, [navigation, abandonEarnTransaction]);
+  }, [navigation, abandonEarnTransaction, tokenCode, pool?.id]);
 
   // Success's "Done" action: clear the earn duck (pool/asset selection,
   // lastSubmitFailed) now that the flow completed, then return Home.
@@ -634,6 +655,10 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         fee: transactionFee,
       })
     ) {
+      trackEarnXlmFeeInsufficientShown({
+        assetCode: tokenCode,
+        reason: "no_xlm",
+      });
       presentOverDismissedKeyboard(networkFeeBottomSheetModalRef);
       return;
     }
@@ -699,6 +724,10 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     // earlier design did). So this branch either opens Review with the
     // amount `simulate` was just called with, or doesn't open it at all.
     if (new BigNumber(shortfall).gt(0)) {
+      trackEarnXlmFeeInsufficientShown({
+        assetCode: tokenCode,
+        reason: "fee_not_covered",
+      });
       if (isXlm) {
         // Depositing less frees the XLM, so ask for a smaller amount.
         showToast({
@@ -735,6 +764,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     t,
     openReviewSheet,
     presentOverDismissedKeyboard,
+    tokenCode,
   ]);
 
   // Reset the builder's stale XDR/fee snapshot when the user backs out of

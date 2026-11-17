@@ -135,6 +135,8 @@ export interface EarnDepositSuccessEvent {
   assetCode: string;
   poolId?: string;
   apy?: number | null;
+  /** Whether a swap finished earlier in this Earn session. */
+  viaSwap: boolean;
 }
 
 export interface EarnDepositErrorEvent {

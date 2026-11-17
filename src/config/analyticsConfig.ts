@@ -87,7 +87,8 @@ export enum AnalyticsEvent {
   VIEW_EARN_AMOUNT = "earn_amount",
   VIEW_EARN_REVIEW = "earn_review",
   VIEW_EARN_TRANSACTION_DETAILS = "earn_transaction_details",
-  VIEW_EARN_SWAP = "earn_swap",
+  // The extension's name for the same step.
+  VIEW_EARN_SWAP = "earn_swap_amount",
   VIEW_EARN_SWAP_REVIEW = "earn_swap_review",
   VIEW_EARN_PROCESSING = "earn_processing",
   VIEW_EARN_SUCCESS = "earn_success",
@@ -169,6 +170,19 @@ export enum AnalyticsEvent {
   EARN_DEPOSIT_SUCCESS = "earn.deposit_completed",
   // carries reason_code
   EARN_DEPOSIT_FAIL = "earn.deposit_failed",
+  // Closing the processing screen before the deposit settled. The outcome
+  // is still reported as completed or failed.
+  EARN_DEPOSIT_DISMISSED = "earn.deposit_processing_dismissed",
+  // The rest of the extension's Earn funnel, by the same names
+  // (services/analytics/earn.ts).
+  EARN_TOKEN_SELECTED = "earn.token_selected",
+  EARN_BALANCE_INSUFFICIENT_SHOWN = "earn.balance_insufficient_shown",
+  EARN_FUNDING_ACTION_SELECTED = "earn.funding_action_selected",
+  EARN_SWAP_COMPLETED = "earn.swap_completed",
+  EARN_POOL_DETAILS_OPENED = "earn.pool_details_opened",
+  EARN_MAX_AMOUNT_SELECTED = "earn.max_amount_selected",
+  EARN_XLM_FEE_INSUFFICIENT_SHOWN = "earn.xlm_fee_insufficient_shown",
+  EARN_SIMULATION_FAILED = "earn.simulation_failed",
 
   // Send collectible
   SEND_COLLECTIBLE_SUCCESS = "collectible_send.completed",

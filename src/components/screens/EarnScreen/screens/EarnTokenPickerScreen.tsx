@@ -99,6 +99,12 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  trackEarnBalanceInsufficientShown,
+  trackEarnFundingActionSelected,
+  trackEarnSwapCompleted,
+  trackEarnTokenSelected,
+} from "services/analytics/earn";
 import { SecurityLevel } from "services/blockaid/constants";
 import { assessTransactionSecurity } from "services/blockaid/helper";
 
@@ -120,6 +126,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   const { recommendedFee } = useNetworkFees();
   const { account } = useGetActiveAccount();
   const selectAsset = useEarnStore((state) => state.selectAsset);
+  const setDidSwapInFlow = useEarnStore((state) => state.setDidSwapInFlow);
   const { network } = useAuthenticationStore();
   const { pricedBalances } = useBalancesStore();
   const isOnrampEnabled = useRemoteConfigStore((state) => state.onramp_enabled);
@@ -180,6 +187,11 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     const outcome = swapOutcomeRef.current;
     swapOutcomeRef.current = null;
     if (outcome?.succeeded && swapOption) {
+      trackEarnSwapCompleted({
+        fromAssetCode: useSwapStore.getState().sourceTokenSymbol,
+        toAssetCode: swapOption.code,
+      });
+      setDidSwapInFlow(true);
       showToast({
         variant: "success",
         title: t("earnSwap.swappedToast", {
@@ -197,7 +209,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     setNotEnoughOption(null);
     refetch();
     refreshBalances();
-  }, [refetch, refreshBalances, showToast, swapOption, t]);
+  }, [refetch, refreshBalances, showToast, swapOption, t, setDidSwapInFlow]);
 
   const earnSwap = useEarnSwap({
     option: swapOption,
@@ -353,56 +365,69 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     [network],
   );
 
+  // Which buttons the "not enough" sheet offers for a token.
+  const getNotEnoughVariantFor = useCallback(
+    (option: EarnTokenOption) => {
+      const isOnrampable = isOnrampableAsset(
+        option.code,
+        networkDetails,
+        isOnrampEnabled,
+      );
+      // No trustline for this asset means it can't appear as a key in
+      // `pricedBalances` at all, so any identifier that isn't a real
+      // "XLM"/"CODE:ISSUER" key is a safe placeholder — the reserve's own
+      // contract address works and never collides.
+      const targetIdentifier = option.balance
+        ? getTokenIdentifier(option.balance)
+        : option.assetId;
+      // Swapping into a reserve the account has no trustline for opens one
+      // first, in the same transaction: a second operation for the fee, and
+      // another base reserve of XLM.
+      const requiresTrustline = !option.isNative && !option.balance;
+      const isSwappable = hasSwappableBalance({
+        balances: pricedBalances,
+        targetIdentifier,
+        subentryCount: account?.subentryCount ?? 0,
+        transactionFee: new BigNumber(recommendedFee || MIN_TRANSACTION_FEE)
+          .times(requiresTrustline ? 2 : 1)
+          .toFixed(),
+        requiresTrustline,
+      });
+
+      return getNotEnoughVariant({ isOnrampable, isSwappable });
+    },
+    [
+      networkDetails,
+      isOnrampEnabled,
+      pricedBalances,
+      account?.subentryCount,
+      recommendedFee,
+    ],
+  );
+
+  const notEnoughVariant = useMemo(
+    () =>
+      notEnoughOption
+        ? getNotEnoughVariantFor(notEnoughOption)
+        : NotEnoughVariant.TRANSFER_ONLY,
+    [notEnoughOption, getNotEnoughVariantFor],
+  );
+
   /**
    * Zero-balance rows aren't deposit-ready — tapping one opens the "not
    * enough" sheet instead of navigating to the (unusable) amount screen.
    */
-  const handleUnheldTokenPress = useCallback((option: EarnTokenOption) => {
-    setNotEnoughOption(option);
-    notEnoughBottomSheetModalRef.current?.present();
-  }, []);
-
-  const notEnoughVariant = useMemo(() => {
-    if (!notEnoughOption) {
-      return NotEnoughVariant.TRANSFER_ONLY;
-    }
-
-    const isOnrampable = isOnrampableAsset(
-      notEnoughOption.code,
-      networkDetails,
-      isOnrampEnabled,
-    );
-    // No trustline for this asset means it can't appear as a key in
-    // `pricedBalances` at all, so any identifier that isn't a real
-    // "XLM"/"CODE:ISSUER" key is a safe placeholder — the reserve's own
-    // contract address works and never collides.
-    const targetIdentifier = notEnoughOption.balance
-      ? getTokenIdentifier(notEnoughOption.balance)
-      : notEnoughOption.assetId;
-    // Swapping into a reserve the account has no trustline for opens one
-    // first, in the same transaction: a second operation for the fee, and
-    // another base reserve of XLM.
-    const requiresTrustline =
-      !notEnoughOption.isNative && !notEnoughOption.balance;
-    const isSwappable = hasSwappableBalance({
-      balances: pricedBalances,
-      targetIdentifier,
-      subentryCount: account?.subentryCount ?? 0,
-      transactionFee: new BigNumber(recommendedFee || MIN_TRANSACTION_FEE)
-        .times(requiresTrustline ? 2 : 1)
-        .toFixed(),
-      requiresTrustline,
-    });
-
-    return getNotEnoughVariant({ isOnrampable, isSwappable });
-  }, [
-    notEnoughOption,
-    networkDetails,
-    isOnrampEnabled,
-    pricedBalances,
-    account?.subentryCount,
-    recommendedFee,
-  ]);
+  const handleUnheldTokenPress = useCallback(
+    (option: EarnTokenOption) => {
+      trackEarnBalanceInsufficientShown({
+        assetCode: option.code,
+        variant: getNotEnoughVariantFor(option),
+      });
+      setNotEnoughOption(option);
+      notEnoughBottomSheetModalRef.current?.present();
+    },
+    [getNotEnoughVariantFor],
+  );
 
   // The sheet's header renders the deposit asset's real icon, not a generic
   // glyph -- same
@@ -428,12 +453,18 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   }, []);
 
   const handleBuyPress = useCallback(() => {
+    if (notEnoughOption) {
+      trackEarnFundingActionSelected({
+        assetCode: notEnoughOption.code,
+        action: "buy",
+      });
+    }
     notEnoughBottomSheetModalRef.current?.dismiss();
     rootNavigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
       screen: ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN,
       params: { isUnfunded: false },
     });
-  }, [rootNavigation]);
+  }, [rootNavigation, notEnoughOption]);
 
   // Swap-within-Earn: opens a sheet stacked OVER the
   // still-visible picker, with the destination locked to the reserve the
@@ -446,6 +477,12 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // completed swap would be wrong -- the balance it is complaining about no
   // longer applies.
   const handleSwapForToken = useCallback(() => {
+    if (notEnoughOption) {
+      trackEarnFundingActionSelected({
+        assetCode: notEnoughOption.code,
+        action: "swap",
+      });
+    }
     // Capture before dismissing: the sheet below clears `notEnoughOption` as
     // it closes, so the swap branch needs its own copy to survive that.
     setSwapOption(notEnoughOption);
@@ -583,8 +620,14 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // sheet rather than replacing it, the same pattern the review sheet's
   // security-detail sheet uses. The user never leaves Earn.
   const handleReceivePress = useCallback(() => {
+    if (notEnoughOption) {
+      trackEarnFundingActionSelected({
+        assetCode: notEnoughOption.code,
+        action: "transfer",
+      });
+    }
     receiveFundsBottomSheetModalRef.current?.present();
-  }, []);
+  }, [notEnoughOption]);
 
   // Back returns to the "not enough" sheet underneath; X closes both.
   const handleReceiveBack = useCallback(() => {
@@ -611,6 +654,11 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
 
   const handleHeldTokenPress = useCallback(
     (option: EarnTokenOption) => {
+      trackEarnTokenSelected({
+        assetCode: option.code,
+        poolId: option.poolId,
+        apy: option.apy,
+      });
       selectAsset({
         assetId: option.assetId,
         apy: option.apy,

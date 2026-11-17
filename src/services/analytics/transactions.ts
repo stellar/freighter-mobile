@@ -479,6 +479,7 @@ export const trackEarnDepositSuccess = (
     asset_code: data.assetCode,
     pool_id: data.poolId,
     apy: data.apy,
+    via_swap: data.viaSwap,
   });
 };
 

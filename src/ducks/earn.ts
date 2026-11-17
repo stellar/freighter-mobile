@@ -41,6 +41,12 @@ interface EarnState {
    * component state would be torn down in between.
    */
   lastSubmitFailed: boolean;
+  /**
+   * Whether a swap finished inside this Earn session, for the deposit's
+   * `via_swap` analytics. Like the extension's, it stays set for the rest of
+   * the session, whichever token is deposited.
+   */
+  didSwapInFlow: boolean;
 
   setPool: (pool: BlendCatalogPool | null) => void;
   selectAsset: (params: {
@@ -51,6 +57,7 @@ interface EarnState {
   }) => void;
   setCurrentPositionTokens: (tokens: string) => void;
   setSubmitFailed: (failed: boolean) => void;
+  setDidSwapInFlow: (didSwap: boolean) => void;
   resetEarn: () => void;
 }
 
@@ -62,6 +69,7 @@ const initialState = {
   selectedAssetDecimals: 7,
   currentPositionTokens: "0",
   lastSubmitFailed: false,
+  didSwapInFlow: false,
 };
 
 export const useEarnStore = create<EarnState>((set) => ({
@@ -92,6 +100,8 @@ export const useEarnStore = create<EarnState>((set) => ({
     set({ currentPositionTokens }),
 
   setSubmitFailed: (lastSubmitFailed) => set({ lastSubmitFailed }),
+
+  setDidSwapInFlow: (didSwapInFlow) => set({ didSwapInFlow }),
 
   resetEarn: () => set({ ...initialState }),
 }));
