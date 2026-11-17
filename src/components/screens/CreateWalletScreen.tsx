@@ -70,6 +70,8 @@ const CreateWalletScreen: React.FC<CreateWalletScreenProps> = ({
     (state) => state.fetchAccountsFiatTotals,
   );
   const nameSheetRef = useRef<BottomSheetModal>(null);
+  // Set once Next is handled, cleared when the sheet opens again.
+  const namingHandledRef = useRef(false);
   const [target, setTarget] = useState<NamingTarget | null>(null);
   // If the read fails there are no phrases to list, but New recovery phrase
   // still works.
@@ -122,16 +124,24 @@ const CreateWalletScreen: React.FC<CreateWalletScreenProps> = ({
   );
 
   const startNaming = (next: NamingTarget) => {
+    namingHandledRef.current = false;
     setTarget(next);
     nameSheetRef.current?.present();
   };
 
   const handleNamed = (accountName: string) => {
+    // The sheet's dismiss is animated, so Next can be tapped again before it
+    // closes. A second new-phrase run would replace the phrase the backup
+    // screen is showing.
+    if (namingHandledRef.current) {
+      return;
+    }
+    namingHandledRef.current = true;
     nameSheetRef.current?.dismiss();
 
     if (target?.kind === "newPhrase") {
       // Held in the auth store until the password step stores it; the
-      // backup screen reads it from there by its id, never from params.
+      // backup screen fixes this id at mount and reads the phrase by it.
       const pendingPhraseId = generatePendingRecoveryPhrase();
       navigation.navigate(MANAGE_WALLETS_ROUTES.BACKUP_RECOVERY_PHRASE_SCREEN, {
         pendingPhraseId,

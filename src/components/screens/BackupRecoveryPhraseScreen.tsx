@@ -33,6 +33,10 @@ type BackupRecoveryPhraseScreenProps = NativeStackScreenProps<
  * store holds it until the password step stores it. Leaving this screen
  * backwards drops it, so an abandoned phrase is never stored.
  *
+ * The id is fixed at mount along with the phrase. A later navigate can update
+ * the params in place, and Create must forward the id of the phrase on screen;
+ * if the store has moved on, the password step refuses it.
+ *
  * Design: hidden ?node-id=2554-165958, revealed ?node-id=2554-165990.
  */
 const BackupRecoveryPhraseScreen: React.FC<BackupRecoveryPhraseScreenProps> = ({
@@ -42,8 +46,11 @@ const BackupRecoveryPhraseScreen: React.FC<BackupRecoveryPhraseScreenProps> = ({
   const { t } = useAppTranslation();
   const { copyToClipboard } = useSecureClipboard();
   const { themeColors } = useColors();
-  const { pendingPhraseId, accountName } = route.params;
-  const [phrase] = useState(() => getPendingRecoveryPhrase(pendingPhraseId));
+  const { accountName } = route.params;
+  const [{ pendingPhraseId, phrase }] = useState(() => ({
+    pendingPhraseId: route.params.pendingPhraseId,
+    phrase: getPendingRecoveryPhrase(route.params.pendingPhraseId),
+  }));
   const [isRevealed, setIsRevealed] = useState(false);
 
   // Mounted for as long as the flow is past this point, so this runs when
