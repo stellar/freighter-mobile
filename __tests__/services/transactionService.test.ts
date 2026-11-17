@@ -1044,6 +1044,55 @@ describe("buildBlendDepositTransaction", () => {
     expect(parsedTx.fee).toBe("100");
   });
 
+  describe("when the backend rejects the simulation", () => {
+    // v1 /simulate-tx replies 400 with plain text: the thrown error's name
+    // and message, then its stack.
+    const rejectWithBody = (body: unknown) =>
+      (backend.simulateTransaction as jest.Mock).mockRejectedValue({
+        message: "Request failed with status code 400",
+        status: 400,
+        data: body,
+        isNetworkError: false,
+      });
+
+    it("surfaces the pool's own error, not the HTTP status", async () => {
+      const simulation = {
+        id: "1",
+        latestLedger: 65517476,
+        events: [],
+        _parsed: true,
+        error: `HostError: Error(Contract, #1206)\n\nEvent log (newest first):\n   0: [Diagnostic Event] contract:${POOL_ID}, topics:[error, Error(Contract, #1206)]`,
+      };
+      rejectWithBody(
+        `Error: Error - simulation incorrect: ${JSON.stringify(simulation)}\n    at assembleTransaction (/app/node_modules/@stellar/stellar-sdk/lib/rpc/transaction.js:41:11)`,
+      );
+
+      await expect(buildBlendDepositTransaction(baseParams)).rejects.toThrow(
+        new Error("HostError: Error(Contract, #1206)"),
+      );
+    });
+
+    it("keeps any other backend error in its own words, without the stack", async () => {
+      rejectWithBody(
+        "Error: Error - Unknown network passphrase: Test\n    at route (/app/src/route/index.ts:1344:21)",
+      );
+
+      await expect(buildBlendDepositTransaction(baseParams)).rejects.toThrow(
+        new Error("Unknown network passphrase: Test"),
+      );
+    });
+
+    it("rethrows the original error when there is no body to read", async () => {
+      rejectWithBody(undefined);
+
+      await expect(
+        buildBlendDepositTransaction(baseParams),
+      ).rejects.toMatchObject({
+        message: "Request failed with status code 400",
+      });
+    });
+  });
+
   it("returns minResourceFee as null when the simulation response omits it", async () => {
     (backend.simulateTransaction as jest.Mock).mockResolvedValue({
       preparedTransaction: mockPreparedXdr,

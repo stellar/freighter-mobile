@@ -55,6 +55,7 @@ import {
 import { t } from "i18next";
 import { analytics } from "services/analytics";
 import { SimulationTransactionType } from "services/analytics/types";
+import { isApiError } from "services/apiFactory";
 import { simulateTokenTransfer, simulateTransaction } from "services/backend";
 import { buildChangeTrustOperation, stellarSdkServer } from "services/stellar";
 
@@ -1007,6 +1008,47 @@ interface BuildBlendDepositTransactionResult {
 }
 
 /**
+ * The reason the v1 backend's `/simulate-tx` gave for rejecting a
+ * simulation, or null when the error carries no body to read.
+ *
+ * The backend replies 400 with plain text: `Error: <name> - <message>`, then
+ * the stack on the following lines. When the simulation itself failed (a
+ * frozen pool, a supply cap, a stale oracle), the message is the SDK's
+ * `simulation incorrect: <simulation JSON>`, whose `error` field opens with
+ * the host error, e.g. "HostError: Error(Contract, #1206)", followed by the
+ * event log. Only that first line is kept.
+ */
+const getSimulateTxFailureReason = (error: unknown): string | null => {
+  if (!isApiError(error) || typeof error.data !== "string") {
+    return null;
+  }
+
+  // JSON escapes its newlines, so the first real one starts the stack.
+  const [firstLine] = error.data.split("\n");
+  const message = firstLine.replace(/^Error: \w+ - /, "").trim();
+
+  const SIMULATION_PREFIX = "simulation incorrect: ";
+  if (message.startsWith(SIMULATION_PREFIX)) {
+    try {
+      const simulation: unknown = JSON.parse(
+        message.slice(SIMULATION_PREFIX.length),
+      );
+      const simulationError =
+        simulation && typeof simulation === "object" && "error" in simulation
+          ? simulation.error
+          : undefined;
+      if (typeof simulationError === "string" && simulationError.trim()) {
+        return simulationError.split("\n")[0].trim();
+      }
+    } catch {
+      // Not JSON after all: fall through to the message itself.
+    }
+  }
+
+  return message || null;
+};
+
+/**
  * Builds and simulates a Blend deposit — `pool.submit` with one
  * SupplyCollateral request.
  *
@@ -1070,11 +1112,22 @@ export const buildBlendDepositTransaction = async ({
     .setTimeout(transactionTimeout)
     .build();
 
-  const simulation = await simulateTransaction({
-    xdr: builtTx.toXdr(),
-    network_url: networkDetails.sorobanRpcUrl,
-    network_passphrase: networkDetails.networkPassphrase,
-  });
+  let simulation;
+  try {
+    simulation = await simulateTransaction({
+      xdr: builtTx.toXdr(),
+      network_url: networkDetails.sorobanRpcUrl,
+      network_passphrase: networkDetails.networkPassphrase,
+    });
+  } catch (error) {
+    // Without this the user saw only axios's "Request failed with status
+    // code 400", never why the pool refused the deposit.
+    const reason = getSimulateTxFailureReason(error);
+    if (reason) {
+      throw new Error(reason);
+    }
+    throw error;
+  }
 
   if (!simulation?.preparedTransaction) {
     // simulateTransaction throws on HTTP failure (it's an axios call), so
