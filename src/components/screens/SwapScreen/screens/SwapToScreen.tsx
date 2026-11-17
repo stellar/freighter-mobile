@@ -1,6 +1,9 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import { DefaultListFooter } from "components/DefaultListFooter";
 import Spinner from "components/Spinner";
@@ -25,9 +28,18 @@ import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapT
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent, SwapSelectionSource } from "config/analyticsConfig";
+import {
+  AnalyticsEvent,
+  SwapSelectionSource,
+  TokenChartSource,
+} from "config/analyticsConfig";
 import { SWAP_SELECTION_TYPES } from "config/constants";
-import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
+import {
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+  SWAP_ROUTES,
+  SwapStackParamList,
+} from "config/routes";
 import { FormattedSearchTokenRecord } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
@@ -38,6 +50,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import { useToast } from "providers/ToastProvider";
 import React, { useEffect, useRef } from "react";
 import {
@@ -76,6 +89,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   } = useSwapStore();
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
+  const canViewDetails = usePriceHistoryEnabled(network);
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
@@ -220,6 +234,21 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         setSourceToken("", "");
       }
       setDestinationToken(descriptor);
+    });
+  };
+
+  // navigate() bubbles from the swap stack up to the root stack.
+  const openTokenDetails = (
+    record: FormattedSearchTokenRecord,
+    source: TokenChartSource,
+  ) => {
+    (
+      navigation as unknown as NativeStackNavigationProp<RootStackParamList>
+    ).navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
+      tokenId: recordTokenId(record),
+      tokenSymbol: record.tokenCode,
+      record,
+      source,
     });
   };
 
@@ -435,6 +464,12 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                   record={record}
                   network={network}
                   testID={`token-option-${record.tokenCode}`}
+                  onViewDetails={
+                    canViewDetails
+                      ? () =>
+                          openTokenDetails(record, TokenChartSource.SWAP_PICKER)
+                      : undefined
+                  }
                   onPress={() =>
                     handleRecordPress(
                       record,

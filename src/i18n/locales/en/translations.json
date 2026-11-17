@@ -8,6 +8,7 @@
     "unreadableAmount": "Couldn't read that amount — please enter it again"
   },
   "common": {
+    "viewDetails": "View details",
     "close": "Close",
     "unhide": "Unhide",
     "back": "Back",

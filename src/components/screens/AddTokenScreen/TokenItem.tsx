@@ -9,7 +9,7 @@ import {
 } from "config/types";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { memo } from "react";
-import { View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
 type TokenItemProps = {
   token: FormattedSearchTokenRecord;
@@ -19,7 +19,19 @@ type TokenItemProps = {
   handleUnhideToken?: (token: FormattedSearchTokenRecord) => void;
   /** Whether this row's unhide is in flight */
   isUnhiding?: boolean;
+  /** When given, the icon and name block is pressable (opens token details) */
+  onPress?: (token: FormattedSearchTokenRecord) => void;
 };
+
+const LeftBlock = ({
+  onPress,
+  ...props
+}: React.ComponentProps<typeof TouchableOpacity>) =>
+  onPress ? (
+    <TouchableOpacity onPress={onPress} {...props} />
+  ) : (
+    <View {...props} />
+  );
 
 const TokenItem: React.FC<TokenItemProps> = ({
   token,
@@ -27,6 +39,7 @@ const TokenItem: React.FC<TokenItemProps> = ({
   handleRemoveToken,
   handleUnhideToken,
   isUnhiding,
+  onPress,
 }) => {
   const { t } = useAppTranslation();
 
@@ -84,7 +97,15 @@ const TokenItem: React.FC<TokenItemProps> = ({
 
   return (
     <View className="mb-4 flex-row justify-between items-center flex-1">
-      <View className="flex-row items-center flex-1">
+      <LeftBlock
+        className="flex-row items-center flex-1"
+        {...(onPress
+          ? {
+              onPress: () => onPress(token),
+              testID: `token-item-body-${token.tokenCode}`,
+            }
+          : {})}
+      >
         <TokenIconWithBadge
           iconUrl={token.iconUrl}
           token={{
@@ -104,7 +125,7 @@ const TokenItem: React.FC<TokenItemProps> = ({
             {subtitle}
           </Text>
         </View>
-      </View>
+      </LeftBlock>
       {renderRightContent()}
     </View>
   );

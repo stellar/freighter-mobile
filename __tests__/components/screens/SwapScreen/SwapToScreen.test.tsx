@@ -1,12 +1,17 @@
-/* eslint-disable @fnando/consistent-import/consistent-import */
+/* eslint-disable @fnando/consistent-import/consistent-import, global-require, @typescript-eslint/no-var-requires */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
+import { recordTokenId } from "components/screens/SwapScreen/helpers";
 import * as useSwapTokenLookupModule from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { SwapToScreen } from "components/screens/SwapScreen/screens/SwapToScreen";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { SWAP_SELECTION_TYPES } from "config/constants";
-import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
+import {
+  ROOT_NAVIGATOR_ROUTES,
+  SWAP_ROUTES,
+  SwapStackParamList,
+} from "config/routes";
 import { HookStatus, TokenTypeWithCustomToken } from "config/types";
 import { useSwapStore } from "ducks/swap";
 import { classNameOf, renderWithProviders } from "helpers/testUtils";
@@ -16,6 +21,41 @@ import { InteractionManager } from "react-native";
 import { analytics } from "services/analytics";
 
 jest.mock("components/screens/SwapScreen/hooks/useSwapTokenLookup");
+
+const mockPriceHistoryEnabled = jest.fn(() => false);
+jest.mock("hooks/usePriceHistoryEnabled", () => ({
+  __esModule: true,
+  default: () => mockPriceHistoryEnabled(),
+}));
+
+// Surface each menu's actions so View details can be pressed without the
+// native menu.
+jest.mock("components/ContextMenuButton", () => {
+  const { View } = require("react-native");
+  return {
+    __esModule: true,
+    default: ({
+      contextMenuProps,
+      children,
+    }: {
+      contextMenuProps: {
+        actions: { title: string; onPress: () => void }[];
+      };
+      children: React.ReactNode;
+    }) => (
+      <View testID="mock-context-menu">
+        {contextMenuProps.actions.map((a) => (
+          <View
+            key={a.title}
+            testID={`menu-action-${a.title}`}
+            onTouchEnd={a.onPress}
+          />
+        ))}
+        {children}
+      </View>
+    ),
+  };
+});
 
 jest.mock("ducks/swap", () => ({
   useSwapStore: jest.fn(() => ({
@@ -66,9 +106,11 @@ type SwapToScreenProps = NativeStackScreenProps<
   typeof SWAP_ROUTES.SWAP_SCREEN
 >;
 
+const mockNavigate = jest.fn();
 const makeNavigation = () =>
   ({
     goBack: mockGoBack,
+    navigate: mockNavigate,
   }) as unknown as SwapToScreenProps["navigation"];
 
 const makeRoute = (selectionType: SWAP_SELECTION_TYPES) =>
@@ -947,6 +989,46 @@ describe("SwapToScreen", () => {
       expect(classNameOf(getAllByTestId("token-option-USDC")[0])).toContain(
         "mb-6",
       );
+    });
+  });
+
+  describe("View details", () => {
+    beforeEach(() => {
+      mockNavigate.mockClear();
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        popularTokens: [mockPopularRecord],
+      });
+    });
+
+    it("View details on a Popular row pushes TokenDetailsScreen with source swap_picker when price history is enabled", () => {
+      mockPriceHistoryEnabled.mockReturnValue(true);
+      const { getByTestId } = renderWithProviders(
+        <SwapToScreen {...mockNavProps} />,
+      );
+
+      fireEvent(getByTestId("menu-action-View details"), "touchEnd");
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+        {
+          tokenId: recordTokenId(mockPopularRecord as any),
+          tokenSymbol: "AQUA",
+          record: mockPopularRecord,
+          source: "swap_picker",
+        },
+      );
+    });
+
+    it("offers no View details when price history is disabled", () => {
+      mockPriceHistoryEnabled.mockReturnValue(false);
+      const { queryByTestId } = renderWithProviders(
+        <SwapToScreen {...mockNavProps} />,
+      );
+
+      expect(queryByTestId("menu-action-View details")).toBeNull();
     });
   });
 

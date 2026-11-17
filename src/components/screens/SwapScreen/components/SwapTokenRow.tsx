@@ -82,6 +82,8 @@ export interface SwapTokenRowProps {
    * Defaults to "default". Only "held" rows take it.
    */
   rowStyle?: "default" | "shared";
+  /** For "non-held" rows: adds View details to the row's menu. */
+  onViewDetails?: () => void;
 }
 
 /**
@@ -102,6 +104,7 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
   onPress,
   testID,
   rowStyle = "default",
+  onViewDetails,
 }) => {
   const { themeColors } = useColors();
   const isShared = variant === "held" && rowStyle === "shared";
@@ -193,7 +196,13 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
     }
 
     if (variant === "non-held" && tokenRef) {
-      return <TokenContextMenu token={tokenRef} network={network} />;
+      return (
+        <TokenContextMenu
+          token={tokenRef}
+          network={network}
+          onViewDetails={onViewDetails}
+        />
+      );
     }
 
     if (variant === "trending") {
@@ -297,6 +306,7 @@ export const SwapTokenRow = React.memo(SwapTokenRowComponent, (prev, next) => {
   if (prev.variant !== next.variant) return false;
   if (prev.network !== next.network) return false;
   if (prev.onPress !== next.onPress) return false;
+  if (prev.onViewDetails !== next.onViewDetails) return false;
 
   if (prev.variant === "held") {
     // The shared style swaps the row's layout and its right column.
