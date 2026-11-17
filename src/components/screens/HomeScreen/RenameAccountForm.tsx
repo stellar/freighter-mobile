@@ -34,11 +34,15 @@ const RenameAccountForm: React.FC<RenameAccountFormProps> = ({
   isBottomSheetInput = false,
 }) => {
   const { t } = useAppTranslation();
-  const [accountName, setAccountName] = useState(account?.name ?? "");
+  const accountId = account?.id;
+  const storedName = account?.name ?? "";
+  const [accountName, setAccountName] = useState(storedName);
 
+  // Keyed on id and name, not the object: a store refresh hands back a new
+  // object for the same account and must not wipe what the user typed.
   useEffect(() => {
-    setAccountName(account?.name ?? "");
-  }, [account]);
+    setAccountName(storedName);
+  }, [accountId, storedName]);
 
   const isAccountNameValid = useMemo(
     () =>
