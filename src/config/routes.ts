@@ -1,10 +1,12 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
+import { TokenChartSource } from "config/analyticsConfig";
 import {
   BiometricsSource,
   NETWORKS,
   QRCodeSource,
   SWAP_SELECTION_TYPES,
 } from "config/constants";
+import { FormattedSearchTokenRecord } from "config/types";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -174,6 +176,8 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN]: {
     tokenId: string;
     tokenSymbol: string;
+    record?: FormattedSearchTokenRecord;
+    source?: TokenChartSource;
   };
   [ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN]: {
     collectionAddress: string;
