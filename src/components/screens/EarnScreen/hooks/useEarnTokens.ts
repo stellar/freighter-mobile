@@ -1,4 +1,5 @@
 import BigNumber from "bignumber.js";
+import { parseCanonicalAsset } from "components/screens/EarnScreen/helpers/earnSwapDestination";
 import { getBlendPoolId } from "config/blend";
 import { BlendCatalogPool, BlendEarnAssetOption } from "config/blendTypes";
 import {
@@ -113,12 +114,15 @@ export const buildEarnTokenRows = ({
 
     // `symbol` is null for native XLM on the live catalog, so it cannot be the
     // only source of the display code — taking it alone renders the row with no
-    // token code at all. `name` is deliberately NOT a candidate: for classic
-    // assets the catalog returns the canonical there ("USDC:GA5ZSEJY…"), not a
-    // friendly name.
+    // token code at all. `name` is never shown as is: for classic assets the
+    // catalog returns the canonical there ("USDC:GA5ZSEJY…"), not a friendly
+    // name, so only its code half is a candidate, as in the extension.
     const balanceCode = balance && "token" in balance ? balance.token.code : "";
     const code =
-      option.symbol || balanceCode || `${option.assetId.slice(0, 4)}…`;
+      option.symbol ||
+      balanceCode ||
+      parseCanonicalAsset(option.name)?.code ||
+      `${option.assetId.slice(0, 4)}…`;
 
     const row: EarnTokenOption = {
       assetId: option.assetId,

@@ -21,9 +21,11 @@ import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/compone
 import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
 import {
   NotEnoughVariant,
+  getEarnOptionToken,
   getNotEnoughVariant,
   hasSwappableBalance,
   isOnrampableAsset,
+  parseCanonicalAsset,
 } from "components/screens/EarnScreen/helpers";
 import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
 import { useEarnBalancesRefresh } from "components/screens/EarnScreen/hooks/useEarnBalancesRefresh";
@@ -47,7 +49,6 @@ import { BLEND_LENDING_DOCS_URL } from "config/blend";
 import {
   DEFAULT_PADDING,
   MIN_TRANSACTION_FEE,
-  NATIVE_TOKEN_CODE,
   TransactionContext,
   mapNetworkToNetworkDetails,
 } from "config/constants";
@@ -59,7 +60,6 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
 } from "config/routes";
-import { Balance, Token } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useDebugStore } from "ducks/debug";
@@ -68,6 +68,7 @@ import { usePreferencesStore } from "ducks/preferences";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
+import { useTokenIconsStore } from "ducks/tokenIcons";
 import { getTokenIdentifier } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import {
@@ -167,6 +168,26 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     publicKey: account?.publicKey ?? "",
     network,
   });
+
+  // Nothing else fetches icons for the tokens the account doesn't hold, the
+  // ones under "Other supported tokens", so look them up by their classic
+  // code and issuer. The icon store returns a cached icon without fetching.
+  const fetchIconUrl = useTokenIconsStore((state) => state.fetchIconUrl);
+  useEffect(() => {
+    supported.forEach((option) => {
+      if (option.isNative || option.balance) {
+        return;
+      }
+      const classic = parseCanonicalAsset(option.canonicalId);
+      if (!classic) {
+        return;
+      }
+      fetchIconUrl({
+        token: { code: classic.code, issuer: { key: classic.issuer } },
+        network,
+      });
+    });
+  }, [supported, network, fetchIconUrl]);
 
   // How the swap ended, recorded by the processing sheet just before it
   // closes, so the picker can announce the new balance.
@@ -441,21 +462,11 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     [getNotEnoughVariantFor],
   );
 
-  // The sheet's header renders the deposit asset's real icon, not a generic
-  // glyph -- same
-  // fallback as `EarnTokenRow`'s: prefer the held balance's real token
-  // shape, otherwise reconstruct a minimal one from catalog data (native XLM
-  // decided by `isNative`, never by code -- see that row's own comment for
-  // why). `undefined` while no option is selected, matching `tokenCode`'s
-  // own `?? ""` fallback below.
-  const notEnoughToken: Token | Balance | undefined = notEnoughOption
-    ? (notEnoughOption.balance ??
-      (notEnoughOption.isNative
-        ? { type: "native" as const, code: NATIVE_TOKEN_CODE as "XLM" }
-        : {
-            code: notEnoughOption.code,
-            issuer: { key: notEnoughOption.assetId },
-          }))
+  // The sheet's header shows the token's icon, built as `EarnTokenRow`
+  // builds it. `undefined` while no option is selected, matching
+  // `tokenCode`'s own `?? ""` fallback below.
+  const notEnoughToken = notEnoughOption
+    ? getEarnOptionToken(notEnoughOption)
     : undefined;
 
   // The option is released once the sheet has closed, not as it starts

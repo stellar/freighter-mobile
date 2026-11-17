@@ -108,6 +108,23 @@ describe("buildEarnTokenRows", () => {
     expect(supported[0].code).toBe(`${USDC_SAC.slice(0, 4)}…`);
   });
 
+  it("reads the code from the catalog's CODE:ISSUER name before truncating the id", () => {
+    const { supported } = buildEarnTokenRows({
+      options: [
+        option({
+          symbol: null,
+          name: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        }),
+      ],
+      poolId: POOL_ID,
+      balances: {} as never,
+      networkDetails,
+      findBalance: () => undefined,
+    });
+
+    expect(supported[0].code).toBe("USDC");
+  });
+
   it("falls back to the held balance's own code when the catalog symbol is missing", () => {
     // The middle rung of the fallback chain: `option.symbol` absent but a
     // held balance exists, so its `token.code` should be used in preference

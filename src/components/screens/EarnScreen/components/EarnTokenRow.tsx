@@ -1,10 +1,11 @@
 import BigNumber from "bignumber.js";
 import { TokenIcon } from "components/TokenIcon";
-import { formatRate } from "components/screens/EarnScreen/helpers";
+import {
+  formatRate,
+  getEarnOptionToken,
+} from "components/screens/EarnScreen/helpers";
 import { EarnTokenOption } from "components/screens/EarnScreen/hooks/useEarnTokens";
 import { Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE } from "config/constants";
-import { Balance, Token } from "config/types";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -66,17 +67,9 @@ export const EarnTokenRow: React.FC<EarnTokenRowProps> = ({
 }) => {
   const isHeld = new BigNumber(option.total).gt(0);
 
-  // Prefer the real held balance's token shape (correctly discriminates
-  // native vs. classic vs. Soroban already). For a zero-balance row there is
-  // no balance to read from, so reconstruct a minimal token: native XLM by
-  // `isNative` (never by code, per the trap this hook's `buildEarnTokenRows`
-  // already guards against), otherwise a generic token keyed by the reserve's
-  // own contract address.
-  const token: Token | Balance =
-    option.balance ??
-    (option.isNative
-      ? { type: "native" as const, code: NATIVE_TOKEN_CODE as "XLM" }
-      : { code: option.code, issuer: { key: option.assetId } });
+  // The held balance's token, or for a zero-balance row a token keyed the way
+  // the icon cache keys it (see `getEarnOptionToken`).
+  const token = getEarnOptionToken(option);
 
   // The token's display name ("Stellar Lumens" for native XLM, otherwise the
   // code) is the primary line. Zero-balance rows have no `balance` to read it

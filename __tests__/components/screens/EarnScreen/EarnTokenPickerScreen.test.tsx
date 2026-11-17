@@ -7,6 +7,7 @@ import EarnTokenPickerScreen from "components/screens/EarnScreen/screens/EarnTok
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { usePreferencesStore } from "ducks/preferences";
 import { useSwapStore } from "ducks/swap";
+import { useTokenIconsStore } from "ducks/tokenIcons";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -483,6 +484,41 @@ describe("EarnTokenPickerScreen", () => {
 
       expect(processingSheet?.ref.dismiss).toHaveBeenCalled();
       expect(swapSheet?.ref.present).toHaveBeenCalled();
+    });
+  });
+
+  describe("icons for tokens the account doesn't hold", () => {
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+    });
+
+    it("looks up each one by its classic code and issuer", () => {
+      const fetchIconUrl = jest.fn(() => Promise.resolve({} as never));
+      const original = useTokenIconsStore.getState().fetchIconUrl;
+      useTokenIconsStore.setState({ fetchIconUrl });
+      mockUseEarnTokens.supported = [
+        {
+          ...makeOption("EURC"),
+          canonicalId:
+            "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+        },
+        // No classic form: nothing to look up.
+        { ...makeOption("FOO"), canonicalId: null },
+      ];
+
+      renderScreen();
+
+      expect(fetchIconUrl).toHaveBeenCalledTimes(1);
+      expect(fetchIconUrl).toHaveBeenCalledWith({
+        token: {
+          code: "EURC",
+          issuer: {
+            key: "GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+          },
+        },
+        network: "TESTNET",
+      });
+      useTokenIconsStore.setState({ fetchIconUrl: original });
     });
   });
 });

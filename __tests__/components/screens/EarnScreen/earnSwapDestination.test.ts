@@ -1,4 +1,8 @@
-import { buildEarnSwapDestination } from "components/screens/EarnScreen/helpers";
+import {
+  buildEarnSwapDestination,
+  getEarnOptionToken,
+  parseCanonicalAsset,
+} from "components/screens/EarnScreen/helpers";
 import { EarnTokenOption } from "components/screens/EarnScreen/hooks/useEarnTokens";
 import { BLEND_FIXED_POOL_IDS } from "config/blend";
 import { NETWORKS } from "config/constants";
@@ -89,4 +93,61 @@ describe("buildEarnSwapDestination", () => {
       expect(buildEarnSwapDestination(makeOption({ canonicalId }))).toBeNull();
     },
   );
+});
+
+const USDC_ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+describe("parseCanonicalAsset", () => {
+  it("splits a classic canonical id into code and issuer", () => {
+    expect(parseCanonicalAsset(`USDC:${USDC_ISSUER}`)).toEqual({
+      code: "USDC",
+      issuer: USDC_ISSUER,
+    });
+  });
+
+  it("rejects anything that isn't CODE:<account key>", () => {
+    expect(parseCanonicalAsset(null)).toBeNull();
+    expect(parseCanonicalAsset("USDC")).toBeNull();
+    expect(parseCanonicalAsset(":GABC")).toBeNull();
+    expect(parseCanonicalAsset("USDC:")).toBeNull();
+    expect(parseCanonicalAsset("USDC:not-a-key")).toBeNull();
+    // A contract id is not an issuer.
+    expect(
+      parseCanonicalAsset(
+        "USDC:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("getEarnOptionToken", () => {
+  it("uses the held balance when there is one", () => {
+    const balance = { token: { code: "USDC", issuer: { key: USDC_ISSUER } } };
+    expect(getEarnOptionToken(makeOption({ balance } as never))).toBe(balance);
+  });
+
+  it("describes native XLM as native", () => {
+    expect(
+      getEarnOptionToken(
+        makeOption({ code: "XLM", isNative: true, canonicalId: null }),
+      ),
+    ).toEqual({ type: "native", code: "XLM" });
+  });
+
+  // The icon cache keys a token as CODE:ISSUER with its classic issuer, so
+  // a token keyed by its contract id never found its icon.
+  it("keys a token the account doesn't hold by its classic issuer", () => {
+    expect(getEarnOptionToken(makeOption())).toEqual({
+      code: "USDC",
+      issuer: { key: USDC_ISSUER },
+    });
+  });
+
+  it("falls back to the contract id when the catalog gives no classic form", () => {
+    const option = makeOption({ canonicalId: null });
+    expect(getEarnOptionToken(option)).toEqual({
+      code: "USDC",
+      issuer: { key: option.assetId },
+    });
+  });
 });

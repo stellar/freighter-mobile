@@ -2,7 +2,7 @@ import { StrKey } from "@stellar/stellar-sdk";
 import { EarnTokenOption } from "components/screens/EarnScreen/hooks/useEarnTokens";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { TokenTypeWithCustomToken } from "config/types";
+import { Balance, Token, TokenTypeWithCustomToken } from "config/types";
 
 /**
  * Classic asset codes are alphanum4 up to 4 characters, alphanum12 beyond.
@@ -10,6 +10,58 @@ import { TokenTypeWithCustomToken } from "config/types";
  * catalog is operator-configured, so this is derived rather than assumed.
  */
 const ALPHANUM4_MAX_CODE_LENGTH = 4;
+
+/**
+ * Splits the catalog's canonical asset id ("CODE:ISSUER") into a classic code
+ * and issuer. Null unless the issuer is a real account key: the catalog is
+ * backend data, and anything else there (a contract id, a typo) is not an
+ * issuer.
+ */
+export const parseCanonicalAsset = (
+  canonical: string | null | undefined,
+): { code: string; issuer: string } | null => {
+  if (!canonical) {
+    return null;
+  }
+
+  const separatorIndex = canonical.indexOf(":");
+  if (separatorIndex <= 0 || separatorIndex === canonical.length - 1) {
+    return null;
+  }
+
+  const code = canonical.slice(0, separatorIndex);
+  const issuer = canonical.slice(separatorIndex + 1);
+  if (!StrKey.isValidEd25519PublicKey(issuer)) {
+    return null;
+  }
+
+  return { code, issuer };
+};
+
+/**
+ * The token to draw a reserve's icon from.
+ *
+ * A held reserve uses its balance. Otherwise native XLM is native, and any
+ * other reserve is keyed by its classic code and issuer, the key the icon
+ * cache stores tokens under: keyed by its contract id, an icon was never
+ * found, and only the logos the app ships (XLM, Circle's USDC) showed. The
+ * contract id is left only for a reserve the catalog gives no classic form.
+ */
+export const getEarnOptionToken = (
+  option: EarnTokenOption,
+): Token | Balance => {
+  if (option.balance) {
+    return option.balance;
+  }
+  if (option.isNative) {
+    return { type: "native" as const, code: NATIVE_TOKEN_CODE as "XLM" };
+  }
+
+  const classic = parseCanonicalAsset(option.canonicalId);
+  return classic
+    ? { code: classic.code, issuer: { key: classic.issuer } }
+    : { code: option.code, issuer: { key: option.assetId } };
+};
 
 /**
  * Build the swap destination for "Swap for {CODE}" from the Earn reserve the
@@ -42,27 +94,16 @@ export const buildEarnSwapDestination = (
     };
   }
 
-  const canonical = option.canonicalId;
-  if (!canonical) {
-    return null;
-  }
-
-  const separatorIndex = canonical.indexOf(":");
-  if (separatorIndex <= 0 || separatorIndex === canonical.length - 1) {
-    return null;
-  }
-
-  const tokenCode = canonical.slice(0, separatorIndex);
-  const issuer = canonical.slice(separatorIndex + 1);
-
   // The catalog's name is backend data: only a real account key may become
   // the issuer of the asset the swap buys.
-  if (!StrKey.isValidEd25519PublicKey(issuer)) {
+  const classic = parseCanonicalAsset(option.canonicalId);
+  if (!classic) {
     return null;
   }
+  const { code: tokenCode, issuer } = classic;
 
   return {
-    id: canonical,
+    id: `${tokenCode}:${issuer}`,
     tokenCode,
     issuer,
     decimals: option.decimals,
