@@ -165,11 +165,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const showAddCollectibleButton =
       !isCollectiblesLoading && !isCollectiblesGridEmpty && !collectiblesError;
 
-    // Earn is gated purely on network support (an allowlisted Blend pool) —
-    // there is deliberately no feature flag alongside it.
-    const earnEnabled = isEarnSupportedNetwork(
-      mapNetworkToNetworkDetails(network),
+    // Earn needs an allowlisted Blend pool on this network and the
+    // `earn_deposit` kill switch. The switch is read only once the flags have
+    // loaded, so the button never shows before Amplitude could turn it off;
+    // a failed fetch also counts as loaded, so it can't stay hidden forever.
+    const isEarnFlagOn = useRemoteConfigStore(
+      (state) => state.isInitialized && state.earn_deposit,
     );
+    const earnEnabled =
+      isEarnFlagOn &&
+      isEarnSupportedNetwork(mapNetworkToNetworkDetails(network));
 
     const handleManageAccountsPress = useCallback(() => {
       manageAccountsBottomSheetRef.current?.present();

@@ -25,6 +25,9 @@ const BOOLEAN_FLAGS = [
   // Defaults ON in every build, like the extension's flag of the same name.
   "use_token_price_history",
   "use_balances_v2",
+  // Earn's Home entry point: a kill switch, ON in every build like the
+  // extension's flag of the same name.
+  "earn_deposit",
 ] as const;
 
 const VERSION_FLAGS = ["required_app_version", "latest_app_version"] as const;
@@ -83,6 +86,7 @@ const INITIAL_REMOTE_CONFIG_STATE =
         // every network; Amplitude flips this on to roll out v2 balances
         // without a release.
         use_balances_v2: false,
+        earn_deposit: true,
         required_app_version: currentAppVersion,
         latest_app_version: currentAppVersion,
         app_update_banner_text: {
@@ -113,6 +117,7 @@ const INITIAL_REMOTE_CONFIG_STATE =
         // every network; Amplitude flips this on to roll out v2 balances
         // without a release.
         use_balances_v2: false,
+        earn_deposit: true,
         required_app_version: currentAppVersion,
         latest_app_version: currentAppVersion,
         app_update_banner_text: {
