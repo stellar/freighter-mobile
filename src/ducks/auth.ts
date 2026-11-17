@@ -2856,13 +2856,28 @@ const addRecoveryPhraseSource = async (
 
   // A generated phrase colliding is not a real case, but these checks are
   // what keep two sources or two accounts from sharing an id or an address.
-  if ((await getSecretSources())[sourceId]) {
+  // A registered source no account lists is what an earlier attempt leaves
+  // when its account write failed, so the add carries on and completes it.
+  const [sources, accounts] = await Promise.all([
+    getSecretSources(),
+    getAllAccounts(),
+  ]);
+  if (
+    sources[sourceId] &&
+    accounts.some((account) => account.sourceId === sourceId)
+  ) {
     throw new Error(t("authStore.error.recoveryPhraseAlreadyHeld"));
   }
-  if (hasAccountInAccountList(await getAllAccounts(), keyPair)) {
+  if (hasAccountInAccountList(accounts, keyPair)) {
     throw new Error(t("authStore.error.accountAlreadyExists"));
   }
 
+  // The source goes first, so a failed account write can be retried rather
+  // than leaving an account under a source nothing knows about.
+  await addSecretSource({
+    id: sourceId,
+    type: SecretSourceType.PHRASE,
+  });
   await storeAccount({
     mnemonicPhrase,
     phraseSourceId: sourceId,
@@ -2872,10 +2887,6 @@ const addRecoveryPhraseSource = async (
     keyPair,
     accountName,
     shouldRefreshHashKey: false,
-  });
-  await addSecretSource({
-    id: sourceId,
-    type: SecretSourceType.PHRASE,
   });
 
   clearPendingRecoveryPhrase();
