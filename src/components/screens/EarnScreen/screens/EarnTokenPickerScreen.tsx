@@ -45,7 +45,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { BLEND_LENDING_DOCS_URL } from "config/blend";
+import { getBlendAppUrl } from "config/blend";
 import {
   DEFAULT_PADDING,
   MIN_TRANSACTION_FEE,
@@ -674,10 +674,10 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // `EarnAmount/PoolCard.tsx`'s `onOpenDetails`) — see `EarnAmountScreen`.
 
   const handlePoolChipPress = useCallback(() => {
-    openInAppBrowser(BLEND_LENDING_DOCS_URL).catch((err) =>
-      logger.error("EarnTokenPickerScreen", "Failed to open Blend docs", err),
+    openInAppBrowser(getBlendAppUrl(network)).catch((err) =>
+      logger.error("EarnTokenPickerScreen", "Failed to open Blend", err),
     );
-  }, [openInAppBrowser]);
+  }, [openInAppBrowser, network]);
 
   const handleHeldTokenPress = useCallback(
     (option: EarnTokenOption) => {
@@ -833,7 +833,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
               <Text sm medium secondary>
                 {t("earnTokenPicker.depositInto")}
               </Text>
-              {/* The pool chip opens Blend's lending docs. */}
+              {/* The pool chip opens Blend's app. */}
               <TouchableOpacity
                 onPress={handlePoolChipPress}
                 activeOpacity={0.7}

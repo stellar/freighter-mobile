@@ -1,5 +1,6 @@
 import {
   BLEND_FIXED_POOL_IDS,
+  getBlendAppUrl,
   getBlendPoolId,
   isEarnSupportedNetwork,
 } from "config/blend";
@@ -26,6 +27,15 @@ describe("blend config", () => {
   it("reports Earn supported wherever a pool is allowlisted", () => {
     expect(isEarnSupportedNetwork(details(NETWORKS.PUBLIC))).toBe(true);
     expect(isEarnSupportedNetwork(details(NETWORKS.TESTNET))).toBe(true);
+  });
+
+  it("opens Blend's app for the network the user is on", () => {
+    expect(getBlendAppUrl(NETWORKS.PUBLIC)).toBe(
+      "https://mainnet.blend.capital/",
+    );
+    expect(getBlendAppUrl(NETWORKS.TESTNET)).toBe(
+      "https://testnet.blend.capital/",
+    );
   });
 
   it("exposes exactly the two allowlisted networks", () => {

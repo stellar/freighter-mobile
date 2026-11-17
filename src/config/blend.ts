@@ -30,8 +30,18 @@ export const isEarnSupportedNetwork = (networkDetails: NetworkDetails) =>
   Boolean(getBlendPoolId(networkDetails));
 
 /**
- * Blend's lending guide. The token picker's pool chip and the pool sheet's
- * "View pool details" link both open it: Blend's docs have no page per pool.
+ * Blend's app, per network. The token picker's pool chip and the pool
+ * sheet's "View pool details" both open it.
  */
-export const BLEND_LENDING_DOCS_URL =
-  "https://docs.blend.capital/users/lending-borrowing/lending";
+const BLEND_APP_URLS: Partial<Record<NETWORKS, string>> = {
+  [NETWORKS.PUBLIC]: "https://mainnet.blend.capital/",
+  [NETWORKS.TESTNET]: "https://testnet.blend.capital/",
+};
+
+/**
+ * Blend's app for the network the user is on, so testnet users see the
+ * testnet pools. Mainnet's for any other network, though Earn only runs
+ * where a pool is allowlisted.
+ */
+export const getBlendAppUrl = (network: NETWORKS): string =>
+  BLEND_APP_URLS[network] ?? BLEND_APP_URLS[NETWORKS.PUBLIC]!;

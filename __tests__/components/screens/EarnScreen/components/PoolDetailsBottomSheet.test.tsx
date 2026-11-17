@@ -1,9 +1,10 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { fireEvent } from "@testing-library/react-native";
 import { PoolDetailsBottomSheet } from "components/screens/EarnScreen/components/PoolDetailsBottomSheet";
-import { BLEND_FIXED_POOL_IDS, BLEND_LENDING_DOCS_URL } from "config/blend";
+import { BLEND_FIXED_POOL_IDS } from "config/blend";
 import { BlendCatalogPool } from "config/blendTypes";
 import { NETWORKS } from "config/constants";
+import { useAuthenticationStore } from "ducks/auth";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -114,13 +115,20 @@ describe("PoolDetailsBottomSheet", () => {
     expect(queryByText("Accepted tokens")).toBeNull();
   });
 
-  it("opens Blend's lending docs from 'View pool details'", () => {
-    const { getByTestId } = renderWithProviders(
-      <PoolDetailsBottomSheet pool={fixedPool} apy={0.1694} />,
-    );
-    fireEvent.press(getByTestId("pool-details-view-pool-details"));
-    expect(mockOpenInAppBrowser).toHaveBeenCalledWith(BLEND_LENDING_DOCS_URL);
-  });
+  it.each([
+    [NETWORKS.PUBLIC, "https://mainnet.blend.capital/"],
+    [NETWORKS.TESTNET, "https://testnet.blend.capital/"],
+  ])(
+    "opens Blend's app for the network from 'View pool details' (%s)",
+    (network, url) => {
+      useAuthenticationStore.setState({ network });
+      const { getByTestId } = renderWithProviders(
+        <PoolDetailsBottomSheet pool={fixedPool} apy={0.1694} />,
+      );
+      fireEvent.press(getByTestId("pool-details-view-pool-details"));
+      expect(mockOpenInAppBrowser).toHaveBeenCalledWith(url);
+    },
+  );
 
   it("has no bottom Close CTA; the header X dismisses the sheet via the forwarded ref", () => {
     const dismiss = jest.fn();

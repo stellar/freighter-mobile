@@ -312,7 +312,7 @@ describe("EarnTokenPickerScreen", () => {
       expect(queryByTestId("earn-glow")).toBeNull();
     });
 
-    it("names the pool in the 'Deposit into' chip, which opens Blend's docs", () => {
+    it("names the pool in the 'Deposit into' chip, which opens Blend's app", () => {
       mockUseEarnTokens.supported = [makeOption("USDC")];
       mockUseEarnTokens.pool = { name: "Testnet v2.1", reserves: [] };
 
@@ -326,8 +326,9 @@ describe("EarnTokenPickerScreen", () => {
       ).toBeTruthy();
 
       fireEvent.press(getByTestId("earn-token-picker-pool-chip"));
+      // This suite runs on testnet.
       expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
-        "https://docs.blend.capital/users/lending-borrowing/lending",
+        "https://testnet.blend.capital/",
       );
     });
   });

@@ -13,10 +13,11 @@ import {
 import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { BLEND_LENDING_DOCS_URL } from "config/blend";
+import { getBlendAppUrl } from "config/blend";
 import { BlendCatalogPool } from "config/blendTypes";
 import { logger } from "config/logger";
 import { Balance, Token } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
@@ -54,7 +55,7 @@ const TitledDetailsCard: React.FC<{
 /**
  * Content for the Earn pool details sheet, opened from the amount screen's
  * pool card: the pool's identity, a description with a link to Blend's
- * lending docs, the deposit asset's current yield and the pool's liquidity.
+ * app, the deposit asset's current yield and the pool's liquidity.
  *
  * Pure content: the caller wraps it in `components/BottomSheet` and owns the
  * modal ref, which the header X dismisses.
@@ -68,16 +69,17 @@ export const PoolDetailsBottomSheet: React.FC<PoolDetailsBottomSheetProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { open: openInAppBrowser } = useInAppBrowser();
+  const { network } = useAuthenticationStore();
 
   const handleClose = () => {
     bottomSheetModalRef?.current?.dismiss();
   };
 
   const handleViewPoolDetails = useCallback(() => {
-    openInAppBrowser(BLEND_LENDING_DOCS_URL).catch((err) =>
-      logger.error("PoolDetailsBottomSheet", "Failed to open Blend docs", err),
+    openInAppBrowser(getBlendAppUrl(network)).catch((err) =>
+      logger.error("PoolDetailsBottomSheet", "Failed to open Blend", err),
     );
-  }, [openInAppBrowser]);
+  }, [openInAppBrowser, network]);
 
   // Guards a race where the sheet is presented before (or after) the pool
   // has resolved. The wrapping BottomSheet keeps working; there's simply
