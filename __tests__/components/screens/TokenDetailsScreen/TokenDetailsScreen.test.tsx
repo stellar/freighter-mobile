@@ -835,6 +835,42 @@ describe("TokenDetailsScreen", () => {
       expect(useSwapStore.getState().destinationToken).toBeNull();
     });
 
+    it("treats an unable-to-scan token as unflagged: banner plus a plain Swap To that selects directly", () => {
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={swapAmountRoute({
+            ...shxRecord,
+            securityLevel: SecurityLevel.UNABLE_TO_SCAN,
+          } as FormattedSearchTokenRecord)}
+        />,
+      );
+      const securitySheet = screen
+        .UNSAFE_getAllByType(BottomSheet)
+        .find(
+          (sheet) =>
+            (sheet.props.customContent as React.ReactElement)?.type ===
+            SecurityDetailBottomSheet,
+        )!;
+      const present = jest.spyOn(
+        securitySheet.props.modalRef.current,
+        "present",
+      );
+
+      expect(
+        screen.getByText("transactionAmountScreen.errors.suspicious"),
+      ).toBeTruthy();
+      expect(screen.queryByTestId("token-details-cancel-button")).toBeNull();
+      expect(
+        screen.queryByTestId("token-details-swap-to-anyway-button"),
+      ).toBeNull();
+      fireEvent.press(screen.getByTestId("token-details-swap-to-button"));
+
+      expect(present).not.toHaveBeenCalled();
+      expect(useSwapStore.getState().destinationToken?.id).toBe(shxId);
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
+    });
+
     it("for a held Popular row, selects through the held balance without a decimals read", () => {
       const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
       useBalancesList.mockReturnValue({

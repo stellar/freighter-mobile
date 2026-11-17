@@ -416,7 +416,12 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       record: swapToRecord,
       onSelected: () => navigation.goBack(),
     });
-  const isFlagged = isMalicious || isSuspicious;
+  // Unable-to-scan is not flagged here: the banner alone signals caution, as
+  // on the old Popular Tokens sheet.
+  const isFlagged =
+    isMalicious ||
+    record?.securityLevel === SecurityLevel.SUSPICIOUS ||
+    !!record?.isSuspicious;
 
   const securitySeverity = useMemo(() => {
     if (isMalicious) return SecurityLevel.MALICIOUS;

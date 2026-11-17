@@ -90,6 +90,22 @@ describe("useSelectSwapDestination", () => {
     resetSwapState();
   });
 
+  afterEach(() => {
+    const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+    useBalancesList.mockReset();
+    useBalancesList.mockReturnValue({
+      balanceItems: [],
+      hiddenBalanceItems: [],
+      scanResults: {},
+      isLoading: false,
+      error: null,
+      noBalances: true,
+      isRefreshing: false,
+      isFunded: false,
+      handleRefresh: jest.fn(),
+    });
+  });
+
   it("picks a Soroban token at the decimals /token-details reports", async () => {
     mockGetTokenDetails.mockResolvedValue({
       name: "Token",
@@ -199,7 +215,6 @@ describe("useSelectSwapDestination", () => {
       expect.objectContaining({ id: `SYM:${CONTRACT}` }),
     );
     expect(onSelected).toHaveBeenCalledTimes(1);
-    useBalancesList.mockReturnValue({ balanceItems: [] });
   });
 
   it("does nothing without a record", () => {
