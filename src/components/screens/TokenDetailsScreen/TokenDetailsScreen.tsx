@@ -574,7 +574,8 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             severity={securitySeverity}
             securityContext={SecurityContext.TOKEN}
             {...(swapToRecord && {
-              onCancel: () => navigation.goBack(),
+              onCancel: () =>
+                securityWarningBottomSheetModalRef.current?.dismiss(),
               onProceedAnyway: () => {
                 securityWarningBottomSheetModalRef.current?.dismiss();
                 selectSwapDestination();

@@ -804,6 +804,37 @@ describe("TokenDetailsScreen", () => {
       expect(mockGoBack).toHaveBeenCalledTimes(1);
     });
 
+    it("the security sheet's Cancel only dismisses it; the footer's Cancel goes back", () => {
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={swapAmountRoute(maliciousRecord)}
+        />,
+      );
+      const securitySheet = screen
+        .UNSAFE_getAllByType(BottomSheet)
+        .find(
+          (sheet) =>
+            (sheet.props.customContent as React.ReactElement)?.type ===
+            SecurityDetailBottomSheet,
+        )!;
+      const dismiss = jest.spyOn(
+        securitySheet.props.modalRef.current,
+        "dismiss",
+      );
+
+      act(() => securitySheetProps(screen).onCancel?.());
+
+      expect(dismiss).toHaveBeenCalledTimes(1);
+      expect(mockGoBack).not.toHaveBeenCalled();
+      expect(useSwapStore.getState().destinationToken).toBeNull();
+
+      fireEvent.press(screen.getByTestId("token-details-cancel-button"));
+
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
+      expect(useSwapStore.getState().destinationToken).toBeNull();
+    });
+
     it("for a held Popular row, selects through the held balance without a decimals read", () => {
       const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
       useBalancesList.mockReturnValue({
