@@ -7,6 +7,7 @@ import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import {
+  NonHeldTokenHeader,
   TokenBalanceHeader,
   TokenBalanceDetails,
 } from "components/screens/TokenDetailsScreen/components";
@@ -52,12 +53,13 @@ import { useTokenActions } from "hooks/useTokenActions";
 import useTokenDetails from "hooks/useTokenDetails";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
-import { View, Platform } from "react-native";
+import { View, Platform, ScrollView } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import {
   assessTokenSecurity,
   extractSecurityWarnings,
+  SecurityWarning,
 } from "services/blockaid/helper";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
@@ -88,7 +90,9 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   route,
   navigation,
 }) => {
-  const { tokenId, tokenSymbol } = route.params;
+  const { tokenId, tokenSymbol, record } = route.params;
+  const source = route.params.source ?? TokenChartSource.BALANCES;
+  const isFromBalances = source === TokenChartSource.BALANCES;
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
@@ -152,6 +156,8 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     () => balanceItems.find((item) => item.id === tokenId) ?? null,
     [balanceItems, tokenId],
   );
+  const isHeld = selectedBalance !== null;
+  const isNoBalanceVariant = !isHeld && !!record;
 
   const { removeToken, isRemovingToken } = useManageToken({
     token: selectedBalance
@@ -273,7 +279,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             "manageTokenRightContent.tokenAddressCopied",
           ),
       },
-      ...(canOfferHide
+      ...(isFromBalances && canOfferHide
         ? [
             {
               title: t("tokenDetailsScreen.hideToken", {
@@ -289,7 +295,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             },
           ]
         : []),
-      ...(canOfferRemove
+      ...(isFromBalances && canOfferRemove
         ? [
             {
               title: t("common.remove"),
@@ -304,6 +310,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       t,
       copyTokenAddress,
       tokenId,
+      isFromBalances,
       canOfferHide,
       hideTokenCode,
       handleHideToken,
@@ -349,12 +356,38 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     });
   };
   const scanResult = scanResults[tokenId.replace(":", "-")];
-  const { isMalicious, isSuspicious } = assessTokenSecurity(
+  const heldSecurity = assessTokenSecurity(
     scanResult,
     overriddenBlockaidResponse,
   );
+  // A token the account doesn't hold has no balances scan; its search record
+  // carries the scan instead.
+  const recordLevel = record?.securityLevel;
+  const isMalicious = isNoBalanceVariant
+    ? recordLevel === SecurityLevel.MALICIOUS || !!record?.isMalicious
+    : heldSecurity.isMalicious;
+  const isSuspicious = isNoBalanceVariant
+    ? recordLevel === SecurityLevel.SUSPICIOUS ||
+      recordLevel === SecurityLevel.UNABLE_TO_SCAN ||
+      !!record?.isSuspicious
+    : heldSecurity.isSuspicious;
 
-  const securityWarnings = useMemo(() => {
+  const securityWarnings = useMemo((): SecurityWarning[] => {
+    if (isNoBalanceVariant) {
+      // Blockaid returns no feature-level warnings for an unable-to-scan
+      // token; synthesize the row useTrendingTokenDetail builds so the
+      // reasons list isn't blank.
+      return recordLevel === SecurityLevel.UNABLE_TO_SCAN
+        ? [
+            {
+              id: "unable-to-scan-trending-token",
+              description: t("blockaid.unableToScan.token"),
+              severity: "warning",
+            },
+          ]
+        : (record?.securityWarnings ?? []);
+    }
+
     if (isMalicious || isSuspicious) {
       const warnings = extractSecurityWarnings(scanResult);
 
@@ -364,7 +397,15 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     }
 
     return [];
-  }, [isMalicious, isSuspicious, scanResult]);
+  }, [
+    isNoBalanceVariant,
+    recordLevel,
+    record?.securityWarnings,
+    t,
+    isMalicious,
+    isSuspicious,
+    scanResult,
+  ]);
 
   const securitySeverity = useMemo(() => {
     if (isMalicious) return SecurityLevel.MALICIOUS;
@@ -373,103 +414,128 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     return undefined;
   }, [isMalicious, isSuspicious]);
 
+  // EVERYTHING above the transactions lives in the list header, so
+  // the screen scrolls as one column like the extension's does.
+  // As siblings of the list these sat in a fixed flex row: the
+  // chart ate ~250px of viewport, the list scrolled inside what was
+  // left, and on a token with no transactions nothing scrolled at
+  // all. Order matches the extension: name, price and delta, then
+  // the chart, then the holdings it describes.
+  const renderAboveList = () => (
+    <View className="mb-6 max-xs:mb-0 gap-8 max-xs:gap-4">
+      {isNoBalanceVariant ? (
+        <NonHeldTokenHeader
+          tokenId={tokenId}
+          network={network}
+          record={record}
+        />
+      ) : (
+        <TokenBalanceHeader
+          tokenId={tokenId}
+          tokenSymbol={tokenSymbol}
+          network={network}
+          actualTokenSymbol={actualTokenDetails?.symbol}
+          tokenName={actualTokenDetails?.name}
+        />
+      )}
+      {/* Above the chart, deliberately: the chart block is ~250px
+          tall, and a flagged token's warning sat directly under the
+          header before this feature existed. Only shown when
+          flagged, so the ordinary layout is unchanged. */}
+      {(isMalicious || isSuspicious) && (
+        <Banner
+          variant={isSuspicious ? "warning" : "error"}
+          text={
+            isMalicious
+              ? t("transactionAmountScreen.errors.malicious")
+              : t("transactionAmountScreen.errors.suspicious")
+          }
+          onPress={() => securityWarningBottomSheetModalRef.current?.present()}
+        />
+      )}
+      {priceHistoryEnabled && (
+        <TokenPriceHistorySection
+          tokenId={tokenId}
+          network={network}
+          source={source}
+        />
+      )}
+      {!isNoBalanceVariant && (
+        <TokenBalanceDetails tokenId={tokenId} network={network} />
+      )}
+      {priceHistoryEnabled && (
+        <TokenStatsSection tokenId={tokenId} network={network} />
+      )}
+      {priceHistoryEnabled && (
+        <AboutSection tokenId={tokenId} network={network} />
+      )}
+      {!isNoBalanceVariant && (
+        <Text md medium secondary>
+          {t("tokenDetailsScreen.listHeader", {
+            tokenName: displayTitle,
+          })}
+        </Text>
+      )}
+    </View>
+  );
+
   return (
     // The bottom inset (the safe area plus 24pt) keeps Swap and Send where
     // Figma has them, with nothing under them.
     <BaseLayout insets={{ top: false, bottom: true }}>
       <View testID="token-details-screen" className="flex-1 mt-5 max-xs:mt-2">
-        <HistoryList
-          ignoreTopInset
-          noHorizontalPadding
-          loadingPlaceholder="skeleton"
-          historyData={historyData}
-          isLoading={isLoading}
-          error={error}
-          publicKey={account?.publicKey ?? ""}
-          networkDetails={networkDetails}
-          onRefresh={handleRefresh}
-          refreshActionPosition="start"
-          isRefreshing={isRefreshing}
-          isNavigationRefresh={isNavigationRefresh}
-          scrollEnabled={!isInspectingChart}
-          ListHeaderComponent={
-            /* EVERYTHING above the transactions lives in the list header, so
-               the screen scrolls as one column like the extension's does.
-               As siblings of the list these sat in a fixed flex row: the
-               chart ate ~250px of viewport, the list scrolled inside what was
-               left, and on a token with no transactions nothing scrolled at
-               all. Order matches the extension: name, price and delta, then
-               the chart, then the holdings it describes. */
-            <View className="mb-6 max-xs:mb-0 gap-8 max-xs:gap-4">
-              <TokenBalanceHeader
-                tokenId={tokenId}
-                tokenSymbol={tokenSymbol}
-                network={network}
-                actualTokenSymbol={actualTokenDetails?.symbol}
-                tokenName={actualTokenDetails?.name}
-              />
-              {/* Above the chart, deliberately: the chart block is ~250px
-                  tall, and a flagged token's warning sat directly under the
-                  header before this feature existed. Only shown when
-                  flagged, so the ordinary layout is unchanged. */}
-              {(isMalicious || isSuspicious) && (
-                <Banner
-                  variant={isSuspicious ? "warning" : "error"}
-                  text={
-                    isMalicious
-                      ? t("transactionAmountScreen.errors.malicious")
-                      : t("transactionAmountScreen.errors.suspicious")
-                  }
-                  onPress={() =>
-                    securityWarningBottomSheetModalRef.current?.present()
-                  }
-                />
-              )}
-              {priceHistoryEnabled && (
-                <TokenPriceHistorySection
-                  tokenId={tokenId}
-                  network={network}
-                  source={TokenChartSource.BALANCES}
-                />
-              )}
-              <TokenBalanceDetails tokenId={tokenId} network={network} />
-              {priceHistoryEnabled && (
-                <TokenStatsSection tokenId={tokenId} network={network} />
-              )}
-              {priceHistoryEnabled && (
-                <AboutSection tokenId={tokenId} network={network} />
-              )}
-              <Text md medium secondary>
-                {t("tokenDetailsScreen.listHeader", {
-                  tokenName: displayTitle,
-                })}
-              </Text>
-            </View>
-          }
-        />
+        {isNoBalanceVariant ? (
+          <ScrollView
+            scrollEnabled={!isInspectingChart}
+            showsVerticalScrollIndicator={false}
+          >
+            {renderAboveList()}
+          </ScrollView>
+        ) : (
+          <HistoryList
+            ignoreTopInset
+            noHorizontalPadding
+            loadingPlaceholder="skeleton"
+            historyData={historyData}
+            isLoading={isLoading}
+            error={error}
+            publicKey={account?.publicKey ?? ""}
+            networkDetails={networkDetails}
+            onRefresh={handleRefresh}
+            refreshActionPosition="start"
+            isRefreshing={isRefreshing}
+            isNavigationRefresh={isNavigationRefresh}
+            scrollEnabled={!isInspectingChart}
+            ListHeaderComponent={renderAboveList()}
+          />
+        )}
       </View>
-      <View className="mt-7">
-        <View className="flex-row gap-3">
-          {swapEnabled && isSwappable && (
-            <View className="flex-1">
-              <Button secondary xl isFullWidth onPress={handleSwapPress}>
-                {t("tokenDetailsScreen.swap")}
-              </Button>
+      {source === TokenChartSource.SWAP_AMOUNT
+        ? null
+        : isFromBalances && (
+            <View className="mt-7">
+              <View className="flex-row gap-3">
+                {swapEnabled && isSwappable && (
+                  <View className="flex-1">
+                    <Button secondary xl isFullWidth onPress={handleSwapPress}>
+                      {t("tokenDetailsScreen.swap")}
+                    </Button>
+                  </View>
+                )}
+                <View className="flex-1">
+                  <Button
+                    secondary
+                    xl
+                    isFullWidth
+                    onPress={handleSendPress}
+                    testID="token-details-send-button"
+                  >
+                    {t("tokenDetailsScreen.send")}
+                  </Button>
+                </View>
+              </View>
             </View>
           )}
-          <View className="flex-1">
-            <Button
-              secondary
-              xl
-              isFullWidth
-              onPress={handleSendPress}
-              testID="token-details-send-button"
-            >
-              {t("tokenDetailsScreen.send")}
-            </Button>
-          </View>
-        </View>
-      </View>
       <BottomSheet
         modalRef={securityWarningBottomSheetModalRef}
         customContent={
@@ -483,33 +549,39 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           />
         }
       />
-      <BottomSheet
-        modalRef={removeTokenBottomSheetModalRef}
-        bottomSheetModalProps={{
-          onChange: (index: number) => {
-            if (index >= 0) {
-              hasApprovedRemoveRef.current = false;
-            }
-          },
-          onDismiss: handleRemoveDismiss,
-        }}
-        analyticsEvent={AnalyticsEvent.VIEW_REMOVE_TOKEN}
-        shouldCloseOnPressBackdrop={!!selectedBalance}
-        customContent={
-          <RemoveTokenSheetContent
-            selectedToken={selectedBalance}
-            localOnlyTokenIds={localOnlyTokenIds}
-            account={account}
-            onCancel={handleCancelTokenRemoval}
-            onRemoveToken={() => {
-              hasApprovedRemoveRef.current = true;
-              return removeToken();
-            }}
-            isRemovingToken={isRemovingToken}
-            onDismiss={() => removeTokenBottomSheetModalRef.current?.dismiss()}
-          />
-        }
-      />
+      {/* Not isHeld: Remove is offered before balances load, and its
+          sheet must still open. */}
+      {!isNoBalanceVariant && (
+        <BottomSheet
+          modalRef={removeTokenBottomSheetModalRef}
+          bottomSheetModalProps={{
+            onChange: (index: number) => {
+              if (index >= 0) {
+                hasApprovedRemoveRef.current = false;
+              }
+            },
+            onDismiss: handleRemoveDismiss,
+          }}
+          analyticsEvent={AnalyticsEvent.VIEW_REMOVE_TOKEN}
+          shouldCloseOnPressBackdrop={!!selectedBalance}
+          customContent={
+            <RemoveTokenSheetContent
+              selectedToken={selectedBalance}
+              localOnlyTokenIds={localOnlyTokenIds}
+              account={account}
+              onCancel={handleCancelTokenRemoval}
+              onRemoveToken={() => {
+                hasApprovedRemoveRef.current = true;
+                return removeToken();
+              }}
+              isRemovingToken={isRemovingToken}
+              onDismiss={() =>
+                removeTokenBottomSheetModalRef.current?.dismiss()
+              }
+            />
+          }
+        />
+      )}
     </BaseLayout>
   );
 };

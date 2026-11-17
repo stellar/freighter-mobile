@@ -2,15 +2,18 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { act, waitFor } from "@testing-library/react-native";
 import { BaseLayout } from "components/layout/BaseLayout";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
+import { TokenChartSource } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import { FormattedSearchTokenRecord } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePriceHistoryStore } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { SectionList } from "react-native";
+import { SectionList, View } from "react-native";
 import { ReactTestInstance } from "react-test-renderer";
+import { SecurityLevel } from "services/blockaid/constants";
 
 jest.mock("components/screens/HistoryScreen/HistoryList", () => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -38,9 +41,13 @@ jest.mock("components/screens/HistoryScreen/HistoryList", () => {
   return MockHistoryList;
 });
 
+// Rendered lazily by the mocks below, so the hoisted factories may name it.
+const mockStub = (testID: string) => <View testID={testID} />;
+
 jest.mock("components/screens/TokenDetailsScreen/components", () => ({
-  TokenBalanceHeader: () => <div data-testid="token-balance-header" />,
-  TokenBalanceDetails: () => <div data-testid="token-balance-details" />,
+  TokenBalanceHeader: () => mockStub("token-balance-header"),
+  TokenBalanceDetails: () => mockStub("token-balance-details"),
+  NonHeldTokenHeader: () => mockStub("non-held-token-header"),
 }));
 
 // Mock the chart section per existing practice (the screen test exercises
@@ -49,7 +56,7 @@ jest.mock(
   "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection",
   () => ({
     __esModule: true,
-    default: () => <div data-testid="token-price-history-section" />,
+    default: jest.fn(() => mockStub("token-price-history-section")),
   }),
 );
 
@@ -57,7 +64,7 @@ jest.mock(
   "components/screens/TokenDetailsScreen/components/PriceHistory/TokenStatsSection",
   () => ({
     __esModule: true,
-    default: () => <div data-testid="token-stats-section" />,
+    default: () => mockStub("token-stats-section"),
   }),
 );
 
@@ -65,7 +72,7 @@ jest.mock(
   "components/screens/TokenDetailsScreen/components/PriceHistory/AboutSection",
   () => ({
     __esModule: true,
-    default: () => <div data-testid="about-section" />,
+    default: () => mockStub("about-section"),
   }),
 );
 
@@ -461,6 +468,202 @@ describe("TokenDetailsScreen", () => {
       await waitFor(() => {
         expect(getByText("USDC hidden")).toBeTruthy();
       });
+    });
+  });
+
+  describe("no-balance variant", () => {
+    const shxId =
+      "SHX:GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH";
+    const shxRecord = {
+      tokenCode: "SHX",
+      issuer: "GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH",
+      domain: "stronghold.co",
+      isNative: false,
+      hasTrustline: false,
+    } as FormattedSearchTokenRecord;
+    const nonHeldRoute = (
+      source: TokenChartSource,
+      record: FormattedSearchTokenRecord = shxRecord,
+    ) =>
+      ({
+        ...mockRoute,
+        params: { tokenId: shxId, tokenSymbol: "SHX", record, source },
+      }) as unknown as TokenDetailsScreenProps["route"];
+
+    beforeEach(() => {
+      useRemoteConfigStore.setState({
+        use_token_price_history: true,
+        isInitialized: true,
+        swap_enabled: true,
+      });
+    });
+
+    it("renders the non-held header, chart, stats and About, and no balance rows or history list", () => {
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={nonHeldRoute(TokenChartSource.SWAP_PICKER)}
+        />,
+      );
+
+      expect(screen.getByTestId("non-held-token-header")).toBeTruthy();
+      expect(screen.queryByTestId("token-balance-header")).toBeNull();
+      expect(screen.getByTestId("token-price-history-section")).toBeTruthy();
+      expect(screen.getByTestId("token-stats-section")).toBeTruthy();
+      expect(screen.getByTestId("about-section")).toBeTruthy();
+      expect(screen.queryByTestId("token-balance-details")).toBeNull();
+      expect(screen.queryByTestId("history-list")).toBeNull();
+      expect(
+        screen.queryByText("Stellar Lumens (XLM) transaction history"),
+      ).toBeNull();
+    });
+
+    it("passes the route's source to the chart section", () => {
+      renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={nonHeldRoute(TokenChartSource.SWAP_PICKER)}
+        />,
+      );
+
+      const section = jest.requireMock(
+        "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection",
+      ).default;
+      expect(section.mock.calls.at(-1)[0]).toMatchObject({
+        source: TokenChartSource.SWAP_PICKER,
+      });
+    });
+
+    it("offers only Copy address in the header menu when not opened from Home", () => {
+      const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
+
+      renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={nonHeldRoute(TokenChartSource.SWAP_PICKER)}
+        />,
+      );
+
+      const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+      expect(actions).toHaveLength(1);
+      expect(actions[0].title).toBe("Copy address");
+    });
+
+    it("renders no Swap, Send or Swap To footer when opened from the picker", () => {
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={nonHeldRoute(TokenChartSource.SWAP_PICKER)}
+        />,
+      );
+
+      expect(screen.queryByText("tokenDetailsScreen.swap")).toBeNull();
+      expect(screen.queryByTestId("token-details-send-button")).toBeNull();
+      expect(screen.queryByTestId("token-details-swap-to-button")).toBeNull();
+    });
+
+    it("shows the Blockaid banner from the record when it is flagged", () => {
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={nonHeldRoute(TokenChartSource.SWAP_PICKER, {
+            ...shxRecord,
+            securityLevel: SecurityLevel.MALICIOUS,
+          })}
+        />,
+      );
+
+      expect(
+        screen.getByText("transactionAmountScreen.errors.malicious"),
+      ).toBeTruthy();
+    });
+
+    it("shows no chart, stats or About when the kill switch is off", () => {
+      useRemoteConfigStore.setState({
+        use_token_price_history: false,
+        isInitialized: true,
+      });
+
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={nonHeldRoute(TokenChartSource.SWAP_PICKER)}
+        />,
+      );
+
+      expect(screen.getByTestId("non-held-token-header")).toBeTruthy();
+      expect(screen.queryByTestId("token-price-history-section")).toBeNull();
+      expect(screen.queryByTestId("token-stats-section")).toBeNull();
+      expect(screen.queryByTestId("about-section")).toBeNull();
+    });
+  });
+
+  describe("held token opened from the picker", () => {
+    const usdcId =
+      "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+    afterEach(() => {
+      const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+      useBalancesList.mockReset();
+      useBalancesList.mockReturnValue({
+        balanceItems: [],
+        hiddenBalanceItems: [],
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: true,
+        isRefreshing: false,
+        isFunded: false,
+        localOnlyTokenIds: [],
+        handleRefresh: jest.fn(),
+      });
+    });
+
+    it("renders the held variant (balance rows, history list) but a copy-only menu and no footer", () => {
+      useRemoteConfigStore.setState({ swap_enabled: true });
+      const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+      useBalancesList.mockReturnValue({
+        balanceItems: [
+          {
+            id: usdcId,
+            tokenCode: "USDC",
+            tokenType: "credit_alphanum4",
+            total: { isGreaterThan: () => true },
+          },
+        ],
+        hiddenBalanceItems: [],
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        localOnlyTokenIds: [],
+        handleRefresh: jest.fn(),
+      });
+      const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
+      const route = {
+        ...mockRoute,
+        params: {
+          tokenId: usdcId,
+          tokenSymbol: "USDC",
+          source: TokenChartSource.SWAP_PICKER,
+        },
+      } as unknown as TokenDetailsScreenProps["route"];
+
+      const screen = renderWithProviders(
+        <TokenDetailsScreen navigation={mockNavigation} route={route} />,
+      );
+
+      expect(screen.getByTestId("token-balance-header")).toBeTruthy();
+      expect(screen.getByTestId("token-balance-details")).toBeTruthy();
+      expect(screen.getByTestId("history-list")).toBeTruthy();
+      const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+      expect(actions.map((a: { title: string }) => a.title)).toEqual([
+        "Copy address",
+      ]);
+      expect(screen.queryByText("tokenDetailsScreen.swap")).toBeNull();
+      expect(screen.queryByTestId("token-details-send-button")).toBeNull();
     });
   });
 });
