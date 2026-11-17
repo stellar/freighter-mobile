@@ -635,7 +635,10 @@ export const CUSTOM_ROUTE_MAPPINGS: Record<string, AnalyticsEvent> = {
   // Settings overrides
   ChangeNetworkScreen: AnalyticsEvent.VIEW_CHANGE_NETWORK,
   ShareFeedbackScreen: AnalyticsEvent.VIEW_SHARE_FEEDBACK,
-  ShowRecoveryPhraseScreen: AnalyticsEvent.VIEW_SHOW_RECOVERY_PHRASE,
+  // The legacy reveal splits across two routes: the password prompt is the
+  // unlock step and the phrase itself is the show step, like Edit account.
+  ShowRecoveryPhraseScreen: AnalyticsEvent.VIEW_UNLOCK_RECOVERY_PHRASE,
+  YourRecoveryPhraseScreen: AnalyticsEvent.VIEW_SHOW_RECOVERY_PHRASE,
 
   // Buy XLM override
   BuyXLMScreen: AnalyticsEvent.VIEW_BUY_XLM,
