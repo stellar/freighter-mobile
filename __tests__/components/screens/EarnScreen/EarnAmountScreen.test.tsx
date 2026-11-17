@@ -2,6 +2,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { act, fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
+import { AmountCard } from "components/AmountCard";
 import { UNKNOWN_RESOURCE_FEE_FLOOR_XLM } from "components/screens/EarnScreen/helpers";
 import EarnAmountScreen from "components/screens/EarnScreen/screens/EarnAmountScreen";
 import { BLEND_FIXED_POOL_IDS } from "config/blend";
@@ -365,7 +366,7 @@ describe("EarnAmountScreen", () => {
       const { getByTestId } = renderScreen();
       const cta = getByTestId("earn-amount-cta");
 
-      expect(cta).toHaveTextContent("earnAmount.insufficientFunds");
+      expect(cta).toHaveTextContent("swapScreen.cta.insufficientBalance");
       expect(cta.props.accessibilityState?.disabled).toBe(true);
     });
 
@@ -389,8 +390,64 @@ describe("EarnAmountScreen", () => {
       const { getByTestId } = renderScreen();
       const cta = getByTestId("earn-amount-cta");
 
-      expect(cta).toHaveTextContent("earnAmount.insufficientFunds");
+      expect(cta).toHaveTextContent("swapScreen.cta.insufficientBalance");
       expect(cta.props.accessibilityState?.disabled).toBe(true);
+    });
+
+    // The same as Swap: a toast with the maximum, the CTA reading
+    // "Insufficient balance", and the amount left in its normal colour.
+    describe("an amount above the spendable balance", () => {
+      it("shows Swap's maximum-spendable toast", () => {
+        setSpendable({ deposit: "10", xlm: "10" });
+        setTokenAmount("9999");
+
+        renderScreen();
+
+        expect(mockShowToast).toHaveBeenCalledWith({
+          variant: "error",
+          title: "swapScreen.errors.insufficientBalance",
+          toastId: "earn-insufficient-balance",
+          duration: 3000,
+        });
+      });
+
+      it("keeps the amount in its normal colour", () => {
+        setSpendable({ deposit: "10", xlm: "10" });
+        setTokenAmount("9999");
+
+        const { UNSAFE_getByType: getByType } = renderScreen();
+
+        expect(getByType(AmountCard).props.isError).toBeFalsy();
+      });
+
+      it("takes the toast down once the amount fits", () => {
+        setSpendable({ deposit: "10", xlm: "10" });
+        setTokenAmount("9999");
+        const { rerender } = renderScreen();
+
+        setTokenAmount("5");
+        rerender(
+          <EarnAmountScreen
+            navigation={makeNavigation()}
+            route={makeRoute()}
+          />,
+        );
+
+        expect(mockDismissToast).toHaveBeenCalledWith(
+          "earn-insufficient-balance",
+        );
+      });
+
+      it("shows no toast for an amount that fits", () => {
+        setSpendable({ deposit: "10", xlm: "10" });
+        setTokenAmount("5");
+
+        renderScreen();
+
+        expect(mockShowToast).not.toHaveBeenCalledWith(
+          expect.objectContaining({ toastId: "earn-insufficient-balance" }),
+        );
+      });
     });
 
     it("enables the CTA with 'review' once a valid amount is entered", () => {

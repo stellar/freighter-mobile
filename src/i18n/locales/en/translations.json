@@ -825,7 +825,6 @@
     "title": "Deposit",
     "depositLabel": "You deposit",
     "enterAmount": "Enter an amount",
-    "insufficientFunds": "Insufficient funds",
     "review": "Review deposit",
     "poolCard": {
       "byBlend": "by Blend",

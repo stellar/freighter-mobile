@@ -65,6 +65,7 @@ import {
 } from "helpers/balances";
 import {
   formatBalanceAmount,
+  formatBigNumberForDisplay,
   formatFiatInputDisplay,
   formatTokenForDisplay,
 } from "helpers/formatAmount";
@@ -98,6 +99,7 @@ import {
 
 const SIMULATE_FAILED_TOAST_ID = "earn-simulate-failed";
 const FEE_SHORTFALL_TOAST_ID = "earn-fee-shortfall";
+const INSUFFICIENT_BALANCE_TOAST_ID = "earn-insufficient-balance";
 
 /** Earn offers 25% / 50% / Max, without main Swap's 75%. */
 const EARN_PERCENTAGES: PercentageOption[] = [25, 50, 100];
@@ -228,9 +230,9 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     [availableBalance],
   );
 
-  // Shared between the CTA state machine and the amount card's red-text
-  // treatment -- both must agree on exactly the same
-  // "over balance" condition.
+  // An amount above the spendable balance reads as it does on Swap: a toast
+  // with the maximum, and the CTA disabled as "Insufficient balance". The
+  // amount itself keeps its normal colour.
   const isAmountTooHigh = useMemo(
     () => new BigNumber(tokenAmount || "0").gt(availableBalanceBn),
     [tokenAmount, availableBalanceBn],
@@ -246,9 +248,43 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     [availableBalanceBn, tokenAmount, isAmountTooHigh],
   );
 
+  // Swap's toast and copy, re-shown as the user keeps typing past the
+  // maximum, and taken down once the amount fits.
+  const isInsufficientBalanceToastShownRef = useRef(false);
+  useEffect(() => {
+    if (!isAmountTooHigh) {
+      if (isInsufficientBalanceToastShownRef.current) {
+        isInsufficientBalanceToastShownRef.current = false;
+        dismissToast(INSUFFICIENT_BALANCE_TOAST_ID);
+      }
+      return;
+    }
+    isInsufficientBalanceToastShownRef.current = true;
+    showToast({
+      variant: "error",
+      title: t("swapScreen.errors.insufficientBalance", {
+        amount: formatBigNumberForDisplay(availableBalanceBn, {
+          decimalPlaces: depositDecimals ?? DEFAULT_DECIMALS,
+        }),
+        symbol: tokenCode,
+      }),
+      toastId: INSUFFICIENT_BALANCE_TOAST_ID,
+      duration: 3000,
+    });
+  }, [
+    isAmountTooHigh,
+    tokenAmount,
+    availableBalanceBn,
+    depositDecimals,
+    tokenCode,
+    showToast,
+    dismissToast,
+    t,
+  ]);
+
   const ctaLabelKeys: Record<typeof ctaState.labelKey, string> = {
     enter: t("earnAmount.enterAmount"),
-    insufficient: t("earnAmount.insufficientFunds"),
+    insufficient: t("swapScreen.cta.insufficientBalance"),
     review: t("earnAmount.review"),
   };
 
@@ -866,7 +902,6 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
           converter={converter}
           hasUsdPrice={hasUsdPrice}
           secondaryAmountText={secondaryAmountText}
-          isError={isAmountTooHigh}
         />
 
         <PoolCard

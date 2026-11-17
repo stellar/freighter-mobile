@@ -791,7 +791,6 @@
     "title": "Depositar",
     "depositLabel": "Você deposita",
     "enterAmount": "Insira um valor",
-    "insufficientFunds": "Saldo insuficiente",
     "review": "Revisar depósito",
     "poolCard": {
       "byBlend": "por Blend",
