@@ -60,7 +60,11 @@ export const useSimulateEarnDeposit = () => {
     ): Promise<SimulateEarnDepositSuccess | null> => {
       setIsSimulating(true);
       setError(null);
-      setScanResult(undefined);
+      // The previous verdict stays until this build replaces it. A settings
+      // change rebuilds while Review is open, and no verdict reads as
+      // "unable to scan", so clearing it here flashed "Proceed with caution"
+      // for the length of the rebuild. Confirm is off until the rebuild is
+      // done, so the old verdict is never what gets signed.
 
       try {
         const preparedXdr = await buildBlendDepositTransaction(params);
@@ -99,6 +103,8 @@ export const useSimulateEarnDeposit = () => {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         logger.error("useSimulateEarnDeposit", "Simulation failed", err);
+        // No transaction, so no verdict.
+        setScanResult(undefined);
         setError(message);
         return null;
       } finally {

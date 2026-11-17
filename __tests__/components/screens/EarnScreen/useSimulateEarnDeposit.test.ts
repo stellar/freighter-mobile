@@ -134,6 +134,57 @@ describe("useSimulateEarnDeposit", () => {
     expect(result.current.error).toBe("earnAmount.errors.simulationFailed");
   });
 
+  // A settings change rebuilds the deposit while Review is open. Its banner
+  // reads this verdict, and no verdict reads as "unable to scan", so clearing
+  // it while the rebuild runs flashed "Proceed with caution".
+  it("keeps the previous verdict while a rebuild runs, then replaces it", async () => {
+    mockBuildBlendDepositTransaction.mockResolvedValue("prepared-xdr");
+    mockScanTransaction.mockResolvedValueOnce({ scanned: "first" });
+    const { result } = renderHook(() => useSimulateEarnDeposit());
+    await act(async () => {
+      await result.current.simulate(baseParams);
+    });
+
+    let resolveRebuild: (xdr: string) => void = () => {};
+    mockBuildBlendDepositTransaction.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveRebuild = resolve;
+        }),
+    );
+    mockScanTransaction.mockResolvedValueOnce({ scanned: "second" });
+    let rebuild: Promise<unknown> = Promise.resolve();
+    act(() => {
+      rebuild = result.current.simulate(baseParams);
+    });
+
+    expect(result.current.isSimulating).toBe(true);
+    expect(result.current.scanResult).toEqual({ scanned: "first" });
+
+    await act(async () => {
+      resolveRebuild("rebuilt-xdr");
+      await rebuild;
+    });
+
+    expect(result.current.scanResult).toEqual({ scanned: "second" });
+  });
+
+  it("drops the previous verdict when the rebuild fails", async () => {
+    mockBuildBlendDepositTransaction.mockResolvedValueOnce("prepared-xdr");
+    mockScanTransaction.mockResolvedValueOnce({ scanned: "first" });
+    const { result } = renderHook(() => useSimulateEarnDeposit());
+    await act(async () => {
+      await result.current.simulate(baseParams);
+    });
+
+    mockBuildBlendDepositTransaction.mockResolvedValueOnce(null);
+    await act(async () => {
+      await result.current.simulate(baseParams);
+    });
+
+    expect(result.current.scanResult).toBeUndefined();
+  });
+
   it("resets isSimulating to false after settling", async () => {
     mockBuildBlendDepositTransaction.mockResolvedValue("prepared-xdr");
     mockScanTransaction.mockResolvedValue(undefined);
