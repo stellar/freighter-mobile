@@ -8,6 +8,10 @@
 import "@walletconnect/react-native-compat";
 import { App } from "components/App";
 import { isE2ETest } from "helpers/isEnv";
+import {
+  applyThemePreference,
+  getStoredThemePreference,
+} from "helpers/themePreference";
 import { AppRegistry, LogBox } from "react-native";
 
 import { name as appName } from "../app.json";
@@ -17,5 +21,8 @@ import "../global.css";
 if (isE2ETest) {
   LogBox.ignoreAllLogs(true);
 }
+
+// Before registering, so the first render already uses the saved theme.
+applyThemePreference(getStoredThemePreference());
 
 AppRegistry.registerComponent(appName, () => App);

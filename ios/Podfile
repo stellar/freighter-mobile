@@ -58,6 +58,10 @@ target 'freighter-mobile' do
   # shield once the auto-lock decision has finished
   pod 'PrivacyShield', :path => './'
 
+  # ThemePreference native module (local pod) — stores the Light/Dark/System
+  # choice so SceneDelegate can apply it before the splash is drawn
+  pod 'ThemePreference', :path => './'
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.

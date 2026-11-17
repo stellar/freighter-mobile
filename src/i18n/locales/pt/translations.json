@@ -90,9 +90,14 @@
     "deleteAccountConfirmMessage": "Certifique-se de que você tem sua frase de recuperação em um local seguro. Você não conseguirá recuperar sua carteira sem ela."
   },
   "preferences": {
-    "usageDataSharing": {
-      "title": "Compartilhamento de dados de uso",
-      "description": "Ajude-nos a melhorar o Varial compartilhando dados de uso, do dispositivo e de atividade — incluindo suas chaves públicas, endereço IP e um ID persistente que vincula sua carteira entre a extensão e o aplicativo móvel — com nossos provedores de análise de dados e de relatórios de falhas. Você pode desativar essa opção a qualquer momento. Consulte nossa Política de Privacidade para mais detalhes."
+    "display": {
+      "title": "Display",
+      "system": "Auto(System)",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "security": {
+      "title": "Security"
     },
     "permissionModal": {
       "enable": {
@@ -110,11 +115,16 @@
     },
     "hideDust": {
       "title": "Ocultar pagamentos pequenos",
-      "description": "Ocultar pagamentos recebidos menores que 0,1 XLM"
+      "belowThreshold": "Hide payments below 0.1 XLM."
     },
-    "memoValidation": {
-      "title": "Verificação com stellar.expert",
-      "description": "Validar endereços que requerem um memo"
+    "verifyAddresses": {
+      "title": "Verify addresses",
+      "description": "Check memo requirements with stellar.expert."
+    },
+    "shareAnalytics": {
+      "title": "Share analytics data",
+      "description": "Help improve Varial by sharing usage and diagnostic data.",
+      "learnMore": "Learn more about data sharing"
     }
   },
   "shareFeedbackScreen": {
@@ -575,7 +585,6 @@
     "alreadyInWallet": "Este colecionável já está na sua carteira",
     "showHidden": "Mostrar ocultos"
   },
-
   "collectibles": {
     "errors": {
       "collectionNotFound": "Coleção não encontrada para o endereço fornecido.",

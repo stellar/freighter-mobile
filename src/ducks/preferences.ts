@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AUTO_LOCK_TIMER, DEFAULT_AUTO_LOCK_TIMER } from "config/constants";
 import { logger } from "config/logger";
+import { ThemePreference } from "config/themePreference";
+import { getStoredThemePreference } from "helpers/themePreference";
 import { getAutoLockTimer, persistAutoLockTimer } from "services/autoLock";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -15,6 +17,8 @@ interface PreferencesState {
   autoLockTimer: AUTO_LOCK_TIMER;
   setAutoLockTimer: (autoLockTimer: AUTO_LOCK_TIMER) => void;
   hydrateAutoLockTimer: () => Promise<void>;
+  /** Set through services/themePreference, which also applies and saves it. */
+  themePreference: ThemePreference;
 }
 
 const INITIAL_PREFERENCES_STATE = {
@@ -37,6 +41,7 @@ export const usePreferencesStore = create<PreferencesState>()(
   persist(
     (set, get) => ({
       ...INITIAL_PREFERENCES_STATE,
+      themePreference: getStoredThemePreference(),
       setIsHideDustEnabled: (isHideDustEnabled: boolean) =>
         set({ isHideDustEnabled }),
       setIsMemoValidationEnabled: (isMemoValidationEnabled: boolean) =>
@@ -97,6 +102,9 @@ export const usePreferencesStore = create<PreferencesState>()(
       // truth. Keeping a second copy in unencrypted AsyncStorage would let the
       // UI disagree with enforcement and expose the policy to tampering. It's
       // hydrated from the mirror on app init via hydrateAutoLockTimer().
+      // themePreference is likewise not persisted here: native storage holds
+      // it, because the splash and first render need it before AsyncStorage
+      // has loaded.
       partialize: (state) => ({
         isHideDustEnabled: state.isHideDustEnabled,
         isMemoValidationEnabled: state.isMemoValidationEnabled,

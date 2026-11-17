@@ -25,6 +25,7 @@ class MainApplication : Application(), ReactApplication {
               add(org.stellar.freighterwallet.PrivacyShieldPackage())
               add(org.stellar.freighterwallet.WebViewMediaConsentPackage())
               add(org.stellar.freighterwallet.PillBlurPackage())
+              add(org.stellar.freighterwallet.ThemePreferencePackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

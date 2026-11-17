@@ -14,6 +14,7 @@ import {
   trackDiscoverAllTabsClosed,
   trackDiscoverWelcomeModalViewed,
 } from "services/analytics/discover";
+import { trackThemeChanged } from "services/analytics/theme";
 import {
   trackTokenChartLoaded,
   trackTokenChartViewed,
@@ -127,6 +128,9 @@ export interface AnalyticsInstance {
   readonly trackDiscoverTabClosed: typeof trackDiscoverTabClosed;
   readonly trackDiscoverAllTabsClosed: typeof trackDiscoverAllTabsClosed;
   readonly trackDiscoverWelcomeModalViewed: typeof trackDiscoverWelcomeModalViewed;
+
+  // Theme analytics
+  readonly trackThemeChanged: typeof trackThemeChanged;
 }
 
 /**
@@ -198,6 +202,7 @@ export const analytics: AnalyticsInstance = {
   trackDiscoverTabClosed,
   trackDiscoverAllTabsClosed,
   trackDiscoverWelcomeModalViewed,
+  trackThemeChanged,
 } as const;
 
 export { TransactionType } from "services/analytics/types";

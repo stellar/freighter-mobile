@@ -89,6 +89,11 @@ jest.mock("ducks/balances", () => ({
     getState: jest.fn(() => ({ isFunded: false, fetchedPublicKey: null })),
   },
 }));
+jest.mock("ducks/preferences", () => ({
+  usePreferencesStore: {
+    getState: jest.fn(() => ({ themePreference: "system" })),
+  },
+}));
 
 // Load the REAL core module (see header for why requireActual + relative path).
 const {
@@ -856,6 +861,98 @@ describe("syncIdentifyTraits (consent gating)", () => {
     identify!.mockClear();
     mod!.syncIdentifyTraits(accounts);
     expect(identify!).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("syncPreferredThemeTrait", () => {
+  const load = () => {
+    let mod: typeof import("services/analytics/core");
+    let store: {
+      getState: jest.Mock;
+      persist: { hasHydrated: jest.Mock; onFinishHydration: jest.Mock };
+    };
+    let amplitudeMock: { identify: jest.Mock; Identify: jest.Mock };
+    jest.isolateModules(() => {
+      mod = jest.requireActual<typeof import("services/analytics/core")>(
+        "../../../src/services/analytics/core",
+      );
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      store = require("ducks/analytics").useAnalyticsStore;
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      amplitudeMock = require("@amplitude/analytics-react-native");
+    });
+    const set = jest.fn();
+    amplitudeMock!.Identify.mockImplementation(() => ({ set }));
+    return { mod: mod!, store: store!, identify: amplitudeMock!.identify, set };
+  };
+
+  afterEach(() => {
+    const { useAnalyticsStore } = jest.requireMock<{
+      useAnalyticsStore: {
+        getState: jest.Mock;
+        persist: { hasHydrated: jest.Mock };
+      };
+    }>("ducks/analytics");
+    useAnalyticsStore.getState.mockReturnValue({ isEnabled: true });
+    useAnalyticsStore.persist.hasHydrated.mockReturnValue(true);
+  });
+
+  it("sends preferred_theme once per change", () => {
+    const { mod, store, identify, set } = load();
+    store.getState.mockReturnValue({ isEnabled: true });
+    mod.initAnalytics();
+    identify.mockClear();
+
+    mod.syncPreferredThemeTrait("dark");
+    mod.syncPreferredThemeTrait("dark");
+
+    expect(identify).toHaveBeenCalledTimes(1);
+    expect(set).toHaveBeenCalledWith("preferred_theme", "dark");
+  });
+
+  it("re-sends a value it already sent when forced", () => {
+    const { mod, store, identify, set } = load();
+    store.getState.mockReturnValue({ isEnabled: true });
+    mod.initAnalytics();
+    identify.mockClear();
+
+    // initAnalytics already sent "system"; only a forced repeat goes out.
+    mod.syncPreferredThemeTrait("system");
+    expect(identify).not.toHaveBeenCalled();
+    mod.syncPreferredThemeTrait("system", { force: true });
+    expect(identify).toHaveBeenCalledTimes(1);
+    expect(set).toHaveBeenCalledWith("preferred_theme", "system");
+  });
+
+  it("sends nothing while opted out, even when forced, then sends once opted in", () => {
+    const { mod, store, identify } = load();
+    store.getState.mockReturnValue({ isEnabled: false });
+    mod.initAnalytics();
+    identify.mockClear();
+
+    mod.syncPreferredThemeTrait("dark", { force: true });
+    expect(identify).not.toHaveBeenCalled();
+
+    store.getState.mockReturnValue({ isEnabled: true });
+    mod.syncPreferredThemeTrait("dark");
+    expect(identify).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends the stored preference once consent finishes hydrating", () => {
+    const { mod, store, set } = load();
+    store.persist.onFinishHydration.mockClear();
+    store.persist.hasHydrated.mockReturnValue(false);
+    store.getState.mockReturnValue({ isEnabled: true });
+    mod.initAnalytics();
+    expect(set).not.toHaveBeenCalledWith("preferred_theme", "system");
+
+    store.persist.hasHydrated.mockReturnValue(true);
+    const onFinish = store.persist.onFinishHydration.mock.calls.at(
+      -1,
+    )![0] as () => void;
+    onFinish();
+
+    expect(set).toHaveBeenCalledWith("preferred_theme", "system");
   });
 });
 
