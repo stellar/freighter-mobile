@@ -49,7 +49,11 @@ const EditAccountScreen: React.FC<EditAccountScreenProps> = ({
   const { open: openInAppBrowser } = useInAppBrowser();
   const { allAccounts, network, renameAccount, isRenamingAccount } =
     useAuthenticationStore();
-  const [phraseSource, setPhraseSource] = useState<SecretSource | null>(null);
+  // Undefined until the sources read settles, so the secrets list isn't
+  // drawn without the phrase row and then reflowed. Null: no phrase.
+  const [phraseSource, setPhraseSource] = useState<
+    SecretSource | null | undefined
+  >(undefined);
   const renameSheetRef = useRef<BottomSheetModal>(null);
 
   const account = allAccounts.find(({ id }) => id === accountId) ?? null;
@@ -81,6 +85,8 @@ const EditAccountScreen: React.FC<EditAccountScreenProps> = ({
           "Failed to read secret sources",
           error,
         );
+        // Still offer the account's own key.
+        setPhraseSource(null);
       });
   }, [sourceId]);
 
@@ -187,8 +193,12 @@ const EditAccountScreen: React.FC<EditAccountScreenProps> = ({
             <Avatar size="xl" publicAddress={account.publicKey} />
           </View>
           <List items={nameItems} />
-          <List items={secretItems} />
-          {explorerItems.length > 0 && <List items={explorerItems} />}
+          {phraseSource !== undefined && (
+            <>
+              <List items={secretItems} />
+              {explorerItems.length > 0 && <List items={explorerItems} />}
+            </>
+          )}
         </View>
       </ScrollView>
 

@@ -40,22 +40,24 @@ jest.mock("components/screens/HomeScreen/RenameAccountForm", () => {
   );
 });
 
+const mockGetSecretSources = jest.fn();
 jest.mock("services/auth/secretSources", () => ({
-  getSecretSources: jest.fn().mockResolvedValue({
-    "phrase-1": {
-      id: "phrase-1",
-      type: "phrase",
-      label: "Seed Phrase 1",
-      createdAt: 1,
-    },
-    "key-1": {
-      id: "key-1",
-      type: "secret_key",
-      label: "Secret Key 1",
-      createdAt: 2,
-    },
-  }),
+  getSecretSources: () => mockGetSecretSources(),
 }));
+const mockSources = {
+  "phrase-1": {
+    id: "phrase-1",
+    type: "phrase",
+    label: "Seed Phrase 1",
+    createdAt: 1,
+  },
+  "key-1": {
+    id: "key-1",
+    type: "secret_key",
+    label: "Secret Key 1",
+    createdAt: 2,
+  },
+};
 
 const mockDerived: Account = {
   id: "derived-id",
@@ -95,6 +97,7 @@ describe("EditAccountScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockNetwork = NETWORKS.PUBLIC;
+    mockGetSecretSources.mockResolvedValue(mockSources);
   });
 
   it("offers a phrase-derived account its phrase and its own key", async () => {
@@ -118,6 +121,38 @@ describe("EditAccountScreen", () => {
     );
   });
 
+  it("holds the secrets until the sources read settles", async () => {
+    let resolveSources: (value: typeof mockSources) => void = () => {};
+    mockGetSecretSources.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSources = resolve;
+      }),
+    );
+    const screen = renderScreen(mockDerived.id);
+
+    // Drawn now, the key would sit alone and the phrase row pop in above it.
+    expect(screen.queryByTestId("edit-account-secret-key")).toBeNull();
+    expect(screen.queryByTestId("edit-account-explorer")).toBeNull();
+
+    resolveSources(mockSources);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("edit-account-recovery-phrase")).toBeTruthy(),
+    );
+    expect(screen.getByTestId("edit-account-secret-key")).toBeTruthy();
+    expect(screen.getByTestId("edit-account-explorer")).toBeTruthy();
+  });
+
+  it("still offers the key when the sources can't be read", async () => {
+    mockGetSecretSources.mockRejectedValue(new Error("storage"));
+    const screen = renderScreen(mockDerived.id);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("edit-account-secret-key")).toBeTruthy(),
+    );
+    expect(screen.queryByTestId("edit-account-recovery-phrase")).toBeNull();
+  });
+
   it("offers an imported account only its key", async () => {
     const screen = renderScreen(mockImported.id);
 
@@ -138,21 +173,22 @@ describe("EditAccountScreen", () => {
     expect(screen.getByTestId("rename-form").props.children).toBe("true");
   });
 
-  it("links the account on stellar.expert for the current network", () => {
+  it("links the account on stellar.expert for the current network", async () => {
     mockNetwork = NETWORKS.TESTNET;
     const screen = renderScreen(mockDerived.id);
 
-    fireEvent.press(screen.getByTestId("edit-account-explorer"));
+    fireEvent.press(await screen.findByTestId("edit-account-explorer"));
 
     expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
       expect.stringMatching(/\/testnet\/account\/GDERIVED$/),
     );
   });
 
-  it("hides the explorer link on futurenet", () => {
+  it("hides the explorer link on futurenet", async () => {
     mockNetwork = NETWORKS.FUTURENET;
     const screen = renderScreen(mockDerived.id);
 
+    await screen.findByTestId("edit-account-secret-key");
     expect(screen.queryByTestId("edit-account-explorer")).toBeNull();
   });
 
