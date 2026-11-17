@@ -18,6 +18,7 @@ jest.mock("hooks/useSecureClipboard", () => ({
 const PENDING_ID = "pending-phrase-7";
 
 let mockPendingPhrase: string | null = PHRASE;
+let mockIsSoftLocked = false;
 const mockGetPending = jest.fn();
 const mockClearPending = jest.fn();
 jest.mock("ducks/auth", () => ({
@@ -28,11 +29,11 @@ jest.mock("ducks/auth", () => ({
   clearPendingRecoveryPhrase: (id?: string) => mockClearPending(id),
   // CopyPhraseButton's module (the onboarding screen) reads the store.
   useAuthenticationStore: (
-    selector: (state: { isLoading: boolean }) => unknown,
-  ) => selector({ isLoading: false }),
+    selector: (state: { isLoading: boolean; isSoftLocked: boolean }) => unknown,
+  ) => selector({ isLoading: false, isSoftLocked: mockIsSoftLocked }),
 }));
 
-const navigation = { navigate: jest.fn(), goBack: jest.fn() };
+const navigation = { navigate: jest.fn(), goBack: jest.fn(), popTo: jest.fn() };
 
 const renderScreen = () =>
   renderWithProviders(
@@ -50,6 +51,7 @@ describe("BackupRecoveryPhraseScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPendingPhrase = PHRASE;
+    mockIsSoftLocked = false;
   });
 
   it("keeps the held phrase off the screen until the user reveals it", () => {
@@ -77,6 +79,7 @@ describe("BackupRecoveryPhraseScreen", () => {
       MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN,
       { kind: "newPhrase", pendingPhraseId: PENDING_ID, accountName: "Travel" },
     );
+    expect(navigation.popTo).not.toHaveBeenCalled();
   });
 
   it("drops its own generation when the screen goes away", () => {
@@ -123,5 +126,27 @@ describe("BackupRecoveryPhraseScreen", () => {
     unmount();
     expect(mockClearPending).toHaveBeenCalledTimes(1);
     expect(mockClearPending).toHaveBeenCalledWith(PENDING_ID);
+  });
+
+  it("leaves the flow when the wallet soft-locks, since the lock drops the phrase", () => {
+    const { getByTestId, rerender } = renderScreen();
+    fireEvent.press(getByTestId("backup-recovery-phrase-reveal"));
+    expect(navigation.popTo).not.toHaveBeenCalled();
+
+    mockIsSoftLocked = true;
+    rerender(
+      <BackupRecoveryPhraseScreen
+        navigation={navigation as never}
+        route={
+          {
+            params: { pendingPhraseId: PENDING_ID, accountName: "Travel" },
+          } as never
+        }
+      />,
+    );
+
+    expect(navigation.popTo).toHaveBeenCalledWith(
+      MANAGE_WALLETS_ROUTES.CREATE_WALLET_SCREEN,
+    );
   });
 });
