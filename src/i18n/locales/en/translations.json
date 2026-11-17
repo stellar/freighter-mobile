@@ -794,8 +794,8 @@
     "heading": "Choose a token",
     "subheading": "Select a token to deposit and earn yield.",
     "noSupportedAssets": {
-      "title": "No supported assets in your wallet",
-      "body": "Add a supported asset to start earning."
+      "title": "No supported tokens in your wallet",
+      "body": "Add a supported token to start earning."
     },
     "error": {
       "title": "We couldn't load Earn right now",
@@ -804,7 +804,7 @@
     },
     "depositInto": "Deposit into",
     "inYourWallet": "In your wallet",
-    "otherSupportedAssets": "Other supported assets",
+    "otherSupportedAssets": "Supported tokens",
     "apyPill": "{{rate}} APY*",
     "apyDisclaimer": "*APY is variable and subject to change."
   },

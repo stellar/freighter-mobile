@@ -760,8 +760,8 @@
     "heading": "Escolha um token",
     "subheading": "Selecione um token para depositar e ganhar rendimento.",
     "noSupportedAssets": {
-      "title": "Nenhum ativo suportado na sua carteira",
-      "body": "Adicione um ativo suportado para começar a ganhar."
+      "title": "Nenhum token suportado na sua carteira",
+      "body": "Adicione um token suportado para começar a ganhar."
     },
     "error": {
       "title": "Não foi possível carregar o Earn agora",
@@ -770,7 +770,7 @@
     },
     "depositInto": "Depositar em",
     "inYourWallet": "Na sua carteira",
-    "otherSupportedAssets": "Outros ativos suportados",
+    "otherSupportedAssets": "Tokens suportados",
     "apyPill": "{{rate}} APY*",
     "apyDisclaimer": "*O APY é variável e está sujeito a alterações."
   },
