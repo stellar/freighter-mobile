@@ -1050,6 +1050,8 @@ describe("EarnAmountScreen", () => {
       rerenderScreen(rerender);
       const settingsSheet = latestSheetContent("onSettingsChange");
       expect(settingsSheet?.props.showMemo).toBe(false);
+      // A deposit is a Soroban invoke: the fee field is its inclusion fee.
+      expect(settingsSheet?.props.isSoroban).toBe(true);
       (settingsSheet?.props.onSettingsChange as () => void)();
 
       expect(mockSimulate).toHaveBeenCalledTimes(2);

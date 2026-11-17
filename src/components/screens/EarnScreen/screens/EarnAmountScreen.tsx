@@ -937,6 +937,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
           <TransactionSettingsBottomSheet
             context={TransactionContext.Send}
             showMemo={false}
+            isSoroban
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleEarnSettingsChange}

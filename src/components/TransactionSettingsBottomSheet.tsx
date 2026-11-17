@@ -66,6 +66,15 @@ type TransactionSettingsBottomSheetProps = {
    * a Soroban transaction, which can't carry a memo. Defaults to `true`.
    */
   showMemo?: boolean;
+  /**
+   * Marks the transaction as Soroban when nothing in the Send flow's state
+   * would: a Blend deposit is always a contract invoke. The fee field is then
+   * its inclusion fee, and the info button opens the fee breakdown, as for a
+   * custom token or a collectible. Only the fee row reads it. Defaults to
+   * `false`, leaving the check to the Send flow's token, recipient and
+   * collectible.
+   */
+  isSoroban?: boolean;
 };
 
 // Constants
@@ -103,6 +112,7 @@ const TransactionSettingsBottomSheet: React.FC<
   onSettingsChange,
   operationCount = 1,
   showMemo = true,
+  isSoroban = false,
 }) => {
   // All hooks at the top
   const { t } = useAppTranslation();
@@ -179,6 +189,9 @@ const TransactionSettingsBottomSheet: React.FC<
   const isSorobanTransaction = Boolean(
     isCollectibleTransfer || isCustomToken || isSorobanRecipient,
   );
+
+  // What the fee row goes by: the caller's word, or the Send flow's state.
+  const isSorobanFee = isSoroban || isSorobanTransaction;
 
   /**
    * The contract ID of a Soroban transaction, which the memo check runs
@@ -490,7 +503,7 @@ const TransactionSettingsBottomSheet: React.FC<
 
   // Preview the unsaved fee in the breakdown; skip the override while invalid.
   const { openFeeDetails, feeDetailsSheets } = useFeeDetailsBottomSheet({
-    isSorobanContext: isSorobanTransaction,
+    isSorobanContext: isSorobanFee,
     inclusionFeeXlmOverride: feeError
       ? undefined
       : parseDisplayNumber(localFee).toString(),
@@ -650,7 +663,7 @@ const TransactionSettingsBottomSheet: React.FC<
         <View className="flex flex-row items-center justify-between">
           <View className="flex flex-row items-center gap-2">
             <Text sm secondary>
-              {isSorobanTransaction
+              {isSorobanFee
                 ? t("transactionSettings.inclusionFeeTitle")
                 : t("transactionSettings.feeTitle")}
             </Text>
@@ -695,7 +708,7 @@ const TransactionSettingsBottomSheet: React.FC<
       </View>
     ),
     [
-      isSorobanTransaction,
+      isSorobanFee,
       openFeeDetails,
       localFee,
       feeError,

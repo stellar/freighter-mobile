@@ -305,6 +305,24 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
     expect(mockTransactionSettingsState.saveMemo).not.toHaveBeenCalled();
   });
 
+  it("treats the fee as an inclusion fee when told the transaction is Soroban", () => {
+    // An Earn deposit: nothing in the Send flow's state says Soroban, so the
+    // caller does.
+    const { getByText, queryByText } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+        showMemo={false}
+        isSoroban
+      />,
+    );
+
+    expect(getByText("transactionSettings.inclusionFeeTitle")).toBeTruthy();
+    expect(queryByText("transactionSettings.feeTitle")).toBeNull();
+  });
+
   it("should rebuild transaction with memo for memo-required address", async () => {
     const mockOnSettingsChangeForMemo = jest.fn().mockImplementation(() => {
       const currentSettings = mockTransactionSettingsState;
