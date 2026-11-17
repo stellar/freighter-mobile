@@ -5169,6 +5169,65 @@ describe("auth duck", () => {
           expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
         });
 
+        it("completes on retry after the account write failed", async () => {
+          const { result } = mockNewPhraseSession();
+          const id = generatePendingRecoveryPhrase();
+          sharedKeyManager.storeKey.mockRejectedValueOnce(
+            new Error("keystore write failed"),
+          );
+
+          await act(async () => {
+            await expect(
+              result.current.addRecoveryPhraseSource(mockPassword, id),
+            ).rejects.toThrow();
+          });
+
+          // The source is registered, but no account lists it yet.
+          const [registered] = storedSources().filter(
+            ({ id: sourceId }) => sourceId === newSourceId,
+          );
+          expect(registered).toBeDefined();
+          expect(getPendingRecoveryPhrase(id)).toBe(newPhrase);
+
+          await act(async () => {
+            await result.current.addRecoveryPhraseSource(mockPassword, id);
+          });
+
+          expect(
+            storedSources().filter(
+              ({ id: sourceId }) => sourceId === newSourceId,
+            ),
+          ).toEqual([registered]);
+          expect(storedAccounts()[1]).toEqual(
+            expect.objectContaining({
+              sourceId: newSourceId,
+              publicKey: publicKeyAt(newPhrase, 0),
+            }),
+          );
+          expect(getPendingRecoveryPhrase(id)).toBeNull();
+        });
+
+        it("stores no account when the source write fails", async () => {
+          const { result } = mockNewPhraseSession();
+          const id = generatePendingRecoveryPhrase();
+          (dataStorage.setItem as jest.Mock).mockImplementationOnce(
+            (key: string) =>
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+              key === STORAGE_KEYS.SECRET_SOURCES
+                ? Promise.reject(new Error("storage failed"))
+                : Promise.resolve(),
+          );
+
+          await act(async () => {
+            await expect(
+              result.current.addRecoveryPhraseSource(mockPassword, id),
+            ).rejects.toThrow("storage failed");
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(getPendingRecoveryPhrase(id)).toBe(newPhrase);
+        });
+
         it("drops the held phrase when the wallet soft-locks", async () => {
           mockNewPhraseSession();
           const id = generatePendingRecoveryPhrase();
