@@ -1,6 +1,6 @@
 /* eslint-disable @fnando/consistent-import/consistent-import, global-require, @typescript-eslint/no-var-requires */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { fireEvent } from "@testing-library/react-native";
+import { fireEvent, within } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import { recordTokenId } from "components/screens/SwapScreen/helpers";
 import * as useSwapTokenLookupModule from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
@@ -457,6 +457,33 @@ describe("SwapToScreen", () => {
 
       expect(mockGoBack).not.toHaveBeenCalled();
       expect(setDestinationTokenSpy).not.toHaveBeenCalled();
+    });
+
+    it("drops the result when View details was opened meanwhile", async () => {
+      mockPriceHistoryEnabled.mockReturnValue(true);
+      const { getByText, getByTestId } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+      );
+      fireEvent.press(getByText("TKN"));
+      fireEvent(
+        within(getByTestId("token-option-TKN")).getByTestId(
+          "menu-action-View details",
+        ),
+        "touchEnd",
+      );
+      resolveDetails({ name: "Token", symbol: "TKN", decimals: 7 });
+      await flush();
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+        expect.objectContaining({ tokenSymbol: "TKN" }),
+      );
+      expect(mockGoBack).not.toHaveBeenCalled();
+      expect(setDestinationTokenSpy).not.toHaveBeenCalled();
+
+      // Back from the details screen, the same row must be pickable again.
+      fireEvent.press(getByText("TKN"));
+      expect(mockGetTokenDetails).toHaveBeenCalledTimes(2);
     });
   });
 

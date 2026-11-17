@@ -242,6 +242,8 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     record: FormattedSearchTokenRecord,
     source: TokenChartSource,
   ) => {
+    pickIdRef.current += 1;
+    pendingPickRef.current = null;
     (
       navigation as unknown as NativeStackNavigationProp<RootStackParamList>
     ).navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {

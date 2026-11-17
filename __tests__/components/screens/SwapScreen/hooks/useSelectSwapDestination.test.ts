@@ -1,8 +1,10 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { useSelectSwapDestination } from "components/screens/SwapScreen/hooks/useSelectSwapDestination";
+import { AnalyticsEvent, SwapSelectionSource } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useSwapStore } from "ducks/swap";
+import { analytics } from "services/analytics";
 
 const mockGetTokenDetails = jest.fn();
 jest.mock("services/backend", () => ({
@@ -128,6 +130,14 @@ describe("useSelectSwapDestination", () => {
     });
     expect(useSwapStore.getState().destinationToken).toEqual(
       expect.objectContaining({ id: `TKN:${CONTRACT}`, decimals: 18 }),
+    );
+    expect(analytics.track).toHaveBeenCalledWith(
+      AnalyticsEvent.SWAP_TRENDING_SWAP_TO_PRESSED,
+      expect.objectContaining({ tokenCode: "TKN" }),
+    );
+    expect(analytics.track).toHaveBeenCalledWith(
+      AnalyticsEvent.SWAP_DESTINATION_SELECTED,
+      expect.objectContaining({ source: SwapSelectionSource.TRENDING }),
     );
   });
 

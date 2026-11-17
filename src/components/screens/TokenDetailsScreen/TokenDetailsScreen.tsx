@@ -370,10 +370,10 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     ? recordLevel === SecurityLevel.MALICIOUS || !!record?.isMalicious
     : heldSecurity.isMalicious;
   const isSuspicious = isNoBalanceVariant
-    ? recordLevel === SecurityLevel.SUSPICIOUS ||
-      recordLevel === SecurityLevel.UNABLE_TO_SCAN ||
-      !!record?.isSuspicious
+    ? recordLevel === SecurityLevel.SUSPICIOUS || !!record?.isSuspicious
     : heldSecurity.isSuspicious;
+  const isUnableToScan =
+    isNoBalanceVariant && recordLevel === SecurityLevel.UNABLE_TO_SCAN;
 
   const securityWarnings = useMemo((): SecurityWarning[] => {
     if (isNoBalanceVariant) {
@@ -417,17 +417,24 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     });
   // Unable-to-scan is not flagged here: the banner alone signals caution, as
   // on the old Popular Tokens sheet.
-  const isFlagged =
-    isMalicious ||
-    record?.securityLevel === SecurityLevel.SUSPICIOUS ||
-    !!record?.isSuspicious;
+  const isFlagged = isMalicious || isSuspicious;
 
   const securitySeverity = useMemo(() => {
     if (isMalicious) return SecurityLevel.MALICIOUS;
     if (isSuspicious) return SecurityLevel.SUSPICIOUS;
+    if (isUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
 
     return undefined;
-  }, [isMalicious, isSuspicious]);
+  }, [isMalicious, isSuspicious, isUnableToScan]);
+
+  let securityBannerText: string | undefined;
+  if (isMalicious) {
+    securityBannerText = t("transactionAmountScreen.errors.malicious");
+  } else if (isSuspicious) {
+    securityBannerText = t("transactionAmountScreen.errors.suspicious");
+  } else if (isUnableToScan) {
+    securityBannerText = t("securityWarning.proceedWithCaution");
+  }
 
   // EVERYTHING above the transactions lives in the list header, so
   // the screen scrolls as one column like the extension's does.
@@ -457,14 +464,10 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           tall, and a flagged token's warning sat directly under the
           header before this feature existed. Only shown when
           flagged, so the ordinary layout is unchanged. */}
-      {(isMalicious || isSuspicious) && (
+      {securityBannerText && (
         <Banner
-          variant={isSuspicious ? "warning" : "error"}
-          text={
-            isMalicious
-              ? t("transactionAmountScreen.errors.malicious")
-              : t("transactionAmountScreen.errors.suspicious")
-          }
+          variant={isSuspicious || !isMalicious ? "warning" : "error"}
+          text={securityBannerText}
           onPress={() => securityWarningBottomSheetModalRef.current?.present()}
         />
       )}

@@ -462,7 +462,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   // Scroll the amount screen back to the top whenever the selected source or
   // destination token changes — after picking from the Swap-from / Swap-to
-  // pickers, the trending detail sheet, or the XLM-reserve swap — so the
+  // pickers, the token details screen, or the XLM-reserve swap — so the
   // updated Sell/Receive cards are visible.
   useEffect(() => {
     trendingListRef.current?.scrollToOffset({ offset: 0, animated: false });

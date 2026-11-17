@@ -835,6 +835,30 @@ describe("TokenDetailsScreen", () => {
       expect(useSwapStore.getState().destinationToken).toBeNull();
     });
 
+    it("treats a suspicious token as flagged: suspicious banner plus Cancel and Swap to anyway", () => {
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={swapAmountRoute({
+            ...shxRecord,
+            securityLevel: SecurityLevel.SUSPICIOUS,
+          } as FormattedSearchTokenRecord)}
+        />,
+      );
+
+      expect(
+        screen.getByText("transactionAmountScreen.errors.suspicious"),
+      ).toBeTruthy();
+      expect(securitySheetProps(screen).severity).toBe(
+        SecurityLevel.SUSPICIOUS,
+      );
+      expect(screen.getByTestId("token-details-cancel-button")).toBeTruthy();
+      expect(
+        screen.getByTestId("token-details-swap-to-anyway-button"),
+      ).toBeTruthy();
+      expect(screen.queryByTestId("token-details-swap-to-button")).toBeNull();
+    });
+
     it("treats an unable-to-scan token as unflagged: banner plus a plain Swap To that selects directly", () => {
       const screen = renderWithProviders(
         <TokenDetailsScreen
@@ -858,8 +882,14 @@ describe("TokenDetailsScreen", () => {
       );
 
       expect(
-        screen.getByText("transactionAmountScreen.errors.suspicious"),
+        screen.getByText("securityWarning.proceedWithCaution"),
       ).toBeTruthy();
+      expect(
+        screen.queryByText("transactionAmountScreen.errors.suspicious"),
+      ).toBeNull();
+      expect(securitySheetProps(screen).severity).toBe(
+        SecurityLevel.UNABLE_TO_SCAN,
+      );
       expect(screen.queryByTestId("token-details-cancel-button")).toBeNull();
       expect(
         screen.queryByTestId("token-details-swap-to-anyway-button"),
@@ -906,6 +936,9 @@ describe("TokenDetailsScreen", () => {
           route={swapAmountRoute()}
         />,
       );
+      expect(screen.getByTestId("token-balance-header")).toBeTruthy();
+      expect(screen.getByTestId("token-balance-details")).toBeTruthy();
+      expect(screen.queryByTestId("non-held-token-header")).toBeNull();
       fireEvent.press(screen.getByTestId("token-details-swap-to-button"));
 
       expect(withTokenDecimals).not.toHaveBeenCalled();
