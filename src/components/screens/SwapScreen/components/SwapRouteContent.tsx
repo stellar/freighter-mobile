@@ -80,7 +80,15 @@ const PathSteps: React.FC<{ path: SwapRoutePathView; testID: string }> = ({
                   </Text>
                 </View>
                 {path.amounts && (
-                  <Text sm medium style={{ marginLeft: "auto" }}>
+                  <Text
+                    sm
+                    medium
+                    style={{
+                      marginLeft: "auto",
+                      flexShrink: 1,
+                      textAlign: "right",
+                    }}
+                  >
                     {path.amounts[index]}
                   </Text>
                 )}

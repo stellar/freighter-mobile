@@ -696,7 +696,7 @@
       "pools": "{{count}} pools",
       "hint": "As rotas podem ser divididas em várias etapas para otimizar cotações e taxas.",
       "providers": "Provedores",
-      "amount": "Quantia"
+      "amount": "Valor"
     },
     "errors": {
       "failedToSetupTransaction": "Falha ao configurar transação de troca",
