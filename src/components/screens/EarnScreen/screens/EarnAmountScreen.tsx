@@ -582,8 +582,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     // simulation returns, so it is NOT folded in here as a pre-simulation
     // guess anymore — the `getXlmFeeShortfall` check below, after simulate
     // resolves, is what catches "some XLM, but not enough for the measured
-    // fee". Both cases must still surface something: this sheet for the
-    // former, an inline message for the latter.
+    // fee": a toast asking for a smaller XLM deposit, or this same sheet for
+    // a deposit of any other asset.
     if (
       needsXlmForFee({
         spendableXlm: spendableXlm.toFixed(),
@@ -619,54 +619,56 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     }
 
     // `simulate` just resolved, so the duck's `sorobanResourceFeeXlm` is now
-    // the REAL, measured resource fee (never a pre-simulation guess). For an
-    // XLM deposit, check whether the amount just simulated leaves enough XLM
-    // to cover it.
+    // the REAL, measured resource fee (never a pre-simulation guess). Check
+    // that the spendable XLM covers it. An XLM deposit pays it from the same
+    // balance it deposits from; any other deposit leaves the XLM untouched,
+    // so its amount counts as 0 here.
     const { sorobanResourceFeeXlm } = useTransactionBuilderStore.getState();
 
-    let shortfall = "0";
-    if (isXlm) {
-      // The backend omitted `minResourceFee` from this simulation, so the fee
-      // is genuinely UNKNOWN, not zero. `tokenAmount` is already <=
-      // `spendableXlm` by construction (the CTA's own `isAmountTooHigh` guard,
-      // and `availableBalance === spendableXlm` for an XLM deposit), so
-      // feeding "0" here would make `getXlmFeeShortfall` report "0" in every
-      // case that reaches this point — silently disabling the check rather
-      // than skipping it visibly, and reintroducing the exact failure this
-      // whole check exists to prevent: a max-balance XLM deposit signing
-      // successfully and only failing at submission. Fall back to a
-      // conservative floor instead (see its doc for why "0.1" specifically)
-      // — this is logged too, since it is still a gap in what simulation told
-      // us, even though it is now covered rather than skipped.
-      if (sorobanResourceFeeXlm === null) {
-        logger.warn(
-          "EarnAmountScreen",
-          "sorobanResourceFeeXlm is null after a successful simulation; falling back to the unknown-fee floor for the shortfall check",
-        );
-      }
-      shortfall = getXlmFeeShortfall({
-        spendableXlm: spendableXlm.toFixed(),
-        amount: amountToReview || "0",
-        resourceFee: sorobanResourceFeeXlm ?? UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
-      });
+    // The backend omitted `minResourceFee` from this simulation, so the fee
+    // is genuinely UNKNOWN, not zero. For an XLM deposit `tokenAmount` is
+    // already <= `spendableXlm` by construction (the CTA's own
+    // `isAmountTooHigh` guard), so feeding "0" here would make
+    // `getXlmFeeShortfall` report "0" in every case that reaches this point —
+    // silently disabling the check rather than skipping it visibly, and
+    // reintroducing the exact failure this whole check exists to prevent: a
+    // deposit signing successfully and only failing at submission. Fall back
+    // to a conservative floor instead (see its doc for why "0.1"
+    // specifically) — this is logged too, since it is still a gap in what
+    // simulation told us, even though it is now covered rather than skipped.
+    if (sorobanResourceFeeXlm === null) {
+      logger.warn(
+        "EarnAmountScreen",
+        "sorobanResourceFeeXlm is null after a successful simulation; falling back to the unknown-fee floor for the shortfall check",
+      );
     }
+    const shortfall = getXlmFeeShortfall({
+      spendableXlm: spendableXlm.toFixed(),
+      amount: isXlm ? amountToReview || "0" : "0",
+      resourceFee: sorobanResourceFeeXlm ?? UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
+    });
 
     // INVARIANT Review and Confirm rely on: the staged XDR in
     // `transactionBuilder` was built with `reviewedAmount`, the amount Review
     // shows. This check never adjusts the amount — on a shortfall it blocks
-    // here and asks the user to reduce it themselves, rather than correcting
-    // it and re-simulating (as an earlier design did). So this branch either
-    // opens Review with the amount `simulate` was just called with, or
-    // doesn't open it at all.
+    // here, rather than correcting the amount and re-simulating (as an
+    // earlier design did). So this branch either opens Review with the
+    // amount `simulate` was just called with, or doesn't open it at all.
     if (new BigNumber(shortfall).gt(0)) {
-      showToast({
-        variant: "error",
-        title: t("earnAmount.errors.feeShortfall", {
-          amount: formatTokenForDisplay(shortfall),
-        }),
-        toastId: "earn-fee-shortfall",
-        duration: 0,
-      });
+      if (isXlm) {
+        // Depositing less frees the XLM, so ask for a smaller amount.
+        showToast({
+          variant: "error",
+          title: t("earnAmount.errors.feeShortfall", {
+            amount: formatTokenForDisplay(shortfall),
+          }),
+          toastId: "earn-fee-shortfall",
+          duration: 0,
+        });
+      } else {
+        // A smaller deposit wouldn't help: the account needs more XLM.
+        presentOverDismissedKeyboard(networkFeeBottomSheetModalRef);
+      }
       return;
     }
 

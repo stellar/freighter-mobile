@@ -475,10 +475,9 @@ describe("EarnAmountScreen", () => {
       );
     });
 
-    it("never computes a shortfall for a non-XLM deposit -- its fee comes from an untouched XLM balance", async () => {
+    it("lets a non-XLM deposit through when the spendable XLM covers the measured fee", async () => {
       // Deposit asset is USDC (this suite's default balance); depositing the
-      // whole USDC balance cannot squeeze the separate XLM balance the fee
-      // is actually paid from.
+      // whole USDC balance doesn't touch the XLM the fee is paid from.
       setSpendable({ deposit: "1000", xlm: "10" });
       setTokenAmount("1000");
 
@@ -496,11 +495,63 @@ describe("EarnAmountScreen", () => {
       await Promise.resolve();
 
       // eslint-disable-next-line no-underscore-dangle
-      const [, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+      const [feeSheet, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
       expect(reviewSheet.present).toHaveBeenCalledTimes(1);
+      expect(feeSheet.present).not.toHaveBeenCalled();
       expect(mockShowToast).not.toHaveBeenCalledWith(
         expect.objectContaining({ toastId: "earn-fee-shortfall" }),
       );
+    });
+
+    it("opens the XLM fee sheet when a non-XLM deposit's measured fee is more than the spendable XLM", async () => {
+      // Enough XLM to clear the pre-simulation gate, not enough for a Blend
+      // submit's resource fee: signing would fail on-chain.
+      setSpendable({ deposit: "1000", xlm: "0.01" });
+      setTokenAmount("10");
+
+      mockSimulate.mockImplementation(() => {
+        useTransactionBuilderStore.setState({
+          sorobanResourceFeeXlm: "0.0546395",
+        });
+        return { preparedXdr: "prepared-xdr", scanResult: undefined };
+      });
+
+      const { getByTestId } = renderScreen();
+
+      await fireEvent.press(getByTestId("earn-amount-cta"));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // eslint-disable-next-line no-underscore-dangle
+      const [feeSheet, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+      expect(mockSimulate).toHaveBeenCalledTimes(1);
+      expect(feeSheet.present).toHaveBeenCalledTimes(1);
+      expect(reviewSheet.present).not.toHaveBeenCalled();
+      // The reduce-your-deposit toast is for XLM deposits only.
+      expect(mockShowToast).not.toHaveBeenCalledWith(
+        expect.objectContaining({ toastId: "earn-fee-shortfall" }),
+      );
+    });
+
+    it("checks a non-XLM deposit against the unknown-fee floor when simulation reports no fee", async () => {
+      setSpendable({ deposit: "1000", xlm: "0.05" });
+      setTokenAmount("10");
+
+      mockSimulate.mockImplementation(() => {
+        useTransactionBuilderStore.setState({ sorobanResourceFeeXlm: null });
+        return { preparedXdr: "prepared-xdr", scanResult: undefined };
+      });
+
+      const { getByTestId } = renderScreen();
+
+      await fireEvent.press(getByTestId("earn-amount-cta"));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // eslint-disable-next-line no-underscore-dangle
+      const [feeSheet, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+      expect(feeSheet.present).toHaveBeenCalledTimes(1);
+      expect(reviewSheet.present).not.toHaveBeenCalled();
     });
 
     it("blocks with the shortfall message when the resource fee is unknown (null) and the deposit is near-max", async () => {

@@ -23,9 +23,11 @@ export interface XlmFeeShortfallBottomSheetProps {
 }
 
 /**
- * Sheet shown when the account has no XLM at all to cover the network fee
- * (the pre-simulation `needsXlmForFee` gate) -- distinct from the
- * measured-resource-fee shortfall, which stays a toast (`earnAmount.errors.
+ * Sheet shown when the account lacks the XLM to pay a deposit's network fee:
+ * with no spendable XLM at all (the pre-simulation `needsXlmForFee` gate), or
+ * when a deposit of any asset other than XLM measures a resource fee above
+ * the spendable XLM. An XLM deposit that leaves too little for its fee gets
+ * a toast asking for a smaller amount instead (`earnAmount.errors.
  * feeShortfall`/`insufficientBalanceForFee`).
  *
  * The XLM icon leads the stacked sheet header, followed by "Buy with

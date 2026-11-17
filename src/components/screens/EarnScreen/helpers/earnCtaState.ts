@@ -52,7 +52,7 @@ export const needsXlmForFee = ({
 }) => new BigNumber(spendableXlm).lt(new BigNumber(fee));
 
 /**
- * How much XLM a deposit is short of its own network fee, or "0" if it fits.
+ * How much XLM a deposit is short of its network fee, or "0" if it fits.
  *
  * A Blend `submit` is dominated by its resource fee — ~0.0546 XLM against the
  * live pool, roughly 5,000x the inclusion fee — and that figure is only known
@@ -65,8 +65,8 @@ export const needsXlmForFee = ({
  * already nets out the base reserve and the inclusion fee, so only the
  * resource fee is left to cover.
  *
- * Only XLM deposits can be short this way: for any other asset the fee comes
- * out of an untouched XLM balance.
+ * For a deposit of any other asset, pass `amount` "0": the deposit leaves the
+ * XLM untouched, but the fee must still fit in what is spendable.
  */
 export const getXlmFeeShortfall = ({
   spendableXlm,
@@ -74,7 +74,10 @@ export const getXlmFeeShortfall = ({
   resourceFee,
 }: {
   spendableXlm: string;
-  /** Cleaned deposit amount — no group separators. */
+  /**
+   * Cleaned XLM deposit amount — no group separators. "0" for a deposit of
+   * any other asset.
+   */
   amount: string;
   /** Measured resource fee from simulation, in XLM. */
   resourceFee: string;

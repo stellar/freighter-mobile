@@ -23,8 +23,12 @@ describe("XlmFeeShortfallBottomSheet", () => {
       />,
     );
 
-    expect(getByText("XLM needed for network fees")).toBeTruthy();
-    expect(getByText("Add XLM to your wallet to continue")).toBeTruthy();
+    expect(getByText("You need XLM to pay fees")).toBeTruthy();
+    expect(
+      getByText(
+        "You don't have enough available XLM to cover the transaction fee. Add XLM to continue with your deposit.",
+      ),
+    ).toBeTruthy();
     expect(getByText("Buy with Coinbase")).toBeTruthy();
     expect(getByText("Receive XLM")).toBeTruthy();
   });
