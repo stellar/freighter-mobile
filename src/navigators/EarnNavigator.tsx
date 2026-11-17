@@ -8,6 +8,8 @@ import {
 } from "components/screens/EarnScreen/screens";
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { useEarnStore } from "ducks/earn";
+import { useSwapStore } from "ducks/swap";
+import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import {
@@ -51,6 +53,10 @@ export const EarnStackNavigator = () => {
       useTransactionSettingsStore.getState().resetSettings();
       useTransactionBuilderStore.getState().resetTransaction();
       useEarnStore.getState().resetEarn();
+      // The Earn swap shares these with main Swap, which clears them the
+      // same way when it closes.
+      useSwapStore.getState().resetSwap();
+      useSwapSettingsStore.getState().resetToDefaults();
       clearNetworkFeesCache();
     },
     [],

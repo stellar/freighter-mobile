@@ -1,9 +1,11 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { act, fireEvent } from "@testing-library/react-native";
+import { EarnSwapFromBottomSheet } from "components/screens/EarnScreen/components/EarnSwapFromBottomSheet";
 import EarnTokenPickerScreen from "components/screens/EarnScreen/screens/EarnTokenPickerScreen";
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { usePreferencesStore } from "ducks/preferences";
+import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -59,14 +61,34 @@ jest.mock("@react-navigation/native", () => ({
     navigate: jest.fn(),
     setOptions: jest.fn(),
   }),
+  // The picker counts as focused for as long as it is mounted.
+  useFocusEffect: (effect: () => void | (() => void)) => {
+    // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+    require("react").useEffect(effect, [effect]);
+  },
 }));
+
+const mockFetchAccountBalances = jest.fn();
 
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: () => ({ network: "TESTNET" }),
 }));
 
 jest.mock("ducks/balances", () => ({
-  useBalancesStore: () => ({ pricedBalances: {} }),
+  useBalancesStore: () => ({
+    pricedBalances: {},
+    fetchAccountBalances: mockFetchAccountBalances,
+  }),
+}));
+
+jest.mock("hooks/useGetActiveAccount", () => ({
+  __esModule: true,
+  default: () => ({
+    account: {
+      publicKey: "GTESTPUBLICKEY",
+      subentryCount: 0,
+    },
+  }),
 }));
 
 jest.mock("hooks/useAppTranslation", () => ({
@@ -272,6 +294,50 @@ describe("EarnTokenPickerScreen", () => {
       expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
         "https://docs.blend.capital/users/lending-borrowing/lending",
       );
+    });
+  });
+
+  describe("keeping state fresh", () => {
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+      act(() => {
+        useSwapStore.getState().resetSwap();
+      });
+    });
+
+    it("refreshes the balances when the picker is in front", () => {
+      renderScreen();
+
+      expect(mockFetchAccountBalances).toHaveBeenCalledWith({
+        publicKey: "GTESTPUBLICKEY",
+        network: "TESTNET",
+      });
+    });
+
+    it("clears the swap when the swap sheets close", () => {
+      renderScreen();
+      act(() => {
+        useSwapStore.getState().setSourceToken("XLM", "XLM");
+        useSwapStore.getState().setSourceAmount("12");
+      });
+
+      // eslint-disable-next-line no-underscore-dangle
+      const swapFromSheet = globalThis.__earnTokenPickerMockSheets.find(
+        (sheet) =>
+          (sheet.props.customContent as React.ReactElement | undefined)
+            ?.type === EarnSwapFromBottomSheet,
+      );
+      const { onClose } = (
+        swapFromSheet?.props.customContent as React.ReactElement<{
+          onClose: () => void;
+        }>
+      ).props;
+      act(() => {
+        onClose();
+      });
+
+      expect(useSwapStore.getState().sourceTokenId).toBe("");
+      expect(useSwapStore.getState().sourceAmount).toBe("0");
     });
   });
 });

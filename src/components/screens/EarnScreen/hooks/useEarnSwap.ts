@@ -88,6 +88,7 @@ export const useEarnSwap = ({
     setDestinationToken,
     setSourceAmount,
     setSourceAmountDisplay,
+    resetSwap,
   } = useSwapStore();
 
   // Rebuilt from the catalog's canonical "CODE:ISSUER" because Earn addresses
@@ -214,6 +215,22 @@ export const useEarnSwap = ({
     setSourceAmountDisplay,
   ]);
 
+  /**
+   * Clears the swap the sheet was building: source, amount, quote and the
+   * locked destination. Without it the next swap reopened on the previous
+   * one's source and amount, even when that source was now the destination.
+   */
+  const reset = useCallback(() => {
+    setTokenAmount("0");
+    resetSwap();
+  }, [setTokenAmount, resetSwap]);
+
+  // A finished swap is reset once the caller has read what it needs from it.
+  const handleSwapClosed = useCallback(() => {
+    onProcessingClose();
+    reset();
+  }, [onProcessingClose, reset]);
+
   const spendableAmount = useMemo(() => {
     if (!sourceBalance || !account) {
       return null;
@@ -300,7 +317,7 @@ export const useEarnSwap = ({
     account,
     network,
     // No `navigation`: this runs from a sheet, not a `SWAP_STACK` route.
-    onProcessingClose,
+    onProcessingClose: handleSwapClosed,
   });
 
   const {
@@ -361,6 +378,7 @@ export const useEarnSwap = ({
     executeSwap,
     setupSwapTransaction,
     handleProcessingScreenClose,
+    reset,
     // Processing-screen inputs.
     sourceToken,
     destinationToken,

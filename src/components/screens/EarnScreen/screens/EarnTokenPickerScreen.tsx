@@ -26,6 +26,7 @@ import {
   isOnrampableAsset,
 } from "components/screens/EarnScreen/helpers";
 import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
+import { useEarnBalancesRefresh } from "components/screens/EarnScreen/hooks/useEarnBalancesRefresh";
 import { useEarnSwap } from "components/screens/EarnScreen/hooks/useEarnSwap";
 import {
   EarnTokenOption,
@@ -153,15 +154,22 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   const swapSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const swapSecurityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
+  const refreshBalances = useEarnBalancesRefresh({
+    publicKey: account?.publicKey ?? "",
+    network,
+  });
+
   // How the swap ended, recorded by the processing sheet just before it
   // closes, so the picker can announce the new balance.
   const swapOutcomeRef = useRef<EarnSwapOutcome | null>(null);
 
   // A completed swap leaves the user holding the reserve they came for, so
   // close the whole swap branch and drop them back on the picker -- refetching
-  // so the row they wanted moves into "In your wallet" -- with a toast naming
-  // what they got. Swap's own default (reset onto the History tab) would
-  // strand them outside Earn entirely.
+  // the catalog and the balances so the row they wanted moves into "In your
+  // wallet" -- with a toast naming what they got. Swap's own default (reset
+  // onto the History tab) would strand them outside Earn entirely. The swap
+  // store is reset after this runs (see `useEarnSwap`), so it can still read
+  // the source here.
   const handleSwapProcessingClose = useCallback(() => {
     swapProcessingBottomSheetModalRef.current?.dismiss();
     swapReviewBottomSheetModalRef.current?.dismiss();
@@ -186,7 +194,8 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     setSwapOption(null);
     setNotEnoughOption(null);
     refetch();
-  }, [refetch, showToast, swapOption, t]);
+    refreshBalances();
+  }, [refetch, refreshBalances, showToast, swapOption, t]);
 
   const earnSwap = useEarnSwap({
     option: swapOption,
@@ -548,13 +557,15 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     onSettingsPress: handleSwapSettingsPress,
   });
 
-  // Leaves the swap branch entirely, releasing its captured reserve.
+  // Leaves the swap branch entirely, releasing its captured reserve and
+  // clearing the swap, so the next one starts clean.
   const handleCloseSwap = useCallback(() => {
     swapFromBottomSheetModalRef.current?.dismiss();
     swapReviewBottomSheetModalRef.current?.dismiss();
     swapBottomSheetModalRef.current?.dismiss();
     setSwapOption(null);
-  }, []);
+    earnSwap.reset();
+  }, [earnSwap]);
 
   // An in-flow "Receive funds" QR sheet, presented ON TOP of the "not enough"
   // sheet rather than replacing it, the same pattern the review sheet's

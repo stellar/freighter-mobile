@@ -3,6 +3,8 @@ import { NavigationContainer } from "@react-navigation/native";
 import { act } from "@testing-library/react-native";
 import { MIN_TRANSACTION_FEE } from "config/constants";
 import { useEarnStore } from "ducks/earn";
+import { useSwapStore } from "ducks/swap";
+import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { renderWithProviders } from "helpers/testUtils";
@@ -119,5 +121,32 @@ describe("EarnStackNavigator teardown", () => {
     expect(state.selectedAssetId).toBe("");
     expect(state.currentPositionTokens).toBe("0");
     expect(state.lastSubmitFailed).toBe(false);
+  });
+
+  // The Earn swap shares the swap store and its settings with main Swap.
+  // Leaving Earn clears both, as main Swap does when it closes, so neither
+  // inherits the other's half-finished swap.
+  it("resets the swap store and swap settings on unmount", () => {
+    act(() => {
+      useSwapStore.getState().setSourceToken("XLM", "XLM");
+      useSwapStore.getState().setSourceAmount("12");
+      useSwapSettingsStore.getState().saveSwapSlippage(7);
+    });
+
+    const { unmount } = renderWithProviders(
+      <NavigationContainer>
+        <EarnStackNavigator />
+      </NavigationContainer>,
+    );
+
+    expect(useSwapStore.getState().sourceTokenId).toBe("XLM");
+
+    act(() => {
+      unmount();
+    });
+
+    expect(useSwapStore.getState().sourceTokenId).toBe("");
+    expect(useSwapStore.getState().sourceAmount).toBe("0");
+    expect(useSwapSettingsStore.getState().swapSlippage).not.toBe(7);
   });
 });
