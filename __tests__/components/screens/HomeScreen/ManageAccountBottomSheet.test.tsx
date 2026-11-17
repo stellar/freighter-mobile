@@ -203,6 +203,27 @@ describe("ManageAccountBottomSheet", () => {
     expect(reopened.getByText("imported")).toBeTruthy();
   });
 
+  it("reopens the active account's group expanded, even if it was collapsed", () => {
+    const first = renderWithProviders(
+      <ManageAccountBottomSheet {...groupedProps} />,
+    );
+
+    // The active wallet's own group can still be collapsed while open.
+    fireEvent.press(first.getAllByTestId("manage-accounts-group-toggle")[0]);
+    expect(first.queryByText("my account 2")).toBeNull();
+    first.unmount();
+
+    const reopened = renderWithProviders(
+      <ManageAccountBottomSheet {...groupedProps} />,
+    );
+    expect(reopened.getByText("my account 2")).toBeTruthy();
+    expect(reopened.getByTestId("account-row-0-selected-badge")).toBeTruthy();
+    expect(
+      reopened.getAllByTestId("manage-accounts-group-toggle")[0].props
+        .accessibilityState,
+    ).toMatchObject({ expanded: true });
+  });
+
   // Collapsing mid-switch would unmount the row showing the switch spinner.
   it("locks the group toggles while an account switch is in flight", () => {
     const { getAllByTestId, getByText } = renderWithProviders(

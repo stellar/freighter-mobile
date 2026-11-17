@@ -10,7 +10,7 @@ import { groupAccountsBySource } from "helpers/accountGroups";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useMemo, useState } from "react";
+import React, { useLayoutEffect, useMemo, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 interface ManageAccountBottomSheetProps {
@@ -40,7 +40,9 @@ const COPY_HIT_SLOP = { top: 15, bottom: 15, left: 15, right: 15 };
 /*
   Groups the user collapsed, kept for the rest of the app session so the
   sheet reopens the way they left it. Module scope, like the extension, so it
-  outlives the sheet's content, which unmounts on every dismiss.
+  outlives the sheet's content, which unmounts on every dismiss. The group
+  holding the active account is the exception: it always reopens expanded,
+  so the selected row is never hidden.
 */
 const collapsedGroupKeys = new Set<string>();
 
@@ -110,6 +112,21 @@ export const ManageAccountBottomSheet: React.FC<
     () => (sources ? groupAccountsBySource({ accounts, sources, t }) : []),
     [accounts, sources, t],
   );
+
+  const activeGroupKey = groups.find((group) =>
+    group.accounts.some(
+      (account) => account.publicKey === activeAccount?.publicKey,
+    ),
+  )?.key;
+
+  // Layout effect so a collapsed active group never paints for a frame. Keyed
+  // on the group, not on every render, so it can still be collapsed while the
+  // sheet is open.
+  useLayoutEffect(() => {
+    if (activeGroupKey && collapsedGroupKeys.delete(activeGroupKey)) {
+      setCollapsed(new Set(collapsedGroupKeys));
+    }
+  }, [activeGroupKey]);
 
   const toggleGroup = (key: string) => {
     if (collapsedGroupKeys.has(key)) {

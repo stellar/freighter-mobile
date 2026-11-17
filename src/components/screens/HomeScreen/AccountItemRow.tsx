@@ -141,8 +141,6 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
           <Text md primary medium numberOfLines={1}>
             {account.name}
           </Text>
-          {/* No "Imported" tag: the group header says where the account
-              comes from. */}
           <Text sm secondary numberOfLines={1}>
             {truncatedPublicKey}
           </Text>

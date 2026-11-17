@@ -51,8 +51,7 @@
     "send": "Send",
     "swap": "Swap",
     "actions": {
-      "settings": "Settings",
-      "myQRCode": "My QR code"
+      "settings": "Settings"
     },
     "manageAccount": {
       "addWallet": "Add wallet",

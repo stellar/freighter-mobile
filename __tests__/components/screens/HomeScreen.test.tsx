@@ -239,7 +239,6 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       accountAddressCopied: "Address copied",
       "home.actions.settings": "Settings",
       "home.actions.manageTokens": "Manage Tokens",
-      "home.actions.myQRCode": "My QR Code",
     };
     return translations[key] || key;
   },

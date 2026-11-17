@@ -51,8 +51,7 @@
     "send": "Enviar",
     "swap": "Trocar",
     "actions": {
-      "settings": "Configurações",
-      "myQRCode": "Meu QR code"
+      "settings": "Configurações"
     },
     "manageAccount": {
       "addWallet": "Adicionar carteira",
