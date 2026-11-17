@@ -852,11 +852,34 @@ describe("TokenDetailsScreen", () => {
       expect(securitySheetProps(screen).severity).toBe(
         SecurityLevel.SUSPICIOUS,
       );
+      expect(securitySheetProps(screen).proceedAnywayText).toBe(
+        "swapScreen.trendingDetail.swapToAnyway",
+      );
       expect(screen.getByTestId("token-details-cancel-button")).toBeTruthy();
       expect(
         screen.getByTestId("token-details-swap-to-anyway-button"),
       ).toBeTruthy();
       expect(screen.queryByTestId("token-details-swap-to-button")).toBeNull();
+    });
+
+    it("honours the record's isUnableToScan flag when securityLevel is absent", () => {
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={swapAmountRoute({
+            ...shxRecord,
+            isUnableToScan: true,
+          } as FormattedSearchTokenRecord)}
+        />,
+      );
+
+      expect(
+        screen.getByText("securityWarning.proceedWithCaution"),
+      ).toBeTruthy();
+      expect(screen.getByTestId("token-details-swap-to-button")).toBeTruthy();
+      expect(
+        screen.queryByTestId("token-details-swap-to-anyway-button"),
+      ).toBeNull();
     });
 
     it("treats an unable-to-scan token as unflagged: banner plus a plain Swap To that selects directly", () => {
@@ -889,6 +912,9 @@ describe("TokenDetailsScreen", () => {
       ).toBeNull();
       expect(securitySheetProps(screen).severity).toBe(
         SecurityLevel.UNABLE_TO_SCAN,
+      );
+      expect(securitySheetProps(screen).proceedAnywayText).toBe(
+        "common.continue",
       );
       expect(screen.queryByTestId("token-details-cancel-button")).toBeNull();
       expect(

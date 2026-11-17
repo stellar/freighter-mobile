@@ -373,7 +373,8 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     ? recordLevel === SecurityLevel.SUSPICIOUS || !!record?.isSuspicious
     : heldSecurity.isSuspicious;
   const isUnableToScan =
-    isNoBalanceVariant && recordLevel === SecurityLevel.UNABLE_TO_SCAN;
+    isNoBalanceVariant &&
+    (recordLevel === SecurityLevel.UNABLE_TO_SCAN || !!record?.isUnableToScan);
 
   const securityWarnings = useMemo((): SecurityWarning[] => {
     if (isNoBalanceVariant) {
@@ -415,8 +416,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       record: swapToRecord,
       onSelected: () => navigation.goBack(),
     });
-  // Unable-to-scan is not flagged here: the banner alone signals caution, as
-  // on the old Popular Tokens sheet.
+  // Unable-to-scan is not flagged: the banner alone signals caution.
   const isFlagged = isMalicious || isSuspicious;
 
   const securitySeverity = useMemo(() => {
@@ -587,9 +587,11 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
                 securityWarningBottomSheetModalRef.current?.dismiss();
                 selectSwapDestination();
               },
-              proceedAnywayText: t("swapScreen.trendingDetail.swapToAnyway", {
-                tokenCode: swapToRecord.tokenCode,
-              }),
+              proceedAnywayText: isUnableToScan
+                ? t("common.continue")
+                : t("swapScreen.trendingDetail.swapToAnyway", {
+                    tokenCode: swapToRecord.tokenCode,
+                  }),
             })}
           />
         }
