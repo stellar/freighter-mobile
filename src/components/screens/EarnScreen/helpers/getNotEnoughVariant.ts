@@ -26,11 +26,19 @@ export enum NotEnoughVariant {
   TRANSFER_ONLY = "transfer-only",
 }
 
-/** Testnet assets are worthless, so the onramp is mainnet-only. */
+/**
+ * Whether Buy is offered for this asset. Testnet assets are worthless, so
+ * the onramp is mainnet-only, and it follows the `onramp_enabled` flag: Add
+ * Funds hides Coinbase while it is off, so Buy would lead nowhere.
+ */
 export const isOnrampableAsset = (
   code: string,
   networkDetails: NetworkDetails,
-) => EARN_ONRAMP_ASSETS.has(code) && networkDetails.network === NETWORKS.PUBLIC;
+  isOnrampEnabled: boolean,
+) =>
+  isOnrampEnabled &&
+  EARN_ONRAMP_ASSETS.has(code) &&
+  networkDetails.network === NETWORKS.PUBLIC;
 
 /**
  * Does the account hold anything it could actually swap into the target

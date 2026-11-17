@@ -55,6 +55,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useDebugStore } from "ducks/debug";
 import { useEarnStore } from "ducks/earn";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isNativeBalance } from "helpers/assetIdentity";
@@ -108,6 +109,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { pricedBalances } = useBalancesStore();
+  const isOnrampEnabled = useRemoteConfigStore((state) => state.onramp_enabled);
   const { showToast, dismissToast } = useToast();
 
   // Cross-stack navigation (Buy XLM lives outside EarnStack) needs the
@@ -876,6 +878,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
             isBuyAvailable={isOnrampableAsset(
               NATIVE_TOKEN_CODE,
               networkDetails,
+              isOnrampEnabled,
             )}
           />
         }

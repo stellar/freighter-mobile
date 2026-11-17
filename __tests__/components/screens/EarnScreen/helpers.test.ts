@@ -298,14 +298,20 @@ describe("isOnrampableAsset", () => {
   const testnet = { network: NETWORKS.TESTNET } as never;
 
   it("allows only Coinbase-listed assets", () => {
-    expect(isOnrampableAsset("XLM", mainnet)).toBe(true);
-    expect(isOnrampableAsset("USDC", mainnet)).toBe(true);
+    expect(isOnrampableAsset("XLM", mainnet, true)).toBe(true);
+    expect(isOnrampableAsset("USDC", mainnet, true)).toBe(true);
     // EURC is not Coinbase-listed; offering Buy would open a dead-end page.
-    expect(isOnrampableAsset("EURC", mainnet)).toBe(false);
+    expect(isOnrampableAsset("EURC", mainnet, true)).toBe(false);
   });
 
   it("is mainnet-only, since testnet assets are worthless", () => {
-    expect(isOnrampableAsset("XLM", testnet)).toBe(false);
+    expect(isOnrampableAsset("XLM", testnet, true)).toBe(false);
+  });
+
+  it("is never offered while the onramp flag is off", () => {
+    // Add Funds hides Coinbase then, so Buy would lead nowhere.
+    expect(isOnrampableAsset("XLM", mainnet, false)).toBe(false);
+    expect(isOnrampableAsset("USDC", mainnet, false)).toBe(false);
   });
 });
 

@@ -65,6 +65,7 @@ import { useBalancesStore } from "ducks/balances";
 import { useDebugStore } from "ducks/debug";
 import { useEarnStore } from "ducks/earn";
 import { usePreferencesStore } from "ducks/preferences";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { getTokenIdentifier } from "helpers/balances";
@@ -121,6 +122,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   const selectAsset = useEarnStore((state) => state.selectAsset);
   const { network } = useAuthenticationStore();
   const { pricedBalances } = useBalancesStore();
+  const isOnrampEnabled = useRemoteConfigStore((state) => state.onramp_enabled);
   const hasSeenEarnIntro = usePreferencesStore(
     (state) => state.hasSeenEarnIntro,
   );
@@ -368,6 +370,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     const isOnrampable = isOnrampableAsset(
       notEnoughOption.code,
       networkDetails,
+      isOnrampEnabled,
     );
     // No trustline for this asset means it can't appear as a key in
     // `pricedBalances` at all, so any identifier that isn't a real
@@ -395,6 +398,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   }, [
     notEnoughOption,
     networkDetails,
+    isOnrampEnabled,
     pricedBalances,
     account?.subentryCount,
     recommendedFee,
