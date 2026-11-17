@@ -6,6 +6,13 @@ import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { track } from "services/analytics/core";
 
+// The real hook needs a navigator; the screen's handler is captured instead.
+const mockUsePreventRemove = jest.fn();
+jest.mock("@react-navigation/native", () => ({
+  ...jest.requireActual("@react-navigation/native"),
+  usePreventRemove: (...args: unknown[]) => mockUsePreventRemove(...args),
+}));
+
 jest.mock("components/sds/BiometricToggleButton", () => ({
   BiometricToggleButton: () => null,
 }));
@@ -47,7 +54,22 @@ const PHRASE =
   "abandon ability able about above absent absorb abstract absurd abuse access accident";
 const SECRET = "SBUV3MRWKNS6AYKZ6E6MOUVF2OYMON3MIUASWL3JLY5E3ISDJFELYBRZ";
 
-const navigation = { setOptions: jest.fn(), goBack: jest.fn() };
+const navigation = {
+  setOptions: jest.fn(),
+  goBack: jest.fn(),
+  dispatch: jest.fn(),
+};
+
+type PreventRemoveHandler = (event: {
+  data: { action: { type: string } };
+}) => void;
+
+const lastPreventRemove = () => {
+  const [enabled, handler] = mockUsePreventRemove.mock.calls[
+    mockUsePreventRemove.mock.calls.length - 1
+  ] as [boolean, PreventRemoveHandler];
+  return { enabled, handler };
+};
 
 const renderScreen = (params: RevealSecretParams) =>
   renderWithProviders(
@@ -160,6 +182,59 @@ describe("RevealSecretScreen", () => {
           }),
         ),
       );
+    });
+  });
+
+  describe("back", () => {
+    const params: RevealSecretParams = {
+      kind: "secretKey",
+      accountId: "account-1",
+    };
+
+    it("only holds the screen on the password step", async () => {
+      mockRevealAccountSecretKey.mockResolvedValue(SECRET);
+      const screen = renderScreen(params);
+
+      expect(lastPreventRemove().enabled).toBe(false);
+
+      passConsent(screen, "reveal-secret-key");
+      expect(lastPreventRemove().enabled).toBe(true);
+
+      await submitPassword(screen, "reveal-secret-key", "hunter2");
+      expect(lastPreventRemove().enabled).toBe(false);
+    });
+
+    it("returns from the password step to consent and clears the field", () => {
+      const screen = renderScreen(params);
+
+      passConsent(screen, "reveal-secret-key");
+      fireEvent.changeText(
+        screen.getByTestId("reveal-secret-key-password"),
+        "half-typed",
+      );
+
+      act(() =>
+        lastPreventRemove().handler({ data: { action: { type: "GO_BACK" } } }),
+      );
+
+      expect(screen.getByTestId("reveal-secret-key-consent")).toBeTruthy();
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+
+      fireEvent.press(screen.getByTestId("reveal-secret-key-continue"));
+      expect(screen.getByTestId("reveal-secret-key-password").props.value).toBe(
+        "",
+      );
+    });
+
+    it("lets any other removal through", () => {
+      const screen = renderScreen(params);
+
+      passConsent(screen, "reveal-secret-key");
+      const action = { type: "RESET" };
+      act(() => lastPreventRemove().handler({ data: { action } }));
+
+      expect(navigation.dispatch).toHaveBeenCalledWith(action);
+      expect(screen.getByTestId("reveal-secret-key-password")).toBeTruthy();
     });
   });
 

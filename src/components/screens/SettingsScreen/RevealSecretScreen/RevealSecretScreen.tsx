@@ -1,3 +1,4 @@
+import { usePreventRemove } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { FOCUS_RING_WIDTH } from "components/FocusRing";
 import { PasswordField } from "components/PasswordField";
@@ -138,6 +139,19 @@ const RevealSecretScreen: React.FC<RevealSecretScreenProps> = ({
   useEffect(() => {
     track(AnalyticsEvent.SCREEN_VIEWED, buildScreenViewedProps(screenName));
   }, [screenName]);
+
+  // Back on the password step returns to the warning, like the extension.
+  // Header back, Android back and the iOS swipe all arrive here; anything else
+  // that removes the screen goes through.
+  usePreventRemove(step === "password", ({ data }) => {
+    if (data.action.type === "GO_BACK" || data.action.type === "POP") {
+      setPassword("");
+      setError(undefined);
+      setStep("consent");
+      return;
+    }
+    navigation.dispatch(data.action);
+  });
 
   const reveal = async (passwordToUse: string) =>
     params.kind === "recoveryPhrase"
