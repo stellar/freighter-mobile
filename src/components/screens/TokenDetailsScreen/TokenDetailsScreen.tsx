@@ -23,7 +23,7 @@ import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, TokenChartSource } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import {
   ROOT_NAVIGATOR_ROUTES,
@@ -426,7 +426,11 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
                 />
               )}
               {priceHistoryEnabled && (
-                <TokenPriceHistorySection tokenId={tokenId} network={network} />
+                <TokenPriceHistorySection
+                  tokenId={tokenId}
+                  network={network}
+                  source={TokenChartSource.BALANCES}
+                />
               )}
               <TokenBalanceDetails tokenId={tokenId} network={network} />
               {priceHistoryEnabled && (

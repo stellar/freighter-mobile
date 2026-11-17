@@ -7,6 +7,7 @@ import TokenBalanceHeader, {
   TokenBalanceDetails,
 } from "components/screens/TokenDetailsScreen/components/TokenBalanceHeader";
 import { TEXT_SIZES } from "components/sds/Typography";
+import { TokenChartSource } from "config/analyticsConfig";
 import { getThemeColors } from "config/colors";
 import { NETWORKS } from "config/constants";
 import { PricedBalance, TokenPriceHistory } from "config/types";
@@ -110,7 +111,11 @@ const renderDetailView = (network: NETWORKS = NETWORKS.PUBLIC) =>
         tokenSymbol="XLM"
         network={network}
       />
-      <TokenPriceHistorySection tokenId="native" network={network} />
+      <TokenPriceHistorySection
+        tokenId="native"
+        network={network}
+        source={TokenChartSource.BALANCES}
+      />
     </View>,
   );
 

@@ -315,6 +315,14 @@ export enum SwapSelectionSource {
   TRENDING = "trending",
 }
 
+/** §7.5 `source` vocabulary for `token_chart.loaded`, shared with the extension. */
+export enum TokenChartSource {
+  BALANCES = "balances",
+  SWAP_AMOUNT = "swap_amount",
+  SWAP_PICKER = "swap_picker",
+  ADD_TOKEN = "add_token",
+}
+
 /**
  * Cross-platform "flow" dimension for the canonical `screen.viewed` event.
  *
