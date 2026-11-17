@@ -224,7 +224,7 @@ export type SettingsStackParamList = {
   [SETTINGS_ROUTES.AUTO_LOCK_TIMER_SCREEN]: undefined;
   [SETTINGS_ROUTES.ACCOUNTS_RECOVERY_SCREEN]: undefined;
   [SETTINGS_ROUTES.EDIT_ACCOUNT_SCREEN]: {
-    /** `Account.id`: two accounts can share a public key. */
+    /** `Account.id`, the keystore id: accounts are keyed by id (see helpers/findAccount). */
     accountId: string;
   };
   [SETTINGS_ROUTES.REVEAL_SECRET_SCREEN]: RevealSecretParams;
