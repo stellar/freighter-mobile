@@ -876,6 +876,9 @@ describe("TokenDetailsScreen", () => {
       expect(
         screen.getByText("securityWarning.proceedWithCaution"),
       ).toBeTruthy();
+      expect(securitySheetProps(screen).warnings?.map((w) => w.id)).toEqual([
+        "unable-to-scan-trending-token",
+      ]);
       expect(screen.getByTestId("token-details-swap-to-button")).toBeTruthy();
       expect(
         screen.queryByTestId("token-details-swap-to-anyway-button"),

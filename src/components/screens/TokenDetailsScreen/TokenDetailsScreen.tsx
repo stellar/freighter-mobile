@@ -380,7 +380,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     if (isNoBalanceVariant) {
       // Blockaid returns no feature-level warnings for an unable-to-scan
       // token; synthesize a row so the reasons list isn't blank.
-      return recordLevel === SecurityLevel.UNABLE_TO_SCAN
+      return isUnableToScan
         ? [
             {
               id: "unable-to-scan-trending-token",
@@ -402,7 +402,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     return [];
   }, [
     isNoBalanceVariant,
-    recordLevel,
+    isUnableToScan,
     record?.securityWarnings,
     t,
     isMalicious,
