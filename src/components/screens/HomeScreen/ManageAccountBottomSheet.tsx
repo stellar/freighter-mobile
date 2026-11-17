@@ -34,6 +34,8 @@ interface ManageAccountSheetHeaderProps {
 
 const HEADER_ICON_SIZE = 24;
 const COPY_ICON_SIZE = 14;
+// Brings the 14px copy icon up to a 44pt touch target without moving it.
+const COPY_HIT_SLOP = { top: 15, bottom: 15, left: 15, right: 15 };
 
 /*
   Groups the user collapsed, kept for the rest of the app session so the
@@ -154,6 +156,7 @@ export const ManageAccountBottomSheet: React.FC<
             <TouchableOpacity
               className="flex-row items-center justify-between gap-[16px]"
               onPress={() => toggleGroup(group.key)}
+              disabled={isAccountSwitching}
               accessibilityRole="button"
               accessibilityState={{ expanded: isExpanded }}
               testID="manage-accounts-group-toggle"
@@ -199,7 +202,7 @@ export const ManageAccountBottomSheet: React.FC<
           <TouchableOpacity
             onPress={onPressCopyAddress}
             disabled={isAccountSwitching}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={COPY_HIT_SLOP}
             accessibilityRole="button"
             accessibilityLabel={t("home.manageAccount.copyAddress")}
             testID="manage-accounts-copy-button"

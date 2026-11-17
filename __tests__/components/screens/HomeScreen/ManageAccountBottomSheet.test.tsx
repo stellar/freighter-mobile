@@ -186,7 +186,9 @@ describe("ManageAccountBottomSheet", () => {
     fireEvent.press(keyToggle);
 
     expect(first.queryByText("imported")).toBeNull();
-    expect(keyToggle.props.accessibilityState).toEqual({ expanded: false });
+    expect(keyToggle.props.accessibilityState).toMatchObject({
+      expanded: false,
+    });
     first.unmount();
 
     // The sheet's content unmounts on dismiss; the collapse outlives it.
@@ -199,6 +201,22 @@ describe("ManageAccountBottomSheet", () => {
     // Expanding again restores the rows, and the state for later tests.
     fireEvent.press(reopened.getAllByTestId("manage-accounts-group-toggle")[1]);
     expect(reopened.getByText("imported")).toBeTruthy();
+  });
+
+  // Collapsing mid-switch would unmount the row showing the switch spinner.
+  it("locks the group toggles while an account switch is in flight", () => {
+    const { getAllByTestId, getByText } = renderWithProviders(
+      <ManageAccountBottomSheet {...groupedProps} isAccountSwitching />,
+    );
+    const [, keyToggle] = getAllByTestId("manage-accounts-group-toggle");
+
+    fireEvent.press(keyToggle);
+
+    expect(getByText("imported")).toBeTruthy();
+    expect(keyToggle.props.accessibilityState).toMatchObject({
+      expanded: true,
+      disabled: true,
+    });
   });
 });
 
