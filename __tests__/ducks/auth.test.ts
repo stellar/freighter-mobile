@@ -1,6 +1,7 @@
 import { NavigationContainerRef } from "@react-navigation/native";
 import { Keypair } from "@stellar/stellar-sdk";
 import { act, renderHook } from "@testing-library/react-hooks";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   AUTO_LOCK_TIMER,
   DEFAULT_AUTO_LOCK_TIMER,
@@ -45,6 +46,7 @@ import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { AppState } from "react-native";
 import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
+import { analytics } from "services/analytics";
 import { deriveAuthKeypair } from "services/auth/deriveAuthKeypair";
 import { linkWalletSources } from "services/auth/linkSources";
 import { clearLinkStatus, getLinkConflicts } from "services/auth/linkStatus";
@@ -4814,6 +4816,10 @@ describe("auth duck", () => {
 
         expect(result.current.error).toBeNull();
         expect(linkWalletSources).toHaveBeenCalledTimes(1);
+        expect(analytics.track).toHaveBeenCalledWith(
+          AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT,
+          expect.objectContaining({ source: "existing_phrase" }),
+        );
       });
 
       it("adds at the one held phrase's lowest unused index when no source is named", async () => {
@@ -5104,6 +5110,10 @@ describe("auth duck", () => {
           );
           expect(getPendingRecoveryPhrase(id)).toBeNull();
           expect(linkWalletSources).toHaveBeenCalledTimes(1);
+          expect(analytics.track).toHaveBeenCalledWith(
+            AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT,
+            expect.objectContaining({ source: "new_phrase" }),
+          );
         });
 
         it("refuses when no phrase is held", async () => {

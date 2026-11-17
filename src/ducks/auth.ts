@@ -4057,6 +4057,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       // abandoned add flows.
       analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT, {
         number_of_accounts: get().allAccounts.length,
+        source: "existing_phrase",
       });
 
       // The new account is a source of its own.
