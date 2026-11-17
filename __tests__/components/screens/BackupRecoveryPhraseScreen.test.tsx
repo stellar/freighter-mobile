@@ -1,8 +1,10 @@
 import { fireEvent } from "@testing-library/react-native";
 import BackupRecoveryPhraseScreen from "components/screens/BackupRecoveryPhraseScreen";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { MANAGE_WALLETS_ROUTES } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { analytics } from "services/analytics";
 
 const PHRASE =
   "gloom student label strategy tattoo promote brand mushroom problem divert carbon erode";
@@ -67,6 +69,9 @@ describe("BackupRecoveryPhraseScreen", () => {
 
     fireEvent.press(getByTestId("backup-recovery-phrase-reveal"));
     WORDS.forEach((word) => expect(getByText(word)).toBeTruthy());
+    expect(analytics.track).toHaveBeenCalledWith(
+      AnalyticsEvent.VIEWED_RECOVERY_PHRASE,
+    );
 
     fireEvent.press(getByTestId("copy-recovery-phrase-button"));
     expect(mockCopyToClipboard).toHaveBeenCalledWith(PHRASE, {

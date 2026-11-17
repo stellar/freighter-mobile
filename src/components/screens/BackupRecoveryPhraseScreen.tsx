@@ -4,6 +4,7 @@ import { OnboardLayout, OnboardTitle } from "components/layout/OnboardLayout";
 import { CopyPhraseButton } from "components/screens/RecoveryPhraseScreen";
 import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   MANAGE_WALLETS_ROUTES,
   ManageWalletsStackParamList,
@@ -110,7 +111,10 @@ const BackupRecoveryPhraseScreen: React.FC<BackupRecoveryPhraseScreenProps> = ({
             secondary
             xl
             isFullWidth
-            onPress={() => setIsRevealed(true)}
+            onPress={() => {
+              setIsRevealed(true);
+              analytics.track(AnalyticsEvent.VIEWED_RECOVERY_PHRASE);
+            }}
             testID="backup-recovery-phrase-reveal"
           >
             {t("recoveryPhraseScreen.revealButtonText")}
