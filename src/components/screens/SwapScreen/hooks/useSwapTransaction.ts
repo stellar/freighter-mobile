@@ -6,6 +6,7 @@ import {
   getQuoteExpiredOperationCodes,
   getTokenFromBalance,
 } from "components/screens/SwapScreen/helpers";
+import { SWAP_TOAST_IDS } from "components/screens/SwapScreen/hooks/useSwapAmountError";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
@@ -96,6 +97,14 @@ interface SwapTransactionParams {
    * either way -- only the destination changes.
    */
   onProcessingClose?: () => void;
+  /**
+   * Called when the submit was rejected because the quote expired, after
+   * the toast and the fresh path request. A standalone swap needs nothing
+   * more: its processing screen goes away with `isProcessing` and the amount
+   * screen is back. Swap-within-Earn shows its processing step in a sheet,
+   * so it uses this to return to the swap sheet for a retry.
+   */
+  onQuoteExpired?: () => void;
 }
 
 interface UseSwapTransactionResult {
@@ -126,6 +135,7 @@ export const useSwapTransaction = ({
   network,
   navigation,
   onProcessingClose,
+  onQuoteExpired,
 }: SwapTransactionParams): UseSwapTransactionResult => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [transactionScanResult, setTransactionScanResult] =
@@ -583,7 +593,7 @@ export const useSwapTransaction = ({
         showToast({
           variant: "error",
           title: t("swapScreen.errors.quoteExpired"),
-          toastId: "swap-quote-expired",
+          toastId: SWAP_TOAST_IDS.QUOTE_EXPIRED,
           duration: 0,
         });
 
@@ -606,6 +616,7 @@ export const useSwapTransaction = ({
           });
         }
 
+        onQuoteExpired?.();
         return;
       }
 
@@ -649,6 +660,7 @@ export const useSwapTransaction = ({
     submitTransaction,
     t,
     showToast,
+    onQuoteExpired,
   ]);
 
   const handleProcessingScreenClose = () => {

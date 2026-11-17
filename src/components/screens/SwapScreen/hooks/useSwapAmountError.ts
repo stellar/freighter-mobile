@@ -21,6 +21,7 @@ export const SWAP_TOAST_IDS = {
   INSUFFICIENT_BALANCE: "insufficient-balance",
   SWAP_PATH_ERROR: "swap-path-error",
   FAILED_TO_SETUP_TRANSACTION: "failed-to-setup-transaction",
+  QUOTE_EXPIRED: "swap-quote-expired",
 } as const;
 
 type SwapActiveError = {

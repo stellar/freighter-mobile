@@ -129,6 +129,21 @@ let mockUseEarnTokens: {
   refetch: jest.Mock;
 };
 
+// The real Earn swap hook, wrapped to capture what the picker passes it.
+let mockEarnSwapParams: { onQuoteExpired?: () => void } = {};
+jest.mock("components/screens/EarnScreen/hooks/useEarnSwap", () => {
+  const actual = jest.requireActual(
+    "components/screens/EarnScreen/hooks/useEarnSwap",
+  );
+  return {
+    ...actual,
+    useEarnSwap: (params: { onQuoteExpired?: () => void }) => {
+      mockEarnSwapParams = params;
+      return actual.useEarnSwap(params);
+    },
+  };
+});
+
 jest.mock("components/screens/EarnScreen/hooks/useEarnTokens", () => ({
   useEarnTokens: () => mockUseEarnTokens,
 }));
@@ -443,6 +458,31 @@ describe("EarnTokenPickerScreen", () => {
         asset_code: "EURC",
         action: "swap",
       });
+    });
+  });
+
+  describe("an expired swap quote", () => {
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+    });
+
+    it("goes back to the swap sheet for a retry instead of ending on the processing sheet", () => {
+      renderScreen();
+      // eslint-disable-next-line no-underscore-dangle
+      const sheets = globalThis.__earnTokenPickerMockSheets;
+      const swapSheet = sheets.find(
+        ({ props }) => props.analyticsEvent === "earn_swap_amount",
+      );
+      const processingSheet = sheets.find(
+        ({ props }) => props.enablePanDownToClose === false,
+      );
+
+      act(() => {
+        mockEarnSwapParams.onQuoteExpired?.();
+      });
+
+      expect(processingSheet?.ref.dismiss).toHaveBeenCalled();
+      expect(swapSheet?.ref.present).toHaveBeenCalled();
     });
   });
 });

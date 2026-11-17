@@ -830,4 +830,58 @@ describe("useSwapTransaction", () => {
       );
     });
   });
+
+  describe("onQuoteExpired", () => {
+    const quoteExpiredOutcome = () =>
+      submitFailed({
+        error: "tx_failed",
+        resultCodes: {
+          transaction: "tx_failed",
+          operations: ["op_under_dest_min"],
+        },
+        httpStatus: 400,
+        isProtocolAnswer: true,
+      });
+
+    it("is called when the quote expired at submit, so the caller can go back to the amount step", async () => {
+      const onQuoteExpired = jest.fn();
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(quoteExpiredOutcome());
+
+      const { result } = renderHook(() =>
+        useSwapTransaction({ ...baseParams, onQuoteExpired }),
+      );
+
+      await act(async () => {
+        await result.current.executeSwap().catch(() => {});
+      });
+
+      expect(onQuoteExpired).toHaveBeenCalledTimes(1);
+      expect(result.current.isProcessing).toBe(false);
+    });
+
+    it("is not called for any other failure", async () => {
+      const onQuoteExpired = jest.fn();
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(
+        submitFailed({
+          error: "tx_insufficient_balance",
+          resultCodes: {
+            transaction: "tx_failed",
+            operations: ["op_underfunded"],
+          },
+        }),
+      );
+
+      const { result } = renderHook(() =>
+        useSwapTransaction({ ...baseParams, onQuoteExpired }),
+      );
+
+      await act(async () => {
+        await result.current.executeSwap().catch(() => {});
+      });
+
+      expect(onQuoteExpired).not.toHaveBeenCalled();
+    });
+  });
 });

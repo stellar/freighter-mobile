@@ -50,6 +50,12 @@ export interface UseEarnSwapParams {
    * default reset onto the History tab -- see `useSwapTransaction`.
    */
   onProcessingClose: () => void;
+  /**
+   * The submit was rejected because the quote expired. A fresh quote is
+   * already being fetched for the same source and amount; the caller takes
+   * the user back to the swap sheet to retry with it.
+   */
+  onQuoteExpired: () => void;
 }
 
 /**
@@ -65,6 +71,7 @@ export interface UseEarnSwapParams {
 export const useEarnSwap = ({
   option,
   onProcessingClose,
+  onQuoteExpired,
 }: UseEarnSwapParams) => {
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
@@ -318,6 +325,7 @@ export const useEarnSwap = ({
     network,
     // No `navigation`: this runs from a sheet, not a `SWAP_STACK` route.
     onProcessingClose: handleSwapClosed,
+    onQuoteExpired,
   });
 
   const {

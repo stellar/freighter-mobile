@@ -211,9 +211,19 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     refreshBalances();
   }, [refetch, refreshBalances, showToast, swapOption, t, setDidSwapInFlow]);
 
+  // An expired quote is the one failure a retry fixes, so instead of ending
+  // on the processing sheet's "failed", go back to the swap sheet. Its
+  // source and amount are kept, and the quote is refetched for them, as
+  // main Swap does when it returns to its amount screen.
+  const handleSwapQuoteExpired = useCallback(() => {
+    swapProcessingBottomSheetModalRef.current?.dismiss();
+    swapBottomSheetModalRef.current?.present();
+  }, []);
+
   const earnSwap = useEarnSwap({
     option: swapOption,
     onProcessingClose: handleSwapProcessingClose,
+    onQuoteExpired: handleSwapQuoteExpired,
   });
 
   // "1,691.69 XLM available" on the sell card. Null hides the line, matching
@@ -285,6 +295,8 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // security sheet first; its Continue opens Review. The gate reads the
   // fresh transaction scan, not the lagging render state.
   const handleSwapReview = useCallback(async () => {
+    // A retry after an expired quote: its toast has served its purpose.
+    dismissToast(SWAP_TOAST_IDS.QUOTE_EXPIRED);
     try {
       const setup = await earnSwap.setupSwapTransaction();
       Keyboard.dismiss();
@@ -313,7 +325,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
         duration: 0,
       });
     }
-  }, [earnSwap, overriddenBlockaidResponse, showToast, t]);
+  }, [earnSwap, overriddenBlockaidResponse, showToast, dismissToast, t]);
 
   // Swap settings (fee, slippage, timeout), from the gear on the swap sheet
   // and on Review. Like main Swap, an untouched fee is first scaled to the
@@ -606,13 +618,17 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     swapBottomSheetModalRef.current?.dismiss();
     setSwapOption(null);
     earnSwap.reset();
-    // A setup failure's toast stays up until dismissed; it goes with the
-    // swap it was about.
+    // These toasts stay up until dismissed; they go with the swap they
+    // were about.
     dismissToast(SWAP_TOAST_IDS.FAILED_TO_SETUP_TRANSACTION);
+    dismissToast(SWAP_TOAST_IDS.QUOTE_EXPIRED);
   }, [earnSwap, dismissToast]);
 
   useEffect(
-    () => () => dismissToast(SWAP_TOAST_IDS.FAILED_TO_SETUP_TRANSACTION),
+    () => () => {
+      dismissToast(SWAP_TOAST_IDS.FAILED_TO_SETUP_TRANSACTION);
+      dismissToast(SWAP_TOAST_IDS.QUOTE_EXPIRED);
+    },
     [dismissToast],
   );
 
