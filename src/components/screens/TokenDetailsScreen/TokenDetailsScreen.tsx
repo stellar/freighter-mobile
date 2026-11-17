@@ -6,6 +6,7 @@ import BottomSheet from "components/BottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import HistoryList from "components/screens/HistoryScreen/HistoryList";
+import { useSelectSwapDestination } from "components/screens/SwapScreen/hooks/useSelectSwapDestination";
 import {
   NonHeldTokenHeader,
   TokenBalanceHeader,
@@ -20,6 +21,7 @@ import {
   RemoveTokenSheetContent,
   RemoveTokenSheetVariant,
 } from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
+import { SwapToFooter } from "components/screens/TokenDetailsScreen/components/SwapToFooter";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -93,6 +95,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { tokenId, tokenSymbol, record } = route.params;
   const source = route.params.source ?? TokenChartSource.BALANCES;
   const isFromBalances = source === TokenChartSource.BALANCES;
+  const isFromSwapAmount = source === TokenChartSource.SWAP_AMOUNT;
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
@@ -407,6 +410,14 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     scanResult,
   ]);
 
+  const swapToRecord = isFromSwapAmount ? record : undefined;
+  const { select: selectSwapDestination, isPending: isSelectingSwapTo } =
+    useSelectSwapDestination({
+      record: swapToRecord,
+      onSelected: () => navigation.goBack(),
+    });
+  const isFlagged = isMalicious || isSuspicious;
+
   const securitySeverity = useMemo(() => {
     if (isMalicious) return SecurityLevel.MALICIOUS;
     if (isSuspicious) return SecurityLevel.SUSPICIOUS;
@@ -510,8 +521,24 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           />
         )}
       </View>
-      {source === TokenChartSource.SWAP_AMOUNT
-        ? null
+      {isFromSwapAmount
+        ? swapToRecord && (
+            <View className="mt-7">
+              <SwapToFooter
+                tokenCode={swapToRecord.tokenCode}
+                isFlagged={isFlagged}
+                isMalicious={isMalicious}
+                isPending={isSelectingSwapTo}
+                onSwapTo={
+                  isFlagged
+                    ? () =>
+                        securityWarningBottomSheetModalRef.current?.present()
+                    : selectSwapDestination
+                }
+                onCancel={() => navigation.goBack()}
+              />
+            </View>
+          )
         : isFromBalances && (
             <View className="mt-7">
               <View className="flex-row gap-3">
@@ -546,6 +573,16 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             }
             severity={securitySeverity}
             securityContext={SecurityContext.TOKEN}
+            {...(swapToRecord && {
+              onCancel: () => navigation.goBack(),
+              onProceedAnyway: () => {
+                securityWarningBottomSheetModalRef.current?.dismiss();
+                selectSwapDestination();
+              },
+              proceedAnywayText: t("swapScreen.trendingDetail.swapToAnyway", {
+                tokenCode: swapToRecord.tokenCode,
+              }),
+            })}
           />
         }
       />

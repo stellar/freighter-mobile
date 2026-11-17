@@ -1,5 +1,10 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { act, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, waitFor } from "@testing-library/react-native";
+import BottomSheet from "components/BottomSheet";
+import {
+  SecurityDetailBottomSheet,
+  SecurityDetailBottomSheetProps,
+} from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import { TokenChartSource } from "config/analyticsConfig";
@@ -9,6 +14,7 @@ import { FormattedSearchTokenRecord } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePriceHistoryStore } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { SectionList, View } from "react-native";
@@ -75,6 +81,12 @@ jest.mock(
     default: () => mockStub("about-section"),
   }),
 );
+
+// Wraps the real helper so a test can assert no decimals read was made.
+jest.mock("components/screens/SwapScreen/helpers", () => {
+  const actual = jest.requireActual("components/screens/SwapScreen/helpers");
+  return { ...actual, withTokenDecimals: jest.fn(actual.withTokenDecimals) };
+});
 
 jest.mock("hooks/useGetActiveAccount", () => ({
   __esModule: true,
@@ -664,6 +676,174 @@ describe("TokenDetailsScreen", () => {
       ]);
       expect(screen.queryByText("tokenDetailsScreen.swap")).toBeNull();
       expect(screen.queryByTestId("token-details-send-button")).toBeNull();
+    });
+  });
+
+  describe("opened from the swap amount screen", () => {
+    const shxId =
+      "SHX:GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH";
+    const shxRecord = {
+      tokenCode: "SHX",
+      issuer: "GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH",
+      domain: "stronghold.co",
+      isNative: false,
+      hasTrustline: false,
+    } as FormattedSearchTokenRecord;
+    const swapAmountRoute = (record: FormattedSearchTokenRecord = shxRecord) =>
+      ({
+        ...mockRoute,
+        params: {
+          tokenId: shxId,
+          tokenSymbol: "SHX",
+          record,
+          source: TokenChartSource.SWAP_AMOUNT,
+        },
+      }) as unknown as TokenDetailsScreenProps["route"];
+    const maliciousRecord = {
+      ...shxRecord,
+      securityLevel: SecurityLevel.MALICIOUS,
+    } as FormattedSearchTokenRecord;
+
+    const securitySheetProps = (
+      screen: ReturnType<typeof renderWithProviders>,
+    ) =>
+      screen
+        .UNSAFE_getAllByType(BottomSheet)
+        .map(
+          (sheet) =>
+            sheet.props
+              .customContent as React.ReactElement<SecurityDetailBottomSheetProps>,
+        )
+        .find((content) => content?.type === SecurityDetailBottomSheet)!.props;
+
+    beforeEach(() => {
+      useSwapStore.getState().resetSwap();
+    });
+
+    afterEach(() => {
+      const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+      useBalancesList.mockReset();
+      useBalancesList.mockReturnValue({
+        balanceItems: [],
+        hiddenBalanceItems: [],
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: true,
+        isRefreshing: false,
+        isFunded: false,
+        localOnlyTokenIds: [],
+        handleRefresh: jest.fn(),
+      });
+    });
+
+    it("renders Swap To and, on press, sets the destination and goes back", () => {
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={swapAmountRoute()}
+        />,
+      );
+
+      fireEvent.press(screen.getByTestId("token-details-swap-to-button"));
+
+      expect(useSwapStore.getState().destinationToken?.id).toBe(shxId);
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
+    });
+
+    it("renders Cancel and Swap to anyway for a flagged token; Cancel goes back without selecting", () => {
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={swapAmountRoute(maliciousRecord)}
+        />,
+      );
+
+      expect(screen.queryByTestId("token-details-swap-to-button")).toBeNull();
+      expect(
+        screen.getByTestId("token-details-swap-to-anyway-button"),
+      ).toBeTruthy();
+      fireEvent.press(screen.getByTestId("token-details-cancel-button"));
+
+      expect(useSwapStore.getState().destinationToken).toBeNull();
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
+    });
+
+    it("Swap to anyway opens the security sheet whose proceed action selects", () => {
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={swapAmountRoute(maliciousRecord)}
+        />,
+      );
+      const securitySheet = screen
+        .UNSAFE_getAllByType(BottomSheet)
+        .find(
+          (sheet) =>
+            (sheet.props.customContent as React.ReactElement)?.type ===
+            SecurityDetailBottomSheet,
+        )!;
+      const present = jest.spyOn(
+        securitySheet.props.modalRef.current,
+        "present",
+      );
+
+      fireEvent.press(
+        screen.getByTestId("token-details-swap-to-anyway-button"),
+      );
+
+      expect(present).toHaveBeenCalledTimes(1);
+      expect(useSwapStore.getState().destinationToken).toBeNull();
+      expect(securitySheetProps(screen).proceedAnywayText).toBe(
+        "swapScreen.trendingDetail.swapToAnyway",
+      );
+
+      act(() => securitySheetProps(screen).onProceedAnyway?.());
+
+      expect(useSwapStore.getState().destinationToken?.id).toBe(shxId);
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
+    });
+
+    it("for a held Popular row, selects through the held balance without a decimals read", () => {
+      const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+      useBalancesList.mockReturnValue({
+        balanceItems: [
+          {
+            id: shxId,
+            tokenCode: "SHX",
+            tokenType: "credit_alphanum4",
+            total: { isGreaterThan: () => true },
+            token: {
+              code: "SHX",
+              issuer: { key: shxRecord.issuer },
+            },
+          },
+        ],
+        hiddenBalanceItems: [],
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        localOnlyTokenIds: [],
+        handleRefresh: jest.fn(),
+      });
+      const { withTokenDecimals } = jest.requireMock(
+        "components/screens/SwapScreen/helpers",
+      );
+
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={swapAmountRoute()}
+        />,
+      );
+      fireEvent.press(screen.getByTestId("token-details-swap-to-button"));
+
+      expect(withTokenDecimals).not.toHaveBeenCalled();
+      expect(useSwapStore.getState().destinationToken?.id).toBe(shxId);
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
     });
   });
 });
