@@ -185,6 +185,7 @@ afterAll(() => {
 describe("SwapToScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPriceHistoryEnabled.mockReturnValue(false);
   });
 
   it("renders 'Your tokens' + 'Popular tokens' headers in idle mode", () => {
