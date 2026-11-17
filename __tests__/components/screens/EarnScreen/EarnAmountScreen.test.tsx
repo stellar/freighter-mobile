@@ -14,6 +14,7 @@ import { renderWithProviders } from "helpers/testUtils";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import React from "react";
+import { BackHandler } from "react-native";
 
 import { mockUseColors } from "../../../../__mocks__/use-colors";
 
@@ -189,6 +190,7 @@ jest.mock("services/blockaid/helper", () => ({
 }));
 
 const mockShowToast = jest.fn();
+const mockDismissToast = jest.fn();
 jest.mock("providers/ToastProvider", () => {
   /* eslint-disable global-require, @typescript-eslint/no-var-requires */
   const ReactModule = require("react");
@@ -197,7 +199,10 @@ jest.mock("providers/ToastProvider", () => {
   return {
     ToastProvider: ({ children }: { children: React.ReactNode }) =>
       ReactModule.createElement(RNModule.View, null, children),
-    useToast: () => ({ showToast: mockShowToast }),
+    useToast: () => ({
+      showToast: mockShowToast,
+      dismissToast: mockDismissToast,
+    }),
   };
 });
 
@@ -234,11 +239,13 @@ type Props = NativeStackScreenProps<
   typeof EARN_ROUTES.EARN_AMOUNT_SCREEN
 >;
 
+let mockSetOptions = jest.fn();
 const makeNavigation = () =>
   ({
     navigate: jest.fn(),
     goBack: jest.fn(),
     reset: jest.fn(),
+    setOptions: mockSetOptions,
   }) as unknown as Props["navigation"];
 
 const makeRoute = () =>
@@ -673,6 +680,53 @@ describe("EarnAmountScreen", () => {
     });
   });
 
+  describe("error toasts", () => {
+    const rerenderScreen = (rerender: (element: React.ReactElement) => void) =>
+      rerender(
+        <EarnAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+    it("dismisses them once the amount changes", () => {
+      setTokenAmount("10");
+      mockSimulateError = "pool is frozen";
+      const { rerender } = renderScreen();
+      expect(mockDismissToast).not.toHaveBeenCalled();
+
+      setTokenAmount("11");
+      rerenderScreen(rerender);
+
+      expect(mockDismissToast).toHaveBeenCalledWith("earn-simulate-failed");
+      expect(mockDismissToast).toHaveBeenCalledWith("earn-fee-shortfall");
+    });
+
+    it("dismisses them when the screen goes away", () => {
+      mockSimulateError = "pool is frozen";
+      const { unmount } = renderScreen();
+
+      unmount();
+
+      expect(mockDismissToast).toHaveBeenCalledWith("earn-simulate-failed");
+      expect(mockDismissToast).toHaveBeenCalledWith("earn-fee-shortfall");
+    });
+
+    it("shows the same failure again when a retry fails the same way", () => {
+      mockSimulateError = "pool is frozen";
+      const { rerender } = renderScreen();
+
+      // The retry clears the error while it runs, then fails again.
+      mockSimulateError = null;
+      rerenderScreen(rerender);
+      mockSimulateError = "pool is frozen";
+      rerenderScreen(rerender);
+
+      expect(
+        mockShowToast.mock.calls.filter(
+          ([options]) => options.toastId === "earn-simulate-failed",
+        ),
+      ).toHaveLength(2);
+    });
+  });
+
   describe("simulate -> Review ordering", () => {
     it("opens Review only after simulate resolves successfully", async () => {
       mockSimulate.mockResolvedValue({
@@ -726,6 +780,54 @@ describe("EarnAmountScreen", () => {
 
       expect(getByTestId("earn-processing-mock")).toBeTruthy();
       expect(queryByTestId("earn-amount-screen")).toBeNull();
+    });
+
+    it("swallows Android's back button while the deposit is submitting", () => {
+      const addListener = jest.spyOn(BackHandler, "addEventListener");
+      mockEarnTransactionStatus = "submitting";
+
+      renderScreen();
+
+      const backPress = addListener.mock.calls.find(
+        ([eventName]) => eventName === "hardwareBackPress",
+      );
+      // Handled, so the route isn't popped out from under the submit.
+      expect(backPress?.[1]()).toBe(true);
+      addListener.mockRestore();
+    });
+
+    it("turns off iOS's swipe back while the deposit is submitting", () => {
+      mockSetOptions = jest.fn();
+      mockEarnTransactionStatus = "submitting";
+
+      renderScreen();
+
+      expect(mockSetOptions).toHaveBeenLastCalledWith({
+        gestureEnabled: false,
+      });
+    });
+
+    it("keeps iOS's swipe back while nothing is submitting", () => {
+      mockSetOptions = jest.fn();
+
+      renderScreen();
+
+      expect(mockSetOptions).toHaveBeenLastCalledWith({
+        gestureEnabled: true,
+      });
+    });
+
+    it("leaves Android's back button alone while nothing is submitting", () => {
+      const addListener = jest.spyOn(BackHandler, "addEventListener");
+
+      renderScreen();
+
+      expect(
+        addListener.mock.calls.some(
+          ([eventName]) => eventName === "hardwareBackPress",
+        ),
+      ).toBe(false);
+      addListener.mockRestore();
     });
 
     it("renders the normal amount screen while status is idle", () => {

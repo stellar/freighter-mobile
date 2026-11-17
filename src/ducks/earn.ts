@@ -75,6 +75,9 @@ export const useEarnStore = create<EarnState>((set) => ({
   // had on failure — without this reset, picking asset A (fetch succeeds),
   // backing out, then picking asset B (fetch fails) would carry A's
   // position into B's Review "before" value.
+  //
+  // A failed deposit's "Transaction failed" banner is dropped too: it is
+  // about the previous pick, not the one the user is starting now.
   selectAsset: ({ assetId, apy, code, decimals }) =>
     set({
       selectedAssetId: assetId,
@@ -82,6 +85,7 @@ export const useEarnStore = create<EarnState>((set) => ({
       selectedAssetCode: code,
       selectedAssetDecimals: decimals,
       currentPositionTokens: initialState.currentPositionTokens,
+      lastSubmitFailed: initialState.lastSubmitFailed,
     }),
 
   setCurrentPositionTokens: (currentPositionTokens) =>

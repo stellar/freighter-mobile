@@ -69,6 +69,18 @@ jest.mock("@react-navigation/native", () => ({
 }));
 
 const mockFetchAccountBalances = jest.fn();
+const mockDismissToast = jest.fn();
+jest.mock("providers/ToastProvider", () => {
+  /* eslint-disable global-require, @typescript-eslint/no-var-requires */
+  const ReactModule = require("react");
+  const RNModule = require("react-native");
+  /* eslint-enable global-require, @typescript-eslint/no-var-requires */
+  return {
+    ToastProvider: ({ children }: { children: React.ReactNode }) =>
+      ReactModule.createElement(RNModule.View, null, children),
+    useToast: () => ({ showToast: jest.fn(), dismissToast: mockDismissToast }),
+  };
+});
 
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: () => ({ network: "TESTNET" }),
@@ -338,6 +350,10 @@ describe("EarnTokenPickerScreen", () => {
 
       expect(useSwapStore.getState().sourceTokenId).toBe("");
       expect(useSwapStore.getState().sourceAmount).toBe("0");
+      // A setup failure's toast goes with the swap it was about.
+      expect(mockDismissToast).toHaveBeenCalledWith(
+        "failed-to-setup-transaction",
+      );
     });
   });
 });

@@ -83,10 +83,8 @@ export interface EarnProcessingScreenProps {
  * (`useTokenFiatConverter` / `useEarnTransaction`), not a duck.
  *
  * Rendered INLINE from `EarnAmountScreen` (not a registered route) whenever
- * status is "submitting" or "success" — see `useEarnTransaction`. This
- * structurally prevents a swipe-back gesture from abandoning an in-flight
- * submit, which is stronger than relying on a navigator's
- * `gestureEnabled: false`. There used to be a third, "error" state rendered
+ * status is "submitting" or "success" — see `useEarnTransaction`. That
+ * screen also turns off going back while it submits. There used to be a third, "error" state rendered
  * here (a full-screen "Deposit failed" step) — the design has
  * no such screen, so it was removed; `EarnAmountScreen` now returns
  * automatically to the normal amount screen on failure instead.

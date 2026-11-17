@@ -51,6 +51,19 @@ describe("earn duck", () => {
     expect(useEarnStore.getState().currentPositionTokens).toBe("0");
   });
 
+  it("drops the previous token's failed-deposit banner when a token is picked", () => {
+    useEarnStore.getState().setSubmitFailed(true);
+
+    useEarnStore.getState().selectAsset({
+      assetId: "CANOTHERASSET",
+      apy: 0.05,
+      code: "XLM",
+      decimals: 7,
+    });
+
+    expect(useEarnStore.getState().lastSubmitFailed).toBe(false);
+  });
+
   it("keeps a null rate null rather than coercing it to zero", () => {
     useEarnStore
       .getState()

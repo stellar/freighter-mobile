@@ -110,7 +110,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
   const { themeColors } = useColors();
   const { isLoading, error, held, supported, pool, refetch } = useEarnTokens();
   const insets = useSafeAreaInsets();
@@ -565,7 +565,15 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     swapBottomSheetModalRef.current?.dismiss();
     setSwapOption(null);
     earnSwap.reset();
-  }, [earnSwap]);
+    // A setup failure's toast stays up until dismissed; it goes with the
+    // swap it was about.
+    dismissToast(SWAP_TOAST_IDS.FAILED_TO_SETUP_TRANSACTION);
+  }, [earnSwap, dismissToast]);
+
+  useEffect(
+    () => () => dismissToast(SWAP_TOAST_IDS.FAILED_TO_SETUP_TRANSACTION),
+    [dismissToast],
+  );
 
   // An in-flow "Receive funds" QR sheet, presented ON TOP of the "not enough"
   // sheet rather than replacing it, the same pattern the review sheet's

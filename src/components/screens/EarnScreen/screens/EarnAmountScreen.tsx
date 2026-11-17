@@ -81,12 +81,15 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Keyboard, TextInput, View } from "react-native";
+import { BackHandler, Keyboard, TextInput, View } from "react-native";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
   assessTransactionSecurity,
   extractSecurityWarnings,
 } from "services/blockaid/helper";
+
+const SIMULATE_FAILED_TOAST_ID = "earn-simulate-failed";
+const FEE_SHORTFALL_TOAST_ID = "earn-fee-shortfall";
 
 /** Earn offers 25% / 50% / Max, without main Swap's 75%. */
 const EARN_PERCENTAGES: PercentageOption[] = [25, 50, 100];
@@ -105,7 +108,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { pricedBalances } = useBalancesStore();
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
 
   // Cross-stack navigation (Buy XLM lives outside EarnStack) needs the
   // root-level param list — the screen's own `navigation` prop is typed to
@@ -291,7 +294,13 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   // scheduled inside `simulate` isn't reflected in the handler's own closure.
   const previousSimulateErrorRef = useRef<string | null>(null);
   useEffect(() => {
-    if (simulateError && simulateError !== previousSimulateErrorRef.current) {
+    // A new simulation clears the error while it runs, so a retry that fails
+    // the same way still gets its toast.
+    if (!simulateError) {
+      previousSimulateErrorRef.current = null;
+      return;
+    }
+    if (simulateError !== previousSimulateErrorRef.current) {
       previousSimulateErrorRef.current = simulateError;
       // A balance rejection on an XLM deposit is the fee, not the amount:
       // the CTA already gates anything above the spendable balance, so
@@ -305,11 +314,20 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       showToast({
         variant: "error",
         title,
-        toastId: "earn-simulate-failed",
+        toastId: SIMULATE_FAILED_TOAST_ID,
         duration: 0,
       });
     }
   }, [simulateError, showToast, isXlm, t]);
+
+  // The error toasts stay up until dismissed (`duration: 0`). Both are
+  // about the amount that was just tried, so editing it, or leaving the
+  // screen, takes them down.
+  const dismissAmountErrorToasts = useCallback(() => {
+    dismissToast(SIMULATE_FAILED_TOAST_ID);
+    dismissToast(FEE_SHORTFALL_TOAST_ID);
+  }, [dismissToast]);
+  useEffect(() => dismissAmountErrorToasts, [dismissAmountErrorToasts]);
 
   // Clear the "Transaction failed" retry banner once the user edits the
   // amount — but not on mount, so a banner left over from a previous failed
@@ -318,11 +336,17 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   useEffect(() => {
     if (tokenAmount !== previousTokenAmountRef.current) {
       previousTokenAmountRef.current = tokenAmount;
+      dismissAmountErrorToasts();
       if (lastSubmitFailed) {
         setSubmitFailed(false);
       }
     }
-  }, [tokenAmount, lastSubmitFailed, setSubmitFailed]);
+  }, [
+    tokenAmount,
+    lastSubmitFailed,
+    setSubmitFailed,
+    dismissAmountErrorToasts,
+  ]);
 
   const handlePercentagePress = useCallback(
     (percentage: number) => {
@@ -433,10 +457,9 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
 
   // `EarnProcessingScreen` is rendered INLINE below (not a registered
   // route — there is no `EARN_ROUTES.EARN_PROCESSING_SCREEN`), gated on
-  // `earnTransactionStatus` being "submitting" or "success". This
-  // structurally prevents a swipe-back gesture from abandoning an in-flight
-  // submit, which is stronger than a navigator's `gestureEnabled: false`.
-  // "error" deliberately falls through to the normal amount screen instead
+  // `earnTransactionStatus` being "submitting" or "success". It is still
+  // this route, so going back would pop it from under the submit: see the
+  // back guards below. "error" deliberately falls through to the normal amount screen instead
   // (see the auto-reset effect and render gate below) — the design has no
   // failure step.
   const {
@@ -530,6 +553,25 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       handleEarnProcessingBackToAmount();
     }
   }, [earnTransactionStatus, handleEarnProcessingBackToAmount]);
+
+  // The processing screen is drawn in place of this route, so going back
+  // would pop the route and drop the submit without a word. While it
+  // submits, iOS's swipe back is off and Android's back button does nothing;
+  // the processing screen's Close is the way out.
+  const isSubmittingDeposit = earnTransactionStatus === "submitting";
+  useEffect(() => {
+    navigation.setOptions({ gestureEnabled: !isSubmittingDeposit });
+  }, [navigation, isSubmittingDeposit]);
+  useEffect(() => {
+    if (!isSubmittingDeposit) {
+      return undefined;
+    }
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => true,
+    );
+    return () => subscription.remove();
+  }, [isSubmittingDeposit]);
 
   const handleCancelSecurityWarning = useCallback(() => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
@@ -662,7 +704,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
           title: t("earnAmount.errors.feeShortfall", {
             amount: formatTokenForDisplay(shortfall),
           }),
-          toastId: "earn-fee-shortfall",
+          toastId: FEE_SHORTFALL_TOAST_ID,
           duration: 0,
         });
       } else {
