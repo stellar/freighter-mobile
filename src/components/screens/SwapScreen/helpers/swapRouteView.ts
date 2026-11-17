@@ -10,6 +10,7 @@ import {
   TokenTypeWithCustomToken,
 } from "config/types";
 import { isNativeAssetId, isNativeContract } from "helpers/assetIdentity";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import type { HeldBalanceItem } from "hooks/useBalancesList";
 import type { ImageSourcePropType } from "react-native";
@@ -42,6 +43,8 @@ export interface SwapRoutePathView {
   poolCount: number | null;
   /** hopVenues.length + 1 tokens: hopVenues[i] trades tokens[i] for tokens[i + 1]. */
   tokens: SwapRouteToken[];
+  /** "24.45 USDC" per hop, its estimated output; null unless every hop has one. */
+  amounts: string[] | null;
 }
 
 export interface SwapRouteView {
@@ -169,15 +172,23 @@ export const buildSwapRouteView = ({
   };
   const context = { balanceItems, destination, tokenLists, networkPassphrase };
 
-  const pathViews = paths.map((path) => ({
-    share: formatRouteShare(path.share),
-    hopVenues: path.hops.map((hop) => toVenue(hop.venue)),
-    poolCount: path.hops.filter((hop) => hop.pool).length || null,
-    tokens: [
+  const pathViews = paths.map((path) => {
+    const tokens = [
       resolveToken(path.hops[0].from, context),
       ...path.hops.map((hop) => resolveToken(hop.to, context)),
-    ],
-  }));
+    ];
+    return {
+      share: formatRouteShare(path.share),
+      hopVenues: path.hops.map((hop) => toVenue(hop.venue)),
+      poolCount: path.hops.filter((hop) => hop.pool).length || null,
+      tokens,
+      amounts: path.hops.every((hop) => hop.toAmount)
+        ? path.hops.map((hop, i) =>
+            formatTokenForDisplay(hop.toAmount!, tokens[i + 1].code),
+          )
+        : null,
+    };
+  });
 
   const providers = new Map<string, SwapRouteVenue>();
   pathViews.forEach((p) =>

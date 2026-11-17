@@ -729,7 +729,8 @@
       "onePool": "1 pool",
       "pools": "{{count}} pools",
       "hint": "Routes may be split across multiple hops to optimize rates and fees.",
-      "providers": "Providers"
+      "providers": "Providers",
+      "amount": "Amount"
     },
     "errors": {
       "failedToSetupTransaction": "Failed to setup swap transaction",

@@ -106,6 +106,38 @@ describe("buildSwapRouteView", () => {
     expect(view?.to.code).toBe("USDC");
   });
 
+  it("gives each hop its estimated output in the token it buys", () => {
+    const view = build(
+      route([
+        {
+          share: "1",
+          hops: [
+            { ...hop("Soroswap", "XLM", EURC, "p1"), toAmount: "1032.5" },
+            { ...hop("Aquarius", EURC, USDC, "p2"), toAmount: "24.4500000" },
+          ],
+        },
+      ]),
+    );
+
+    expect(view?.paths[0].amounts).toEqual(["1,032.50 EURC", "24.45 USDC"]);
+  });
+
+  it("shows no hop amounts on a path where any hop lacks one", () => {
+    const view = build(
+      route([
+        {
+          share: "1",
+          hops: [
+            { ...hop("Soroswap", "XLM", EURC, "p1"), toAmount: "10" },
+            hop("Aquarius", EURC, USDC, "p2"),
+          ],
+        },
+      ]),
+    );
+
+    expect(view?.paths[0].amounts).toBeNull();
+  });
+
   it("lists each venue once across paths, in first-seen order", () => {
     const view = build(
       route([

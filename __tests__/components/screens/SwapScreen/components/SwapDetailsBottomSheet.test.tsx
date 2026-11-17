@@ -112,6 +112,41 @@ describe("SwapDetailsBottomSheet", () => {
     expect(getAllByText("Soroswap")).toHaveLength(2);
   });
 
+  it("lists each hop's estimated output under an Amount header", () => {
+    const { getByTestId } = renderSheet({
+      ...splitRoute,
+      paths: [
+        {
+          share: "1",
+          hops: [
+            {
+              venue: "Aquarius",
+              from: "XLM",
+              to: USDC,
+              pool: "p1",
+              toAmount: "24.45",
+            },
+          ],
+        },
+      ],
+    });
+    fireEvent.press(getByTestId("swap-details-route-row"));
+    fireEvent.press(getByTestId("swap-route-path-0"));
+
+    const steps = within(getByTestId("swap-route-path-0-steps"));
+    expect(steps.getByText("Amount")).toBeTruthy();
+    expect(steps.getByText("24.45 USDC")).toBeTruthy();
+  });
+
+  it("leaves out the Amount header when hops carry no amounts", () => {
+    const { getByTestId } = renderSheet(splitRoute);
+    fireEvent.press(getByTestId("swap-details-route-row"));
+    fireEvent.press(getByTestId("swap-route-path-0"));
+
+    const steps = within(getByTestId("swap-route-path-0-steps"));
+    expect(steps.queryByText("Amount")).toBeNull();
+  });
+
   it("gives an unlisted venue the generic icon", () => {
     const { getByTestId, getAllByTestId } = renderSheet(splitRoute);
     fireEvent.press(getByTestId("swap-details-route-row"));

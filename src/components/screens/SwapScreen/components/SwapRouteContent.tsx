@@ -31,6 +31,7 @@ const PathSteps: React.FC<{ path: SwapRoutePathView; testID: string }> = ({
   path,
   testID,
 }) => {
+  const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
   return (
@@ -43,15 +44,22 @@ const PathSteps: React.FC<{ path: SwapRoutePathView; testID: string }> = ({
         return (
           // eslint-disable-next-line react/no-array-index-key
           <View key={`${token.assetId}-${index}`}>
-            <View className="flex-row items-center gap-[4px]">
-              <TokenIcon
-                token={token.token}
-                iconUrl={token.iconUrl}
-                size="md"
-              />
-              <Text md semiBold>
-                {token.code}
-              </Text>
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-[4px]">
+                <TokenIcon
+                  token={token.token}
+                  iconUrl={token.iconUrl}
+                  size="md"
+                />
+                <Text md semiBold>
+                  {token.code}
+                </Text>
+              </View>
+              {index === 0 && path.amounts && (
+                <Text xs secondary>
+                  {t("swapScreen.route.amount")}
+                </Text>
+              )}
             </View>
             {venue && (
               <View className="flex-row items-center min-h-[32px] my-[8px]">
@@ -71,6 +79,11 @@ const PathSteps: React.FC<{ path: SwapRoutePathView; testID: string }> = ({
                     {venue.name}
                   </Text>
                 </View>
+                {path.amounts && (
+                  <Text sm medium style={{ marginLeft: "auto" }}>
+                    {path.amounts[index]}
+                  </Text>
+                )}
               </View>
             )}
           </View>
