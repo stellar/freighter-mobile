@@ -378,8 +378,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const securityWarnings = useMemo((): SecurityWarning[] => {
     if (isNoBalanceVariant) {
       // Blockaid returns no feature-level warnings for an unable-to-scan
-      // token; synthesize the row useTrendingTokenDetail builds so the
-      // reasons list isn't blank.
+      // token; synthesize a row so the reasons list isn't blank.
       return recordLevel === SecurityLevel.UNABLE_TO_SCAN
         ? [
             {

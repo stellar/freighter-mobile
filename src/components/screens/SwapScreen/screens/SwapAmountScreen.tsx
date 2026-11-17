@@ -1,6 +1,9 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
 import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
@@ -14,7 +17,6 @@ import {
   SwapDetailsBottomSheet,
   SwapReviewBottomSheet,
   TrendingListItem,
-  TrendingTokenDetailBottomSheet,
   XlmReserveBottomSheet,
 } from "components/screens/SwapScreen/components";
 import {
@@ -44,7 +46,6 @@ import {
   useSwapTransactionSettings,
   useSwapTokenPrices,
   useStableConversionRate,
-  useTrendingTokenDetail,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
@@ -52,7 +53,11 @@ import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
+import {
+  AnalyticsEvent,
+  SwapPickerEntrypoint,
+  TokenChartSource,
+} from "config/analyticsConfig";
 import {
   BASE_RESERVE,
   DEFAULT_DECIMALS,
@@ -60,7 +65,12 @@ import {
   TransactionContext,
 } from "config/constants";
 import { logger } from "config/logger";
-import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
+import {
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+  SWAP_ROUTES,
+  SwapStackParamList,
+} from "config/routes";
 import { FormattedSearchTokenRecord } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
@@ -99,6 +109,7 @@ import React, {
 } from "react";
 import {
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
@@ -107,7 +118,6 @@ import {
   View,
 } from "react-native";
 import { analytics } from "services/analytics";
-import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import { assessTransactionSecurity } from "services/blockaid/helper";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
@@ -139,9 +149,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const swapDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  // Review-side security sheet — its Proceed Anyway submits a tx. The
-  // trending-detail security sheet is owned by useTrendingTokenDetail and
-  // kept structurally separate so the two can't share a proceed handler.
+  // Review-side security sheet — its Proceed Anyway submits a tx.
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
   const quoteUnavailableSheetRef = useRef<BottomSheetModal>(null);
@@ -429,31 +437,28 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
   }, [refreshTrending, refreshPrices, showToast, t]);
 
-  // Trending-token detail sheet + its dedicated security sheet — see hook.
-  const {
-    trendingListRef,
-    trendingDetailSheetRef,
-    trendingSecurityWarningBottomSheetModalRef,
-    selectedTrendingRecord,
-    trendingSecurityRecord,
-    openTrendingDetail,
-    clearSelectedTrendingRecord,
-    clearTrendingSecurityRecord,
-    confirmTrendingSelection,
-    presentTrendingSecurityWarning,
-    handleCancelTrendingSecurityWarning,
-    handleConfirmTrendingAnyway,
-    trendingSecurityLevel,
-    isTrendingUnableToScan,
-    trendingSecurityWarnings,
-  } = useTrendingTokenDetail({
-    balanceItems,
-    sourceTokenId,
-    setSourceToken,
-    setDestinationToken,
-    publicKey: account?.publicKey ?? "",
-    network,
-  });
+  const trendingListRef = useRef<FlatList<FormattedSearchTokenRecord>>(null);
+
+  // navigate() bubbles from the swap stack up to the root stack.
+  const handleTrendingPress = useCallback(
+    (record: FormattedSearchTokenRecord, position: number) => {
+      analytics.track(AnalyticsEvent.SWAP_TRENDING_TOKEN_TAPPED, {
+        tokenCode: record.tokenCode,
+        tokenIssuer: record.issuer ?? "",
+        position,
+      });
+      Keyboard.dismiss();
+      (
+        navigation as unknown as NativeStackNavigationProp<RootStackParamList>
+      ).navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
+        tokenId: recordTokenId(record),
+        tokenSymbol: record.tokenCode,
+        record,
+        source: TokenChartSource.SWAP_AMOUNT,
+      });
+    },
+    [navigation],
+  );
 
   // Scroll the amount screen back to the top whenever the selected source or
   // destination token changes — after picking from the Swap-from / Swap-to
@@ -990,10 +995,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         item={item}
         prices={prices}
         network={network}
-        onPress={() => openTrendingDetail(item, index)}
+        onPress={() => handleTrendingPress(item, index)}
       />
     ),
-    [prices, network, openTrendingDetail],
+    [prices, network, handleTrendingPress],
   );
 
   if (isProcessing) {
@@ -1300,41 +1305,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         }
       />
       <BottomSheet
-        modalRef={trendingSecurityWarningBottomSheetModalRef}
-        bottomSheetModalProps={{
-          onChange: (index: number) => {
-            if (index === -1) clearTrendingSecurityRecord();
-          },
-        }}
-        customContent={
-          <SecurityDetailBottomSheet
-            // TOKEN context → "This token does not appear safe…" copy
-            // (vs the default transaction-level wording).
-            securityContext={SecurityContext.TOKEN}
-            warnings={trendingSecurityWarnings}
-            onCancel={handleCancelTrendingSecurityWarning}
-            onProceedAnyway={handleConfirmTrendingAnyway}
-            onClose={handleCancelTrendingSecurityWarning}
-            // The severity prop excludes SAFE; the banner that opens this
-            // sheet is itself gated on a non-SAFE level, so coalesce here.
-            severity={
-              trendingSecurityLevel === SecurityLevel.SAFE
-                ? undefined
-                : trendingSecurityLevel
-            }
-            // "Continue" for unable-to-scan (matches the review side);
-            // "Swap to {code} anyway" for the stronger malicious/suspicious.
-            proceedAnywayText={
-              isTrendingUnableToScan
-                ? t("common.continue")
-                : t("swapScreen.trendingDetail.swapToAnyway", {
-                    tokenCode: trendingSecurityRecord?.tokenCode ?? "",
-                  })
-            }
-          />
-        }
-      />
-      <BottomSheet
         modalRef={transactionSettingsBottomSheetModalRef}
         customContent={
           <TransactionSettingsBottomSheet
@@ -1371,41 +1341,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           />
         }
       />
-      {selectedTrendingRecord && (
-        <BottomSheet
-          modalRef={trendingDetailSheetRef}
-          // Clear the selected record on every dismiss path — swipe-down,
-          // backdrop tap, X tap, programmatic dismiss. onChange(index=-1)
-          // fires consistently for all of them. This guarantees the next
-          // tap on the SAME row goes null → record → effect → present()
-          // rather than being a no-op state update.
-          bottomSheetModalProps={{
-            onChange: (index: number) => {
-              if (index === -1) clearSelectedTrendingRecord();
-            },
-          }}
-          customContent={
-            <TrendingTokenDetailBottomSheet
-              record={selectedTrendingRecord}
-              priceInfo={(() => {
-                const p = prices[recordTokenId(selectedTrendingRecord)];
-                const fallbackPrice =
-                  selectedTrendingRecord.price !== undefined
-                    ? new BigNumber(selectedTrendingRecord.price)
-                    : undefined;
-                return {
-                  currentPrice: p?.currentPrice ?? fallbackPrice,
-                  percentagePriceChange24h:
-                    p?.percentagePriceChange24h ?? undefined,
-                };
-              })()}
-              onSwapTo={confirmTrendingSelection}
-              onCancel={() => trendingDetailSheetRef.current?.dismiss()}
-              onSecurityWarningPress={presentTrendingSecurityWarning}
-            />
-          }
-        />
-      )}
     </BaseLayout>
   );
 };

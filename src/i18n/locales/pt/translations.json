@@ -442,6 +442,7 @@
       "issuer": "Emissor",
       "type": "Tipo",
       "domain": "Domínio",
+      "stellarNetwork": "Rede Stellar",
       "tokenType": {
         "native": "Nativo",
         "classic": "Stellar Clássico",
@@ -744,11 +745,7 @@
     },
     "trendingDetail": {
       "swapTo": "Trocar para {{tokenCode}}",
-      "swapToAnyway": "Trocar para {{tokenCode}} mesmo assim",
-      "issuer": "Emissor",
-      "tokenAddress": "Endereço do token",
-      "domain": "Domínio",
-      "stellarNetwork": "Rede Stellar"
+      "swapToAnyway": "Trocar para {{tokenCode}} mesmo assim"
     },
     "trustlineInfo": {
       "title": "Isto adicionará uma trustline para {{tokenCode}}",

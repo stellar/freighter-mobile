@@ -69,7 +69,7 @@ const AboutSection: React.FC<AboutSectionProps> = ({ tokenId, network }) => {
 
   const isNative = isNativeKind(kind);
   const issuerLabel = isNative
-    ? t("swapScreen.trendingDetail.stellarNetwork")
+    ? t("priceHistory.about.stellarNetwork")
     : address && truncateAddress(address);
   const domainLabel = isNative ? "stellar.org" : homeDomain;
 

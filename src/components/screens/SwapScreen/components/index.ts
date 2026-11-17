@@ -10,10 +10,6 @@ export {
 } from "./SwapTokenRow";
 export { TrendingListItem } from "./TrendingListItem";
 export {
-  TrendingTokenDetailBottomSheet,
-  type TrendingTokenDetailBottomSheetProps,
-} from "./TrendingTokenDetailBottomSheet";
-export {
   TrustlineInfoBottomSheet,
   type TrustlineInfoBottomSheetProps,
 } from "./TrustlineInfoBottomSheet";

@@ -554,9 +554,8 @@ export const formatPriceHistoryLabel = (price: string | BigNumber): string => {
 };
 
 /**
- * `change.absolute` verbatim — never reconstructed from the percentage (the
- * `now × pct/100` derivation in TrendingTokenDetailBottomSheet is wrong by a
- * factor of (1 + pct/100); do not copy it). The sign is always in the text.
+ * `change.absolute` verbatim — never reconstructed as `now × pct/100`, which
+ * is wrong by a factor of (1 + pct/100). The sign is always in the text.
  */
 export const formatPriceHistoryDelta = (absolute: string): string => {
   const bn = new BigNumber(absolute);

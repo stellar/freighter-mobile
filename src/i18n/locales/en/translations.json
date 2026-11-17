@@ -476,6 +476,7 @@
       "issuer": "Issuer",
       "type": "Type",
       "domain": "Domain",
+      "stellarNetwork": "Stellar Network",
       "tokenType": {
         "native": "Native",
         "classic": "Stellar Classic",
@@ -778,11 +779,7 @@
     },
     "trendingDetail": {
       "swapTo": "Swap to {{tokenCode}}",
-      "swapToAnyway": "Swap to {{tokenCode}} anyway",
-      "issuer": "Issuer",
-      "tokenAddress": "Token Address",
-      "domain": "Domain",
-      "stellarNetwork": "Stellar Network"
+      "swapToAnyway": "Swap to {{tokenCode}} anyway"
     },
     "trustlineInfo": {
       "title": "This will add a trustline to {{tokenCode}}",

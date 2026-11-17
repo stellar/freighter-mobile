@@ -17,7 +17,6 @@ export {
   type SwapToSectionKind,
 } from "./useSwapToSections";
 export { useReviewSecuritySummary } from "./useReviewSecuritySummary";
-export { useTrendingTokenDetail } from "./useTrendingTokenDetail";
 export { useSelectSwapDestination } from "./useSelectSwapDestination";
 export { useSwapForXlmReserve } from "./useSwapForXlmReserve";
 export { useReviewTokens } from "./useReviewTokens";

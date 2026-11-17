@@ -15,7 +15,11 @@ import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
-import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
+import {
+  ROOT_NAVIGATOR_ROUTES,
+  SWAP_ROUTES,
+  SwapStackParamList,
+} from "config/routes";
 import { Token } from "config/types";
 import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -1594,76 +1598,26 @@ describe("SwapAmountScreen", () => {
       });
     });
 
-    it("opens TrendingTokenDetailBottomSheet when a row is tapped", () => {
-      // eslint-disable-next-line no-underscore-dangle
-      globalThis.__mockSheetRefs = [];
+    it("pushes TokenDetailsScreen with the record and source swap_amount when a Popular row is tapped", () => {
+      const navigation = makeNavigation();
       const { getByText } = renderWithProviders(
-        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
-      );
-      // eslint-disable-next-line no-underscore-dangle
-      const sheetsBeforeTap = globalThis.__mockSheetRefs.length;
-
-      // Tap the AQUA row — the SwapTokenRow renders the tokenCode as the
-      // primary text node, so the trending row is findable that way.
-      act(() => {
-        fireEvent.press(getByText("AQUA"));
-      });
-
-      // Tapping a trending row sets selectedTrendingRecord, which renders
-      // the TrendingTokenDetailBottomSheet via its own <BottomSheet>. The
-      // sheet stub registers a new spy ref on mount.
-      // eslint-disable-next-line no-underscore-dangle
-      expect(globalThis.__mockSheetRefs.length).toBeGreaterThan(
-        sheetsBeforeTap,
-      );
-      // eslint-disable-next-line no-underscore-dangle
-      const newestSheet = globalThis.__mockSheetRefs.at(-1);
-      expect(newestSheet?.present).toHaveBeenCalled();
-    });
-
-    it("re-opens the same Trending row on a second tap after dismiss", () => {
-      // Regression: tapping the same Trending row twice was a no-op
-      // because setSelectedTrendingRecord with the same object reference
-      // doesn't fire the present-effect. Fix: clear selectedTrendingRecord
-      // on dismiss via bottomSheetModalProps.onChange(-1). The next tap
-      // then goes null → record → effect → present(). Because the sheet
-      // is conditionally mounted, dismissal unmounts it and the second
-      // tap re-mounts a fresh ref — assert via __mockSheetRefs membership.
-      // eslint-disable-next-line no-underscore-dangle
-      globalThis.__mockSheetRefs = [];
-      const { getByText } = renderWithProviders(
-        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+        <SwapAmountScreen navigation={navigation} route={makeRoute()} />,
       );
 
       act(() => {
         fireEvent.press(getByText("AQUA"));
       });
-      // eslint-disable-next-line no-underscore-dangle
-      const sheetsAfterFirstTap = globalThis.__mockSheetRefs.length;
-      // eslint-disable-next-line no-underscore-dangle
-      const firstSheet = globalThis.__mockSheetRefs.at(-1);
-      expect(firstSheet?.present).toHaveBeenCalledTimes(1);
 
-      // Simulate the user dismissing the sheet (swipe / backdrop / X) —
-      // gorhom fires onChange(-1), which our screen routes to clearing
-      // selectedTrendingRecord.
-      act(() => {
-        firstSheet?.fireDismiss();
-      });
-
-      // Tap the SAME row again — should mount a new sheet ref and call
-      // present() on it.
-      act(() => {
-        fireEvent.press(getByText("AQUA"));
-      });
-      // eslint-disable-next-line no-underscore-dangle
-      expect(globalThis.__mockSheetRefs.length).toBeGreaterThan(
-        sheetsAfterFirstTap,
+      expect(navigation.navigate).toHaveBeenCalledWith(
+        ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+        {
+          tokenId:
+            "AQUA:GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          tokenSymbol: "AQUA",
+          record: expect.objectContaining({ tokenCode: "AQUA" }),
+          source: "swap_amount",
+        },
       );
-      // eslint-disable-next-line no-underscore-dangle
-      const secondSheet = globalThis.__mockSheetRefs.at(-1);
-      expect(secondSheet?.present).toHaveBeenCalledTimes(1);
-      expect(secondSheet).not.toBe(firstSheet);
     });
 
     it("hides the trending list when stellarExpertDown is true", () => {
