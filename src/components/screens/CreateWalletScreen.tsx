@@ -13,12 +13,10 @@ import AccountItemRow from "components/screens/HomeScreen/AccountItemRow";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, DEFAULT_PRESS_DELAY } from "config/constants";
-import { logger } from "config/logger";
 import {
   MANAGE_WALLETS_ROUTES,
   ManageWalletsStackParamList,
 } from "config/routes";
-import { SecretSource } from "config/types";
 import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import {
   generatePendingRecoveryPhrase,
@@ -30,10 +28,10 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import useSecretSources from "hooks/useSecretSources";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getSecretSources } from "services/auth/secretSources";
 
 type CreateWalletScreenProps = NativeStackScreenProps<
   ManageWalletsStackParamList,
@@ -73,25 +71,16 @@ const CreateWalletScreen: React.FC<CreateWalletScreenProps> = ({
   );
   const nameSheetRef = useRef<BottomSheetModal>(null);
   const [target, setTarget] = useState<NamingTarget | null>(null);
-  // Null until the first read, so the phrases aren't drawn and then
-  // regrouped once the sources arrive.
-  const [sources, setSources] = useState<SecretSource[] | null>(null);
+  // If the read fails there are no phrases to list, but New recovery phrase
+  // still works.
+  const { sources, reload: reloadSources } =
+    useSecretSources("CreateWalletScreen");
 
   useFocusEffect(
     useCallback(() => {
       getAllAccounts();
-      getSecretSources()
-        .then((map) => setSources(Object.values(map)))
-        .catch((error) => {
-          logger.error(
-            "CreateWalletScreen",
-            "Failed to read secret sources",
-            error,
-          );
-          // No phrases to list; New recovery phrase still works.
-          setSources((current) => current ?? []);
-        });
-    }, [getAllAccounts]),
+      reloadSources();
+    }, [getAllAccounts, reloadSources]),
   );
 
   useFocusEffect(

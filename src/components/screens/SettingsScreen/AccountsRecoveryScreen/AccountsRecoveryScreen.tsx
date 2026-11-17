@@ -5,9 +5,8 @@ import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, DEFAULT_PRESS_DELAY } from "config/constants";
-import { logger } from "config/logger";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
-import { Account, SecretSource } from "config/types";
+import { Account } from "config/types";
 import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { useAuthenticationStore } from "ducks/auth";
 import { AccountGroupKind, groupAccountsBySource } from "helpers/accountGroups";
@@ -15,7 +14,8 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useCallback, useMemo, useState } from "react";
+import useSecretSources from "hooks/useSecretSources";
+import React, { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -23,7 +23,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getSecretSources } from "services/auth/secretSources";
 
 type AccountsRecoveryScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -139,26 +138,16 @@ const AccountsRecoveryScreen: React.FC<AccountsRecoveryScreenProps> = ({
   const fetchAccountsFiatTotals = useAccountsFiatTotalsStore(
     (state) => state.fetchAccountsFiatTotals,
   );
-  // Null until the first read, so the list isn't drawn ungrouped and then
-  // regrouped once the sources arrive.
-  const [sources, setSources] = useState<SecretSource[] | null>(null);
+  const { sources, reload: reloadSources } = useSecretSources(
+    "AccountsRecoveryScreen",
+  );
 
   // Refetched on focus so a rename on Edit account shows on return.
   useFocusEffect(
     useCallback(() => {
       getAllAccounts();
-      getSecretSources()
-        .then((map) => setSources(Object.values(map)))
-        .catch((error) => {
-          logger.error(
-            "AccountsRecoveryScreen",
-            "Failed to read secret sources",
-            error,
-          );
-          // Still list the accounts, under the trailing group.
-          setSources((current) => current ?? []);
-        });
-    }, [getAllAccounts]),
+      reloadSources();
+    }, [getAllAccounts, reloadSources]),
   );
 
   useFocusEffect(
