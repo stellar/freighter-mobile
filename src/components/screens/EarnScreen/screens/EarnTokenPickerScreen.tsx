@@ -909,21 +909,10 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
             )}
           </View>
 
-          <View
-            className="flex-row items-start gap-[8px]"
-            testID="earn-token-picker-apy-disclaimer"
-          >
-            {/* Centres the icon on the text's first line. */}
-            <View className="py-[3px]">
-              <Icon.InfoCircle
-                size={16}
-                color={themeColors.foreground.primary}
-              />
-            </View>
-            <Text sm regular secondary style={{ flex: 1 }}>
-              {t("earnTokenPicker.apyDisclaimer")}
-            </Text>
-          </View>
+          {/* The footnote to the APY pills' asterisk. */}
+          <Text sm regular secondary testID="earn-token-picker-apy-disclaimer">
+            {t("earnTokenPicker.apyDisclaimer")}
+          </Text>
         </ScrollView>
       </BaseLayout>
       <BottomSheet

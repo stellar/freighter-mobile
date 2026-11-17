@@ -771,8 +771,8 @@
     "depositInto": "Depositar em",
     "inYourWallet": "Na sua carteira",
     "otherSupportedAssets": "Outros ativos suportados",
-    "apyPill": "{{rate}} APY",
-    "apyDisclaimer": "O APY é variável e está sujeito a alterações."
+    "apyPill": "{{rate}} APY*",
+    "apyDisclaimer": "*O APY é variável e está sujeito a alterações."
   },
   "earnPoolDetails": {
     "byBlend": "por Blend",

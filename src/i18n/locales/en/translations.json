@@ -805,8 +805,8 @@
     "depositInto": "Deposit into",
     "inYourWallet": "In your wallet",
     "otherSupportedAssets": "Other supported assets",
-    "apyPill": "{{rate}} APY",
-    "apyDisclaimer": "APY is variable and subject to change."
+    "apyPill": "{{rate}} APY*",
+    "apyDisclaimer": "*APY is variable and subject to change."
   },
   "earnPoolDetails": {
     "byBlend": "by Blend",
