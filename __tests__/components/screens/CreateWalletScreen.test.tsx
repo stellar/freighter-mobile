@@ -197,4 +197,30 @@ describe("CreateWalletScreen", () => {
       { pendingPhraseId: "pending-phrase-3", accountName: "Account 4" },
     );
   });
+
+  it("generates one phrase when Next is tapped twice", async () => {
+    mockGeneratePhrase
+      .mockReturnValueOnce("pending-phrase-3")
+      .mockReturnValueOnce("pending-phrase-4");
+    const { findByTestId, getByTestId } = renderScreen();
+
+    fireEvent.press(await findByTestId("create-wallet-generate"));
+    fireEvent.press(getByTestId("set-account-name-submit"));
+    fireEvent.press(getByTestId("set-account-name-submit"));
+
+    await waitFor(() => expect(mockGeneratePhrase).toHaveBeenCalledTimes(1));
+    expect(navigation.navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("handles Next again once the sheet is reopened", async () => {
+    mockGeneratePhrase.mockReturnValue("pending-phrase-3");
+    const { findByTestId, getByTestId } = renderScreen();
+
+    fireEvent.press(await findByTestId("create-wallet-generate"));
+    fireEvent.press(getByTestId("set-account-name-submit"));
+    fireEvent.press(getByTestId("create-wallet-generate"));
+    fireEvent.press(getByTestId("set-account-name-submit"));
+
+    await waitFor(() => expect(mockGeneratePhrase).toHaveBeenCalledTimes(2));
+  });
 });

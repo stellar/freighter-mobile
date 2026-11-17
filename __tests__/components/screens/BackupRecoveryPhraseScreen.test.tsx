@@ -94,4 +94,34 @@ describe("BackupRecoveryPhraseScreen", () => {
 
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
   });
+
+  it("forwards the generation it showed when the params change under it", () => {
+    const { getByTestId, getByText, rerender, unmount } = renderScreen();
+
+    // A second Next on the name sheet re-navigates here with a newer id.
+    rerender(
+      <BackupRecoveryPhraseScreen
+        navigation={navigation as never}
+        route={
+          {
+            params: {
+              pendingPhraseId: "pending-phrase-8",
+              accountName: "Travel",
+            },
+          } as never
+        }
+      />,
+    );
+
+    fireEvent.press(getByTestId("backup-recovery-phrase-reveal"));
+    fireEvent.press(getByText("Create a wallet"));
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN,
+      { kind: "newPhrase", pendingPhraseId: PENDING_ID, accountName: "Travel" },
+    );
+
+    unmount();
+    expect(mockClearPending).toHaveBeenCalledTimes(1);
+    expect(mockClearPending).toHaveBeenCalledWith(PENDING_ID);
+  });
 });
