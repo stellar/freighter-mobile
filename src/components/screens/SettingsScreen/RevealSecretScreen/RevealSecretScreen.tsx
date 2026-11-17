@@ -19,7 +19,7 @@ import {
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useSecureClipboard } from "hooks/useSecureClipboard";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useState } from "react";
 import { Trans } from "react-i18next";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { analytics } from "services/analytics";
@@ -126,7 +126,7 @@ const RevealSecretScreen: React.FC<RevealSecretScreenProps> = ({
         ],
       };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: step === "revealed" ? copy.revealedTitle : copy.title,
     });
