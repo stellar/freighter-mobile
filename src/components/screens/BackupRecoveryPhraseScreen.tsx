@@ -11,6 +11,7 @@ import {
 import {
   clearPendingRecoveryPhrase,
   getPendingRecoveryPhrase,
+  useAuthenticationStore,
 } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -52,6 +53,7 @@ const BackupRecoveryPhraseScreen: React.FC<BackupRecoveryPhraseScreenProps> = ({
     phrase: getPendingRecoveryPhrase(route.params.pendingPhraseId),
   }));
   const [isRevealed, setIsRevealed] = useState(false);
+  const isSoftLocked = useAuthenticationStore((state) => state.isSoftLocked);
 
   // Mounted for as long as the flow is past this point, so this runs when
   // the user backs out, or once the stack resets after a successful create.
@@ -60,6 +62,15 @@ const BackupRecoveryPhraseScreen: React.FC<BackupRecoveryPhraseScreenProps> = ({
     () => () => clearPendingRecoveryPhrase(pendingPhraseId),
     [pendingPhraseId],
   );
+
+  // A soft lock drops the held phrase but keeps this screen mounted under the
+  // lock overlay. Leave now, past the password step too if it's on top, so
+  // unlocking doesn't show a phrase that can no longer be stored.
+  useEffect(() => {
+    if (isSoftLocked) {
+      navigation.popTo(MANAGE_WALLETS_ROUTES.CREATE_WALLET_SCREEN);
+    }
+  }, [isSoftLocked, navigation]);
 
   useEffect(() => {
     // Nothing held for this generation: the session locked, the flow was
