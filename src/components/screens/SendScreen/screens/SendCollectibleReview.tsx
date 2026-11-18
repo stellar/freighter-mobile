@@ -776,16 +776,20 @@ const SendCollectibleReviewScreen: React.FC<
   });
 
   const handleConfirmAnyway = useCallback(() => {
-    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
-
     const isUnableToScan =
       !transactionScanResult || transactionSecurityAssessment.isUnableToScan;
 
     if (isUnableToScan) {
+      transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
       Keyboard.dismiss();
       reviewBottomSheetModalRef.current?.present();
     } else {
+      // Review first (the confirm closes it), then this sheet over it.
+      // Closing this sheet first would bring Review back, and gorhom ignores
+      // Review's own dismiss while that happens, leaving Review open over
+      // the processing step.
       handleTransactionConfirmation();
+      transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
     }
   }, [
     handleTransactionConfirmation,

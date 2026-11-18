@@ -764,12 +764,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   };
 
   const handleConfirmAnyway = () => {
-    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
-
     if (isUnableToScan) {
+      transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
       swapReviewBottomSheetModalRef.current?.present();
     } else {
+      // Review first (the confirm closes it), then this sheet over it.
+      // Closing this sheet first would bring Review back, and gorhom ignores
+      // Review's own dismiss while that happens, leaving Review open over
+      // the processing step.
       handleConfirmSwap();
+      transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
     }
   };
 
