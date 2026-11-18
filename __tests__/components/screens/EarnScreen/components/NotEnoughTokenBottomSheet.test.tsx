@@ -88,6 +88,28 @@ describe("NotEnoughTokenBottomSheet", () => {
     expect(getByText(body)).toBeTruthy();
   });
 
+  // The deposit's network-fee shortfall reuses the sheet with its own copy.
+  it("shows its own title and body when given them", () => {
+    const { getByText, queryByText } = renderWithProviders(
+      <NotEnoughTokenBottomSheet
+        variant={NotEnoughVariant.BUY_OR_TRANSFER}
+        tokenCode="XLM"
+        token={{ type: "native" as const, code: "XLM" as const }}
+        title="You need XLM to pay fees"
+        body="Add XLM to continue with your deposit."
+        onBuy={jest.fn()}
+        onReceive={jest.fn()}
+        onClose={jest.fn()}
+      />,
+    );
+
+    expect(getByText("You need XLM to pay fees")).toBeTruthy();
+    expect(getByText("Add XLM to continue with your deposit.")).toBeTruthy();
+    expect(queryByText("Not enough XLM")).toBeNull();
+    expect(getByText("Buy with Coinbase")).toBeTruthy();
+    expect(getByText("Receive XLM")).toBeTruthy();
+  });
+
   describe("BUY_SWAP_OR_TRANSFER (design node 13132:50277)", () => {
     it("renders Buy/Swap side by side with Receive as a text button, each wired to its own handler", () => {
       const onBuy = jest.fn();

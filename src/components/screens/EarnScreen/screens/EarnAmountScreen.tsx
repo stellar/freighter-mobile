@@ -12,11 +12,12 @@ import TransactionSettingsBottomSheet from "components/TransactionSettingsBottom
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { EarnReviewBottomSheet } from "components/screens/EarnScreen/components/EarnReviewBottomSheet";
+import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
 import { PoolCard } from "components/screens/EarnScreen/components/PoolCard";
 import { PoolDetailsBottomSheet } from "components/screens/EarnScreen/components/PoolDetailsBottomSheet";
 import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
-import { XlmFeeShortfallBottomSheet } from "components/screens/EarnScreen/components/XlmFeeShortfallBottomSheet";
 import {
+  NotEnoughVariant,
   UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
   getDepositDecimals,
   getEarnCtaState,
@@ -97,6 +98,12 @@ import { getTransactionSecurity } from "services/blockaid/transactionSecurity";
 const SIMULATE_FAILED_TOAST_ID = "earn-simulate-failed";
 const FEE_SHORTFALL_TOAST_ID = "earn-fee-shortfall";
 const INSUFFICIENT_BALANCE_TOAST_ID = "earn-insufficient-balance";
+
+/** The network fee is paid in XLM, so the fee sheet shows XLM's icon. */
+const NATIVE_TOKEN = {
+  type: "native" as const,
+  code: NATIVE_TOKEN_CODE as "XLM",
+};
 
 /** Earn offers 25% / 50% / Max, without main Swap's 75%. */
 const EARN_PERCENTAGES: PercentageOption[] = [25, 50, 100];
@@ -822,6 +829,10 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     });
   }, [rootNavigation]);
 
+  const handleCloseNetworkFeeSheet = useCallback(() => {
+    networkFeeBottomSheetModalRef.current?.dismiss();
+  }, []);
+
   // The fee-shortfall sheet's second action: an in-flow "Receive funds" QR
   // sheet, presented ON TOP of the fee sheet rather than replacing it, the
   // same pattern the review sheet's security-detail sheet uses. The user
@@ -940,15 +951,23 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       <BottomSheet
         modalRef={networkFeeBottomSheetModalRef}
         customContent={
-          <XlmFeeShortfallBottomSheet
-            bottomSheetModalRef={networkFeeBottomSheetModalRef}
+          <NotEnoughTokenBottomSheet
+            variant={
+              isOnrampableAsset(
+                NATIVE_TOKEN_CODE,
+                networkDetails,
+                isOnrampEnabled,
+              )
+                ? NotEnoughVariant.BUY_OR_TRANSFER
+                : NotEnoughVariant.TRANSFER_ONLY
+            }
+            tokenCode={NATIVE_TOKEN_CODE}
+            token={NATIVE_TOKEN}
+            title={t("earnAmount.networkFeeSheet.title")}
+            body={t("earnAmount.networkFeeSheet.body")}
             onBuy={handleBuyXlmPress}
             onReceive={handleReceiveXlmPress}
-            isBuyAvailable={isOnrampableAsset(
-              NATIVE_TOKEN_CODE,
-              networkDetails,
-              isOnrampEnabled,
-            )}
+            onClose={handleCloseNetworkFeeSheet}
           />
         }
       />

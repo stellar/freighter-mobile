@@ -20,9 +20,9 @@ export interface ReceiveFundsBottomSheetProps {
 }
 
 /**
- * In-flow "Receive funds" sheet, opened from "Receive" on the token picker's
- * `NotEnoughTokenBottomSheet` and the amount screen's
- * `XlmFeeShortfallBottomSheet`. It is presented on top of the sheet that
+ * In-flow "Receive funds" sheet, opened from "Receive" on the
+ * `NotEnoughTokenBottomSheet`, both the token picker's and the amount
+ * screen's network-fee one. It is presented on top of the sheet that
  * opened it, so the user never leaves Earn: back returns to that sheet, and
  * X closes both.
  *

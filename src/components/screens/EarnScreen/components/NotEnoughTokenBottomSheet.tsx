@@ -18,9 +18,19 @@ export interface NotEnoughTokenBottomSheetProps {
    * renders nothing.
    */
   token?: Token | Balance;
+  /**
+   * Replaces the "Not enough {code}" title and the variant's body, for a
+   * caller with its own reason to send the user for more of the token, such
+   * as the deposit's network fee.
+   */
+  title?: string;
+  body?: string;
   onBuy: () => void;
-  /** Opens the swap-within-Earn sheet for this token. */
-  onSwap: () => void;
+  /**
+   * Opens the swap-within-Earn sheet for this token. Only the swap variants
+   * offer it.
+   */
+  onSwap?: () => void;
   onReceive: () => void;
   onClose: () => void;
 }
@@ -40,10 +50,23 @@ export interface NotEnoughTokenBottomSheetProps {
  * - `BUY_OR_TRANSFER`: "Buy with Coinbase" (filled) above "Receive {code}"
  *   (outlined).
  * - `TRANSFER_ONLY`: a single filled "Receive {code}".
+ *
+ * The deposit's XLM fee shortfall uses the last two with its own title and
+ * body.
  */
 export const NotEnoughTokenBottomSheet: React.FC<
   NotEnoughTokenBottomSheetProps
-> = ({ variant, tokenCode, token, onBuy, onSwap, onReceive, onClose }) => {
+> = ({
+  variant,
+  tokenCode,
+  token,
+  title,
+  body,
+  onBuy,
+  onSwap,
+  onReceive,
+  onClose,
+}) => {
   const { t } = useAppTranslation();
 
   // No option selected yet -- the sheet isn't presented in this state, so
@@ -71,7 +94,7 @@ export const NotEnoughTokenBottomSheet: React.FC<
   const receiveLabel = t("earnNotEnough.receive", { tokenCode });
 
   const renderStackedActions = (
-    primary: { label: string; onPress: () => void; testID: string },
+    primary: { label: string; onPress?: () => void; testID: string },
     testID: string,
   ) => (
     <View className="gap-[8px]" testID={testID}>
@@ -186,7 +209,7 @@ export const NotEnoughTokenBottomSheet: React.FC<
   return (
     <View className="flex-1" testID="not-enough-token-bottom-sheet">
       <BottomSheetHeader
-        title={t("earnNotEnough.title", { tokenCode })}
+        title={title ?? t("earnNotEnough.title", { tokenCode })}
         leading={<TokenIcon token={token} />}
         onClose={onClose}
         closeTestID="not-enough-token-close"
@@ -194,7 +217,7 @@ export const NotEnoughTokenBottomSheet: React.FC<
 
       <View className="mt-[24px]">
         <Text md regular secondary>
-          {t(bodyKey, { tokenCode })}
+          {body ?? t(bodyKey, { tokenCode })}
         </Text>
       </View>
 

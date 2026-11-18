@@ -800,9 +800,7 @@
     "retryBanner": "A transação falhou. Tente novamente.",
     "networkFeeSheet": {
       "title": "Você precisa de XLM para pagar as taxas",
-      "body": "Você não tem XLM disponível suficiente para cobrir a taxa da transação. Adicione XLM para continuar com seu depósito.",
-      "buyWithCoinbase": "Comprar com a Coinbase",
-      "receive": "Receber XLM"
+      "body": "Você não tem XLM disponível suficiente para cobrir a taxa da transação. Adicione XLM para continuar com seu depósito."
     },
     "errors": {
       "simulationFailed": "Falha ao simular o depósito. Tente novamente.",
