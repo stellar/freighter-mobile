@@ -975,7 +975,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         <TouchableOpacity
           className="flex-row items-center justify-center gap-[6px] mt-[16px]"
           onPress={() => {
-            waitForKeyboardDismiss().then(() =>
+            waitForKeyboardDismiss(500).then(() =>
               quoteUnavailableSheetRef.current?.present(),
             );
           }}

@@ -2085,6 +2085,8 @@ describe("SwapAmountScreen", () => {
             ?.title === "Quote unavailable",
       );
       expect(sheet?.present).not.toHaveBeenCalled();
+      // Capped, so the sheet still opens if the hide event never comes.
+      expect(waitSpy).toHaveBeenCalledWith(500);
 
       await act(async () => {
         hideKeyboard();
