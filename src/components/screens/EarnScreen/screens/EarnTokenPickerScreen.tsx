@@ -194,6 +194,19 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // closes, so the picker can announce the new balance.
   const swapOutcomeRef = useRef<EarnSwapOutcome | null>(null);
 
+  // Closes every sheet of the swap branch, bottom-up: the swap sheet first,
+  // then whatever sits over it. gorhom restores the sheet under one that
+  // starts closing and ignores a dismiss that arrives in between, so
+  // closing top-down left the swap sheet open (X on "Swap from" behaved
+  // like its back arrow). A sheet that isn't open ignores the call.
+  const dismissSwapSheets = useCallback(() => {
+    swapBottomSheetModalRef.current?.dismiss();
+    swapReviewBottomSheetModalRef.current?.dismiss();
+    swapFromBottomSheetModalRef.current?.dismiss();
+    swapSecurityWarningBottomSheetModalRef.current?.dismiss();
+    swapProcessingBottomSheetModalRef.current?.dismiss();
+  }, []);
+
   // A completed swap leaves the user holding the reserve they came for, so
   // close the whole swap branch and drop them back on the picker -- refetching
   // the catalog and the balances so the row they wanted moves into "In your
@@ -202,9 +215,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // store is reset after this runs (see `useEarnSwap`), so it can still read
   // the source here.
   const handleSwapProcessingClose = useCallback(() => {
-    swapProcessingBottomSheetModalRef.current?.dismiss();
-    swapReviewBottomSheetModalRef.current?.dismiss();
-    swapBottomSheetModalRef.current?.dismiss();
+    dismissSwapSheets();
 
     const outcome = swapOutcomeRef.current;
     swapOutcomeRef.current = null;
@@ -231,7 +242,15 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     setNotEnoughOption(null);
     refetch();
     refreshBalances();
-  }, [refetch, refreshBalances, showToast, swapOption, t, setDidSwapInFlow]);
+  }, [
+    dismissSwapSheets,
+    refetch,
+    refreshBalances,
+    showToast,
+    swapOption,
+    t,
+    setDidSwapInFlow,
+  ]);
 
   // An expired quote is the one failure a retry fixes, so instead of ending
   // on the processing sheet's "failed", go back to the swap sheet. Its
@@ -532,13 +551,10 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // component unmounting -- the same reason `SwapAmountScreen` calls
   // `executeSwap` bare rather than awaiting it.
   const handleConfirmSwap = useCallback(() => {
-    swapSecurityWarningBottomSheetModalRef.current?.dismiss();
-    swapReviewBottomSheetModalRef.current?.dismiss();
-    swapFromBottomSheetModalRef.current?.dismiss();
-    swapBottomSheetModalRef.current?.dismiss();
+    dismissSwapSheets();
     earnSwap.executeSwap();
     swapProcessingBottomSheetModalRef.current?.present();
-  }, [earnSwap]);
+  }, [dismissSwapSheets, earnSwap]);
 
   // The processing sheet's content, captured when the swap starts and kept
   // until the sheet has closed: the swap state resets the moment the user
@@ -625,16 +641,14 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // Leaves the swap branch entirely, releasing its captured reserve and
   // clearing the swap, so the next one starts clean.
   const handleCloseSwap = useCallback(() => {
-    swapFromBottomSheetModalRef.current?.dismiss();
-    swapReviewBottomSheetModalRef.current?.dismiss();
-    swapBottomSheetModalRef.current?.dismiss();
+    dismissSwapSheets();
     setSwapOption(null);
     earnSwap.reset();
     // These toasts stay up until dismissed; they go with the swap they
     // were about.
     dismissToast(SWAP_TOAST_IDS.FAILED_TO_SETUP_TRANSACTION);
     dismissToast(SWAP_TOAST_IDS.QUOTE_EXPIRED);
-  }, [earnSwap, dismissToast]);
+  }, [dismissSwapSheets, earnSwap, dismissToast]);
 
   useEffect(
     () => () => {

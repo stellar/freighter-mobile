@@ -617,4 +617,41 @@ describe("EarnTokenPickerScreen", () => {
       expect(getByText(formatTokenForDisplay("50", "USDC"))).toBeTruthy();
     });
   });
+
+  // "Swap from" sits over the swap sheet. Its X leaves the swap entirely, so
+  // the swap sheet underneath has to go first: gorhom restores it as soon
+  // as the top sheet starts closing and ignores a dismiss in between.
+  describe("X on the Swap from sheet", () => {
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+    });
+
+    it("closes the swap sheet underneath first", () => {
+      renderScreen();
+      // eslint-disable-next-line no-underscore-dangle
+      const sheets = globalThis.__earnTokenPickerMockSheets;
+      const swapSheet = sheets.find(
+        ({ props }) => props.analyticsEvent === "earn_swap_amount",
+      );
+      const swapFromSheet = sheets.find(
+        ({ props }) =>
+          (props.customContent as React.ReactElement | undefined)?.type ===
+          EarnSwapFromBottomSheet,
+      );
+
+      act(() => {
+        (
+          swapFromSheet?.props.customContent as React.ReactElement<{
+            onClose: () => void;
+          }>
+        ).props.onClose();
+      });
+
+      expect(swapSheet?.ref.dismiss).toHaveBeenCalledTimes(1);
+      expect(swapFromSheet?.ref.dismiss).toHaveBeenCalledTimes(1);
+      expect(swapSheet!.ref.dismiss.mock.invocationCallOrder[0]).toBeLessThan(
+        swapFromSheet!.ref.dismiss.mock.invocationCallOrder[0],
+      );
+    });
+  });
 });
