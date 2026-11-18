@@ -29,6 +29,7 @@ export {
   missingSwapRouteReason,
   selectSwapRoute,
   swapQuoteErrorReason,
+  type SwapQuoteErrorReason,
 } from "./selectSwapRoute";
 export { decodeSwapTx, type DecodedSwapTx } from "./decodeSwapTx";
 export { withTokenDecimals } from "./tokenDecimals";

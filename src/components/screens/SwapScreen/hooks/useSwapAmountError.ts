@@ -1,4 +1,5 @@
 import BigNumber from "bignumber.js";
+import { type SwapQuoteErrorReason } from "components/screens/SwapScreen/helpers/selectSwapRoute";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { SwapPathResult } from "ducks/swap";
 import { hasXLMForFees, isAmountSpendable } from "helpers/balances";
@@ -46,6 +47,7 @@ export const useSwapAmountError = ({
   spendableAmount,
   sourceTokenSymbol,
   pathError,
+  pathErrorReason,
   pathResult,
   destinationTokenDescriptor,
 }: {
@@ -58,6 +60,7 @@ export const useSwapAmountError = ({
   spendableAmount: BigNumber | null;
   sourceTokenSymbol: string;
   pathError: string | null;
+  pathErrorReason: SwapQuoteErrorReason | null;
   pathResult: SwapPathResult | null;
   destinationTokenDescriptor: DestinationTokenDescriptor | null;
 }): {
@@ -163,9 +166,7 @@ export const useSwapAmountError = ({
     const hasDestinationToken = !!destinationTokenDescriptor;
     // The amount screen shows these two as a persistent "Quote unavailable"
     // row with its own sheet, so a toast would say the same thing twice.
-    const shownInline =
-      pathError === t("swapScreen.errors.noPathFound") ||
-      pathError === t("swapScreen.errors.swapsUnavailable");
+    const shownInline = pathErrorReason !== null;
 
     if (pathError && !shownInline && hasAmount && hasDestinationToken) {
       setActiveError({
@@ -182,6 +183,7 @@ export const useSwapAmountError = ({
     }
   }, [
     pathError,
+    pathErrorReason,
     pathResult,
     sourceAmount,
     destinationTokenDescriptor,

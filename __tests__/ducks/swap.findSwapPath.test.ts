@@ -263,6 +263,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     const state = useSwapStore.getState();
     expect(state.pathResult).toBeNull();
     expect(state.pathError).toBe("swapScreen.errors.noPathFound");
+    expect(state.pathErrorReason).toBe("noRoute");
     expect(state.pathErrorQuoteKey).toBe(swapQuoteKey(inputs("10")));
     expect(state.swapQuotes).toEqual(quotes);
   });
@@ -301,6 +302,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(useSwapStore.getState().pathError).toBe(
       "swapScreen.errors.noPathFound",
     );
+    expect(useSwapStore.getState().pathErrorReason).toBe("noRoute");
     // Bad input is the user's state, not something to page on.
     expect(logger.error).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalled();
@@ -316,6 +318,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
       const state = useSwapStore.getState();
       expect(state.pathResult).toBeNull();
       expect(state.pathError).toBe("swapScreen.errors.swapsUnavailable");
+      expect(state.pathErrorReason).toBe("unavailable");
       expect(state.pathErrorQuoteKey).toBe(swapQuoteKey(inputs("10")));
     },
   );
@@ -446,6 +449,7 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
       const state = useSwapStore.getState();
       expect(state.pathResult).toBeNull();
       expect(state.pathError).toBe("swapScreen.errors.swapsUnavailable");
+      expect(state.pathErrorReason).toBe("unavailable");
       expect(logger.error).toHaveBeenCalled();
     },
   );
@@ -466,6 +470,38 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
       expect(logger.error).not.toHaveBeenCalled();
     },
   );
+
+  it("clears the error reason when the next quote starts and on clearPath", async () => {
+    mockFetchSwapQuotes.mockRejectedValueOnce(apiError(400));
+    await find("10");
+    expect(useSwapStore.getState().pathErrorReason).toBe("noRoute");
+
+    let resolveNext: (q: SwapQuotes) => void = () => {};
+    mockFetchSwapQuotes.mockImplementationOnce(
+      () =>
+        new Promise<SwapQuotes>((resolve) => {
+          resolveNext = resolve;
+        }),
+    );
+    const next = find("11");
+    expect(useSwapStore.getState().pathErrorReason).toBeNull();
+    resolveNext({ routes: [], unavailable: [] });
+    await next;
+    expect(useSwapStore.getState().pathErrorReason).toBe("noRoute");
+
+    useSwapStore.getState().clearPath();
+    expect(useSwapStore.getState().pathErrorReason).toBeNull();
+  });
+
+  it("has no error reason for a failure that is not a quote failure", async () => {
+    mockFetchSwapQuotes.mockRejectedValue(new Error("boom"));
+
+    await find();
+
+    const state = useSwapStore.getState();
+    expect(state.pathError).not.toBeNull();
+    expect(state.pathErrorReason).toBeNull();
+  });
 
   it("ignores an in-flight response after resetSwap", async () => {
     let resolveFirst: (q: SwapQuotes) => void = () => {};

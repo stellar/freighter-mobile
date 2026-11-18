@@ -78,6 +78,7 @@ const baseProps: HookProps = {
   spendableAmount: STABLE_SPENDABLE,
   sourceTokenSymbol: "USDC",
   pathError: null,
+  pathErrorReason: null,
   pathResult: null,
   destinationTokenDescriptor: baseDestinationDescriptor,
 };
@@ -281,24 +282,26 @@ describe("useSwapAmountError", () => {
 
     // The amount screen renders these two as a persistent "Quote unavailable"
     // row with its own sheet; a toast on top would say the same thing twice.
-    it.each([
-      "swapScreen.errors.noPathFound",
-      "swapScreen.errors.swapsUnavailable",
-    ])("does NOT toast %s, which the screen shows inline", (key) => {
-      renderHook(() =>
-        useSwapAmountError({
-          ...baseProps,
-          pathError: `${key}::{}`,
-        }),
-      );
+    it.each(["noRoute", "unavailable"] as const)(
+      "does NOT toast a %s error, which the screen shows inline",
+      (reason) => {
+        renderHook(() =>
+          useSwapAmountError({
+            ...baseProps,
+            // Translated before a language switch: the reason still decides.
+            pathError: "Texto en otro idioma",
+            pathErrorReason: reason,
+          }),
+        );
 
-      const pathErrorCalls = mockShowToast.mock.calls.filter(
-        ([arg]) =>
-          (arg as { toastId?: string }).toastId ===
-          SWAP_TOAST_IDS.SWAP_PATH_ERROR,
-      );
-      expect(pathErrorCalls.length).toBe(0);
-    });
+        const pathErrorCalls = mockShowToast.mock.calls.filter(
+          ([arg]) =>
+            (arg as { toastId?: string }).toastId ===
+            SWAP_TOAST_IDS.SWAP_PATH_ERROR,
+        );
+        expect(pathErrorCalls.length).toBe(0);
+      },
+    );
 
     it("dismisses the path-error toast when a subsequent pathResult arrives without a pathError", () => {
       const initialProps: HookProps = {
