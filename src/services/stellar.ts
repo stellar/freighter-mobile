@@ -26,6 +26,7 @@ import {
 import { formatTokenIdentifier } from "helpers/balances";
 import { stroopToXlm, xlmToStroop } from "helpers/formatAmount";
 import { getIsSwap } from "helpers/history";
+import { isHorizonNotFoundError } from "helpers/horizonErrors";
 
 // Retry configuration for transaction submission
 export const SUBMIT_BACKOFF_MAX_ATTEMPTS = 5;
@@ -312,6 +313,32 @@ export const getAccount = async (
     return account;
   } catch (error) {
     return null;
+  }
+};
+
+/**
+ * Whether an account exists on the network. Only a 404 reads as unfunded;
+ * any other failure (a 429, a 5xx, a dropped connection) rejects, so the
+ * caller can tell "not funded" apart from "couldn't check".
+ *
+ * @param {string} publicKey - The account to look up
+ * @param {NETWORKS} network - The network to look it up on
+ * @returns {Promise<boolean>} True if the account exists
+ */
+export const isAccountFunded = async (
+  publicKey: string,
+  network: NETWORKS,
+): Promise<boolean> => {
+  const { networkUrl } = mapNetworkToNetworkDetails(network);
+  const server = stellarSdkServer(networkUrl);
+  try {
+    await server.loadAccount(publicKey);
+    return true;
+  } catch (error) {
+    if (isHorizonNotFoundError(error)) {
+      return false;
+    }
+    throw error;
   }
 };
 

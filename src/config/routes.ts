@@ -106,6 +106,7 @@ export const MANAGE_WALLETS_ROUTES = {
   BACKUP_RECOVERY_PHRASE_SCREEN: "BackupRecoveryPhraseScreen",
   VERIFY_PASSWORD_SCREEN: "VerifyPasswordScreen",
   IMPORT_SECRET_KEY_SCREEN: "ImportSecretKeyScreen",
+  IMPORT_RECOVERY_PHRASE_SCREEN: "ImportRecoveryPhraseScreen",
 } as const;
 
 export const ADD_FUNDS_ROUTES = {
@@ -234,12 +235,14 @@ export type SettingsStackParamList = {
 
 /**
  * What the password step creates once it's confirmed: an account under an
- * existing phrase, or the first account of the phrase the backup step showed.
- * The new phrase itself never travels in params; the auth store holds it.
+ * existing phrase, the first account of the phrase the backup step showed,
+ * or the accounts of a phrase the user typed. A phrase itself never travels
+ * in params; the auth store holds it.
  */
 export type CreateWalletTarget =
   | { kind: "existingPhrase"; sourceId: string; accountName: string }
-  | { kind: "newPhrase"; pendingPhraseId: string; accountName: string };
+  | { kind: "newPhrase"; pendingPhraseId: string; accountName: string }
+  | { kind: "importPhrase"; pendingPhraseId: string };
 
 export type ManageWalletsStackParamList = {
   [MANAGE_WALLETS_ROUTES.ADD_ANOTHER_WALLET_SCREEN]: undefined;
@@ -251,6 +254,7 @@ export type ManageWalletsStackParamList = {
   };
   [MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN]: CreateWalletTarget;
   [MANAGE_WALLETS_ROUTES.IMPORT_SECRET_KEY_SCREEN]: undefined;
+  [MANAGE_WALLETS_ROUTES.IMPORT_RECOVERY_PHRASE_SCREEN]: undefined;
 };
 
 export type AddFundsStackParamList = {

@@ -2,6 +2,7 @@ import { Federation as StellarFederation, StrKey } from "@stellar/stellar-sdk";
 import { STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
+import { isHorizonNotFoundError } from "helpers/horizonErrors";
 import { isContractDestination } from "helpers/muxedContract";
 import {
   getBaseAccount,
@@ -302,21 +303,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
           isFunded = !!account;
         }
       } catch (error: unknown) {
-        let isNotFoundError = false;
-
-        if (
-          typeof error === "object" &&
-          error !== null &&
-          "response" in error &&
-          typeof error.response === "object" &&
-          error.response !== null &&
-          "status" in error.response &&
-          (error.response as { status: number }).status === 404
-        ) {
-          isNotFoundError = true;
-        }
-
-        if (isNotFoundError) {
+        if (isHorizonNotFoundError(error)) {
           isFunded = false;
         } else {
           logger.error("[sendRecipient]", "Account lookup failed:", error);
