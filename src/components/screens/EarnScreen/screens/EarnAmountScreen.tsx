@@ -640,15 +640,19 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   // stays the only way to sign, as in Send and Swap. On a Malicious or
   // Suspicious verdict it confirms, matching Review's own "Confirm anyway".
   const handleConfirmAnywayFromSecuritySheet = useCallback(() => {
-    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
     if (
       transactionSecurityAssessment.isUnableToScan &&
       !transactionSecurityAssessment.isMalicious &&
       !transactionSecurityAssessment.isSuspicious
     ) {
+      transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
       return;
     }
+    // Review first, then the sheet over it. Closing this sheet first would
+    // bring Review back, and gorhom ignores Review's own dismiss while that
+    // happens, leaving Review over the processing step.
     earnReviewBottomSheetModalRef.current?.dismiss();
+    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
     handleConfirmDeposit();
   }, [handleConfirmDeposit, transactionSecurityAssessment]);
 

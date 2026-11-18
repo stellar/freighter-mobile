@@ -1310,6 +1310,16 @@ describe("EarnAmountScreen", () => {
       pressSecuritySheetContinue();
 
       expect(mockSubmitEarnTransaction).toHaveBeenCalledTimes(1);
+      // Review goes first: closing this sheet first brings Review back, and
+      // gorhom ignores Review's own dismiss while that happens, which left
+      // Review open under the processing step.
+      const [, reviewSheet, , securitySheet] =
+        // eslint-disable-next-line no-underscore-dangle
+        globalThis.__earnAmountMockSheetRefs;
+      expect(reviewSheet.dismiss).toHaveBeenCalledTimes(1);
+      expect(reviewSheet.dismiss.mock.invocationCallOrder[0]).toBeLessThan(
+        securitySheet.dismiss.mock.invocationCallOrder[0],
+      );
     });
   });
 });

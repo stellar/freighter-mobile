@@ -840,6 +840,17 @@ describe("EarnTokenPickerScreen", () => {
       });
 
       expect(executeSwap).toHaveBeenCalledTimes(1);
+      // Review goes before the sheet over it: closing the sheet first brings
+      // Review back, and gorhom ignores Review's own dismiss while that
+      // happens, which left Review under the processing sheet.
+      const review = // eslint-disable-next-line no-underscore-dangle
+        globalThis.__earnTokenPickerMockSheets.find(
+          ({ props }) => props.analyticsEvent === "swap_confirm",
+        );
+      expect(review?.ref.dismiss).toHaveBeenCalled();
+      expect(review!.ref.dismiss.mock.invocationCallOrder[0]).toBeLessThan(
+        security!.ref.dismiss.mock.invocationCallOrder[0],
+      );
     });
   });
 

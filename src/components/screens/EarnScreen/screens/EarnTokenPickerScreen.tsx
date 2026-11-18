@@ -672,12 +672,15 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // Malicious or Suspicious verdict it confirms, as Review's own "Confirm
   // anyway" does. The same as main Swap.
   const handleSwapProceedAnyway = useCallback(() => {
-    swapSecurityWarningBottomSheetModalRef.current?.dismiss();
     if (earnSwap.isUnableToScan) {
+      swapSecurityWarningBottomSheetModalRef.current?.dismiss();
       swapReviewBottomSheetModalRef.current?.present();
-    } else {
-      handleConfirmSwap();
+      return;
     }
+    // Confirm closes every swap sheet bottom-up, this one last. Closing it
+    // first would bring Review back, and gorhom ignores Review's own dismiss
+    // while that happens, leaving Review under the processing sheet.
+    handleConfirmSwap();
   }, [earnSwap.isUnableToScan, handleConfirmSwap]);
 
   // The review sheet's footer (settings / Cancel / Confirm) is NOT part of
