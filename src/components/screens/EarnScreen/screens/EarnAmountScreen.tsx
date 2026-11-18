@@ -20,7 +20,7 @@ import {
   UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
   getDepositDecimals,
   getEarnCtaState,
-  getPercentageDepositAmount,
+  getPercentageAmount,
   getXlmFeeShortfall,
   isInsufficientBalanceFailure,
   isOnrampableAsset,
@@ -403,8 +403,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         trackEarnMaxAmountSelected({ assetCode: tokenCode });
       }
 
-      const targetAmount = getPercentageDepositAmount({
-        maxDepositable: availableBalance,
+      const targetAmount = getPercentageAmount({
+        maxAmount: availableBalance,
         pct: percentage,
         decimals: depositDecimals ?? DEFAULT_DECIMALS,
       });

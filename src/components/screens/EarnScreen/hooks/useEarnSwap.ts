@@ -1,5 +1,8 @@
 import BigNumber from "bignumber.js";
-import { buildEarnSwapDestination } from "components/screens/EarnScreen/helpers";
+import {
+  buildEarnSwapDestination,
+  getPercentageAmount,
+} from "components/screens/EarnScreen/helpers";
 import { EarnTokenOption } from "components/screens/EarnScreen/hooks/useEarnTokens";
 import { getSwapSpendableAmount } from "components/screens/SwapScreen/helpers";
 import {
@@ -10,6 +13,7 @@ import {
   useSwapSecurityAssessments,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
+import { DEFAULT_DECIMALS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
@@ -356,8 +360,14 @@ export const useEarnSwap = ({
       if (!spendableAmount) {
         return;
       }
-      const next = spendableAmount.multipliedBy(percentage).dividedBy(100);
-      setTokenAmount(next.toFixed());
+      // Swap is classic-only, and classic assets carry 7 decimals.
+      setTokenAmount(
+        getPercentageAmount({
+          maxAmount: spendableAmount.toFixed(),
+          pct: percentage,
+          decimals: DEFAULT_DECIMALS,
+        }),
+      );
     },
     [spendableAmount, setTokenAmount],
   );

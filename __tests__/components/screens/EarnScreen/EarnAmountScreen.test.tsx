@@ -271,7 +271,7 @@ const makeRoute = () =>
 
 /**
  * Configures the two `calculateSpendableAmount` call sites EarnAmountScreen
- * makes: once for the deposit asset (drives `maxDepositable`) and once for
+ * makes: once for the deposit asset (drives the deposit maximum) and once for
  * XLM (drives the fee-headroom check). When the deposit asset IS XLM, both
  * calls target the same balance object, so `xlm` wins for both — matching
  * production, where there is only one balance to ask.

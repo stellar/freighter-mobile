@@ -8,7 +8,7 @@ import {
   getEarnCtaState,
   getNotEnoughVariant,
   getDepositDecimals,
-  getPercentageDepositAmount,
+  getPercentageAmount,
   getXlmFeeShortfall,
   hasSwappableBalance,
   isInsufficientBalanceFailure,
@@ -219,11 +219,30 @@ describe("getDepositDecimals", () => {
   });
 });
 
-describe("getPercentageDepositAmount", () => {
+describe("getPercentageAmount", () => {
+  // Classic assets carry 7 decimals and Stellar rejects any more, so a
+  // quarter of a 7-decimal balance has to be cut back to 7.
+  it("never returns more decimals than asked for", () => {
+    expect(
+      getPercentageAmount({
+        maxAmount: "9.4999801",
+        pct: 25,
+        decimals: 7,
+      }),
+    ).toBe("2.374995");
+    expect(
+      getPercentageAmount({
+        maxAmount: "9.4999801",
+        pct: 50,
+        decimals: 7,
+      }),
+    ).toBe("4.74999");
+  });
+
   it("treats the input as whole percents, not a multiplier", () => {
     expect(
-      getPercentageDepositAmount({
-        maxDepositable: "100",
+      getPercentageAmount({
+        maxAmount: "100",
         pct: 25,
         decimals: 7,
       }),
@@ -232,8 +251,8 @@ describe("getPercentageDepositAmount", () => {
 
   it("rounds down so Max never exceeds the spendable amount", () => {
     expect(
-      getPercentageDepositAmount({
-        maxDepositable: "10.9999999999",
+      getPercentageAmount({
+        maxAmount: "10.9999999999",
         pct: 100,
         decimals: 2,
       }),
