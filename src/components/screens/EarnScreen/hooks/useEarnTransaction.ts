@@ -148,7 +148,6 @@ export const useEarnTransaction = ({
     const depositIdentifiers = {
       assetCode: selectedAssetCode,
       poolId: pool?.id,
-      apy: selectedAssetApy,
     };
 
     setStatus("submitting");
@@ -200,8 +199,10 @@ export const useEarnTransaction = ({
         throw submitFailure;
       }
 
+      // Only the success carries the APY, as in the extension.
       analytics.trackEarnDepositSuccess({
         ...depositIdentifiers,
+        apy: selectedAssetApy,
         viaSwap: didSwapInFlow,
       });
 

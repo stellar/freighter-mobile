@@ -9,7 +9,10 @@ import {
   trackEarnTokenSelected,
   trackEarnXlmFeeInsufficientShown,
 } from "services/analytics/earn";
-import { trackEarnDepositSuccess } from "services/analytics/transactions";
+import {
+  trackEarnDepositFail,
+  trackEarnDepositSuccess,
+} from "services/analytics/transactions";
 
 jest.mock("services/analytics/core", () => ({
   track: jest.fn(),
@@ -127,6 +130,21 @@ describe("Earn funnel events", () => {
       asset_code: "USDC",
       pool_id: POOL_ID,
     });
+  });
+
+  // The token, the pool and why; no APY, as in the extension.
+  it("earn.deposit_failed", () => {
+    trackEarnDepositFail({
+      assetCode: "USDC",
+      poolId: POOL_ID,
+      errorCode: "op_underfunded",
+    });
+    expect(track).toHaveBeenCalledWith("earn.deposit_failed", {
+      asset_code: "USDC",
+      pool_id: POOL_ID,
+      reason_code: "op_underfunded",
+    });
+    expect(track.mock.calls[0][1]).not.toHaveProperty("apy");
   });
 
   it("earn.deposit_completed says whether a swap came first", () => {

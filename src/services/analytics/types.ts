@@ -144,6 +144,5 @@ export interface EarnDepositSuccessEvent {
 export interface EarnDepositErrorEvent {
   assetCode: string;
   poolId?: string;
-  apy?: number | null;
   errorCode?: string;
 }

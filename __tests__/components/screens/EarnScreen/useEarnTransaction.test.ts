@@ -214,13 +214,13 @@ describe("useEarnTransaction", () => {
     expect(result.current.transactionHash).toBeNull();
     expect(mockSetSubmitFailed).toHaveBeenCalledWith(true);
 
-    // earn.deposit_failed carries the same identifiers plus reason_code --
+    // earn.deposit_failed carries the token and the pool plus reason_code --
     // sourced from this attempt's own submit outcome, never the free-text
-    // error message, and no amount/fiat value.
+    // error message, and no amount/fiat value. No APY either, as in the
+    // extension.
     expect(mockTrackEarnDepositFail).toHaveBeenCalledWith({
       assetCode: "USDC",
       poolId: "pool-1",
-      apy: 0.05,
       errorCode: "op_underfunded",
     });
     expect(mockTrackEarnDepositSuccess).not.toHaveBeenCalled();

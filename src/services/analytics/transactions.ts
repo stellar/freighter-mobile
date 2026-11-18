@@ -484,15 +484,14 @@ export const trackEarnDepositSuccess = (
   });
 };
 
-// earn.deposit_failed carries the same identifiers plus reason_code. Like
-// trackTransactionError, reason_code is the machine-readable Horizon result
-// code (falling back to "unknown") -- never the free-text error message, to
-// avoid unbounded reason_code cardinality.
+// earn.deposit_failed carries asset_code + pool_id plus reason_code, without
+// the APY, as in the extension. Like trackTransactionError, reason_code is the
+// machine-readable Horizon result code (falling back to "unknown") -- never
+// the free-text error message, to avoid unbounded reason_code cardinality.
 export const trackEarnDepositFail = (data: EarnDepositErrorEvent): void => {
   track(AnalyticsEvent.EARN_DEPOSIT_FAIL, {
     asset_code: data.assetCode,
     pool_id: data.poolId,
-    apy: data.apy,
     reason_code: data.errorCode ?? "unknown",
   });
 };
