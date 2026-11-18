@@ -23,13 +23,15 @@ export const swapRouteIntermediateAssets = (route: SwapRoute): string[] =>
 
 const OUTAGE_REASONS = ["error", "timeout", "rate_limited"];
 
+export type SwapQuoteErrorReason = "unavailable" | "noRoute";
+
 /**
  * Why `selectSwapRoute` found nothing: an outage of the source it selects, or
  * a pair that source can't quote. Change with `selectSwapRoute`.
  */
 export const missingSwapRouteReason = (
   quotes: SwapQuotes,
-): "unavailable" | "noRoute" => {
+): SwapQuoteErrorReason => {
   const classic = quotes.unavailable.find((u) => u.source === "classic");
   return classic && OUTAGE_REASONS.includes(classic.reason)
     ? "unavailable"
@@ -44,7 +46,7 @@ export const missingSwapRouteReason = (
  */
 export const swapQuoteErrorReason = (
   error: unknown,
-): "unavailable" | "noRoute" | null => {
+): SwapQuoteErrorReason | null => {
   if (error instanceof Error && error.name === "SwapQuotesResponseError") {
     return "unavailable";
   }

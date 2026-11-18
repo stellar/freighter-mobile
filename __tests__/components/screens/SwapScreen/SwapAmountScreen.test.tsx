@@ -115,6 +115,7 @@ type SwapStoreState = {
   pathResult: null | { destinationAmount: string; quoteKey: string };
   isLoadingPath: boolean;
   pathError: string | null;
+  pathErrorReason?: "unavailable" | "noRoute" | null;
   pathErrorQuoteKey?: string | null;
   setSourceToken: jest.Mock;
   setDestinationToken: jest.Mock;
@@ -1953,6 +1954,9 @@ describe("SwapAmountScreen", () => {
     // A failed quote for the current inputs (swapQuoteKey is mocked).
     const failed = (pathError: string) => ({
       pathError,
+      pathErrorReason: (pathError === UNAVAILABLE
+        ? "unavailable"
+        : "noRoute") as "unavailable" | "noRoute",
       pathErrorQuoteKey: "quote-key",
     });
     const renderScreen = () =>
@@ -1971,6 +1975,17 @@ describe("SwapAmountScreen", () => {
 
     it("shows when the source is unavailable", () => {
       setSwapStoreState({ ...failed(UNAVAILABLE) });
+      const { getByTestId } = renderScreen();
+
+      expect(getByTestId("swap-quote-unavailable")).toBeTruthy();
+    });
+
+    it("shows by the stored reason, not the error text", () => {
+      // The text was translated in another language before a switch.
+      setSwapStoreState({
+        ...failed(NO_ROUTE),
+        pathError: "No se encontró una ruta",
+      });
       const { getByTestId } = renderScreen();
 
       expect(getByTestId("swap-quote-unavailable")).toBeTruthy();

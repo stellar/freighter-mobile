@@ -26,5 +26,6 @@ export {
   missingSwapRouteReason,
   selectSwapRoute,
   swapQuoteErrorReason,
+  type SwapQuoteErrorReason,
   swapRouteIntermediateAssets,
 } from "./selectSwapRoute";
