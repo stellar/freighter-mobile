@@ -766,4 +766,34 @@ describe("EarnTokenPickerScreen", () => {
       expect(reviewSheet?.ref.present).not.toHaveBeenCalled();
     });
   });
+
+  // As on main Swap: leaving the Earn swap's Review without confirming is
+  // reported as a rejection.
+  describe("leaving the Earn swap's Review", () => {
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+    });
+
+    it("reports a rejection", () => {
+      const { analytics: mockAnalytics } =
+        jest.requireMock("services/analytics");
+      renderScreen();
+      // eslint-disable-next-line no-underscore-dangle
+      const sheets = globalThis.__earnTokenPickerMockSheets;
+      const reviewSheet = sheets.find(
+        ({ props }) => props.analyticsEvent === "earn_swap_review",
+      );
+      const { onDismiss } = reviewSheet?.props.bottomSheetModalProps as {
+        onDismiss: () => void;
+      };
+
+      act(() => {
+        onDismiss();
+      });
+
+      expect(
+        mockAnalytics.trackInternalSignedTransactionRejected,
+      ).toHaveBeenCalledTimes(1);
+    });
+  });
 });

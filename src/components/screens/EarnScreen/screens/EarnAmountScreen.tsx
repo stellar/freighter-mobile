@@ -84,6 +84,7 @@ import React, {
   useState,
 } from "react";
 import { BackHandler, Keyboard, TextInput, View } from "react-native";
+import { analytics } from "services/analytics";
 import {
   trackEarnDepositDismissed,
   trackEarnMaxAmountSelected,
@@ -432,9 +433,24 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     [],
   );
 
+  // True once the user confirms the deposit, so Review closing for the
+  // submit isn't reported as a rejection. Reset each time Review opens.
+  const hasApprovedDepositRef = useRef(false);
+
   const openReviewSheet = useCallback(() => {
+    hasApprovedDepositRef.current = false;
     presentOverDismissedKeyboard(earnReviewBottomSheetModalRef);
   }, [presentOverDismissedKeyboard]);
+
+  // Leaving Review without confirming is reported as a rejection, as Send and
+  // Swap report it. Keyed on the dismissal, since Cancel, a swipe down and a
+  // tap on the backdrop all close the sheet.
+  const handleReviewDismiss = useCallback(() => {
+    if (hasApprovedDepositRef.current) {
+      return;
+    }
+    analytics.trackInternalSignedTransactionRejected();
+  }, []);
 
   // The pool card is the only route into `PoolDetailsBottomSheet`.
   const handleOpenPoolDetails = useCallback(() => {
@@ -523,6 +539,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     if (isSimulating || isBuildingNow || !transactionXDR) {
       return;
     }
+    hasApprovedDepositRef.current = true;
     submitEarnTransaction();
   }, [submitEarnTransaction, isSimulating]);
 
@@ -938,6 +955,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       <BottomSheet
         modalRef={earnReviewBottomSheetModalRef}
         analyticsEvent={AnalyticsEvent.VIEW_EARN_REVIEW}
+        bottomSheetModalProps={{ onDismiss: handleReviewDismiss }}
         customContent={
           <EarnReviewBottomSheet
             bottomSheetModalRef={earnReviewBottomSheetModalRef}

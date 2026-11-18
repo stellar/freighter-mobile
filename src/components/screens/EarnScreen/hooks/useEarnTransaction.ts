@@ -175,8 +175,14 @@ export const useEarnTransaction = ({
       if (!signedXDR) {
         // Read the real reason off the store rather than inventing one.
         const { error: signingError } = useTransactionBuilderStore.getState();
+        // The signing action failed after the user approved at Review: a
+        // fault, not a decision. Reported as Send and Swap report it.
+        analytics.trackInternalSignedTransactionError(signingError);
         throw new Error(signingError || "Failed to sign transaction");
       }
+
+      // A signature exists, so the signing action succeeded.
+      analytics.trackInternalSignedTransaction();
 
       // submitTransaction throws only for the debug forced-failure override;
       // otherwise it resolves with this attempt's own outcome. Read the

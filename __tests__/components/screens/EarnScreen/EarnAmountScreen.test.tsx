@@ -6,6 +6,7 @@ import { AmountCard } from "components/AmountCard";
 import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
 import { UNKNOWN_RESOURCE_FEE_FLOOR_XLM } from "components/screens/EarnScreen/helpers";
 import EarnAmountScreen from "components/screens/EarnScreen/screens/EarnAmountScreen";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { BLEND_FIXED_POOL_IDS } from "config/blend";
 import { NETWORKS } from "config/constants";
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
@@ -45,11 +46,15 @@ declare global {
   var __earnAmountMockSheetRefs: SheetRefSpy[];
   // eslint-disable-next-line @typescript-eslint/no-namespace, vars-on-top, no-var, no-underscore-dangle, @typescript-eslint/naming-convention
   var __earnAmountMockSheetContents: React.ReactElement[];
+  // eslint-disable-next-line @typescript-eslint/no-namespace, vars-on-top, no-var, no-underscore-dangle, @typescript-eslint/naming-convention
+  var __earnAmountMockSheetProps: Record<string, unknown>[];
 }
 // eslint-disable-next-line no-underscore-dangle
 globalThis.__earnAmountMockSheetRefs = [];
 // eslint-disable-next-line no-underscore-dangle
 globalThis.__earnAmountMockSheetContents = [];
+// eslint-disable-next-line no-underscore-dangle
+globalThis.__earnAmountMockSheetProps = [];
 
 jest.mock("components/BottomSheet", () => {
   /* eslint-disable global-require, @typescript-eslint/no-var-requires, @typescript-eslint/no-shadow */
@@ -68,6 +73,8 @@ jest.mock("components/BottomSheet", () => {
       globalThis.__earnAmountMockSheetRefs.push(spy);
       return spy;
     }, []);
+    // eslint-disable-next-line no-underscore-dangle
+    globalThis.__earnAmountMockSheetProps.push(props);
     // Recorded, not rendered, so a test can call a child sheet's handlers.
     if (customContent) {
       // eslint-disable-next-line no-underscore-dangle
@@ -312,6 +319,8 @@ describe("EarnAmountScreen", () => {
     globalThis.__earnAmountMockSheetRefs = [];
     // eslint-disable-next-line no-underscore-dangle
     globalThis.__earnAmountMockSheetContents = [];
+    // eslint-disable-next-line no-underscore-dangle
+    globalThis.__earnAmountMockSheetProps = [];
     mockTransactionAssessment = {
       isMalicious: false,
       isSuspicious: false,
@@ -868,6 +877,60 @@ describe("EarnAmountScreen", () => {
           severity: "warning",
         },
       ]);
+    });
+  });
+
+  // As on Send and Swap: leaving Review without confirming is reported as a
+  // rejection, whichever way the sheet closed; a confirmed deposit isn't.
+  describe("leaving Review", () => {
+    const { analytics: mockAnalytics } = jest.requireMock("services/analytics");
+    const reviewSheetDismiss = () => {
+      // eslint-disable-next-line no-underscore-dangle
+      const allProps = [...globalThis.__earnAmountMockSheetProps];
+      const reviewProps = allProps
+        .reverse()
+        .find(
+          (props) => props.analyticsEvent === AnalyticsEvent.VIEW_EARN_REVIEW,
+        ) as { bottomSheetModalProps?: { onDismiss?: () => void } };
+      return reviewProps.bottomSheetModalProps?.onDismiss;
+    };
+
+    it("reports a rejection when Review closes without a confirm", () => {
+      renderScreen();
+
+      act(() => {
+        reviewSheetDismiss()?.();
+      });
+
+      expect(
+        mockAnalytics.trackInternalSignedTransactionRejected,
+      ).toHaveBeenCalledTimes(1);
+    });
+
+    it("doesn't report a confirmed deposit as a rejection", () => {
+      useTransactionBuilderStore.setState({
+        transactionXDR: "prepared-xdr",
+        isBuilding: false,
+      });
+      renderScreen();
+      // eslint-disable-next-line no-underscore-dangle
+      const review = [...globalThis.__earnAmountMockSheetContents]
+        .reverse()
+        // Review is the only sheet with `isRebuilding`; the settings sheet
+        // has an `onConfirm` too.
+        .find((content) => "isRebuilding" in (content.props as object)) as
+        | React.ReactElement<{ onConfirm: () => void }>
+        | undefined;
+
+      act(() => {
+        review?.props.onConfirm();
+        reviewSheetDismiss()?.();
+      });
+
+      expect(mockSubmitEarnTransaction).toHaveBeenCalled();
+      expect(
+        mockAnalytics.trackInternalSignedTransactionRejected,
+      ).not.toHaveBeenCalled();
     });
   });
 

@@ -49,12 +49,18 @@ jest.mock("hooks/useGetActiveAccount", () => ({
   isWalletUnlocked: () => mockIsWalletUnlocked(),
 }));
 
+const mockTrackInternalSignedTransaction = jest.fn();
+const mockTrackInternalSignedTransactionError = jest.fn();
 jest.mock("services/analytics", () => ({
   analytics: {
     trackEarnDepositSuccess: (...args: unknown[]) =>
       mockTrackEarnDepositSuccess(...args),
     trackEarnDepositFail: (...args: unknown[]) =>
       mockTrackEarnDepositFail(...args),
+    trackInternalSignedTransaction: (...args: unknown[]) =>
+      mockTrackInternalSignedTransaction(...args),
+    trackInternalSignedTransactionError: (...args: unknown[]) =>
+      mockTrackInternalSignedTransactionError(...args),
   },
 }));
 
@@ -280,6 +286,39 @@ describe("useEarnTransaction", () => {
   // otherwise it can corrupt a completely unrelated LATER Earn session's
   // retry banner. `abandon()` is what `handleCloseEarnProcessingWhileSubmitting`
   // calls before navigating Home mid-submit.
+  // The signing events Send and Swap report, so the signing funnel covers
+  // deposits too.
+  describe("signing events", () => {
+    it("reports a signature", async () => {
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(
+        submitOutcome({ hash: "tx-hash" }),
+      );
+      const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.submit();
+      });
+
+      expect(mockTrackInternalSignedTransaction).toHaveBeenCalledTimes(1);
+      expect(mockTrackInternalSignedTransactionError).not.toHaveBeenCalled();
+    });
+
+    it("reports a failed signature with the store's reason", async () => {
+      mockSignTransaction.mockReturnValue(null);
+      const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.submit();
+      });
+
+      expect(mockTrackInternalSignedTransactionError).toHaveBeenCalledWith(
+        "Store error message",
+      );
+      expect(mockTrackInternalSignedTransaction).not.toHaveBeenCalled();
+    });
+  });
+
   describe("abandonment guard", () => {
     it("does NOT call setSubmitFailed or write status when a submit resolves successfully AFTER being abandoned", async () => {
       mockGetEarnState.mockReturnValue({

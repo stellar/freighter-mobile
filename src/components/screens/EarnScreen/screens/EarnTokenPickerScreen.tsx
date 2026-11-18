@@ -101,6 +101,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { analytics } from "services/analytics";
 import {
   trackEarnBalanceInsufficientShown,
   trackEarnFundingActionSelected,
@@ -335,6 +336,19 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // As in main Swap, a transaction or token Blockaid couldn't scan shows the
   // security sheet first; its Continue opens Review. The gate reads the
   // fresh transaction scan, not the lagging render state.
+  // True once the user confirms the swap, so its Review closing for the
+  // submit isn't reported as a rejection. Reset each time Review opens.
+  const hasApprovedSwapRef = useRef(false);
+
+  // Leaving the swap's Review without confirming is reported as a rejection,
+  // as main Swap reports it, whichever way the sheet closed.
+  const handleSwapReviewDismiss = useCallback(() => {
+    if (hasApprovedSwapRef.current) {
+      return;
+    }
+    analytics.trackInternalSignedTransactionRejected();
+  }, []);
+
   const handleSwapReview = useCallback(async () => {
     // Only a swap whose quote is ready is built, as on main Swap. Before the
     // quote arrives the button is live but there is nothing to build, and
@@ -351,6 +365,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
         return;
       }
       Keyboard.dismiss();
+      hasApprovedSwapRef.current = false;
       const isTransactionUnableToScan = assessTransactionSecurity(
         setup?.scanResult,
         overriddenBlockaidResponse,
@@ -561,6 +576,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // component unmounting -- the same reason `SwapAmountScreen` calls
   // `executeSwap` bare rather than awaiting it.
   const handleConfirmSwap = useCallback(() => {
+    hasApprovedSwapRef.current = true;
     dismissSwapSheets();
     earnSwap.executeSwap();
     swapProcessingBottomSheetModalRef.current?.present();
@@ -1013,6 +1029,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
         modalRef={swapReviewBottomSheetModalRef}
         scrollable
         analyticsEvent={AnalyticsEvent.VIEW_EARN_SWAP_REVIEW}
+        bottomSheetModalProps={{ onDismiss: handleSwapReviewDismiss }}
         scrollViewFooterComponent={renderSwapReviewFooter}
         customContent={
           <SwapReviewBottomSheet
