@@ -1,16 +1,11 @@
-import Blockaid from "@blockaid/client";
 import BigNumber from "bignumber.js";
 import { MINIMUM_CREATE_ACCOUNT_XLM } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { isContractDestination } from "helpers/muxedContract";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useMemo } from "react";
-import { SecurityLevel } from "services/blockaid/constants";
 import {
-  assessTransactionSecurity,
-  extractSecurityWarnings,
   isUnfundedDestinationError,
-  type SecurityWarning,
   type UnfundedDestinationContext,
 } from "services/blockaid/helper";
 
@@ -84,82 +79,9 @@ export function buildUnfundedContext({
   };
 }
 
-function getTransactionSecurityWarnings(
-  assessment: ReturnType<typeof assessTransactionSecurity>,
-  scanResult: Blockaid.StellarTransactionScanResponse | undefined,
-  unfundedContext?: UnfundedDestinationContext,
-): SecurityWarning[] {
-  if (assessment.isUnableToScan) {
-    return [
-      {
-        id: "unable-to-scan",
-        description: assessment.details || "Unable to scan transaction",
-        severity: "warning",
-      },
-    ];
-  }
-
-  if (
-    assessment.isMalicious ||
-    assessment.isSuspicious ||
-    assessment.isExpectedToFail
-  ) {
-    const warnings = extractSecurityWarnings(scanResult, unfundedContext);
-
-    if (Array.isArray(warnings) && warnings.length > 0) {
-      return warnings;
-    }
-  }
-
-  return [];
-}
-
-function getTransactionSecuritySeverity(
-  assessment: ReturnType<typeof assessTransactionSecurity>,
-): Exclude<SecurityLevel, SecurityLevel.SAFE> | undefined {
-  if (assessment.isExpectedToFail) return SecurityLevel.EXPECTED_TO_FAIL;
-  if (assessment.isMalicious) return SecurityLevel.MALICIOUS;
-  if (assessment.isSuspicious) return SecurityLevel.SUSPICIOUS;
-  if (assessment.isUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
-
-  return undefined;
-}
-
-/**
- * Function for getting transaction security assessment
- * Can be called at runtime with scanResult as parameter
- *
- * @param scanResult - The Blockaid scan result
- * @param overriddenBlockaidResponse - Optional override for debugging
- * @param unfundedContext - Optional context for unfunded destination detection
- */
-export function getTransactionSecurity(
-  scanResult: Blockaid.StellarTransactionScanResponse | undefined,
-  overriddenBlockaidResponse?: SecurityLevel | null,
-  unfundedContext?: UnfundedDestinationContext,
-) {
-  const transactionSecurityAssessment = assessTransactionSecurity(
-    scanResult,
-    overriddenBlockaidResponse,
-    unfundedContext,
-  );
-
-  const transactionSecurityWarnings = getTransactionSecurityWarnings(
-    transactionSecurityAssessment,
-    scanResult,
-    unfundedContext,
-  );
-
-  const transactionSecuritySeverity = getTransactionSecuritySeverity(
-    transactionSecurityAssessment,
-  );
-
-  return {
-    transactionSecurityAssessment,
-    transactionSecurityWarnings,
-    transactionSecuritySeverity,
-  };
-}
+// Shared with Earn from services/blockaid/transactionSecurity; re-exported
+// here for Send's existing imports.
+export { getTransactionSecurity } from "services/blockaid/transactionSecurity";
 
 export interface BannerContent {
   text: string;

@@ -91,11 +91,7 @@ import {
   trackEarnSimulationFailed,
   trackEarnXlmFeeInsufficientShown,
 } from "services/analytics/earn";
-import { SecurityLevel } from "services/blockaid/constants";
-import {
-  assessTransactionSecurity,
-  extractSecurityWarnings,
-} from "services/blockaid/helper";
+import { getTransactionSecurity } from "services/blockaid/transactionSecurity";
 
 const SIMULATE_FAILED_TOAST_ID = "earn-simulate-failed";
 const FEE_SHORTFALL_TOAST_ID = "earn-fee-shortfall";
@@ -308,28 +304,16 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   // scan itself was unavailable (e.g. testnet, where Blockaid throws
   // NETWORK_NOT_SUPPORTED) — `assessTransactionSecurity` already treats both
   // the same way: "unable to scan", never a clean bill of health.
-  const transactionSecurityAssessment = useMemo(
-    () => assessTransactionSecurity(scanResult, overriddenBlockaidResponse),
+  // The same assessment, warnings and severity Send shows: a deposit Blockaid
+  // couldn't scan lists an "Unable to scan" reason rather than none.
+  const {
+    transactionSecurityAssessment,
+    transactionSecurityWarnings: securityWarnings,
+    transactionSecuritySeverity: earnSecuritySeverity,
+  } = useMemo(
+    () => getTransactionSecurity(scanResult, overriddenBlockaidResponse),
     [scanResult, overriddenBlockaidResponse],
   );
-
-  const securityWarnings = useMemo(
-    () => extractSecurityWarnings(scanResult),
-    [scanResult],
-  );
-
-  const earnSecuritySeverity = useMemo(() => {
-    if (transactionSecurityAssessment.isMalicious) {
-      return SecurityLevel.MALICIOUS;
-    }
-    if (transactionSecurityAssessment.isSuspicious) {
-      return SecurityLevel.SUSPICIOUS;
-    }
-    if (transactionSecurityAssessment.isUnableToScan) {
-      return SecurityLevel.UNABLE_TO_SCAN;
-    }
-    return undefined;
-  }, [transactionSecurityAssessment]);
 
   // Surface the pool's own rejection (supply cap, frozen pool, stale oracle)
   // reactively off the hook's error state — mirrors the established

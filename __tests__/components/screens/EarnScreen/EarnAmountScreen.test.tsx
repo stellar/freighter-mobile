@@ -842,6 +842,35 @@ describe("EarnAmountScreen", () => {
     });
   });
 
+  // When Blockaid can't scan the deposit (every testnet deposit), the sheet
+  // has to say so, as Send's does, instead of listing nothing.
+  describe("the security sheet", () => {
+    it("says the deposit couldn't be scanned, as Send's does", () => {
+      mockTransactionAssessment = {
+        isMalicious: false,
+        isSuspicious: false,
+        isUnableToScan: true,
+      };
+
+      renderScreen();
+
+      // eslint-disable-next-line no-underscore-dangle
+      const contents = [...globalThis.__earnAmountMockSheetContents];
+      const securitySheet = contents
+        .reverse()
+        .find((content) => "onProceedAnyway" in (content.props as object)) as
+        | React.ReactElement<{ warnings: unknown[] }>
+        | undefined;
+      expect(securitySheet?.props.warnings).toEqual([
+        {
+          id: "unable-to-scan",
+          description: "Unable to scan transaction",
+          severity: "warning",
+        },
+      ]);
+    });
+  });
+
   describe("error toasts", () => {
     const rerenderScreen = (rerender: (element: React.ReactElement) => void) =>
       rerender(
