@@ -41,6 +41,10 @@ import { useOpenBlendApp } from "components/screens/EarnScreen/hooks/useOpenBlen
 // import cycle.
 import { EarnIntroScreen } from "components/screens/EarnScreen/screens/EarnIntroScreen";
 import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
+import {
+  buildSellSecondaryText,
+  buildSourceBalanceRight,
+} from "components/screens/SwapScreen/helpers";
 import { SWAP_TOAST_IDS } from "components/screens/SwapScreen/hooks/useSwapAmountError";
 import { useSwapFooter } from "components/screens/SwapScreen/hooks/useSwapFooter";
 import { Button } from "components/sds/Button";
@@ -73,12 +77,7 @@ import { useTokenIconsStore } from "ducks/tokenIcons";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, getTokenIdentifier } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
-import {
-  formatBalanceAmount,
-  formatFiatAmount,
-  formatFiatInputDisplay,
-  formatTokenForDisplay,
-} from "helpers/formatAmount";
+import { formatFiatAmount, formatTokenForDisplay } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HeldBalanceItem } from "hooks/useBalancesList";
@@ -262,25 +261,32 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
 
   // "1,691.69 XLM available" on the sell card. Null hides the line, matching
   // `AmountCard`'s own contract.
-  const earnSwapAvailableText = useMemo(() => {
-    if (!earnSwap.sourceBalance || !earnSwap.spendableAmount) {
-      return null;
-    }
-    return `${formatBalanceAmount(
+  const earnSwapAvailableText = useMemo(
+    () =>
+      earnSwap.spendableAmount
+        ? buildSourceBalanceRight({
+            sourceBalance: earnSwap.sourceBalance,
+            sourceTokenSymbol: earnSwap.sourceTokenSymbol,
+            spendableAmount: earnSwap.spendableAmount,
+            availableLabel: t("common.available"),
+          }) || null
+        : null,
+    [
       earnSwap.sourceBalance,
-      earnSwap.sourceBalance.tokenCode ?? "",
+      earnSwap.sourceTokenSymbol,
       earnSwap.spendableAmount,
-    )} ${t("common.available")}`;
-  }, [earnSwap.sourceBalance, earnSwap.spendableAmount, t]);
+      t,
+    ],
+  );
 
   // The sell card's second line: the amount's other unit, as on the deposit
   // screen.
-  const earnSwapSourceSecondaryText = earnSwap.converter.showFiatAmount
-    ? formatTokenForDisplay(
-        earnSwap.converter.tokenAmount || "0",
-        earnSwap.sourceTokenSymbol,
-      )
-    : formatFiatInputDisplay(earnSwap.converter.fiatAmountDisplay || "0");
+  const earnSwapSourceSecondaryText = buildSellSecondaryText({
+    showFiatAmount: earnSwap.converter.showFiatAmount,
+    tokenAmount: earnSwap.converter.tokenAmount,
+    sourceTokenSymbol: earnSwap.sourceTokenSymbol,
+    fiatAmountDisplay: earnSwap.converter.fiatAmountDisplay,
+  });
 
   // The receive card's fiat line, priced by the pool catalog: the account
   // doesn't hold the destination yet, so there is no balance price for it.

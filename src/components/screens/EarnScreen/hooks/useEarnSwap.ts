@@ -4,7 +4,10 @@ import {
   getPercentageAmount,
 } from "components/screens/EarnScreen/helpers";
 import { EarnTokenOption } from "components/screens/EarnScreen/hooks/useEarnTokens";
-import { getSwapSpendableAmount } from "components/screens/SwapScreen/helpers";
+import {
+  getSwapSpendableAmount,
+  isClassicTokenType,
+} from "components/screens/SwapScreen/helpers";
 import {
   useSwapAmountError,
   useSwapBalances,
@@ -31,17 +34,6 @@ import {
   assessTokenSecurity,
   extractSecurityWarnings,
 } from "services/blockaid/helper";
-
-/**
- * Token types `pathPaymentStrictSend` can spend. Soroban/custom tokens and
- * liquidity-pool shares are excluded: Swap is classic-only, so neither is a
- * viable source however large the balance.
- */
-const SWAPPABLE_SOURCE_TYPES = new Set<TokenTypeWithCustomToken>([
-  TokenTypeWithCustomToken.NATIVE,
-  TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-  TokenTypeWithCustomToken.CREDIT_ALPHANUM12,
-]);
 
 export interface UseEarnSwapParams {
   /**
@@ -143,8 +135,9 @@ export const useEarnSwap = ({
         if (!new BigNumber(item.total ?? 0).gt(0)) {
           return false;
         }
-        // `tokenType` is the discriminant `HeldBalanceItem` actually carries.
-        return SWAPPABLE_SOURCE_TYPES.has(item.tokenType);
+        // `pathPaymentStrictSend` spends only classic tokens: Soroban tokens
+        // and liquidity-pool shares can't be a source however large.
+        return isClassicTokenType(item.tokenType);
       }),
     [balanceItems, destination],
   );

@@ -73,6 +73,7 @@ import {
 } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
+import useBackHandler from "hooks/useBackHandler";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
@@ -85,7 +86,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { BackHandler, Keyboard, TextInput, View } from "react-native";
+import { Keyboard, TextInput, View } from "react-native";
 import { analytics } from "services/analytics";
 import {
   trackEarnDepositDismissed,
@@ -626,16 +627,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   useEffect(() => {
     navigation.setOptions({ gestureEnabled: !isSubmittingDeposit });
   }, [navigation, isSubmittingDeposit]);
-  useEffect(() => {
-    if (!isSubmittingDeposit) {
-      return undefined;
-    }
-    const subscription = BackHandler.addEventListener(
-      "hardwareBackPress",
-      () => true,
-    );
-    return () => subscription.remove();
-  }, [isSubmittingDeposit]);
+  useBackHandler(() => true, isSubmittingDeposit);
 
   const handleCancelSecurityWarning = useCallback(() => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();

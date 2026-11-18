@@ -217,6 +217,13 @@ describe("getDepositDecimals", () => {
         total: new BigNumber(1),
       } as never),
     ).toBeNull();
+    expect(
+      getDepositDecimals({
+        contractId: "CTOKEN",
+        decimals: 6.5,
+        total: new BigNumber(1),
+      } as never),
+    ).toBeNull();
   });
 });
 

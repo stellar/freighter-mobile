@@ -1,6 +1,7 @@
 import BigNumber from "bignumber.js";
 import { DEFAULT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
+import { hasDecimals } from "helpers/formatAmount";
 
 /**
  * The amount a percentage button commits, on the deposit screen and in the
@@ -45,13 +46,10 @@ export const getDepositDecimals = (
   if (!balance) {
     return null;
   }
-  if ("decimals" in balance) {
-    const { decimals } = balance;
-    return typeof decimals === "number" &&
-      Number.isInteger(decimals) &&
-      decimals >= 0
-      ? decimals
-      : null;
+  if (!("decimals" in balance)) {
+    return DEFAULT_DECIMALS;
   }
-  return DEFAULT_DECIMALS;
+  return hasDecimals(balance) && Number.isInteger(balance.decimals)
+    ? balance.decimals
+    : null;
 };

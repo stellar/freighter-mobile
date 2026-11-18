@@ -640,6 +640,80 @@ describe("EarnTokenPickerScreen", () => {
     });
   });
 
+  // The sell card reads like main Swap's: the spendable balance, and the
+  // amount in the other unit.
+  describe("the Earn swap's sell card", () => {
+    const { useBalancesList: mockUseBalancesList } = jest.requireMock(
+      "hooks/useBalancesList",
+    );
+    const defaultBalancesList = mockUseBalancesList.getMockImplementation();
+
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+      mockUseBalancesList.mockReturnValue({
+        balanceItems: [
+          {
+            id: "native",
+            tokenType: "native",
+            token: { type: "native", code: "XLM" },
+            tokenCode: "XLM",
+            total: new BigNumber("100"),
+            available: new BigNumber("100"),
+            minimumBalance: new BigNumber("1"),
+          },
+        ],
+        hiddenBalanceItems: [],
+        scanResults: {},
+      });
+    });
+
+    afterEach(() => {
+      mockUseBalancesList.mockImplementation(defaultBalancesList);
+    });
+
+    it("shows the spendable XLM and the amount in the other unit", () => {
+      mockUseEarnTokens.supported = [
+        {
+          ...makeOption("EURC"),
+          canonicalId:
+            "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+        },
+      ];
+      const { getByTestId } = renderScreen();
+      fireEvent.press(getByTestId("earn-token-option-EURC"));
+      // eslint-disable-next-line no-underscore-dangle
+      const sheets = globalThis.__earnTokenPickerMockSheets;
+      const findByContent = (type: unknown) =>
+        sheets.find(
+          ({ props }) =>
+            (props.customContent as React.ReactElement | undefined)?.type ===
+            type,
+        );
+      act(() => {
+        (
+          findByContent(NotEnoughTokenBottomSheet)?.props
+            .customContent as React.ReactElement<{ onSwap: () => void }>
+        ).props.onSwap();
+      });
+
+      const { availableBalanceText, sourceSecondaryText } = (
+        findByContent(EarnSwapBottomSheet)?.props
+          .customContent as React.ReactElement<{
+          availableBalanceText: string | null;
+          sourceSecondaryText: string;
+        }>
+      ).props;
+
+      // 100 XLM, less the 1 XLM minimum balance, the 0.5 XLM the EURC
+      // trustline locks and the swap fee.
+      expect(availableBalanceText).toBe(
+        `${formatTokenForDisplay("98.49754", "XLM")} common.available`,
+      );
+      // No amount typed yet, in token mode: its fiat value.
+      expect(sourceSecondaryText).toBe("$0.00");
+    });
+  });
+
   // "Swap from" sits over the swap sheet. Its X leaves the swap entirely, so
   // the swap sheet underneath has to go first: gorhom restores it as soon
   // as the top sheet starts closing and ignores a dismiss in between.
