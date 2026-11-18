@@ -1,9 +1,9 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import blendIcon from "assets/logos/blend-icon.png";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { TokenIcon } from "components/TokenIcon";
+import { BlendPoolIcon } from "components/screens/EarnScreen/components/BlendPoolIcon";
 import {
   EarnDetailsCard,
   EarnDetailsRow,
@@ -40,7 +40,7 @@ import {
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useCallback, useMemo, useRef } from "react";
-import { Image, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import type { SecurityAssessment } from "services/blockaid/types";
 
 export interface EarnReviewBottomSheetProps {
@@ -304,12 +304,7 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
               </View>
 
               <View className="w-full flex-row items-center gap-[16px]">
-                <Image
-                  source={blendIcon}
-                  className="size-[40px] rounded-[4px]"
-                  resizeMode="cover"
-                  accessibilityIgnoresInvertColors
-                />
+                <BlendPoolIcon className="size-[40px] rounded-[4px]" />
                 <View className="flex-1">
                   <Text sm medium secondary>
                     {t("earnReview.to")}

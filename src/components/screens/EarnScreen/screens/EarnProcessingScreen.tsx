@@ -1,10 +1,10 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useNavigation } from "@react-navigation/native";
-import blendIcon from "assets/logos/blend-icon.png";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { TokenIcon } from "components/TokenIcon";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { BlendPoolIcon } from "components/screens/EarnScreen/components/BlendPoolIcon";
 import { EarnDepositDetailsBottomSheet } from "components/screens/EarnScreen/components/EarnDepositDetailsBottomSheet";
 import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
 import { EarnTransactionStatus } from "components/screens/EarnScreen/hooks/useEarnTransaction";
@@ -28,7 +28,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { Image, View } from "react-native";
+import { View } from "react-native";
 import { track } from "services/analytics/core";
 
 /**
@@ -219,12 +219,7 @@ const EarnProcessingScreen: React.FC<EarnProcessingScreenProps> = ({
                   size={16}
                   color={themeColors.foreground.primary}
                 />
-                <Image
-                  source={blendIcon}
-                  className="size-[40px] rounded-[10px]"
-                  resizeMode="cover"
-                  accessibilityIgnoresInvertColors
-                />
+                <BlendPoolIcon className="size-[40px] rounded-[10px]" />
               </View>
 
               <Text

@@ -1,7 +1,7 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import blendIcon from "assets/logos/blend-icon.png";
 import { BottomSheetCloseButton } from "components/BottomSheetHeader";
 import { TokenIcon } from "components/TokenIcon";
+import { BlendPoolIcon } from "components/screens/EarnScreen/components/BlendPoolIcon";
 import {
   EarnDetailsCard,
   EarnDetailsRow,
@@ -11,18 +11,15 @@ import {
   formatRate,
 } from "components/screens/EarnScreen/helpers";
 import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
+import { useOpenBlendApp } from "components/screens/EarnScreen/hooks/useOpenBlendApp";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { getBlendAppUrl } from "config/blend";
 import { BlendCatalogPool } from "config/blendTypes";
-import { logger } from "config/logger";
 import { Balance, Token } from "config/types";
-import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import { useInAppBrowser } from "hooks/useInAppBrowser";
-import React, { useCallback } from "react";
-import { Image, TouchableOpacity, View } from "react-native";
+import React from "react";
+import { TouchableOpacity, View } from "react-native";
 
 export interface PoolDetailsBottomSheetProps {
   pool: BlendCatalogPool | null;
@@ -70,18 +67,12 @@ export const PoolDetailsBottomSheet: React.FC<PoolDetailsBottomSheetProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { open: openInAppBrowser } = useInAppBrowser();
-  const { network } = useAuthenticationStore();
 
   const handleClose = () => {
     bottomSheetModalRef?.current?.dismiss();
   };
 
-  const handleViewPoolDetails = useCallback(() => {
-    openInAppBrowser(getBlendAppUrl(network)).catch((err) =>
-      logger.error("PoolDetailsBottomSheet", "Failed to open Blend", err),
-    );
-  }, [openInAppBrowser, network]);
+  const handleViewPoolDetails = useOpenBlendApp();
 
   // Guards a race where the sheet is presented before (or after) the pool
   // has resolved. The wrapping BottomSheet keeps working; there's simply
@@ -129,12 +120,9 @@ export const PoolDetailsBottomSheet: React.FC<PoolDetailsBottomSheetProps> = ({
       <View className="flex-row items-start justify-between">
         <View className="flex-1 flex-row items-center gap-[12px]">
           <View style={{ width: POOL_ICON_SIZE, height: POOL_ICON_SIZE }}>
-            <Image
-              source={blendIcon}
+            <BlendPoolIcon
               className="rounded-full"
               style={{ width: POOL_ICON_SIZE, height: POOL_ICON_SIZE }}
-              resizeMode="cover"
-              accessibilityIgnoresInvertColors
               testID="pool-details-pool-icon"
             />
             {token && (

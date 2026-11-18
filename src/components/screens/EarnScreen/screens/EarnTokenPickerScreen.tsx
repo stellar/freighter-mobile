@@ -1,13 +1,13 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import blendIcon from "assets/logos/blend-icon.png";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { BlendPoolIcon } from "components/screens/EarnScreen/components/BlendPoolIcon";
 import { EarnScreenHeader } from "components/screens/EarnScreen/components/EarnScreenHeader";
 import { EarnSwapBottomSheet } from "components/screens/EarnScreen/components/EarnSwapBottomSheet";
 import { EarnSwapFromBottomSheet } from "components/screens/EarnScreen/components/EarnSwapFromBottomSheet";
@@ -20,6 +20,7 @@ import { EarnTokenRow } from "components/screens/EarnScreen/components/EarnToken
 import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
 import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
 import {
+  EARN_TOAST_IDS,
   NotEnoughVariant,
   getEarnOptionToken,
   getNotEnoughVariant,
@@ -34,6 +35,7 @@ import {
   EarnTokenOption,
   useEarnTokens,
 } from "components/screens/EarnScreen/hooks/useEarnTokens";
+import { useOpenBlendApp } from "components/screens/EarnScreen/hooks/useOpenBlendApp";
 // Imported by module path rather than through `screens/index.ts`: this file is
 // itself re-exported from that barrel, so going through it would close an
 // import cycle.
@@ -45,7 +47,6 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { getBlendAppUrl } from "config/blend";
 import {
   DEFAULT_PADDING,
   MIN_TRANSACTION_FEE,
@@ -83,7 +84,6 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { HeldBalanceItem } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useToast } from "providers/ToastProvider";
 import React, {
@@ -93,13 +93,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  Image,
-  Keyboard,
-  ScrollView,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Keyboard, ScrollView, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { analytics } from "services/analytics";
 import {
@@ -123,7 +117,6 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   const { themeColors } = useColors();
   const { isLoading, error, held, supported, pool, refetch } = useEarnTokens();
   const insets = useSafeAreaInsets();
-  const { open: openInAppBrowser } = useInAppBrowser();
   const { overriddenBlockaidResponse } = useDebugStore();
   const { recommendedFee } = useNetworkFees();
   const { account } = useGetActiveAccount();
@@ -234,7 +227,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
             swapOption.code,
           ),
         }),
-        toastId: "earn-swap-complete",
+        toastId: EARN_TOAST_IDS.SWAP_COMPLETE,
       });
     }
 
@@ -705,11 +698,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // `PoolCard` chevron instead (mirroring the extension's
   // `EarnAmount/PoolCard.tsx`'s `onOpenDetails`) — see `EarnAmountScreen`.
 
-  const handlePoolChipPress = useCallback(() => {
-    openInAppBrowser(getBlendAppUrl(network)).catch((err) =>
-      logger.error("EarnTokenPickerScreen", "Failed to open Blend", err),
-    );
-  }, [openInAppBrowser, network]);
+  const handlePoolChipPress = useOpenBlendApp();
 
   // XLM's total includes the minimum balance the account can't spend, so
   // its row shows what the deposit screen will offer: the same calculation
@@ -892,12 +881,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
                 testID="earn-token-picker-pool-chip"
               >
                 <View className="flex-row items-center gap-[4px]">
-                  <Image
-                    source={blendIcon}
-                    className="size-[16px] rounded-[4px]"
-                    resizeMode="cover"
-                    accessibilityIgnoresInvertColors
-                  />
+                  <BlendPoolIcon className="size-[16px] rounded-[4px]" />
                   <Text md medium primary>
                     {poolLabel}
                   </Text>

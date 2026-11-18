@@ -1,4 +1,5 @@
 import { BlendCatalogPool } from "config/blendTypes";
+import { DEFAULT_DECIMALS } from "config/constants";
 import { create } from "zustand";
 
 /**
@@ -66,7 +67,7 @@ const initialState = {
   selectedAssetId: "",
   selectedAssetApy: null,
   selectedAssetCode: "",
-  selectedAssetDecimals: 7,
+  selectedAssetDecimals: DEFAULT_DECIMALS,
   currentPositionTokens: "0",
   lastSubmitFailed: false,
   didSwapInFlow: false,

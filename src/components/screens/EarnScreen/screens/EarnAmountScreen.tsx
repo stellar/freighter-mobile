@@ -17,6 +17,7 @@ import { PoolCard } from "components/screens/EarnScreen/components/PoolCard";
 import { PoolDetailsBottomSheet } from "components/screens/EarnScreen/components/PoolDetailsBottomSheet";
 import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
 import {
+  EARN_TOAST_IDS,
   NotEnoughVariant,
   UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
   getDepositDecimals,
@@ -94,10 +95,6 @@ import {
   trackEarnXlmFeeInsufficientShown,
 } from "services/analytics/earn";
 import { getTransactionSecurity } from "services/blockaid/transactionSecurity";
-
-const SIMULATE_FAILED_TOAST_ID = "earn-simulate-failed";
-const FEE_SHORTFALL_TOAST_ID = "earn-fee-shortfall";
-const INSUFFICIENT_BALANCE_TOAST_ID = "earn-insufficient-balance";
 
 /** The network fee is paid in XLM, so the fee sheet shows XLM's icon. */
 const NATIVE_TOKEN = {
@@ -259,7 +256,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     if (!isAmountTooHigh) {
       if (isInsufficientBalanceToastShownRef.current) {
         isInsufficientBalanceToastShownRef.current = false;
-        dismissToast(INSUFFICIENT_BALANCE_TOAST_ID);
+        dismissToast(EARN_TOAST_IDS.INSUFFICIENT_BALANCE);
       }
       return;
     }
@@ -272,7 +269,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         }),
         symbol: tokenCode,
       }),
-      toastId: INSUFFICIENT_BALANCE_TOAST_ID,
+      toastId: EARN_TOAST_IDS.INSUFFICIENT_BALANCE,
       duration: 3000,
     });
   }, [
@@ -355,7 +352,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       showToast({
         variant: "error",
         title,
-        toastId: SIMULATE_FAILED_TOAST_ID,
+        toastId: EARN_TOAST_IDS.SIMULATE_FAILED,
         duration: 0,
       });
     }
@@ -365,8 +362,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   // about the amount that was just tried, so editing it, or leaving the
   // screen, takes them down.
   const dismissAmountErrorToasts = useCallback(() => {
-    dismissToast(SIMULATE_FAILED_TOAST_ID);
-    dismissToast(FEE_SHORTFALL_TOAST_ID);
+    dismissToast(EARN_TOAST_IDS.SIMULATE_FAILED);
+    dismissToast(EARN_TOAST_IDS.FEE_SHORTFALL);
   }, [dismissToast]);
   useEffect(() => dismissAmountErrorToasts, [dismissAmountErrorToasts]);
 
@@ -779,7 +776,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
           title: t("earnAmount.errors.feeShortfall", {
             amount: formatTokenForDisplay(shortfall),
           }),
-          toastId: FEE_SHORTFALL_TOAST_ID,
+          toastId: EARN_TOAST_IDS.FEE_SHORTFALL,
           duration: 0,
         });
       } else {

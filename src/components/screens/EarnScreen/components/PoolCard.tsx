@@ -1,4 +1,4 @@
-import blendIcon from "assets/logos/blend-icon.png";
+import { BlendPoolIcon } from "components/screens/EarnScreen/components/BlendPoolIcon";
 import { formatRate } from "components/screens/EarnScreen/helpers";
 import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
 import Icon from "components/sds/Icon";
@@ -7,7 +7,7 @@ import { BlendCatalogPool } from "config/blendTypes";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { Image, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
 export interface PoolCardProps {
   pool: BlendCatalogPool | null;
@@ -65,12 +65,7 @@ export const PoolCard: React.FC<PoolCardProps> = ({
         accessibilityLabel={t("earnAmount.poolCard.accessibilityLabel")}
       >
         <View className="flex-1 flex-row items-center gap-[16px]">
-          <Image
-            source={blendIcon}
-            className="size-[40px] rounded-full"
-            resizeMode="cover"
-            accessibilityIgnoresInvertColors
-          />
+          <BlendPoolIcon className="size-[40px] rounded-full" />
           <View className="flex-1">
             {pool.name && (
               <Text md medium primary numberOfLines={1}>

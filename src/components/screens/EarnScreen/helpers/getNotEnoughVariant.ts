@@ -1,5 +1,11 @@
 import BigNumber from "bignumber.js";
-import { BASE_RESERVE, NetworkDetails, NETWORKS } from "config/constants";
+import {
+  BASE_RESERVE,
+  NATIVE_TOKEN_CODE,
+  NetworkDetails,
+  NETWORKS,
+  USDC_CODE,
+} from "config/constants";
 import { PricedBalanceMap } from "config/types";
 import { isNativeToken } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
@@ -11,7 +17,7 @@ import { calculateSpendableAmount } from "helpers/balances";
  * dead-end page rather than an error. EURC is deliberately absent — it is not
  * Coinbase-listed, which is why the designs show no Buy button on its sheet.
  */
-export const EARN_ONRAMP_ASSETS = new Set(["XLM", "USDC"]);
+export const EARN_ONRAMP_ASSETS = new Set([NATIVE_TOKEN_CODE, USDC_CODE]);
 
 /**
  * Which button set the "Not enough X" sheet shows.
