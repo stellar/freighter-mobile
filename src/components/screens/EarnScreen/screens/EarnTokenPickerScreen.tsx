@@ -656,14 +656,18 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     receiveFundsBottomSheetModalRef.current?.present();
   }, [notEnoughOption]);
 
-  // Back returns to the "not enough" sheet underneath; X closes both.
+  // Back returns to the "not enough" sheet underneath; X closes both, back
+  // to the picker. The sheet underneath goes first: gorhom restores it as
+  // soon as the top sheet starts closing and ignores a dismiss that arrives
+  // in between, so closing Receive first left "not enough" open, as if X
+  // were the back arrow.
   const handleReceiveBack = useCallback(() => {
     receiveFundsBottomSheetModalRef.current?.dismiss();
   }, []);
 
   const handleReceiveClose = useCallback(() => {
-    receiveFundsBottomSheetModalRef.current?.dismiss();
     handleCloseNotEnoughSheet();
+    receiveFundsBottomSheetModalRef.current?.dismiss();
   }, [handleCloseNotEnoughSheet]);
 
   // There used to be a header-right info button here that opened

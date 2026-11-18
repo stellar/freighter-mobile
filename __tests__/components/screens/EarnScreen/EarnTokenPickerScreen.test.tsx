@@ -3,6 +3,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { act, fireEvent } from "@testing-library/react-native";
 import { EarnSwapFromBottomSheet } from "components/screens/EarnScreen/components/EarnSwapFromBottomSheet";
 import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
+import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
 import EarnTokenPickerScreen from "components/screens/EarnScreen/screens/EarnTokenPickerScreen";
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { usePreferencesStore } from "ducks/preferences";
@@ -520,6 +521,61 @@ describe("EarnTokenPickerScreen", () => {
         network: "TESTNET",
       });
       useTokenIconsStore.setState({ fetchIconUrl: original });
+    });
+  });
+
+  // The Receive sheet sits over the "Not enough" sheet. Its X closes both,
+  // its back arrow only itself. gorhom restores the sheet underneath as soon
+  // as the top one starts closing, and ignores a dismiss that arrives in
+  // between, so the lower sheet has to go first.
+  describe("the Receive sheet over the Not enough sheet", () => {
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+    });
+
+    const findSheet = (type: unknown) =>
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__earnTokenPickerMockSheets.find(
+        ({ props }) =>
+          (props.customContent as React.ReactElement | undefined)?.type ===
+          type,
+      );
+
+    it("closes both with X, the sheet underneath first", () => {
+      renderScreen();
+      const notEnough = findSheet(NotEnoughTokenBottomSheet);
+      const receive = findSheet(ReceiveFundsBottomSheet);
+
+      act(() => {
+        (
+          receive?.props.customContent as React.ReactElement<{
+            onClose: () => void;
+          }>
+        ).props.onClose();
+      });
+
+      expect(notEnough?.ref.dismiss).toHaveBeenCalledTimes(1);
+      expect(receive?.ref.dismiss).toHaveBeenCalledTimes(1);
+      expect(notEnough!.ref.dismiss.mock.invocationCallOrder[0]).toBeLessThan(
+        receive!.ref.dismiss.mock.invocationCallOrder[0],
+      );
+    });
+
+    it("closes only itself with the back arrow", () => {
+      renderScreen();
+      const notEnough = findSheet(NotEnoughTokenBottomSheet);
+      const receive = findSheet(ReceiveFundsBottomSheet);
+
+      act(() => {
+        (
+          receive?.props.customContent as React.ReactElement<{
+            onBack: () => void;
+          }>
+        ).props.onBack();
+      });
+
+      expect(receive?.ref.dismiss).toHaveBeenCalledTimes(1);
+      expect(notEnough?.ref.dismiss).not.toHaveBeenCalled();
     });
   });
 });

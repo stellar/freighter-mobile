@@ -3,6 +3,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { act, fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import { AmountCard } from "components/AmountCard";
+import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
 import { UNKNOWN_RESOURCE_FEE_FLOOR_XLM } from "components/screens/EarnScreen/helpers";
 import EarnAmountScreen from "components/screens/EarnScreen/screens/EarnAmountScreen";
 import { BLEND_FIXED_POOL_IDS } from "config/blend";
@@ -808,6 +809,36 @@ describe("EarnAmountScreen", () => {
         { asset_code: "USDC", pool_id: POOL_ID },
       );
       expect(mockAbandonEarnTransaction).toHaveBeenCalled();
+    });
+  });
+
+  // The Receive sheet sits over the "You need XLM to pay fees" sheet. Its X
+  // closes both, the fee sheet first: gorhom restores the sheet underneath
+  // as soon as the top one starts closing, and ignores a dismiss that
+  // arrives in between.
+  describe("the Receive sheet over the XLM fee sheet", () => {
+    it("closes both with X, the sheet underneath first", () => {
+      renderScreen();
+      // eslint-disable-next-line no-underscore-dangle
+      const refs = globalThis.__earnAmountMockSheetRefs;
+      const [feeSheet] = refs;
+      const receiveSheet = refs[refs.length - 1];
+      // eslint-disable-next-line no-underscore-dangle
+      const receive = [...globalThis.__earnAmountMockSheetContents]
+        .reverse()
+        .find((content) => content.type === ReceiveFundsBottomSheet) as
+        | React.ReactElement<{ onClose: () => void }>
+        | undefined;
+
+      act(() => {
+        receive?.props.onClose();
+      });
+
+      expect(feeSheet.dismiss).toHaveBeenCalledTimes(1);
+      expect(receiveSheet.dismiss).toHaveBeenCalledTimes(1);
+      expect(feeSheet.dismiss.mock.invocationCallOrder[0]).toBeLessThan(
+        receiveSheet.dismiss.mock.invocationCallOrder[0],
+      );
     });
   });
 

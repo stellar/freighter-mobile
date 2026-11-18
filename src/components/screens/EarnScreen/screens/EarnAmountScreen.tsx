@@ -833,9 +833,11 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     receiveFundsBottomSheetModalRef.current?.dismiss();
   }, []);
 
+  // The fee sheet underneath goes first: gorhom restores it as soon as the
+  // top sheet starts closing and ignores a dismiss that arrives in between.
   const handleReceiveXlmClose = useCallback(() => {
-    receiveFundsBottomSheetModalRef.current?.dismiss();
     networkFeeBottomSheetModalRef.current?.dismiss();
+    receiveFundsBottomSheetModalRef.current?.dismiss();
   }, []);
 
   // "error" deliberately falls through to the normal amount screen below
