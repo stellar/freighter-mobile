@@ -834,7 +834,6 @@
   },
   "earnReceiveFunds": {
     "title": "Receber fundos",
-    "networkSupport": "Este endereço é compatível com a rede Stellar.",
     "copyAddress": "Copiar endereço"
   },
   "earnProcessing": {

@@ -62,7 +62,7 @@ export const ReceiveFundsBottomSheet: React.FC<
           <AccountQrCode publicKey={publicKey} size={RECEIVE_QR_SIZE} />
         </View>
         <Text md regular secondary textAlign="center">
-          {t("earnReceiveFunds.networkSupport")}
+          {t("scanReceiveScreen.receive.networkSupport")}
         </Text>
       </View>
 

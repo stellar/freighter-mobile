@@ -868,7 +868,6 @@
   },
   "earnReceiveFunds": {
     "title": "Receive funds",
-    "networkSupport": "This address supports Stellar network.",
     "copyAddress": "Copy address"
   },
   "earnProcessing": {

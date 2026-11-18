@@ -27,8 +27,8 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => {
     const translations: Record<string, string> = {
       "earnReceiveFunds.title": "Receive funds",
-      "earnReceiveFunds.networkSupport":
-        "This address supports Stellar network.",
+      "scanReceiveScreen.receive.networkSupport":
+        "This address supports the Stellar network.",
       "earnReceiveFunds.copyAddress": "Copy address",
     };
     return translations[key] || key;
@@ -55,7 +55,10 @@ describe("ReceiveFundsBottomSheet", () => {
 
     expect(getByText("Receive funds")).toBeTruthy();
     expect(getByTestId("receive-funds-qr")).toBeTruthy();
-    expect(getByText("This address supports Stellar network.")).toBeTruthy();
+    // The Receive tab's own sentence.
+    expect(
+      getByText("This address supports the Stellar network."),
+    ).toBeTruthy();
     expect(getByText("Copy address")).toBeTruthy();
     expect(queryByText("Account 1")).toBeNull();
   });
