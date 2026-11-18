@@ -18,6 +18,7 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 // mockBalances isn't typed as Balance[], so the token shapes below are cast
 // to line up with this predicate's signature.
 import { isNativeToken } from "helpers/assetIdentity";
+import * as keyboardHelpers from "helpers/keyboard";
 import { renderWithProviders } from "helpers/testUtils";
 import { useBalancesList } from "hooks/useBalancesList";
 import React, { act } from "react";
@@ -118,6 +119,7 @@ type SwapStoreState = {
   pathResult: null | { destinationAmount: string; quoteKey: string };
   isLoadingPath: boolean;
   pathError: string | null;
+  pathErrorReason?: "unavailable" | "noRoute" | null;
   pathErrorQuoteKey?: string | null;
   setSourceToken: jest.Mock;
   setDestinationToken: jest.Mock;
@@ -2135,6 +2137,9 @@ describe("SwapAmountScreen", () => {
     // A failed quote for the current inputs (swapQuoteKey is mocked).
     const failed = (pathError: string) => ({
       pathError,
+      pathErrorReason: (pathError === UNAVAILABLE
+        ? "unavailable"
+        : "noRoute") as "unavailable" | "noRoute",
       pathErrorQuoteKey: "quote-key",
     });
     const renderScreen = () =>
@@ -2153,6 +2158,17 @@ describe("SwapAmountScreen", () => {
 
     it("shows when the source is unavailable", () => {
       setSwapStoreState({ ...failed(UNAVAILABLE) });
+      const { getByTestId } = renderScreen();
+
+      expect(getByTestId("swap-quote-unavailable")).toBeTruthy();
+    });
+
+    it("shows by the stored reason, not the error text", () => {
+      // The text was translated in another language before a switch.
+      setSwapStoreState({
+        ...failed(NO_ROUTE),
+        pathError: "No se encontró una ruta",
+      });
       const { getByTestId } = renderScreen();
 
       expect(getByTestId("swap-quote-unavailable")).toBeTruthy();
@@ -2226,6 +2242,43 @@ describe("SwapAmountScreen", () => {
         "We couldn't get a quote for this swap right now. Try a different amount or token pair, or try again later.",
       );
     });
+    it("opens the explanation sheet only after the keyboard hides", async () => {
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      let hideKeyboard: () => void = () => {};
+      const waitSpy = jest
+        .spyOn(keyboardHelpers, "waitForKeyboardDismiss")
+        .mockImplementation(
+          () =>
+            new Promise<void>((resolve) => {
+              hideKeyboard = resolve;
+            }),
+        );
+      setSwapStoreState({ ...failed(NO_ROUTE) });
+      const { getByTestId } = renderScreen();
+
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-quote-unavailable"));
+        await Promise.resolve();
+      });
+      // eslint-disable-next-line no-underscore-dangle
+      const sheet = globalThis.__mockSheetRefs.find(
+        (spy) =>
+          (spy.customContent?.props as { title?: string } | undefined)
+            ?.title === "Quote unavailable",
+      );
+      expect(sheet?.present).not.toHaveBeenCalled();
+      // Capped, so the sheet still opens if the hide event never comes.
+      expect(waitSpy).toHaveBeenCalledWith(500);
+
+      await act(async () => {
+        hideKeyboard();
+        await Promise.resolve();
+      });
+      expect(sheet?.present).toHaveBeenCalledTimes(1);
+      waitSpy.mockRestore();
+    });
+
     it("is hidden while the error is for earlier inputs", () => {
       setSwapStoreState({
         pathError: NO_ROUTE,

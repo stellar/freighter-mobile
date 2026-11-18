@@ -7,13 +7,15 @@ export const selectSwapRoute = (quotes: SwapQuotes): SwapRoute | null =>
 
 const OUTAGE_REASONS = ["error", "timeout", "rate_limited"];
 
+export type SwapQuoteErrorReason = "unavailable" | "noRoute";
+
 /**
  * Why no source quoted. Only a classic outage reads as "unavailable": the
  * spec (§8) shows a LI.FI outage as "no quote" for pairs classic can't serve.
  */
 export const missingSwapRouteReason = (
   quotes: SwapQuotes,
-): "unavailable" | "noRoute" => {
+): SwapQuoteErrorReason => {
   const classic = quotes.unavailable.find((u) => u.source === "classic");
   return classic && OUTAGE_REASONS.includes(classic.reason)
     ? "unavailable"
@@ -28,7 +30,7 @@ export const missingSwapRouteReason = (
  */
 export const swapQuoteErrorReason = (
   error: unknown,
-): "unavailable" | "noRoute" | null => {
+): SwapQuoteErrorReason | null => {
   if (error instanceof Error && error.name === "SwapQuotesResponseError") {
     return "unavailable";
   }
