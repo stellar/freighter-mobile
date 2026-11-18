@@ -42,8 +42,7 @@ const STATUS_BLOCK_LIFT = 134;
 export interface EarnProcessingScreenProps {
   /**
    * Only "submitting" and "success" — there is no dedicated failure screen: on failure `EarnAmountScreen` returns
-   * automatically to the normal amount screen, where the retry banner
-   * (driven by the earn duck's `lastSubmitFailed`) takes over. Excluding
+   * automatically to the normal amount screen with an error toast. Excluding
    * "idle" and "error" here makes that illegal state unrepresentable rather
    * than relying on the caller to simply not pass them.
    */
@@ -64,9 +63,8 @@ export interface EarnProcessingScreenProps {
    * this screen (and the amount screen mounted underneath it) unmount. This
    * is intentional: the caller (`EarnAmountScreen`) marks the in-flight
    * submit abandoned via `useEarnTransaction`'s `abandon()` before
-   * navigating away, so when it eventually settles it skips every write —
-   * including the persisted `useEarnStore.setSubmitFailed` flag — meaning
-   * nothing surfaces here or corrupts a later Earn session's retry banner.
+   * navigating away, so when it eventually settles it skips every write,
+   * and nothing surfaces after the user has left.
    */
   onCloseWhileSubmitting: () => void;
   /** Success's "Done" action: resets the earn duck and returns Home. */

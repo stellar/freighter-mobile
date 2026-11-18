@@ -742,19 +742,22 @@ describe("EarnAmountScreen", () => {
       );
     });
 
-    it("keeps the pool's own rejection for a non-balance failure on an XLM deposit", () => {
+    // The pool's own error is for Sentry, not for the user.
+    it("says the pool can't take the deposit right now for any other rejection", () => {
       mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
       setSpendable({ deposit: "100", xlm: "100" });
-      mockSimulateError = "pool is frozen";
+      mockSimulateError = "HostError: Error(Contract, #1206)";
 
       renderScreen();
 
       expect(mockShowToast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "pool is frozen" }),
+        expect.objectContaining({
+          title: "earnAmount.errors.depositUnavailable",
+        }),
       );
     });
 
-    it("keeps the pool's own rejection for a non-XLM deposit even on a balance-shaped message", () => {
+    it("says the token's balance is too low on a non-XLM balance rejection", () => {
       // USDC is this suite's default deposit asset -- a fee-specific reword
       // would be wrong here since the fee comes from a separate XLM balance.
       mockSimulateError = "Error(Contract, #10)";
@@ -762,7 +765,9 @@ describe("EarnAmountScreen", () => {
       renderScreen();
 
       expect(mockShowToast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Error(Contract, #10)" }),
+        expect.objectContaining({
+          title: "earnAmount.errors.insufficientTokenBalance",
+        }),
       );
     });
 
@@ -1091,12 +1096,9 @@ describe("EarnAmountScreen", () => {
       expect(queryByTestId("earn-processing-mock")).toBeNull();
     });
 
-    // Design node `9599:40192` has no dedicated failure screen: on failure
-    // the user lands directly back on the amount screen, where the retry
-    // banner (driven by `lastSubmitFailed`, not by this local status) takes
-    // over. `handleEarnProcessingBackToAmount` used to be wired to a button
-    // on the now-removed failure screen; it is called automatically instead.
-    it("renders the normal amount screen (not the processing screen) when status is error, and resets the status automatically", () => {
+    // There is no failure screen: a failed deposit returns to the amount
+    // screen with an error toast, the app's pattern for errors.
+    it("returns to the amount screen with an error toast when the deposit fails", () => {
       mockEarnTransactionStatus = "error";
 
       const { getByTestId, queryByTestId } = renderScreen();
@@ -1104,32 +1106,26 @@ describe("EarnAmountScreen", () => {
       expect(getByTestId("earn-amount-screen")).toBeTruthy();
       expect(queryByTestId("earn-processing-mock")).toBeNull();
       expect(mockResetEarnTransactionStatus).toHaveBeenCalledTimes(1);
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "error",
+          title: "earnAmount.errors.depositFailed",
+          toastId: "earn-deposit-failed",
+        }),
+      );
     });
   });
 
-  describe("retry banner lifecycle", () => {
-    it("shows the retry banner when lastSubmitFailed is true, and clears it on an amount edit", () => {
-      useEarnStore.setState({ lastSubmitFailed: true });
+  describe("the failed-deposit toast", () => {
+    it("goes when the amount changes", () => {
+      const { rerender } = renderScreen();
 
-      const { getByText, queryByText, rerender } = renderScreen();
-
-      expect(getByText("earnAmount.retryBanner")).toBeTruthy();
-
-      // Simulate the user editing the amount: the tokenAmount the screen
-      // reads changes across a re-render of the SAME mounted instance.
       setTokenAmount("5");
       rerender(
         <EarnAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
 
-      expect(useEarnStore.getState().lastSubmitFailed).toBe(false);
-      expect(queryByText("earnAmount.retryBanner")).toBeNull();
-    });
-
-    it("does not show the retry banner when lastSubmitFailed is false", () => {
-      const { queryByText } = renderScreen();
-
-      expect(queryByText("earnAmount.retryBanner")).toBeNull();
+      expect(mockDismissToast).toHaveBeenCalledWith("earn-deposit-failed");
     });
   });
 

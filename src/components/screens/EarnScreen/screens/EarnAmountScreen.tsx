@@ -33,10 +33,6 @@ import { useEarnTransaction } from "components/screens/EarnScreen/hooks/useEarnT
 import { useSimulateEarnDeposit } from "components/screens/EarnScreen/hooks/useSimulateEarnDeposit";
 import { EarnProcessingScreen } from "components/screens/EarnScreen/screens";
 import { Button } from "components/sds/Button";
-import {
-  NoticeBanner,
-  NoticeBannerVariants,
-} from "components/sds/NoticeBanner";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
@@ -131,8 +127,6 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
 
   const pool = useEarnStore((state) => state.pool);
   const selectedAssetApy = useEarnStore((state) => state.selectedAssetApy);
-  const lastSubmitFailed = useEarnStore((state) => state.lastSubmitFailed);
-  const setSubmitFailed = useEarnStore((state) => state.setSubmitFailed);
   const resetEarn = useEarnStore((state) => state.resetEarn);
   const { overriddenBlockaidResponse } = useDebugStore();
 
@@ -341,15 +335,20 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         assetCode: tokenCode,
         message: simulateError,
       });
-      // A balance rejection on an XLM deposit is the fee, not the amount:
-      // the CTA already gates anything above the spendable balance, so
-      // what is left is a deposit that cannot also pay for itself. Every
-      // other rejection — supply cap, frozen pool, stale oracle — is the
-      // pool's own and reads better in its own words.
-      const title =
-        isXlm && isInsufficientBalanceFailure(simulateError)
+      // The raw error (a pool's host error, or a network failure) is already
+      // on Sentry (`useSimulateEarnDeposit` logs it); the user gets a plain
+      // reason instead. A balance rejection on an XLM deposit is the fee,
+      // not the amount: the CTA already gates anything above the spendable
+      // balance, so what is left is a deposit that cannot also pay for
+      // itself. On any other token it is that token's balance. Every other
+      // rejection — supply cap, frozen pool, stale oracle, network — is one
+      // to retry later.
+      let title = t("earnAmount.errors.depositUnavailable");
+      if (isInsufficientBalanceFailure(simulateError)) {
+        title = isXlm
           ? t("earnAmount.errors.insufficientBalanceForFee")
-          : simulateError;
+          : t("earnAmount.errors.insufficientTokenBalance", { tokenCode });
+      }
       showToast({
         variant: "error",
         title,
@@ -365,27 +364,19 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   const dismissAmountErrorToasts = useCallback(() => {
     dismissToast(EARN_TOAST_IDS.SIMULATE_FAILED);
     dismissToast(EARN_TOAST_IDS.FEE_SHORTFALL);
+    dismissToast(EARN_TOAST_IDS.DEPOSIT_FAILED);
   }, [dismissToast]);
   useEffect(() => dismissAmountErrorToasts, [dismissAmountErrorToasts]);
 
-  // Clear the "Transaction failed" retry banner once the user edits the
-  // amount — but not on mount, so a banner left over from a previous failed
-  // submit stays visible until an actual edit happens.
+  // Clear the error toasts once the user edits the amount — but not on
+  // mount.
   const previousTokenAmountRef = useRef(tokenAmount);
   useEffect(() => {
     if (tokenAmount !== previousTokenAmountRef.current) {
       previousTokenAmountRef.current = tokenAmount;
       dismissAmountErrorToasts();
-      if (lastSubmitFailed) {
-        setSubmitFailed(false);
-      }
     }
-  }, [
-    tokenAmount,
-    lastSubmitFailed,
-    setSubmitFailed,
-    dismissAmountErrorToasts,
-  ]);
+  }, [tokenAmount, dismissAmountErrorToasts]);
 
   const handlePercentagePress = useCallback(
     (percentage: number) => {
@@ -553,10 +544,9 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   // once this screen is gone — but closing does not just hope the abandoned
   // submit is harmless: `abandonEarnTransaction()` marks it so, and
   // `useEarnTransaction`'s request-id guard (see `abandon()`'s doc there)
-  // makes sure that when it eventually settles, it skips every write —
-  // including the persisted `setSubmitFailed` duck flag — so it cannot
-  // surface here OR corrupt a later Earn session's retry banner. This is
-  // intentional, matching the flow's spec, not an oversight.
+  // makes sure that when it eventually settles, it skips every write, so no
+  // failure toast surfaces after the user has left. This is intentional,
+  // matching the flow's spec, not an oversight.
   const handleCloseEarnProcessingWhileSubmitting = useCallback(() => {
     trackEarnDepositDismissed({
       assetCode: tokenCode,
@@ -578,8 +568,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     });
   }, [navigation, abandonEarnTransaction, tokenCode, pool?.id]);
 
-  // Success's "Done" action: clear the earn duck (pool/asset selection,
-  // lastSubmitFailed) now that the flow completed, then return Home.
+  // Success's "Done" action: clear the earn duck (pool/asset selection) now
+  // that the flow completed, then return Home.
   const handleEarnProcessingDone = useCallback(() => {
     resetEarn();
     navigation.reset({
@@ -597,27 +587,30 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     });
   }, [navigation, resetEarn]);
 
-  // Drop back to this screen (no navigation) — the retry banner shows
-  // because `lastSubmitFailed` was already set by the failed submit. There is
-  // no dedicated failure screen to trigger this from a button -- the effect
-  // below calls it automatically as soon as `earnTransactionStatus` becomes
-  // "error".
+  // Drop back to this screen (no navigation). There is no dedicated failure
+  // screen to trigger this from a button -- the effect below calls it
+  // automatically as soon as `earnTransactionStatus` becomes "error".
   const handleEarnProcessingBackToAmount = useCallback(() => {
     resetEarnTransactionStatus();
   }, [resetEarnTransactionStatus]);
 
-  // Failure returns AUTOMATICALLY to the amount screen, with a retry banner
-  // rather than a separate failure step.
+  // Failure returns AUTOMATICALLY to the amount screen, with an error toast
+  // (the app's pattern for errors) rather than a separate failure step. The
+  // raw failure is already on Sentry (`useEarnTransaction` logs it).
   // `resetEarnTransactionStatus` drops `earnTransactionStatus` back to
   // "idle" so the render gate below falls through to the normal amount
-  // screen; `lastSubmitFailed` (already set by the failed submit inside
-  // `useEarnTransaction`) is what actually drives the retry banner, and is
-  // untouched by this reset.
+  // screen.
   useEffect(() => {
     if (earnTransactionStatus === "error") {
+      showToast({
+        variant: "error",
+        title: t("earnAmount.errors.depositFailed"),
+        toastId: EARN_TOAST_IDS.DEPOSIT_FAILED,
+        duration: 0,
+      });
       handleEarnProcessingBackToAmount();
     }
-  }, [earnTransactionStatus, handleEarnProcessingBackToAmount]);
+  }, [earnTransactionStatus, handleEarnProcessingBackToAmount, showToast, t]);
 
   // The processing screen is drawn in place of this route, so going back
   // would pop the route and drop the submit without a word. While it
@@ -884,13 +877,6 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1 gap-[12px]" testID="earn-amount-screen">
-        {lastSubmitFailed && (
-          <NoticeBanner
-            text={t("earnAmount.retryBanner")}
-            variant={NoticeBannerVariants.ERROR}
-          />
-        )}
-
         <AmountCard
           mode="editable"
           testID="earn-amount-card"

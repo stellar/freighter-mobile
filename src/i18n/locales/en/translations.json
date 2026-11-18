@@ -831,12 +831,14 @@
       "accessibilityLabel": "View pool details",
       "depositApy": "Deposit APY: {{rate}}"
     },
-    "retryBanner": "Transaction failed. Try again.",
     "networkFeeSheet": {
       "title": "You need XLM to pay fees",
       "body": "You don't have enough available XLM to cover the transaction fee. Add XLM to continue with your deposit."
     },
     "errors": {
+      "depositUnavailable": "The pool can't take this deposit right now. Try again later.",
+      "insufficientTokenBalance": "Not enough {{tokenCode}} for this deposit. Try a smaller amount.",
+      "depositFailed": "Your deposit didn't go through. Try again.",
       "simulationFailed": "Failed to simulate the deposit. Please try again.",
       "feeShortfall": "Not enough XLM left for the network fee. Reduce your deposit by at least {{amount}} XLM.",
       "insufficientBalanceForFee": "Not enough XLM to cover the network fee. Try depositing a smaller amount."

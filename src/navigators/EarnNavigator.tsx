@@ -46,8 +46,8 @@ export const EarnStackNavigator = () => {
   // `resetEarn()` was only ever called from the success "Done" handler, so
   // every other exit (back from the picker, back from Amount, close-while-
   // submitting, error -> back -> out) left `pool`/asset selection,
-  // `currentPositionTokens`, and `lastSubmitFailed` populated for a later,
-  // unrelated Earn session to inherit.
+  // and `currentPositionTokens` populated for a later, unrelated Earn
+  // session to inherit.
   useEffect(
     () => () => {
       useTransactionSettingsStore.getState().resetSettings();

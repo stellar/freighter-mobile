@@ -35,16 +35,14 @@ interface UseEarnTransactionResult {
    */
   submit: () => Promise<void>;
   /**
-   * Returns `status` to "idle" without touching the earn duck. This is not
-   * part of the brief's literal `{ submit, status, transactionHash, error }`
-   * shape, but is needed to drop back to the normal amount screen on
-   * failure: without it, `EarnAmountScreen`'s inline gate (`status ===
-   * "submitting" || "success"`) would have no way back from "error", where
-   * `lastSubmitFailed` (already set by the failed `submit()` below) drives
-   * the retry banner. Called automatically by an effect in
-   * `EarnAmountScreen` as soon as `status` becomes "error" — the design has
-   * no failure screen with a user-facing "back to amount" button for this to
-   * live behind.
+   * Returns `status` to "idle". This is not part of the brief's literal
+   * `{ submit, status, transactionHash, error }` shape, but is needed to
+   * drop back to the normal amount screen on failure: without it,
+   * `EarnAmountScreen`'s inline gate (`status === "submitting" ||
+   * "success"`) would have no way back from "error". Called automatically by
+   * an effect in `EarnAmountScreen` as soon as `status` becomes "error",
+   * which also shows the failure's toast — the design has no failure screen
+   * with a user-facing "back to amount" button for this to live behind.
    *
    * A no-op while `status === "submitting"` — there is no call site that
    * reaches `reset()` mid-submit today (the only caller fires on the
@@ -55,14 +53,10 @@ interface UseEarnTransactionResult {
   reset: () => void;
   /**
    * Marks any submit currently in flight as abandoned: when it eventually
-   * settles, it will skip writing `status`/`error`/`transactionHash` AND
-   * `useEarnStore.setSubmitFailed` — the latter is what makes this
-   * necessary. `setSubmitFailed` writes to a store that is global and
-   * persists across mounts, so without this guard a submit abandoned by
-   * navigating Home mid-flight could resolve later and flip
-   * `lastSubmitFailed` out of order, surfacing a misleading retry banner in
-   * an unrelated later Earn session. Its outcome is still reported to
-   * analytics, as the extension does.
+   * settles, it will skip writing `status`/`error`/`transactionHash`, so a
+   * submit abandoned by navigating Home mid-flight can't resolve later into
+   * a failure toast the user has left behind. Its outcome is still reported
+   * to analytics, as the extension does.
    *
    * Mirrors the `get().requestId === newRequestId` guard already used
    * around every async write in `ducks/transactionBuilder.ts` (see e.g. its
@@ -86,14 +80,9 @@ interface UseEarnTransactionResult {
  * `transactionBuilder` store) but has no build/scan step of its own — that
  * already happened in `useSimulateEarnDeposit` by the time this runs.
  *
- * Failure is recorded in `useEarnStore.lastSubmitFailed` rather than
- * component state because it is set here, on the processing screen, and
- * read after the stack pops back to `EarnAmountScreen` — component state
- * would be torn down in between. Because that store is global and
- * persistent, `submit()` guards every write to it (and to local state)
- * behind an active-request check — see `abandon()` — so a submit that the
- * user has already closed away from cannot resolve later and corrupt a
- * subsequent session's retry banner.
+ * `submit()` guards every state write behind an active-request check — see
+ * `abandon()` — so a submit the user has already closed away from cannot
+ * resolve later and report a failure they never see the context of.
  */
 export const useEarnTransaction = ({
   account,
@@ -103,7 +92,6 @@ export const useEarnTransaction = ({
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { signTransaction, submitTransaction } = useTransactionBuilderStore();
-  const setSubmitFailed = useEarnStore((state) => state.setSubmitFailed);
 
   // `nextRequestIdRef` hands out a fresh id per `submit()` call;
   // `activeRequestIdRef` names the id (if any) still allowed to write
@@ -157,7 +145,7 @@ export const useEarnTransaction = ({
     try {
       // Abort cleanly if an auto-lock engaged after Review was confirmed.
       // Return (don't throw): being locked isn't a deposit failure, so skip
-      // the catch's setSubmitFailed/error path — a hard-coded throw would
+      // the catch's error path — a hard-coded throw would
       // also surface as a non-localized error message. Verbatim guard from
       // `useSwapTransaction.executeSwap`. No await has happened yet at this
       // point, so there is no abandonment window to check for here.
@@ -208,14 +196,12 @@ export const useEarnTransaction = ({
 
       // The `await` above is the abandonment window: the user may have
       // closed away from this submit (or, in principle, started another)
-      // while it was in flight. Skip every write below — including
-      // `setSubmitFailed`, the global/persistent one — if so.
+      // while it was in flight. Skip every write below if so.
       if (activeRequestIdRef.current !== requestId) {
         return;
       }
 
       setTransactionHash(hash);
-      setSubmitFailed(false);
       setStatus("success");
     } catch (err) {
       // Result codes come off this attempt's own submit outcome, carried on
@@ -238,12 +224,13 @@ export const useEarnTransaction = ({
       }
 
       const message = err instanceof Error ? err.message : String(err);
+      // The raw failure goes to Sentry; the amount screen shows the user a
+      // plain error toast instead.
       logger.error("useEarnTransaction", "Deposit submission failed", err);
       setError(message);
-      setSubmitFailed(true);
       setStatus("error");
     }
-  }, [account, network, signTransaction, submitTransaction, setSubmitFailed]);
+  }, [account, network, signTransaction, submitTransaction]);
 
   const reset = useCallback(() => {
     // No call site reaches this mid-submit today (the only caller renders

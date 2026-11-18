@@ -797,12 +797,14 @@
       "accessibilityLabel": "Ver detalhes do pool",
       "depositApy": "APY de depósito: {{rate}}"
     },
-    "retryBanner": "A transação falhou. Tente novamente.",
     "networkFeeSheet": {
       "title": "Você precisa de XLM para pagar as taxas",
       "body": "Você não tem XLM disponível suficiente para cobrir a taxa da transação. Adicione XLM para continuar com seu depósito."
     },
     "errors": {
+      "depositUnavailable": "O pool não pode receber este depósito agora. Tente novamente mais tarde.",
+      "insufficientTokenBalance": "{{tokenCode}} insuficiente para este depósito. Tente um valor menor.",
+      "depositFailed": "Seu depósito não foi concluído. Tente novamente.",
       "simulationFailed": "Falha ao simular o depósito. Tente novamente.",
       "feeShortfall": "Não há XLM suficiente para a taxa de rede. Reduza seu depósito em pelo menos {{amount}} XLM.",
       "insufficientBalanceForFee": "Não há XLM suficiente para cobrir a taxa de rede. Tente depositar um valor menor."

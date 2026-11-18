@@ -14,7 +14,6 @@ describe("earn duck", () => {
     expect(state.selectedAssetId).toBe("");
     expect(state.selectedAssetApy).toBeNull();
     expect(state.currentPositionTokens).toBe("0");
-    expect(state.lastSubmitFailed).toBe(false);
   });
 
   it("captures the asset and its rate together at pick time", () => {
@@ -51,19 +50,6 @@ describe("earn duck", () => {
     expect(useEarnStore.getState().currentPositionTokens).toBe("0");
   });
 
-  it("drops the previous token's failed-deposit banner when a token is picked", () => {
-    useEarnStore.getState().setSubmitFailed(true);
-
-    useEarnStore.getState().selectAsset({
-      assetId: "CANOTHERASSET",
-      apy: 0.05,
-      code: "XLM",
-      decimals: 7,
-    });
-
-    expect(useEarnStore.getState().lastSubmitFailed).toBe(false);
-  });
-
   it("remembers a swap in the flow until the flow resets, whichever token is picked", () => {
     useEarnStore.getState().setDidSwapInFlow(true);
     useEarnStore.getState().selectAsset({
@@ -85,18 +71,12 @@ describe("earn duck", () => {
     expect(useEarnStore.getState().selectedAssetApy).toBeNull();
   });
 
-  it("records a submit failure so the amount screen can show the retry banner", () => {
-    useEarnStore.getState().setSubmitFailed(true);
-    expect(useEarnStore.getState().lastSubmitFailed).toBe(true);
-  });
-
   it("clears everything on reset", () => {
     useEarnStore.getState().setPool({ id: POOL_ID } as never);
     useEarnStore
       .getState()
       .selectAsset({ assetId: USDC_SAC, apy: 0.1, code: "USDC", decimals: 7 });
     useEarnStore.getState().setCurrentPositionTokens("5000000000");
-    useEarnStore.getState().setSubmitFailed(true);
 
     useEarnStore.getState().resetEarn();
 
@@ -104,6 +84,5 @@ describe("earn duck", () => {
     expect(state.pool).toBeNull();
     expect(state.selectedAssetId).toBe("");
     expect(state.currentPositionTokens).toBe("0");
-    expect(state.lastSubmitFailed).toBe(false);
   });
 });

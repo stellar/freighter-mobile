@@ -35,14 +35,6 @@ interface EarnState {
    */
   currentPositionTokens: string;
   /**
-   * Drives the "Transaction failed. Try again." banner on the amount screen.
-   *
-   * Lives here rather than in component state because it is set on the
-   * processing screen and read after the stack has popped back to Amount —
-   * component state would be torn down in between.
-   */
-  lastSubmitFailed: boolean;
-  /**
    * Whether a swap finished inside this Earn session, for the deposit's
    * `via_swap` analytics. Like the extension's, it stays set for the rest of
    * the session, whichever token is deposited.
@@ -57,7 +49,6 @@ interface EarnState {
     decimals: number;
   }) => void;
   setCurrentPositionTokens: (tokens: string) => void;
-  setSubmitFailed: (failed: boolean) => void;
   setDidSwapInFlow: (didSwap: boolean) => void;
   resetEarn: () => void;
 }
@@ -69,7 +60,6 @@ const initialState = {
   selectedAssetCode: "",
   selectedAssetDecimals: DEFAULT_DECIMALS,
   currentPositionTokens: "0",
-  lastSubmitFailed: false,
   didSwapInFlow: false,
 };
 
@@ -84,9 +74,6 @@ export const useEarnStore = create<EarnState>((set) => ({
   // had on failure — without this reset, picking asset A (fetch succeeds),
   // backing out, then picking asset B (fetch fails) would carry A's
   // position into B's Review "before" value.
-  //
-  // A failed deposit's "Transaction failed" banner is dropped too: it is
-  // about the previous pick, not the one the user is starting now.
   selectAsset: ({ assetId, apy, code, decimals }) =>
     set({
       selectedAssetId: assetId,
@@ -94,13 +81,10 @@ export const useEarnStore = create<EarnState>((set) => ({
       selectedAssetCode: code,
       selectedAssetDecimals: decimals,
       currentPositionTokens: initialState.currentPositionTokens,
-      lastSubmitFailed: initialState.lastSubmitFailed,
     }),
 
   setCurrentPositionTokens: (currentPositionTokens) =>
     set({ currentPositionTokens }),
-
-  setSubmitFailed: (lastSubmitFailed) => set({ lastSubmitFailed }),
 
   setDidSwapInFlow: (didSwapInFlow) => set({ didSwapInFlow }),
 

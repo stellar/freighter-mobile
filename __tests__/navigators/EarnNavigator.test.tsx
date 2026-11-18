@@ -82,8 +82,8 @@ describe("EarnStackNavigator teardown", () => {
   // FIX 1: prior to this fix, `resetEarn()` was only ever called from the
   // success-Done handler — every other exit (back from the picker, back
   // from Amount, close-while-submitting, error -> back -> out) left the
-  // earn duck populated, which meant a stale `lastSubmitFailed` retry banner
-  // and (worse) a stale `currentPositionTokens` "before" value could leak
+  // earn duck populated, which meant a stale `currentPositionTokens`
+  // "before" value could leak
   // into a later, unrelated Earn session. Verifies the teardown clears the
   // duck on every unmount, matching the other two stores above.
   it("resets the earn duck on unmount", () => {
@@ -96,7 +96,6 @@ describe("EarnStackNavigator teardown", () => {
         decimals: 7,
       });
       useEarnStore.getState().setCurrentPositionTokens("5000000000");
-      useEarnStore.getState().setSubmitFailed(true);
     });
 
     const { unmount } = renderWithProviders(
@@ -110,7 +109,6 @@ describe("EarnStackNavigator teardown", () => {
       id: "CPOOL",
       name: "Fixed",
     });
-    expect(useEarnStore.getState().lastSubmitFailed).toBe(true);
 
     act(() => {
       unmount();
@@ -120,7 +118,6 @@ describe("EarnStackNavigator teardown", () => {
     expect(state.pool).toBeNull();
     expect(state.selectedAssetId).toBe("");
     expect(state.currentPositionTokens).toBe("0");
-    expect(state.lastSubmitFailed).toBe(false);
   });
 
   // The Earn swap shares the swap store and its settings with main Swap.
