@@ -247,6 +247,37 @@ describe("EarnTokenPickerScreen", () => {
       expect(queryByTestId("earn-intro-screen")).toBeNull();
     });
 
+    // As in the extension, the funnel's earn_select_token follows the
+    // intro: it counts the picker being seen, not the screen mounting.
+    it("reports earn_select_token only once the intro is out of the way", () => {
+      const { track: mockTrack } = jest.requireMock("services/analytics/core");
+      const isPickerView = ([, props]: [string, { screen_name?: string }]) =>
+        props?.screen_name === "earn_select_token";
+      usePreferencesStore.getState().setHasSeenEarnIntro(false);
+
+      renderScreen();
+      expect(mockTrack.mock.calls.filter(isPickerView)).toHaveLength(0);
+
+      act(() => {
+        usePreferencesStore.getState().setHasSeenEarnIntro(true);
+      });
+      expect(mockTrack.mock.calls.filter(isPickerView)).toEqual([
+        ["screen.viewed", { screen_name: "earn_select_token", flow: "earn" }],
+      ]);
+    });
+
+    it("reports earn_select_token when it opens on the picker", () => {
+      const { track: mockTrack } = jest.requireMock("services/analytics/core");
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+
+      renderScreen();
+
+      expect(mockTrack).toHaveBeenCalledWith("screen.viewed", {
+        screen_name: "earn_select_token",
+        flow: "earn",
+      });
+    });
+
     // The intro is deliberately gated AHEAD of the loading/error branches:
     // it doesn't depend on the token list, and gating it on the fetch would
     // flash a spinner before the first thing a new user ever sees. Both

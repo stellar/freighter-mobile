@@ -1,5 +1,9 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { NavigationProp, useNavigation } from "@react-navigation/native";
+import {
+  NavigationProp,
+  useFocusEffect,
+  useNavigation,
+} from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
@@ -50,7 +54,7 @@ import { useSwapFooter } from "components/screens/SwapScreen/hooks/useSwapFooter
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
 import {
   DEFAULT_PADDING,
   MIN_TRANSACTION_FEE,
@@ -95,6 +99,7 @@ import React, {
 import { Keyboard, ScrollView, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { analytics } from "services/analytics";
+import { track } from "services/analytics/core";
 import {
   trackEarnBalanceInsufficientShown,
   trackEarnFundingActionSelected,
@@ -135,6 +140,23 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   );
   const setHasSeenEarnIntro = usePreferencesStore(
     (state) => state.setHasSeenEarnIntro,
+  );
+
+  // The route reports no view of its own (see `analyticsConfig`): the intro
+  // is drawn in the picker's place on a first visit, and the funnel's
+  // earn_select_token counts the picker being seen, as the extension's does
+  // after its intro. Reported each time the picker comes into focus, as the
+  // route's view was.
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasSeenEarnIntro) {
+        return;
+      }
+      track(
+        AnalyticsEvent.SCREEN_VIEWED,
+        buildScreenViewedProps(AnalyticsEvent.VIEW_EARN_TOKEN_PICKER),
+      );
+    }, [hasSeenEarnIntro]),
   );
   const notEnoughBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const receiveFundsBottomSheetModalRef = useRef<BottomSheetModal>(null);

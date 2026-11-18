@@ -83,7 +83,8 @@ export enum AnalyticsEvent {
   // funnel in Amplitude. VIEW_EARN_INTRO/_REVIEW/_PROCESSING/_SUCCESS are
   // fired manually (see SCREEN_CATALOG / call sites below) since none of the
   // four is a registered route — the intro is a first-entry bottom sheet, not
-  // a screen.
+  // a screen. VIEW_EARN_TOKEN_PICKER is fired manually too, once the intro
+  // drawn in the picker's place is out of the way.
   VIEW_EARN_INTRO = "earn_intro",
   VIEW_EARN_TOKEN_PICKER = "earn_select_token",
   VIEW_EARN_AMOUNT = "earn_amount",
@@ -649,6 +650,11 @@ const getRoutesWithoutAnalytics = (): Set<string> => {
   // auto-track a generic view event.
   excludedRoutes.add("ScanReceiveScreen");
 
+  // The Earn token picker draws the first-run intro in its place, so it
+  // reports its own view (VIEW_EARN_TOKEN_PICKER) once the picker is what
+  // shows, as the extension does after its intro.
+  excludedRoutes.add("EarnTokenPickerScreen");
+
   return excludedRoutes;
 };
 
@@ -687,12 +693,6 @@ export const CUSTOM_ROUTE_MAPPINGS: Record<string, AnalyticsEvent> = {
 
   // Buy XLM override
   BuyXLMScreen: AnalyticsEvent.VIEW_BUY_XLM,
-
-  // Earn override: auto-derivation would produce "earn_token_picker", which
-  // does not match the extension's "earn_select_token" funnel stage.
-  // EarnAmountScreen needs no entry here -- it auto-derives to "earn_amount",
-  // which already matches.
-  EarnTokenPickerScreen: AnalyticsEvent.VIEW_EARN_TOKEN_PICKER,
 };
 
 /**
