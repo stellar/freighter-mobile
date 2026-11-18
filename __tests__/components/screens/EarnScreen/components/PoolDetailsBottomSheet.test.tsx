@@ -130,6 +130,28 @@ describe("PoolDetailsBottomSheet", () => {
     },
   );
 
+  // The design draws the Blend icon at 48 and the 24 token icon over its
+  // bottom-right quarter, inside the same 48 box.
+  it("overlaps the token icon on the Blend icon's bottom-right quarter", () => {
+    const { getByTestId } = renderWithProviders(
+      <PoolDetailsBottomSheet
+        pool={fixedPool}
+        apy={0.1694}
+        token={{ type: "native", code: "XLM" } as never}
+      />,
+    );
+
+    expect(getByTestId("pool-details-pool-icon")).toHaveStyle({
+      width: 48,
+      height: 48,
+    });
+    expect(getByTestId("pool-details-token-badge")).toHaveStyle({
+      position: "absolute",
+      left: 24,
+      top: 24,
+    });
+  });
+
   it("has no bottom Close CTA; the header X dismisses the sheet via the forwarded ref", () => {
     const dismiss = jest.fn();
     const ref = React.createRef<BottomSheetModal>();

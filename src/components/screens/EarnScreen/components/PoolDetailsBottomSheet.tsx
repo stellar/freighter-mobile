@@ -33,11 +33,13 @@ export interface PoolDetailsBottomSheetProps {
   bottomSheetModalRef?: React.RefObject<BottomSheetModal | null>;
 }
 
-/** The pool icon is 40 inside a 48 box; the token badge (24) overlaps its
- * bottom-right corner, as the design draws it. */
-const POOL_ICON_BOX = 48;
-const POOL_ICON_SIZE = 40;
-const TOKEN_BADGE_POSITION = { left: 32, top: 26 };
+/** The pool icon fills a 48 box, and the token badge (24) sits over its
+ * bottom-right quarter, inside the same box, as the design draws it. */
+const POOL_ICON_SIZE = 48;
+const TOKEN_BADGE_POSITION = {
+  left: POOL_ICON_SIZE / 2,
+  top: POOL_ICON_SIZE / 2,
+};
 
 /** A secondary title above an `EarnDetailsCard`. */
 const TitledDetailsCard: React.FC<{
@@ -126,16 +128,20 @@ export const PoolDetailsBottomSheet: React.FC<PoolDetailsBottomSheetProps> = ({
     <View className="gap-[24px]">
       <View className="flex-row items-start justify-between">
         <View className="flex-1 flex-row items-center gap-[12px]">
-          <View style={{ width: POOL_ICON_BOX, height: POOL_ICON_BOX }}>
+          <View style={{ width: POOL_ICON_SIZE, height: POOL_ICON_SIZE }}>
             <Image
               source={blendIcon}
               className="rounded-full"
               style={{ width: POOL_ICON_SIZE, height: POOL_ICON_SIZE }}
               resizeMode="cover"
               accessibilityIgnoresInvertColors
+              testID="pool-details-pool-icon"
             />
             {token && (
-              <View className="absolute" style={TOKEN_BADGE_POSITION}>
+              <View
+                style={{ position: "absolute", ...TOKEN_BADGE_POSITION }}
+                testID="pool-details-token-badge"
+              >
                 <TokenIcon token={token} size="md" />
               </View>
             )}
