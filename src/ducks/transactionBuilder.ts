@@ -72,6 +72,19 @@ export interface SubmitTransactionOutcome {
   isProtocolAnswer: boolean;
 }
 
+/**
+ * A simulation's minimum resource fee, in XLM. Null when the simulation
+ * omits it or it doesn't parse: unknown, rather than "0", which would
+ * understate the real cost.
+ */
+const resourceFeeToXlm = (minResourceFee?: string | null): string | null => {
+  if (!minResourceFee) {
+    return null;
+  }
+  const resourceFeeBn = new BigNumber(minResourceFee);
+  return resourceFeeBn.isNaN() ? null : stroopToXlm(resourceFeeBn).toFixed(7);
+};
+
 const FAILED_SUBMIT_OUTCOME: SubmitTransactionOutcome = {
   hash: null,
   resultXdr: null,
@@ -355,12 +368,9 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
 
           sorobanInclusionFeeXlm = params.transactionFee || MIN_TRANSACTION_FEE;
 
-          if (simulateResult.minResourceFee) {
-            const resourceFeeBn = new BigNumber(simulateResult.minResourceFee);
-            if (!resourceFeeBn.isNaN()) {
-              sorobanResourceFeeXlm = stroopToXlm(resourceFeeBn).toFixed(7);
-            }
-          }
+          sorobanResourceFeeXlm = resourceFeeToXlm(
+            simulateResult.minResourceFee,
+          );
         }
 
         // Only update store if this build request is still the latest one.
@@ -523,13 +533,9 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           );
         }
         const finalXdr = simulateResult.preparedTransaction;
-        let sorobanResourceFeeXlm: string | null = null;
-        if (simulateResult.minResourceFee) {
-          const resourceFeeBn = new BigNumber(simulateResult.minResourceFee);
-          if (!resourceFeeBn.isNaN()) {
-            sorobanResourceFeeXlm = stroopToXlm(resourceFeeBn).toFixed(7);
-          }
-        }
+        const sorobanResourceFeeXlm = resourceFeeToXlm(
+          simulateResult.minResourceFee,
+        );
         const sorobanInclusionFeeXlm =
           params.transactionFee || MIN_TRANSACTION_FEE;
 
@@ -596,15 +602,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           transactionTimeout: params.transactionTimeout,
         });
 
-        // minResourceFee is null when simulation omits it — left unknown
-        // rather than coerced to "0", which would understate the real cost.
-        let sorobanResourceFeeXlm: string | null = null;
-        if (built.minResourceFee) {
-          const resourceFeeBn = new BigNumber(built.minResourceFee);
-          if (!resourceFeeBn.isNaN()) {
-            sorobanResourceFeeXlm = stroopToXlm(resourceFeeBn).toFixed(7);
-          }
-        }
+        const sorobanResourceFeeXlm = resourceFeeToXlm(built.minResourceFee);
 
         // Only update the store if this build is still the latest one.
         if (get().requestId === newRequestId) {
