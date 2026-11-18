@@ -23,9 +23,12 @@ const AddFundsScreen: React.FC<AddFundsScreenProps> = ({
   route,
 }) => {
   const { t } = useAppTranslation();
-  const { isUnfunded } = route.params;
+  const { isUnfunded, token } = route.params;
+  // The caller's token when it has one (Earn's Buy), XLM for an unfunded
+  // account, otherwise Coinbase's own choice.
+  const onrampToken = token ?? (isUnfunded ? "XLM" : undefined);
   const { openCoinbaseUrl, isLoading } = useCoinbaseOnramp({
-    ...(isUnfunded ? { token: "XLM" } : {}),
+    ...(onrampToken ? { token: onrampToken } : {}),
   });
   const { onramp_enabled: onRampEnabled } = useRemoteConfigStore();
 

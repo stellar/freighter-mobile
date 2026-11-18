@@ -40,6 +40,18 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   },
 }));
 
+const mockUseCoinbaseOnramp = jest.fn<
+  { openCoinbaseUrl: jest.Mock; isLoading: boolean },
+  [{ token?: string }]
+>(() => ({
+  openCoinbaseUrl: jest.fn(),
+  isLoading: false,
+}));
+jest.mock("hooks/useCoinbaseOnramp", () => ({
+  useCoinbaseOnramp: (params: { token?: string }) =>
+    mockUseCoinbaseOnramp(params),
+}));
+
 type AddFundsScreenProps = NativeStackScreenProps<
   AddFundsStackParamList,
   typeof ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN
@@ -90,5 +102,45 @@ describe("AddFundsScreen", () => {
         { initialTab: "receive" },
       );
     }
+  });
+
+  // A flow that knows the token the user needs (Earn's Buy) opens Coinbase
+  // on it; an unfunded account opens on XLM; otherwise Coinbase chooses.
+  describe("the token Coinbase opens on", () => {
+    const routeWith = (params: { isUnfunded: boolean; token?: string }) =>
+      ({ ...mockRoute, params }) as unknown as AddFundsScreenProps["route"];
+
+    it("is the one the caller passes", () => {
+      renderWithProviders(
+        <AddFundsScreen
+          navigation={mockNavigation}
+          route={routeWith({ isUnfunded: false, token: "USDC" })}
+        />,
+      );
+
+      expect(mockUseCoinbaseOnramp).toHaveBeenCalledWith({ token: "USDC" });
+    });
+
+    it("is XLM for an unfunded account", () => {
+      renderWithProviders(
+        <AddFundsScreen
+          navigation={mockNavigation}
+          route={routeWith({ isUnfunded: true })}
+        />,
+      );
+
+      expect(mockUseCoinbaseOnramp).toHaveBeenCalledWith({ token: "XLM" });
+    });
+
+    it("is left to Coinbase otherwise", () => {
+      renderWithProviders(
+        <AddFundsScreen
+          navigation={mockNavigation}
+          route={routeWith({ isUnfunded: false })}
+        />,
+      );
+
+      expect(mockUseCoinbaseOnramp).toHaveBeenCalledWith({});
+    });
   });
 });

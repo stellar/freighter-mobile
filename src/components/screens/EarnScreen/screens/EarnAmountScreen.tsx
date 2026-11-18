@@ -817,7 +817,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     networkFeeBottomSheetModalRef.current?.dismiss();
     rootNavigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
       screen: ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN,
-      params: { isUnfunded: false },
+      // The fee is paid in XLM, so Coinbase opens on XLM.
+      params: { isUnfunded: false, token: NATIVE_TOKEN_CODE },
     });
   }, [rootNavigation]);
 

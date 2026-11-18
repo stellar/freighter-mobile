@@ -528,9 +528,10 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       });
     }
     notEnoughBottomSheetModalRef.current?.dismiss();
+    // Coinbase opens on the token the user was trying to deposit.
     rootNavigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
       screen: ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN,
-      params: { isUnfunded: false },
+      params: { isUnfunded: false, token: notEnoughOption?.code },
     });
   }, [rootNavigation, notEnoughOption]);
 

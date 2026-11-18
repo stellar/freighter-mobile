@@ -229,6 +229,8 @@ export type ManageWalletsStackParamList = {
 export type AddFundsStackParamList = {
   [ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN]: {
     isUnfunded: boolean;
+    /** The token Coinbase opens on, when the caller knows what's needed. */
+    token?: string;
   };
   [ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN]: {
     initialTab?: ScanReceiveTab;
