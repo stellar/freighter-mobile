@@ -15,7 +15,7 @@ const getFormatSettings = () => {
 /**
  * Formats a number using react-native-localize settings
  */
-const formatNumber = (
+export const formatNumber = (
   value: string | number,
   options: {
     useGrouping?: boolean;

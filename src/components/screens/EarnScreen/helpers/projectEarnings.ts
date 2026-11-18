@@ -1,4 +1,5 @@
 import BigNumber from "bignumber.js";
+import { formatFiatAmount, NO_FIAT_VALUE } from "helpers/formatAmount";
 
 /**
  * Projected earnings on a deposit, in USD.
@@ -33,6 +34,9 @@ export const projectEarnings = ({
   };
 };
 
-/** Formats a projected figure for display, rendering an unknown value as "--". */
+/**
+ * Formats a projected figure for display in the device's locale, like the
+ * deposit's own fiat value next to it, rendering an unknown value as "--".
+ */
 export const formatProjection = (value: string | null) =>
-  value === null ? "--" : `$${new BigNumber(value).toFormat(2)}`;
+  value === null ? NO_FIAT_VALUE : formatFiatAmount(value);

@@ -18,6 +18,7 @@ import {
   getPoolDisplayName,
 } from "components/screens/EarnScreen/helpers";
 import { NETWORKS } from "config/constants";
+import * as ReactNativeLocalize from "react-native-localize";
 
 describe("getEarnCtaState", () => {
   it("reports insufficient before anything else when there is nothing to spend", () => {
@@ -309,6 +310,34 @@ describe("formatRate", () => {
   it("distinguishes unavailable from zero", () => {
     expect(formatRate(null)).toBe("--");
     expect(formatRate(0)).toBe("0.00%");
+  });
+});
+
+// Review and the pool sheet sit next to amounts the app formats for the
+// device's locale, so these follow it too.
+describe("Earn figures on a Portuguese (pt-BR) device", () => {
+  beforeEach(() => {
+    jest.spyOn(ReactNativeLocalize, "getNumberFormatSettings").mockReturnValue({
+      decimalSeparator: ",",
+      groupingSeparator: ".",
+    } as ReactNativeLocalize.NumberFormatSettings);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("uses the device's separators", () => {
+    expect(formatRate(0.1694)).toBe("16,94%");
+    expect(formatCompactUsd(50050000)).toBe("$50,05M");
+    expect(formatCompactUsd(0)).toBe("$0,00");
+    expect(formatProjection("1234.5")).toBe("$1.234,50");
+  });
+
+  it("still renders unknown values as --", () => {
+    expect(formatRate(null)).toBe("--");
+    expect(formatCompactUsd(null)).toBe("--");
+    expect(formatProjection(null)).toBe("--");
   });
 });
 
