@@ -69,7 +69,8 @@ import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTokenIconsStore } from "ducks/tokenIcons";
-import { getTokenIdentifier } from "helpers/balances";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { calculateSpendableAmount, getTokenIdentifier } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import {
   formatBalanceAmount,
@@ -683,6 +684,22 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     );
   }, [openInAppBrowser, network]);
 
+  // XLM's total includes the minimum balance the account can't spend, so
+  // its row shows what the deposit screen will offer: the same calculation
+  // as that screen's "available".
+  const { transactionFee } = useTransactionSettingsStore();
+  const getHeldAmount = useCallback(
+    (option: EarnTokenOption) =>
+      option.isNative && option.balance
+        ? calculateSpendableAmount({
+            balance: option.balance,
+            subentryCount: account?.subentryCount ?? 0,
+            transactionFee,
+          }).toFixed()
+        : undefined,
+    [account?.subentryCount, transactionFee],
+  );
+
   const handleHeldTokenPress = useCallback(
     (option: EarnTokenOption) => {
       trackEarnTokenSelected({
@@ -875,6 +892,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
                     <EarnTokenRow
                       key={option.assetId}
                       option={option}
+                      amount={getHeldAmount(option)}
                       testID={`earn-token-option-${option.code}`}
                       onPress={() => handleHeldTokenPress(option)}
                     />

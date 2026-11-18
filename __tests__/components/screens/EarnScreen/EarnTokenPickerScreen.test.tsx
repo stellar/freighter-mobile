@@ -1,6 +1,7 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { act, fireEvent } from "@testing-library/react-native";
+import BigNumber from "bignumber.js";
 import { EarnSwapFromBottomSheet } from "components/screens/EarnScreen/components/EarnSwapFromBottomSheet";
 import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
 import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
@@ -9,6 +10,7 @@ import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { usePreferencesStore } from "ducks/preferences";
 import { useSwapStore } from "ducks/swap";
 import { useTokenIconsStore } from "ducks/tokenIcons";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -576,6 +578,43 @@ describe("EarnTokenPickerScreen", () => {
 
       expect(receive?.ref.dismiss).toHaveBeenCalledTimes(1);
       expect(notEnough?.ref.dismiss).not.toHaveBeenCalled();
+    });
+  });
+
+  // XLM's total includes the minimum balance the account can't spend, so the
+  // row shows what the deposit screen will offer instead.
+  describe("the XLM row in your wallet", () => {
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+    });
+
+    it("shows the spendable XLM, not the total", () => {
+      mockUseEarnTokens.held = [
+        {
+          ...makeOption("XLM", "100"),
+          isNative: true,
+          balance: {
+            token: { type: "native", code: "XLM" },
+            total: new BigNumber("100"),
+            available: new BigNumber("100"),
+            minimumBalance: new BigNumber("1"),
+          },
+        },
+      ];
+
+      const { getByText, queryByText } = renderScreen();
+
+      // 100 total, less the 1 XLM minimum balance and the 0.00001 fee.
+      expect(getByText(formatTokenForDisplay("98.99999", "XLM"))).toBeTruthy();
+      expect(queryByText(formatTokenForDisplay("100", "XLM"))).toBeNull();
+    });
+
+    it("keeps other tokens at their balance", () => {
+      mockUseEarnTokens.held = [makeOption("USDC", "50")];
+
+      const { getByText } = renderScreen();
+
+      expect(getByText(formatTokenForDisplay("50", "USDC"))).toBeTruthy();
     });
   });
 });

@@ -17,6 +17,12 @@ export interface EarnTokenRowProps {
   onPress: () => void;
   /** Forwarded to the row's TouchableOpacity so e2e flows can tap a specific token. */
   testID?: string;
+  /**
+   * The balance to show when it isn't the token's total: for XLM, what is
+   * spendable once the minimum balance and the fee are set aside. Defaults
+   * to `option.total`.
+   */
+  amount?: string;
 }
 
 /**
@@ -64,9 +70,8 @@ export const EarnTokenRow: React.FC<EarnTokenRowProps> = ({
   option,
   onPress,
   testID,
+  amount = option.total,
 }) => {
-  const isHeld = new BigNumber(option.total).gt(0);
-
   // The held balance's token, or for a zero-balance row a token keyed the way
   // the icon cache keys it (see `getEarnOptionToken`).
   const token = getEarnOptionToken(option);
@@ -76,11 +81,10 @@ export const EarnTokenRow: React.FC<EarnTokenRowProps> = ({
   // from, so they fall back to the row's display code.
   const primaryText = option.balance?.displayName ?? option.code;
 
-  // Zero-balance rows read "0 EURC" rather than `formatTokenForDisplay`'s
-  // "0.00 EURC". Every zero-balance row's `option.total` is exactly "0" by
-  // construction (see `buildEarnTokenRows`).
-  const balanceText = isHeld
-    ? formatTokenForDisplay(option.total, option.code)
+  // A zero balance reads "0 EURC" rather than `formatTokenForDisplay`'s
+  // "0.00 EURC".
+  const balanceText = new BigNumber(amount).gt(0)
+    ? formatTokenForDisplay(amount, option.code)
     : `0 ${option.code}`;
 
   return (
