@@ -1,20 +1,21 @@
 import { TokenIcon } from "components/TokenIcon";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { NativeToken, NonNativeToken } from "config/types";
+import { Balance, Token } from "config/types";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import React from "react";
 import { View } from "react-native";
 
 /**
- * One row of the Sell/Receive summary on the swap review sheet.
+ * One row of the Sell/Receive summary on the swap review sheet, and the
+ * deposited token's row on Earn's Review.
  *
  * `iconUrl` lets non-held tokens (destination side) reuse their search-row
  * logo. `isMalicious` takes precedence over `isSuspicious` for the badge
  * colour.
  */
 export const SwapReviewTokenRow: React.FC<{
-  token: NonNativeToken | NativeToken;
+  token: Token | Balance;
   amount: string;
   symbol: string;
   fiatString: string;

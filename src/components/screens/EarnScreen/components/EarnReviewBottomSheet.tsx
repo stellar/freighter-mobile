@@ -2,7 +2,6 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import { BottomSheetHeader } from "components/BottomSheetHeader";
-import { TokenIcon } from "components/TokenIcon";
 import { BlendPoolIcon } from "components/screens/EarnScreen/components/BlendPoolIcon";
 import {
   EarnDetailsCard,
@@ -18,6 +17,8 @@ import SignTransactionDetailsBottomSheet, {
   SignTransactionDetailsHeader,
 } from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
+import { SwapReviewTokenRow } from "components/screens/SwapScreen/components/SwapReviewTokenRow";
+import { useReviewSecuritySummary } from "components/screens/SwapScreen/hooks/useReviewSecuritySummary";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import { BUTTON_THEME } from "components/sds/Button/theme";
@@ -41,7 +42,16 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useCallback, useMemo, useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
+import { SecurityLevel } from "services/blockaid/constants";
 import type { SecurityAssessment } from "services/blockaid/types";
+
+/** Stands in for the token scans a swap has and a deposit doesn't. */
+const NO_TOKEN_SCAN: SecurityAssessment = {
+  level: SecurityLevel.SAFE,
+  isMalicious: false,
+  isSuspicious: false,
+  isUnableToScan: false,
+};
 
 export interface EarnReviewBottomSheetProps {
   bottomSheetModalRef: React.RefObject<BottomSheetModal | null>;
@@ -200,22 +210,17 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
       ? "--"
       : t("earnReview.estimatedValue", { value: formatProjection(value) });
 
-  const { isMalicious, isSuspicious, isUnableToScan } =
-    transactionSecurityAssessment;
+  // Swap's banner copy, from the transaction scan alone: a deposit has no
+  // token on either side for Blockaid to scan, only the pool call.
+  const { isMalicious, isSuspicious, isUnableToScan, bannerText } =
+    useReviewSecuritySummary({
+      transactionSecurityAssessment,
+      sourceSecurityAssessment: NO_TOKEN_SCAN,
+      destinationSecurityAssessment: NO_TOKEN_SCAN,
+      sourceTokenId: undefined,
+      destinationTokenDescriptor: null,
+    });
   const isTrusted = !isMalicious && !isSuspicious;
-
-  const bannerText = useMemo(() => {
-    if (isMalicious) {
-      return t("transactionAmountScreen.errors.malicious");
-    }
-    if (isSuspicious) {
-      return t("transactionAmountScreen.errors.suspicious");
-    }
-    if (isUnableToScan) {
-      return t("securityWarning.proceedWithCaution");
-    }
-    return "";
-  }, [isMalicious, isSuspicious, isUnableToScan, t]);
 
   const handleCancel = useCallback(() => {
     bottomSheetModalRef.current?.dismiss();
@@ -279,22 +284,16 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
 
           {depositBalance && (
             <View className="gap-[16px]">
-              <View className="w-full flex-row items-center gap-[16px]">
-                <TokenIcon token={depositBalance} />
-                <View className="flex-1">
-                  <Text lg medium primary>
-                    {formatTokenForDisplay(
-                      tokenAmount || "0",
-                      selectedAssetCode,
-                    )}
-                  </Text>
-                  <Text sm medium secondary>
-                    {depositUsd !== null
-                      ? formatFiatAmount(depositUsd)
-                      : NO_FIAT_VALUE}
-                  </Text>
-                </View>
-              </View>
+              <SwapReviewTokenRow
+                token={depositBalance}
+                amount={tokenAmount || "0"}
+                symbol={selectedAssetCode}
+                fiatString={
+                  depositUsd !== null
+                    ? formatFiatAmount(depositUsd)
+                    : NO_FIAT_VALUE
+                }
+              />
 
               <View className="w-[40px] items-center">
                 <Icon.ArrowDown
