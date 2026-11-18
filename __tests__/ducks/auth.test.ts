@@ -52,7 +52,7 @@ import { clearLinkStatus, getLinkConflicts } from "services/auth/linkStatus";
 import { getPhraseSourceId } from "services/auth/secretSources";
 import { getWalletSources } from "services/auth/walletSources";
 import { clearCachedWalletSources } from "services/auth/walletSourcesCache";
-import { getAccount } from "services/stellar";
+import { getAccount, isAccountFunded } from "services/stellar";
 import {
   clearNonSensitiveData,
   clearTemporaryData,
@@ -152,6 +152,7 @@ jest.mock("stellar-hd-wallet", () => ({
 
 jest.mock("services/stellar", () => ({
   getAccount: jest.fn(),
+  isAccountFunded: jest.fn(),
 }));
 
 jest.mock("services/storage/helpers", () => ({
@@ -5419,14 +5420,13 @@ describe("auth duck", () => {
         // Index 3 of the imported phrase is funded on mainnet; the rest are
         // not.
         const mockFunded = (funded: number[]) => {
-          (getAccount as jest.Mock).mockImplementation((publicKey: string) =>
-            Promise.resolve(
-              funded.some(
-                (index) => publicKey === publicKeyAt(importedPhrase, index),
-              )
-                ? { accountId: () => publicKey }
-                : null,
-            ),
+          (isAccountFunded as jest.Mock).mockImplementation(
+            (publicKey: string) =>
+              Promise.resolve(
+                funded.some(
+                  (index) => publicKey === publicKeyAt(importedPhrase, index),
+                ),
+              ),
           );
         };
 
@@ -5474,8 +5474,8 @@ describe("auth duck", () => {
 
           expect(result.current.error).toBeNull();
           // Indices 1 to 49 are looked up on mainnet.
-          expect(getAccount).toHaveBeenCalledTimes(49);
-          expect(getAccount).toHaveBeenCalledWith(
+          expect(isAccountFunded).toHaveBeenCalledTimes(49);
+          expect(isAccountFunded).toHaveBeenCalledWith(
             publicKeyAt(importedPhrase, 49),
             NETWORKS.PUBLIC,
           );
@@ -5541,7 +5541,7 @@ describe("auth duck", () => {
           expect(result.current.error).toBe(
             "authStore.error.recoveryPhraseAlreadyHeld",
           );
-          expect(getAccount).not.toHaveBeenCalled();
+          expect(isAccountFunded).not.toHaveBeenCalled();
           expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
         });
 
@@ -5580,7 +5580,7 @@ describe("auth duck", () => {
             ).rejects.toThrow();
           });
 
-          expect(getAccount).not.toHaveBeenCalled();
+          expect(isAccountFunded).not.toHaveBeenCalled();
           expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
           expect(getPendingRecoveryPhrase(id)).toBe(importedPhrase);
         });
@@ -5706,9 +5706,9 @@ describe("auth duck", () => {
         it("stores nothing when a lock drops the phrase while the lookups run", async () => {
           const { result } = mockImportSession();
           const id = holdPendingRecoveryPhrase(importedPhrase);
-          (getAccount as jest.Mock).mockImplementation(() => {
+          (isAccountFunded as jest.Mock).mockImplementation(() => {
             clearPendingRecoveryPhrase();
-            return Promise.resolve(null);
+            return Promise.resolve(false);
           });
 
           await act(async () => {
@@ -5719,6 +5719,82 @@ describe("auth duck", () => {
 
           expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
           expect(storedSources()).toHaveLength(1);
+        });
+
+        it("stores nothing when a lookup fails, and a retry imports the funded accounts", async () => {
+          const { result } = mockImportSession();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+          // Index 3 is funded, but Horizon answers its lookup with a 503.
+          (isAccountFunded as jest.Mock).mockImplementation(
+            (publicKey: string) =>
+              publicKey === publicKeyAt(importedPhrase, 3)
+                ? Promise.reject(
+                    Object.assign(new Error("Service Unavailable"), {
+                      response: { status: 503 },
+                    }),
+                  )
+                : Promise.resolve(false),
+          );
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow("authStore.error.accountDiscoveryFailed");
+          });
+
+          expect(result.current.error).toBe(
+            "authStore.error.accountDiscoveryFailed",
+          );
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(storedSources()).toHaveLength(1);
+
+          mockFunded([3]);
+          await act(async () => {
+            await result.current.importRecoveryPhrase(mockPassword, id);
+          });
+
+          expect(storedPublicKeys()).toEqual([
+            publicKeyAt(importedPhrase, 0),
+            publicKeyAt(importedPhrase, 3),
+          ]);
+        });
+
+        it("fails the import when a lookup stalls past the cutoff", async () => {
+          jest.useFakeTimers();
+          try {
+            const { result } = mockImportSession();
+            const id = holdPendingRecoveryPhrase(importedPhrase);
+            (isAccountFunded as jest.Mock).mockImplementation(
+              (publicKey: string) =>
+                publicKey === publicKeyAt(importedPhrase, 3)
+                  ? new Promise(() => {})
+                  : Promise.resolve(false),
+            );
+
+            let outcome: unknown;
+            await act(async () => {
+              const importing = result.current
+                .importRecoveryPhrase(mockPassword, id)
+                .then(
+                  () => {
+                    outcome = "imported";
+                  },
+                  (error: Error) => {
+                    outcome = error.message;
+                  },
+                );
+              // Short of the cutoff, the import still waits on the lookup.
+              await jest.advanceTimersByTimeAsync(4_999);
+              expect(outcome).toBeUndefined();
+              await jest.advanceTimersByTimeAsync(1);
+              await importing;
+            });
+
+            expect(outcome).toBe("authStore.error.accountDiscoveryFailed");
+            expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          } finally {
+            jest.useRealTimers();
+          }
         });
       });
     });

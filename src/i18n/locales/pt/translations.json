@@ -486,6 +486,7 @@
       "disableBiometricsFailedMessage": "Não conseguimos verificar sua identidade. Por favor, tente novamente.",
       "pendingRecoveryPhraseMissing": "A nova frase de recuperação não está mais disponível. Comece novamente.",
       "recoveryPhraseAlreadyHeld": "Esta frase de recuperação já está na sua carteira",
+      "accountDiscoveryFailed": "Não foi possível verificar as contas desta frase. Verifique sua conexão e tente novamente.",
       "failedToAddRecoveryPhrase": "Falha ao adicionar a frase de recuperação. Por favor, tente novamente.",
       "failedToImportRecoveryPhrase": "Falha ao importar a frase de recuperação. Por favor, tente novamente."
     },
