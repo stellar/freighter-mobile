@@ -98,7 +98,7 @@ import {
   getBackgroundedAt,
   persistAutoLockTimer,
 } from "services/autoLock";
-import { getAccount } from "services/stellar";
+import { getAccount, isAccountFunded } from "services/stellar";
 import {
   clearNonSensitiveData,
   clearTemporaryData,
@@ -1464,52 +1464,70 @@ const getKeyFromKeyManager = async (
 const FUNDED_LOOKUP_TIMEOUT_MS = 5_000;
 
 /**
- * Resolves to null once the lookup has taken `FUNDED_LOOKUP_TIMEOUT_MS`.
- * Horizon's loadAccount takes no abort signal, so the request itself runs on;
- * only the wait for it ends.
+ * Rejects once the lookup has taken `FUNDED_LOOKUP_TIMEOUT_MS`. Horizon's
+ * loadAccount takes no abort signal, so the request itself runs on; only the
+ * wait for it ends.
  */
-const withFundedLookupTimeout = <T>(lookup: Promise<T>): Promise<T | null> => {
+const withFundedLookupDeadline = <T>(lookup: Promise<T>): Promise<T> => {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<null>((resolve) => {
-    timer = setTimeout(() => resolve(null), FUNDED_LOOKUP_TIMEOUT_MS);
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error("Account lookup timed out")),
+      FUNDED_LOOKUP_TIMEOUT_MS,
+    );
   });
   return Promise.race([lookup, timeout]).finally(() => clearTimeout(timer));
 };
+
+/** Resolves to null once the lookup has taken `FUNDED_LOOKUP_TIMEOUT_MS`. */
+const withFundedLookupTimeout = <T>(lookup: Promise<T>): Promise<T | null> =>
+  withFundedLookupDeadline(lookup).catch(() => null);
 
 /** How many indices a phrase import checks: 0, plus 1 to 49 if funded. */
 const PHRASE_IMPORT_DISCOVERY_DEPTH = 50;
 const MAX_LOOKUPS_IN_FLIGHT = 10;
 
 /**
- * The indices from `from` to `to` (inclusive) whose accounts are funded on
- * mainnet, ascending. At most MAX_LOOKUPS_IN_FLIGHT lookups run at once. A
- * lookup that fails or times out counts as unfunded.
+ * Checks indices `from` to `to` (inclusive) on mainnet. `funded` lists the
+ * funded ones, ascending. Only a 404 counts as unfunded: any other error or a
+ * lookup slower than `FUNDED_LOOKUP_TIMEOUT_MS` is a failed lookup, counted
+ * in `failedCount`. Callers decide what a failed lookup means. At most
+ * MAX_LOOKUPS_IN_FLIGHT lookups run at once.
  *
  * @param {StellarHDWallet} wallet - The phrase's wallet
  * @param {number} from - The first index to check
  * @param {number} to - The last index to check
- * @returns {Promise<number[]>} The funded indices
+ * @returns {Promise<{ funded: number[]; failedCount: number }>} The funded indices and how many lookups failed
  */
 const discoverFundedIndices = async (
   wallet: StellarHDWallet,
   from: number,
   to: number,
-): Promise<number[]> => {
+): Promise<{ funded: number[]; failedCount: number }> => {
   const indices = Array.from({ length: to - from + 1 }, (_, i) => from + i);
   const funded = new Set<number>();
+  let failedCount = 0;
   let next = 0;
 
   const worker = async () => {
     while (next < indices.length) {
       const index = indices[next];
       next += 1;
-      // getAccount resolves to null on any failure, never rejects.
-      // eslint-disable-next-line no-await-in-loop
-      const account = await withFundedLookupTimeout(
-        getAccount(wallet.getPublicKey(index), NETWORKS.PUBLIC),
-      );
-      if (account) {
-        funded.add(index);
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const isFunded = await withFundedLookupDeadline(
+          isAccountFunded(wallet.getPublicKey(index), NETWORKS.PUBLIC),
+        );
+        if (isFunded) {
+          funded.add(index);
+        }
+      } catch (error) {
+        failedCount += 1;
+        logger.error(
+          "discoverFundedIndices",
+          `Account lookup failed at index ${index}`,
+          error,
+        );
       }
     }
   };
@@ -1521,7 +1539,7 @@ const discoverFundedIndices = async (
     ),
   );
 
-  return indices.filter((index) => funded.has(index));
+  return { funded: indices.filter((index) => funded.has(index)), failedCount };
 };
 
 /**
@@ -3025,7 +3043,8 @@ interface RecoveryPhraseImportPlan {
 /**
  * The read-only half of a phrase import, run before the account-mutation
  * lock: checks the held phrase and the password, refuses a phrase already
- * held, and looks up which of the phrase's first 50 indices are funded. Up to
+ * held, and looks up which of the phrase's first 50 indices are funded,
+ * failing if any lookup does. Up to
  * 50 mainnet lookups at 5s each would hold the lock for as long as they take,
  * so they run outside it, and `storeImportedRecoveryPhrase` checks again
  * under it.
@@ -3065,11 +3084,16 @@ const prepareRecoveryPhraseImport = async (
   }
 
   const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
-  const fundedIndices = await discoverFundedIndices(
+  const { funded: fundedIndices, failedCount } = await discoverFundedIndices(
     wallet,
     1,
     PHRASE_IMPORT_DISCOVERY_DEPTH - 1,
   );
+  // A held phrase is refused on retry, so importing with gaps would leave
+  // the missed accounts out for good. Fail before anything is written.
+  if (failedCount > 0) {
+    throw new Error(t("authStore.error.accountDiscoveryFailed"));
+  }
 
   return { mnemonicPhrase, sourceId, wallet, indices: [0, ...fundedIndices] };
 };
@@ -3289,6 +3313,7 @@ export const getUserFacingError = (
     t("authStore.error.unknownRecoveryPhrase"),
     t("authStore.error.pendingRecoveryPhraseMissing"),
     t("authStore.error.recoveryPhraseAlreadyHeld"),
+    t("authStore.error.accountDiscoveryFailed"),
     t("authStore.error.authenticationExpired"),
     t("authStore.error.failedToReEncryptData"),
     t("authStore.error.failedToDecryptData"),

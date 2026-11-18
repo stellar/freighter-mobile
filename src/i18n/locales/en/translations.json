@@ -519,6 +519,7 @@
       "disableBiometricsFailedMessage": "We couldn't verify your identity. Please try again.",
       "pendingRecoveryPhraseMissing": "The new recovery phrase is no longer available. Start again.",
       "recoveryPhraseAlreadyHeld": "This recovery phrase is already in your wallet",
+      "accountDiscoveryFailed": "Couldn't check this phrase's accounts. Check your connection and try again.",
       "failedToAddRecoveryPhrase": "Failed to add the recovery phrase. Please try again.",
       "failedToImportRecoveryPhrase": "Failed to import the recovery phrase. Please try again."
     },
