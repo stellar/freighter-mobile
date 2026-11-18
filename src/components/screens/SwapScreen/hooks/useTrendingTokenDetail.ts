@@ -11,12 +11,15 @@ import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, Keyboard } from "react-native";
 import { analytics } from "services/analytics";
+import { swapSourceProps } from "services/analytics/swapSource";
 import { SecurityLevel } from "services/blockaid/constants";
 import { SecurityWarning } from "services/blockaid/helper";
 
 interface UseTrendingTokenDetailParams {
   balanceItems: HeldBalanceItem[];
   sourceTokenId: string;
+  /** Where the swap was opened from. */
+  entrySource: string;
   setSourceToken: (id: string, symbol: string) => void;
   setDestinationToken: (descriptor: DestinationTokenDescriptor | null) => void;
 }
@@ -38,6 +41,7 @@ interface UseTrendingTokenDetailParams {
 export const useTrendingTokenDetail = ({
   balanceItems,
   sourceTokenId,
+  entrySource,
   setSourceToken,
   setDestinationToken,
 }: UseTrendingTokenDetailParams) => {
@@ -109,7 +113,8 @@ export const useTrendingTokenDetail = ({
         asset_code: record.tokenCode,
         asset_issuer: descriptor.issuer ?? "",
         requires_trustline: descriptor.requiresTrustline,
-        source: SwapSelectionSource.TRENDING,
+        list: SwapSelectionSource.TRENDING,
+        ...swapSourceProps(entrySource),
       });
       // If the new destination equals the current source, clear source so
       // the user doesn't end up with the same token on both sides.
@@ -121,7 +126,13 @@ export const useTrendingTokenDetail = ({
       // changes (see SwapAmountScreen), so the Sell/Receive cards are visible.
       trendingDetailSheetRef.current?.dismiss();
     },
-    [balanceItems, sourceTokenId, setSourceToken, setDestinationToken],
+    [
+      balanceItems,
+      sourceTokenId,
+      entrySource,
+      setSourceToken,
+      setDestinationToken,
+    ],
   );
 
   // Detail sheet "Swap to {code}" CTA.

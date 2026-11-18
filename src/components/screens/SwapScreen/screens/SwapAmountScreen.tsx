@@ -54,7 +54,11 @@ import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { FormattedSearchTokenRecord } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
-import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
+import {
+  descriptorAsPathBalance,
+  SwapEntrySource,
+  useSwapStore,
+} from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { formatFiatAmount } from "helpers/formatAmount";
@@ -105,6 +109,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     tokenSymbol: swapFromTokenSymbol,
     source: swapEntrySource,
   } = route.params;
+  // Where the swap was opened from, as every swap event carries it. Home's
+  // Swap tile names no source.
+  const entrySource: SwapEntrySource = swapEntrySource ?? "home";
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const headerHeight = useHeaderHeight();
@@ -347,6 +354,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   } = useTrendingTokenDetail({
     balanceItems,
     sourceTokenId,
+    entrySource,
     setSourceToken,
     setDestinationToken,
   });
@@ -400,12 +408,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setDestinationToken,
   });
 
-  // Stamp the analytics entry tag every mount/param change (undefined for
-  // non-detail entries), so swap.completed can carry `source` (§7.5). Kept
-  // in the swap store because the success tracking fires screens later.
+  // Stamp where the swap was opened from every mount/param change, so every
+  // swap event can carry `source`. Kept in the swap store because the
+  // success tracking fires screens later.
   useEffect(() => {
-    setEntrySource(swapEntrySource ?? null);
-  }, [swapEntrySource, setEntrySource]);
+    setEntrySource(entrySource);
+  }, [entrySource, setEntrySource]);
 
   // The network fee auto-refreshes every 30s and is paid in XLM, so a fee
   // bump would shrink an XLM source's spendable and flash "Insufficient
@@ -443,7 +451,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     openDestinationPicker,
     openDestinationFromDropdown,
     openSourcePicker,
-  } = useSwapNavigation({ navigation });
+  } = useSwapNavigation({ navigation, entrySource });
 
   const handlePercentagePress = useCallback(
     (percentage: number) => {
@@ -715,7 +723,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ) {
       analytics.track(
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
-        swapSourceProps(swapEntrySource),
+        swapSourceProps(entrySource),
       );
       xlmReserveBottomSheetRef.current?.present();
       return;
@@ -735,7 +743,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     account,
     sourceTokenId,
     xlmReserveBottomSheetRef,
-    swapEntrySource,
+    entrySource,
   ]);
 
   // Reset everything on unmount (incl. the frozen network-fee snapshot, so the
@@ -994,7 +1002,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           onDismiss: handleReviewDismiss,
         }}
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
-        analyticsProps={swapSourceProps(swapEntrySource)}
+        analyticsProps={swapSourceProps(entrySource)}
         customContent={
           <SwapReviewBottomSheet
             transactionSecurityAssessment={transactionSecurityAssessment}

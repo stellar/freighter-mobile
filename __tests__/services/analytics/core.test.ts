@@ -908,21 +908,21 @@ describe("domain event catalog (#2883)", () => {
   });
 
   it("consolidates the swap pickers into swap.picker_opened discriminated by side", () => {
-    track(AnalyticsEvent.SWAP_PICKER_OPENED, { side: "from", source: "cta" });
+    track(AnalyticsEvent.SWAP_PICKER_OPENED, { side: "from", trigger: "cta" });
     track(AnalyticsEvent.SWAP_PICKER_OPENED, {
       side: "to",
-      source: "dropdown",
+      trigger: "dropdown",
     });
 
     expect(amplitudeMock.track).toHaveBeenNthCalledWith(
       1,
       "swap.picker_opened",
-      expect.objectContaining({ side: "from", source: "cta" }),
+      expect.objectContaining({ side: "from", trigger: "cta" }),
     );
     expect(amplitudeMock.track).toHaveBeenNthCalledWith(
       2,
       "swap.picker_opened",
-      expect.objectContaining({ side: "to", source: "dropdown" }),
+      expect.objectContaining({ side: "to", trigger: "dropdown" }),
     );
   });
 

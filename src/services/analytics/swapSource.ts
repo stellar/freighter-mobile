@@ -1,7 +1,7 @@
 /**
  * Where a swap was opened from, as every swap event carries it: `source` is
- * "token_details" or "earn", and absent for Home's Swap tab. The extension
- * sends the same.
+ * "home", "token_details" or "earn". Every host stamps one, so it is left off
+ * only for a swap event that no host started. The extension sends the same.
  */
 export const swapSourceProps = (
   entrySource: string | null | undefined,

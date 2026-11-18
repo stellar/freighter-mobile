@@ -48,13 +48,19 @@ import SwapReviewBottomSheet from "components/screens/SwapScreen/components/Swap
 import {
   buildSellSecondaryText,
   buildSourceBalanceRight,
+  descriptorFromBalance,
 } from "components/screens/SwapScreen/helpers";
 import { SWAP_TOAST_IDS } from "components/screens/SwapScreen/hooks/useSwapAmountError";
 import { useSwapFooter } from "components/screens/SwapScreen/hooks/useSwapFooter";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
+import {
+  AnalyticsEvent,
+  buildScreenViewedProps,
+  SwapPickerEntrypoint,
+  SwapSelectionSource,
+} from "config/analyticsConfig";
 import {
   DEFAULT_PADDING,
   MIN_TRANSACTION_FEE,
@@ -330,6 +336,12 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // back arrow can return with the source unchanged. The swap sheet stays
   // mounted underneath.
   const handleSwapSourcePickerPress = useCallback(() => {
+    // The sell chip, as on Swap's own amount screen.
+    analytics.track(AnalyticsEvent.SWAP_PICKER_OPENED, {
+      side: "from",
+      trigger: SwapPickerEntrypoint.DROPDOWN,
+      ...EARN_SWAP_ANALYTICS_PROPS,
+    });
     // Over a dismissed keyboard: the swap sheet's keypad would otherwise
     // stay up over the list.
     Keyboard.dismiss();
@@ -340,6 +352,13 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
 
   const handleSwapSourceSelected = useCallback(
     (balance: HeldBalanceItem) => {
+      // "Swap from" lists the tokens held, as Swap's picker does idle.
+      analytics.track(AnalyticsEvent.SWAP_SOURCE_SELECTED, {
+        asset_code: balance.tokenCode ?? "",
+        asset_issuer: descriptorFromBalance(balance).issuer ?? "",
+        list: SwapSelectionSource.BALANCES,
+        ...EARN_SWAP_ANALYTICS_PROPS,
+      });
       earnSwap.selectSource(balance);
       swapFromBottomSheetModalRef.current?.dismiss();
     },

@@ -928,6 +928,31 @@ describe("SwapAmountScreen", () => {
     });
   });
 
+  // Every swap event says where the swap was opened from. Home's Swap tile
+  // names no source, so it is Home's.
+  describe("the swap's entry source", () => {
+    it("is Home when the route names no source", () => {
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockSetEntrySource).toHaveBeenLastCalledWith("home");
+    });
+
+    it("is the token's details when it opened the swap", () => {
+      const route = {
+        ...makeRoute(),
+        params: { tokenId: "SRC", tokenSymbol: "XLM", source: "token_details" },
+      } as unknown as Props["route"];
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={route} />,
+      );
+
+      expect(mockSetEntrySource).toHaveBeenLastCalledWith("token_details");
+    });
+  });
+
   describe("Pre-flight XLM reserve check", () => {
     beforeEach(() => {
       // Reset sheet refs so each test starts with a clean array.
@@ -993,11 +1018,11 @@ describe("SwapAmountScreen", () => {
 
       // Gate must have fired: swap transaction must NOT have been initiated.
       expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
-      // The analytics event must fire when the gate trips. Home's Swap tab
-      // sends no source.
+      // The analytics event must fire when the gate trips, tagged as opened
+      // from Home: the route names no other source.
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
-        {},
+        { source: "home" },
       );
       // The XLM reserve sheet's present() must have been called.
       // eslint-disable-next-line no-underscore-dangle
@@ -1156,7 +1181,7 @@ describe("SwapAmountScreen", () => {
       // Analytics must fire for the XLM-as-source gate trip.
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
-        {},
+        { source: "home" },
       );
       // The XLM reserve sheet's present() must have been called.
       // eslint-disable-next-line no-underscore-dangle
@@ -1594,7 +1619,7 @@ describe("SwapAmountScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_PICKER_OPENED,
-        { side: "to", source: "dropdown" },
+        { side: "to", trigger: "dropdown", source: "home" },
       );
     });
   });
@@ -1745,7 +1770,7 @@ describe("SwapAmountScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_PICKER_OPENED,
-        { side: "to", source: "cta" },
+        { side: "to", trigger: "cta", source: "home" },
       );
     });
 
@@ -1761,7 +1786,7 @@ describe("SwapAmountScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_PICKER_OPENED,
-        { side: "to", source: "dropdown" },
+        { side: "to", trigger: "dropdown", source: "home" },
       );
     });
 
@@ -1782,12 +1807,12 @@ describe("SwapAmountScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_PICKER_OPENED,
-        { side: "from", source: "dropdown" },
+        { side: "from", trigger: "dropdown", source: "home" },
       );
       // Negative assertion: the source picker MUST tag side:from, never side:to.
       expect(analytics.track).not.toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_PICKER_OPENED,
-        { side: "to", source: "dropdown" },
+        { side: "to", trigger: "dropdown", source: "home" },
       );
     });
 

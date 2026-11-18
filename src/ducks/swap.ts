@@ -39,18 +39,18 @@ interface SwapPathData {
 }
 
 /**
- * Where a swap was opened from: a token's details, or the swap inside Earn.
- * Home's Swap tab has none.
+ * Where a swap was opened from: Home's Swap tile, a token's details, or the
+ * swap inside Earn.
  */
-export type SwapEntrySource = "token_details" | "earn";
+export type SwapEntrySource = "home" | "token_details" | "earn";
 
 interface SwapState {
   sourceTokenId: string;
   sourceTokenSymbol: string;
   /**
    * Where the swap flow was entered from, carried onto every swap analytics
-   * event as `source`. null for the default (home) entry; reset with the
-   * rest of the swap state.
+   * event as `source`. Each host stamps one; null only between swaps (it is
+   * reset with the rest of the swap state).
    */
   entrySource: SwapEntrySource | null;
   destinationToken: DestinationTokenDescriptor | null;

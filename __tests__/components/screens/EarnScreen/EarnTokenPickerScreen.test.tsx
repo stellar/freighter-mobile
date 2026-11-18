@@ -850,6 +850,14 @@ describe("EarnTokenPickerScreen", () => {
       usePreferencesStore.getState().setHasSeenEarnIntro(true);
     });
 
+    // The swap store outlives a render; a source picked here would stop the
+    // next swap from choosing its own.
+    afterEach(() => {
+      act(() => {
+        useSwapStore.getState().resetSwap();
+      });
+    });
+
     it("reports Swap's screens, tagged as opened from Earn", () => {
       renderScreen();
       // eslint-disable-next-line no-underscore-dangle
@@ -870,6 +878,71 @@ describe("EarnTokenPickerScreen", () => {
         ]),
       );
       expect(screens).toHaveLength(3);
+    });
+
+    // The sell chip opens "Swap from", and picking there selects the source,
+    // as Swap's own picker reports both.
+    it("reports opening the source picker and picking a source", () => {
+      const { analytics: mockAnalytics } =
+        jest.requireMock("services/analytics");
+      mockUseEarnTokens.supported = [
+        {
+          ...makeOption("EURC"),
+          canonicalId:
+            "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+        },
+      ];
+      const { getByTestId } = renderScreen();
+      fireEvent.press(getByTestId("earn-token-option-EURC"));
+      // eslint-disable-next-line no-underscore-dangle
+      const sheets = globalThis.__earnTokenPickerMockSheets;
+      const contentOf = <P,>(type: unknown) =>
+        (
+          sheets.find(
+            ({ props }) =>
+              (props.customContent as React.ReactElement | undefined)?.type ===
+              type,
+          )?.props.customContent as React.ReactElement<P>
+        ).props;
+
+      act(() => {
+        contentOf<{ onSwap: () => void }>(NotEnoughTokenBottomSheet).onSwap();
+      });
+      act(() => {
+        contentOf<{ onSourcePickerPress: () => void }>(
+          EarnSwapBottomSheet,
+        ).onSourcePickerPress();
+      });
+      act(() => {
+        contentOf<{ onSelect: (balance: unknown) => void }>(
+          EarnSwapFromBottomSheet,
+        ).onSelect({
+          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          tokenCode: "USDC",
+          tokenType: "credit_alphanum4",
+          token: {
+            type: "credit_alphanum4",
+            code: "USDC",
+            issuer: {
+              key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            },
+          },
+          total: new BigNumber("10"),
+        });
+      });
+
+      expect(mockAnalytics.track).toHaveBeenCalledWith("swap.picker_opened", {
+        side: "from",
+        trigger: "dropdown",
+        source: "earn",
+      });
+      expect(mockAnalytics.track).toHaveBeenCalledWith("swap.source_selected", {
+        asset_code: "USDC",
+        asset_issuer:
+          "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        list: "balances",
+        source: "earn",
+      });
     });
 
     it("tags the swap's own events as opened from Earn", () => {

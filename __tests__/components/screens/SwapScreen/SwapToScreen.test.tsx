@@ -25,6 +25,7 @@ jest.mock("ducks/swap", () => ({
     setSourceAmountDisplay: jest.fn(),
     sourceTokenId: "XLM",
     destinationToken: null,
+    entrySource: "home",
   })),
 }));
 
@@ -387,6 +388,7 @@ describe("SwapToScreen", () => {
       setSourceAmountDisplay: jest.fn(),
       sourceTokenId: "XLM",
       destinationToken: null,
+      entrySource: "home",
     };
 
     afterEach(() => {
@@ -751,7 +753,7 @@ describe("SwapToScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_DESTINATION_SELECTED,
-        expect.objectContaining({ source: "balances" }),
+        expect.objectContaining({ list: "balances", source: "home" }),
       );
     });
 
@@ -772,7 +774,11 @@ describe("SwapToScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_DESTINATION_SELECTED,
-        expect.objectContaining({ source: "popular", asset_code: "AQUA" }),
+        expect.objectContaining({
+          list: "popular",
+          source: "home",
+          asset_code: "AQUA",
+        }),
       );
     });
 
@@ -795,7 +801,11 @@ describe("SwapToScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_DESTINATION_SELECTED,
-        expect.objectContaining({ source: "search", asset_code: "AQUA" }),
+        expect.objectContaining({
+          list: "search",
+          source: "home",
+          asset_code: "AQUA",
+        }),
       );
     });
 
@@ -817,7 +827,8 @@ describe("SwapToScreen", () => {
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_SOURCE_SELECTED,
         expect.objectContaining({
-          source: "balances",
+          list: "balances",
+          source: "home",
           asset_code: "USDC",
           asset_issuer:
             "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",

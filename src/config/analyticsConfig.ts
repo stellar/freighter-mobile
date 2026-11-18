@@ -319,15 +319,15 @@ export enum AnalyticsEvent {
 
 /**
  * Tags how the user reached the Swap source / destination picker, carried as
- * the `source` property on the SWAP_PICKER_OPENED analytics event.
+ * the `trigger` property on the SWAP_PICKER_OPENED analytics event.
  *
  * - CTA: the missing-side prompt button (e.g. "Select a token" / "Sell")
  *   on SwapAmountScreen fired the navigation.
  * - DROPDOWN: the picker chip itself was tapped.
  *
- * Wire values match the historical inline string union so existing Amplitude
- * dashboards / funnels keyed on `source: "cta"` / `source: "dropdown"` keep
- * working unchanged.
+ * The property was `source` until `source` came to mean where the swap was
+ * opened from on every swap event, as in the extension; the values are
+ * unchanged.
  */
 export enum SwapPickerEntrypoint {
   CTA = "cta",
@@ -335,8 +335,10 @@ export enum SwapPickerEntrypoint {
 }
 
 /**
- * Tags which list bucket the user picked a swap token from. Wire values are
- * an Amplitude dashboard contract -- do not rename without coordinating with
+ * Tags which list bucket the user picked a swap token from, carried as `list`
+ * on SWAP_SOURCE_SELECTED / SWAP_DESTINATION_SELECTED (it was `source` until
+ * `source` came to mean where the swap was opened from). Wire values are an
+ * Amplitude dashboard contract -- do not rename without coordinating with
  * analytics.
  */
 export enum SwapSelectionSource {
