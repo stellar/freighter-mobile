@@ -734,6 +734,108 @@ describe("useSwapTransaction", () => {
     });
   });
 
+  // Every swap event says where the swap was opened from, as the
+  // extension's do: the swap inside Earn reports "earn".
+  describe("the entry source on the swap's other events", () => {
+    beforeEach(() => {
+      act(() => {
+        useSwapStore.getState().setEntrySource("earn");
+      });
+    });
+
+    it("tags swap.trustline_added", async () => {
+      act(() => {
+        useSwapStore.setState({
+          destinationToken: {
+            id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            tokenCode: "USDC",
+            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            decimals: 7,
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+            requiresTrustline: true,
+          },
+        } as never);
+      });
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(submitOk());
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrack).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_TRUSTLINE_ADDED,
+        expect.objectContaining({ source: "earn" }),
+      );
+    });
+
+    it("tags swap.quote_expired and the swap.failed that goes with it", async () => {
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(
+        submitFailed({
+          error: "tx_failed",
+          resultCodes: {
+            transaction: "tx_failed",
+            operations: ["op_under_dest_min"],
+          },
+          httpStatus: 400,
+          isProtocolAnswer: true,
+        }),
+      );
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrack).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_QUOTE_EXPIRED,
+        expect.objectContaining({ source: "earn" }),
+      );
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({ source: "earn" }),
+      );
+    });
+
+    it("tags swap.failed for a rejected swap", async () => {
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(
+        submitFailed({
+          error: "tx_failed",
+          resultCodes: {
+            transaction: "tx_failed",
+            operations: ["op_underfunded"],
+          },
+          httpStatus: 400,
+          isProtocolAnswer: true,
+        }),
+      );
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({ source: "earn" }),
+      );
+    });
+
+    it("tags swap.failed when signing fails", async () => {
+      mockSignTransaction.mockReturnValue(null);
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({ source: "earn" }),
+      );
+    });
+  });
+
   describe("SWAP_QUOTE_EXPIRED analytics", () => {
     it("fires SWAP_QUOTE_EXPIRED with the result code, AND also swap.failed with failure_category slippage, when the submit is rejected with op_under_dest_min", async () => {
       // The store no longer carries the failure classification — the hook

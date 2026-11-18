@@ -104,7 +104,7 @@ export interface SwapSuccessEvent {
   destAmount?: string;
   allowedSlippage?: string;
   isSwap: true;
-  /** Entry-point tag (e.g. "token_details"); omitted from the payload when absent */
+  /** Entry-point tag ("token_details" or "earn"); omitted from the payload when absent */
   source?: string;
   volume?: SwapVolume;
 }
@@ -118,6 +118,8 @@ export interface TransactionErrorEvent {
   destToken?: string;
   sourceAmount?: string;
   destAmount?: string;
+  /** A swap's entry-point tag, as on `SwapSuccessEvent`. */
+  source?: string;
   /** Absent for collectible-send failures (unpriced, out of scope) and any pre-submit failure. */
   volume?: FailureVolume;
 }

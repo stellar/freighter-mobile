@@ -7,6 +7,7 @@ import {
   LegUsdStatus,
 } from "helpers/usdVolume";
 import { track } from "services/analytics/core";
+import { swapSourceProps } from "services/analytics/swapSource";
 import { TransactionOperationType } from "services/analytics/types";
 import type {
   SignedTransactionEvent,
@@ -267,9 +268,8 @@ export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
   track(AnalyticsEvent.SWAP_SUCCESS, {
     from_asset_code: data.sourceToken,
     to_asset_code: data.destToken,
-    // Entry tag (design §7.5): swaps entered from the token detail view carry
-    // source: "token_details"; other entries keep the historical shape.
-    ...(data.source ? { source: data.source } : {}),
+    // Where the swap was opened from: "token_details" or "earn".
+    ...swapSourceProps(data.source),
     ...(volume
       ? {
           ...assetIdentityProps("from_", volume.identity),
@@ -341,6 +341,7 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
       from_asset_code: data.sourceToken,
       to_asset_code: data.destToken,
       reason_code: reasonCode,
+      ...swapSourceProps(data.source),
       ...(volume
         ? {
             ...assetIdentityProps("from_", volume.identity),

@@ -6,7 +6,6 @@ import {
   trackEarnMaxAmountSelected,
   trackEarnPoolDetailsOpened,
   trackEarnSimulationFailed,
-  trackEarnSwapCompleted,
   trackEarnTokenSelected,
   trackEarnXlmFeeInsufficientShown,
 } from "services/analytics/earn";
@@ -32,24 +31,20 @@ describe("Earn funnel events", () => {
       tokenSelected: AnalyticsEvent.EARN_TOKEN_SELECTED,
       balanceInsufficientShown: AnalyticsEvent.EARN_BALANCE_INSUFFICIENT_SHOWN,
       fundingActionSelected: AnalyticsEvent.EARN_FUNDING_ACTION_SELECTED,
-      swapCompleted: AnalyticsEvent.EARN_SWAP_COMPLETED,
       poolDetailsOpened: AnalyticsEvent.EARN_POOL_DETAILS_OPENED,
       maxAmountSelected: AnalyticsEvent.EARN_MAX_AMOUNT_SELECTED,
       xlmFeeInsufficientShown: AnalyticsEvent.EARN_XLM_FEE_INSUFFICIENT_SHOWN,
       simulationFailed: AnalyticsEvent.EARN_SIMULATION_FAILED,
       depositDismissed: AnalyticsEvent.EARN_DEPOSIT_DISMISSED,
-      swapScreen: AnalyticsEvent.VIEW_EARN_SWAP,
     }).toEqual({
       tokenSelected: "earn.token_selected",
       balanceInsufficientShown: "earn.balance_insufficient_shown",
       fundingActionSelected: "earn.funding_action_selected",
-      swapCompleted: "earn.swap_completed",
       poolDetailsOpened: "earn.pool_details_opened",
       maxAmountSelected: "earn.max_amount_selected",
       xlmFeeInsufficientShown: "earn.xlm_fee_insufficient_shown",
       simulationFailed: "earn.simulation_failed",
       depositDismissed: "earn.deposit_processing_dismissed",
-      swapScreen: "earn_swap_amount",
     });
   });
 
@@ -78,14 +73,6 @@ describe("Earn funnel events", () => {
     expect(track).toHaveBeenCalledWith("earn.funding_action_selected", {
       asset_code: "USDC",
       action: "transfer",
-    });
-  });
-
-  it("earn.swap_completed", () => {
-    trackEarnSwapCompleted({ fromAssetCode: "XLM", toAssetCode: "USDC" });
-    expect(track).toHaveBeenCalledWith("earn.swap_completed", {
-      from_asset_code: "XLM",
-      to_asset_code: "USDC",
     });
   });
 

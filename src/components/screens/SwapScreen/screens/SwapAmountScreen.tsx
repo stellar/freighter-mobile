@@ -84,6 +84,7 @@ import {
   View,
 } from "react-native";
 import { analytics } from "services/analytics";
+import { swapSourceProps } from "services/analytics/swapSource";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import { assessTransactionSecurity } from "services/blockaid/helper";
 
@@ -712,7 +713,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           !!destinationTokenDescriptor?.requiresTrustline,
       })
     ) {
-      analytics.track(AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN);
+      analytics.track(
+        AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+        swapSourceProps(swapEntrySource),
+      );
       xlmReserveBottomSheetRef.current?.present();
       return;
     }
@@ -731,6 +735,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     account,
     sourceTokenId,
     xlmReserveBottomSheetRef,
+    swapEntrySource,
   ]);
 
   // Reset everything on unmount (incl. the frozen network-fee snapshot, so the
@@ -989,6 +994,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           onDismiss: handleReviewDismiss,
         }}
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
+        analyticsProps={swapSourceProps(swapEntrySource)}
         customContent={
           <SwapReviewBottomSheet
             transactionSecurityAssessment={transactionSecurityAssessment}

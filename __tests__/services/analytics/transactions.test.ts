@@ -67,6 +67,35 @@ describe("trackTransactionError reason_code (D1 cross-platform parity)", () => {
     );
   });
 
+  // Where the swap was opened from rides on its failure, as on its success.
+  it("tags swap.failed with the swap's entry source", () => {
+    trackTransactionError({
+      error: "op failed",
+      errorCode: "op_underfunded",
+      isSwap: true,
+      sourceToken: "XLM",
+      destToken: "USDC",
+      source: "earn",
+    });
+
+    expect(track).toHaveBeenCalledWith(
+      AnalyticsEvent.SWAP_FAIL,
+      expect.objectContaining({ source: "earn" }),
+    );
+  });
+
+  it("leaves source off swap.failed for Home's Swap tab", () => {
+    trackTransactionError({
+      error: "op failed",
+      errorCode: "op_underfunded",
+      isSwap: true,
+      sourceToken: "XLM",
+      destToken: "USDC",
+    });
+
+    expect(track.mock.calls[0][1]).not.toHaveProperty("source");
+  });
+
   it("falls back to unknown — NOT the free-text message — when no result code is present", () => {
     // Matches the extension's `resultCodes... || "unknown"`. The free-text
     // message (which could carry a StrKey and blows up cardinality) must never

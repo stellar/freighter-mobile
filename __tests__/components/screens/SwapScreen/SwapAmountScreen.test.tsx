@@ -993,9 +993,11 @@ describe("SwapAmountScreen", () => {
 
       // Gate must have fired: swap transaction must NOT have been initiated.
       expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
-      // The analytics event must fire when the gate trips.
+      // The analytics event must fire when the gate trips. Home's Swap tab
+      // sends no source.
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+        {},
       );
       // The XLM reserve sheet's present() must have been called.
       // eslint-disable-next-line no-underscore-dangle
@@ -1003,6 +1005,57 @@ describe("SwapAmountScreen", () => {
         (spy) => spy.present.mock.calls.length > 0,
       );
       expect(presentedSheets.length).toBeGreaterThan(0);
+    });
+
+    // Every swap event says where the swap was opened from.
+    it("tags the reserve event with the swap's entry source", async () => {
+      const lowXlmBalances = mockBalances.map((b) => {
+        if (!isNativeToken(b.token as Token)) return b;
+        return {
+          ...b,
+          total: new BigNumber("100.1"),
+          available: new BigNumber("0.1"),
+        };
+      });
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: lowXlmBalances,
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2" },
+        destinationToken: {
+          id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          tokenCode: "FTT",
+          issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          requiresTrustline: true,
+        },
+      });
+      const route = {
+        ...makeRoute(),
+        params: { tokenId: "SRC", tokenSymbol: "XLM", source: "token_details" },
+      } as unknown as Props["route"];
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={route} />,
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+        { source: "token_details" },
+      );
     });
 
     it("opens Review sheet when destinationToken.requiresTrustline but XLM spendable >= 0.5", async () => {
@@ -1038,6 +1091,7 @@ describe("SwapAmountScreen", () => {
       // Analytics reserve event must NOT fire on the happy path.
       expect(analytics.track).not.toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+        expect.anything(),
       );
     });
 
@@ -1102,6 +1156,7 @@ describe("SwapAmountScreen", () => {
       // Analytics must fire for the XLM-as-source gate trip.
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+        {},
       );
       // The XLM reserve sheet's present() must have been called.
       // eslint-disable-next-line no-underscore-dangle
@@ -1765,6 +1820,31 @@ describe("SwapAmountScreen", () => {
           previousDestinationTokenIssuer:
             "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
         }),
+      );
+    });
+
+    it("tags SWAP_DIRECTION_TOGGLED with the swap's entry source", () => {
+      setSwapStoreState({
+        entrySource: "token_details",
+        sourceTokenId: "XLM",
+        sourceTokenSymbol: "XLM",
+        destinationToken: {
+          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          tokenCode: "USDC",
+          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          requiresTrustline: false,
+        },
+      } as Partial<SwapStoreState>);
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      fireEvent.press(getByTestId("swap-direction-toggle"));
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_DIRECTION_TOGGLED,
+        expect.objectContaining({ source: "token_details" }),
       );
     });
 

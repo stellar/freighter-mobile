@@ -66,20 +66,6 @@ export const trackEarnFundingActionSelected = ({
   });
 };
 
-/** A swap started from Earn finished successfully. */
-export const trackEarnSwapCompleted = ({
-  fromAssetCode,
-  toAssetCode,
-}: {
-  fromAssetCode: string;
-  toAssetCode: string;
-}): void => {
-  track(AnalyticsEvent.EARN_SWAP_COMPLETED, {
-    from_asset_code: fromAssetCode,
-    to_asset_code: toAssetCode,
-  });
-};
-
 export const trackEarnPoolDetailsOpened = ({
   poolId,
 }: {

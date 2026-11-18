@@ -498,7 +498,7 @@ describe("EarnTokenPickerScreen", () => {
       // eslint-disable-next-line no-underscore-dangle
       const sheets = globalThis.__earnTokenPickerMockSheets;
       const swapSheet = sheets.find(
-        ({ props }) => props.analyticsEvent === "earn_swap_amount",
+        ({ props }) => props.analyticsEvent === "swap_amount",
       );
       const processingSheet = sheets.find(
         ({ props }) => props.enablePanDownToClose === false,
@@ -640,6 +640,61 @@ describe("EarnTokenPickerScreen", () => {
     });
   });
 
+  // The swap inside Earn reports Swap's own events, tagged as opened from
+  // Earn, as the extension's does.
+  describe("the Earn swap's analytics", () => {
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+    });
+
+    it("reports Swap's screens, tagged as opened from Earn", () => {
+      renderScreen();
+      // eslint-disable-next-line no-underscore-dangle
+      const sheets = globalThis.__earnTokenPickerMockSheets;
+      const screens = sheets
+        .filter(({ props }) =>
+          ["swap_amount", "swap_from_asset", "swap_confirm"].includes(
+            props.analyticsEvent as string,
+          ),
+        )
+        .map(({ props }) => [props.analyticsEvent, props.analyticsProps]);
+
+      expect(screens).toEqual(
+        expect.arrayContaining([
+          ["swap_amount", { source: "earn" }],
+          ["swap_from_asset", { source: "earn" }],
+          ["swap_confirm", { source: "earn" }],
+        ]),
+      );
+      expect(screens).toHaveLength(3);
+    });
+
+    it("tags the swap's own events as opened from Earn", () => {
+      mockUseEarnTokens.supported = [
+        {
+          ...makeOption("EURC"),
+          canonicalId:
+            "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+        },
+      ];
+      const { getByTestId } = renderScreen();
+      fireEvent.press(getByTestId("earn-token-option-EURC"));
+      // eslint-disable-next-line no-underscore-dangle
+      const sheets = globalThis.__earnTokenPickerMockSheets;
+      act(() => {
+        (
+          sheets.find(
+            ({ props }) =>
+              (props.customContent as React.ReactElement | undefined)?.type ===
+              NotEnoughTokenBottomSheet,
+          )?.props.customContent as React.ReactElement<{ onSwap: () => void }>
+        ).props.onSwap();
+      });
+
+      expect(useSwapStore.getState().entrySource).toBe("earn");
+    });
+  });
+
   // The sell card reads like main Swap's: the spendable balance, and the
   // amount in the other unit.
   describe("the Earn swap's sell card", () => {
@@ -727,7 +782,7 @@ describe("EarnTokenPickerScreen", () => {
       // eslint-disable-next-line no-underscore-dangle
       const sheets = globalThis.__earnTokenPickerMockSheets;
       const swapSheet = sheets.find(
-        ({ props }) => props.analyticsEvent === "earn_swap_amount",
+        ({ props }) => props.analyticsEvent === "swap_amount",
       );
       const swapFromSheet = sheets.find(
         ({ props }) =>
@@ -832,7 +887,7 @@ describe("EarnTokenPickerScreen", () => {
       });
 
       const reviewSheet = sheets.find(
-        ({ props }) => props.analyticsEvent === "earn_swap_review",
+        ({ props }) => props.analyticsEvent === "swap_confirm",
       );
       expect(
         findByContent(SecurityDetailBottomSheet)?.ref.present,
@@ -855,7 +910,7 @@ describe("EarnTokenPickerScreen", () => {
       // eslint-disable-next-line no-underscore-dangle
       const sheets = globalThis.__earnTokenPickerMockSheets;
       const reviewSheet = sheets.find(
-        ({ props }) => props.analyticsEvent === "earn_swap_review",
+        ({ props }) => props.analyticsEvent === "swap_confirm",
       );
       const { onDismiss } = reviewSheet?.props.bottomSheetModalProps as {
         onDismiss: () => void;

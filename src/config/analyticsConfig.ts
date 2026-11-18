@@ -53,6 +53,8 @@ export enum AnalyticsEvent {
   VIEW_SEND_SUCCESS = "send_payment_success",
   VIEW_SWAP = "swap",
   VIEW_SWAP_AMOUNT = "swap_amount",
+  // The Earn swap's "Swap from" sheet, as the extension names its source step.
+  VIEW_SWAP_FROM_ASSET = "swap_from_asset",
   VIEW_SWAP_CONFIRM = "swap_confirm",
   VIEW_SWAP_TRANSACTION_DETAILS = "swap_transaction_details",
   VIEW_SWAP_PROCESSING = "swap_processing",
@@ -87,9 +89,6 @@ export enum AnalyticsEvent {
   VIEW_EARN_AMOUNT = "earn_amount",
   VIEW_EARN_REVIEW = "earn_review",
   VIEW_EARN_TRANSACTION_DETAILS = "earn_transaction_details",
-  // The extension's name for the same step.
-  VIEW_EARN_SWAP = "earn_swap_amount",
-  VIEW_EARN_SWAP_REVIEW = "earn_swap_review",
   VIEW_EARN_PROCESSING = "earn_processing",
   VIEW_EARN_SUCCESS = "earn_success",
 
@@ -178,7 +177,6 @@ export enum AnalyticsEvent {
   EARN_TOKEN_SELECTED = "earn.token_selected",
   EARN_BALANCE_INSUFFICIENT_SHOWN = "earn.balance_insufficient_shown",
   EARN_FUNDING_ACTION_SELECTED = "earn.funding_action_selected",
-  EARN_SWAP_COMPLETED = "earn.swap_completed",
   EARN_POOL_DETAILS_OPENED = "earn.pool_details_opened",
   EARN_MAX_AMOUNT_SELECTED = "earn.max_amount_selected",
   EARN_XLM_FEE_INSUFFICIENT_SHOWN = "earn.xlm_fee_insufficient_shown",
@@ -513,6 +511,9 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_SWAP_AMOUNT]: {
     flow: AnalyticsFlow.SWAP,
   },
+  [AnalyticsEvent.VIEW_SWAP_FROM_ASSET]: {
+    flow: AnalyticsFlow.SWAP,
+  },
   [AnalyticsEvent.VIEW_SWAP_CONFIRM]: {
     flow: AnalyticsFlow.SWAP,
     step: "confirm",
@@ -573,13 +574,6 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   },
   [AnalyticsEvent.VIEW_EARN_TRANSACTION_DETAILS]: {
     flow: AnalyticsFlow.EARN,
-  },
-  [AnalyticsEvent.VIEW_EARN_SWAP]: {
-    flow: AnalyticsFlow.EARN,
-  },
-  [AnalyticsEvent.VIEW_EARN_SWAP_REVIEW]: {
-    flow: AnalyticsFlow.EARN,
-    step: "confirm",
   },
   [AnalyticsEvent.VIEW_EARN_PROCESSING]: {
     flow: AnalyticsFlow.EARN,

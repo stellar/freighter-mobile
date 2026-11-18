@@ -59,6 +59,7 @@ import { isWalletUnlocked } from "hooks/useGetActiveAccount";
 import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "services/analytics";
+import { swapSourceProps } from "services/analytics/swapSource";
 import { FailureVolume } from "services/analytics/types";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
@@ -245,10 +246,10 @@ export const useSwapTransaction = ({
       throw new Error("Destination token is required for swap transaction");
     }
 
-    // Entry tag stamped by SwapAmountScreen (e.g. "token_details") so
-    // swap.completed can be broken down by entry point (design §7.5).
-    // Captured HERE, into the submission closure, like every other payload
-    // field: SwapAmountScreen's unmount cleanup calls resetSwap(), so
+    // Where the swap was opened from ("token_details", stamped by
+    // SwapAmountScreen, or "earn", by the Earn swap), carried on every swap
+    // event. Captured HERE, into the submission closure, like every other
+    // payload field: SwapAmountScreen's unmount cleanup calls resetSwap(), so
     // navigating away during submission would clear it before success.
     const { entrySource } = useSwapStore.getState();
 
@@ -501,6 +502,7 @@ export const useSwapTransaction = ({
         analytics.track(AnalyticsEvent.SWAP_TRUSTLINE_ADDED, {
           asset_code: destinationTokenInput.tokenCode,
           asset_issuer: swappedDestination.issuer ?? "",
+          ...swapSourceProps(entrySource),
         });
       }
     } catch (error) {
@@ -572,6 +574,7 @@ export const useSwapTransaction = ({
           from_asset_code: sourceBalance?.tokenCode,
           to_asset_code: destinationTokenInput?.tokenCode,
           result_code: quoteExpiredCodes.join(", "),
+          ...swapSourceProps(entrySource),
         });
 
         // A quote expiry rejected at submit also counts as a failed swap for
@@ -587,6 +590,7 @@ export const useSwapTransaction = ({
           isSwap: true,
           sourceToken: sourceBalance?.tokenCode,
           destToken: destinationTokenInput?.tokenCode,
+          source: entrySource ?? undefined,
           volume,
         });
 
@@ -628,6 +632,7 @@ export const useSwapTransaction = ({
         destToken: destinationTokenInput?.tokenCode,
         sourceAmount,
         destAmount: pathResult?.destinationAmount,
+        source: entrySource ?? undefined,
         volume,
       });
 

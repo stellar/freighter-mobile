@@ -92,6 +92,7 @@ export const useEarnSwap = ({
     pathError,
     setSourceToken,
     setDestinationToken,
+    setEntrySource,
     setSourceAmount,
     setSourceAmountDisplay,
     resetSwap,
@@ -173,6 +174,8 @@ export const useEarnSwap = ({
       return undefined;
     }
     setDestinationToken(destination);
+    // The swap's events report it as opened from Earn, as the extension's do.
+    setEntrySource("earn");
 
     // A destination the account doesn't hold yet carries no Blockaid verdict,
     // so scan it as main Swap does for its default destination. Without one,
@@ -204,7 +207,7 @@ export const useEarnSwap = ({
     return () => {
       isCurrent = false;
     };
-  }, [destination, setDestinationToken, network]);
+  }, [destination, setDestinationToken, setEntrySource, network]);
 
   useEffect(() => {
     if (!destination || sourceTokenId || !defaultSourceBalance) {

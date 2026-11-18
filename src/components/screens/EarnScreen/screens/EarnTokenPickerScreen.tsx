@@ -98,10 +98,16 @@ import { analytics } from "services/analytics";
 import {
   trackEarnBalanceInsufficientShown,
   trackEarnFundingActionSelected,
-  trackEarnSwapCompleted,
   trackEarnTokenSelected,
 } from "services/analytics/earn";
+import { swapSourceProps } from "services/analytics/swapSource";
 import { assessTransactionSecurity } from "services/blockaid/helper";
+
+/**
+ * The swap inside Earn reports Swap's own screens, tagged as opened from
+ * Earn, as the extension's does.
+ */
+const EARN_SWAP_ANALYTICS_PROPS = swapSourceProps("earn");
 
 type EarnTokenPickerScreenProps = NativeStackScreenProps<
   EarnStackParamList,
@@ -211,11 +217,8 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
 
     const outcome = swapOutcomeRef.current;
     swapOutcomeRef.current = null;
+    // The swap itself reported `swap.completed`, tagged as opened from Earn.
     if (outcome?.succeeded && swapOption) {
-      trackEarnSwapCompleted({
-        fromAssetCode: useSwapStore.getState().sourceTokenSymbol,
-        toAssetCode: swapOption.code,
-      });
       setDidSwapInFlow(true);
       showToast({
         variant: "success",
@@ -971,7 +974,8 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       />
       <BottomSheet
         modalRef={swapBottomSheetModalRef}
-        analyticsEvent={AnalyticsEvent.VIEW_EARN_SWAP}
+        analyticsEvent={AnalyticsEvent.VIEW_SWAP_AMOUNT}
+        analyticsProps={EARN_SWAP_ANALYTICS_PROPS}
         customContent={
           swapOption && earnSwap.destination ? (
             <EarnSwapBottomSheet
@@ -1005,7 +1009,8 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       <BottomSheet
         modalRef={swapReviewBottomSheetModalRef}
         scrollable
-        analyticsEvent={AnalyticsEvent.VIEW_EARN_SWAP_REVIEW}
+        analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
+        analyticsProps={EARN_SWAP_ANALYTICS_PROPS}
         bottomSheetModalProps={{ onDismiss: handleSwapReviewDismiss }}
         scrollViewFooterComponent={renderSwapReviewFooter}
         customContent={
@@ -1069,6 +1074,8 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       />
       <BottomSheet
         modalRef={swapFromBottomSheetModalRef}
+        analyticsEvent={AnalyticsEvent.VIEW_SWAP_FROM_ASSET}
+        analyticsProps={EARN_SWAP_ANALYTICS_PROPS}
         enableDynamicSizing={false}
         snapPoints={["90%"]}
         customContent={

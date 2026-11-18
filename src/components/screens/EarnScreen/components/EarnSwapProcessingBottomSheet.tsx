@@ -12,6 +12,7 @@ import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { NativeToken, NonNativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -19,6 +20,7 @@ import useColors from "hooks/useColors";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 import { track } from "services/analytics/core";
+import { swapSourceProps } from "services/analytics/swapSource";
 import { getTransactionDetails, TransactionDetail } from "services/stellar";
 
 /** What the swap came to, for the picker's toast once the sheet closes. */
@@ -72,21 +74,24 @@ export const EarnSwapProcessingBottomSheet: React.FC<
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetail | null>(null);
   const hasEmittedSuccess = useRef(false);
+  // Where the swap was opened from, read once: leaving the flow resets the
+  // swap store before the success view may fire.
+  const entrySourceRef = useRef(useSwapStore.getState().entrySource);
 
   useEffect(() => {
-    track(
-      AnalyticsEvent.SCREEN_VIEWED,
-      buildScreenViewedProps(AnalyticsEvent.VIEW_SWAP_PROCESSING),
-    );
+    track(AnalyticsEvent.SCREEN_VIEWED, {
+      ...buildScreenViewedProps(AnalyticsEvent.VIEW_SWAP_PROCESSING),
+      ...swapSourceProps(entrySourceRef.current),
+    });
   }, []);
 
   useEffect(() => {
     if (transactionHash && !transactionError && !hasEmittedSuccess.current) {
       hasEmittedSuccess.current = true;
-      track(
-        AnalyticsEvent.SCREEN_VIEWED,
-        buildScreenViewedProps(AnalyticsEvent.VIEW_SWAP_SUCCESS),
-      );
+      track(AnalyticsEvent.SCREEN_VIEWED, {
+        ...buildScreenViewedProps(AnalyticsEvent.VIEW_SWAP_SUCCESS),
+        ...swapSourceProps(entrySourceRef.current),
+      });
     }
   }, [transactionHash, transactionError]);
 
