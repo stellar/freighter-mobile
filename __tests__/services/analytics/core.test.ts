@@ -23,7 +23,6 @@
 import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
 import { DEFAULT_COLOR_SCHEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
-import { useBalancesStore } from "ducks/balances";
 
 jest.mock("@amplitude/analytics-react-native", () => ({
   Identify: jest.fn().mockImplementation(() => ({ set: jest.fn() })),
@@ -82,11 +81,6 @@ jest.mock("ducks/auth", () => ({
 jest.mock("ducks/networkInfo", () => ({
   useNetworkStore: {
     getState: jest.fn(() => ({ connectionType: "wifi", effectiveType: "4g" })),
-  },
-}));
-jest.mock("ducks/balances", () => ({
-  useBalancesStore: {
-    getState: jest.fn(() => ({ isFunded: false, fetchedPublicKey: null })),
   },
 }));
 
@@ -148,11 +142,6 @@ describe("buildCommonContext (four-bucket model)", () => {
       account: { publicKey: PK, importedFromSecretKey: true },
       allAccounts: [{ publicKey: PK, importedFromSecretKey: true }],
     });
-    (useBalancesStore.getState as jest.Mock).mockReturnValue({
-      isFunded: true,
-      fetchedPublicKey: PK,
-      fetchedNetwork: "testnet",
-    });
   });
 
   it("emits the reshaped bucket", () => {
@@ -161,7 +150,6 @@ describe("buildCommonContext (four-bucket model)", () => {
       surface: "mobile_ios",
       network: "TESTNET",
       account_type: "imported_secret_key",
-      account_funded: true,
       account_id_hash:
         "f56f6f2c6cf1b9388e3495dfab96f0c55ec5d217f481b2ae45d11b46145c44ef",
     });
@@ -190,30 +178,13 @@ describe("buildCommonContext (four-bucket model)", () => {
       allAccounts: [],
     });
     const ctx = buildCommonContext();
-    ["account_id_hash", "account_type", "account_funded"].forEach((k) =>
+    ["account_id_hash", "account_type"].forEach((k) =>
       expect(ctx).not.toHaveProperty(k),
     );
     expect(ctx).toMatchObject({ schema_version: "4", network: "TESTNET" });
   });
 
-  it("omits account_funded when balances are for a different/unfetched account", () => {
-    (useBalancesStore.getState as jest.Mock).mockReturnValue({
-      isFunded: true,
-      fetchedPublicKey: "G_OTHER",
-      fetchedNetwork: "testnet",
-    });
-    expect(buildCommonContext()).not.toHaveProperty("account_funded");
-  });
-
-  it("omits account_funded when the snapshot is for a different network (network switch)", () => {
-    // Same active account, but the cached balance snapshot was fetched for a
-    // different network - until the async refetch lands, fail closed rather
-    // than reporting the old network's funded status against the new network.
-    (useBalancesStore.getState as jest.Mock).mockReturnValue({
-      isFunded: true,
-      fetchedPublicKey: PK,
-      fetchedNetwork: "public",
-    });
+  it("does not emit account_funded", () => {
     expect(buildCommonContext()).not.toHaveProperty("account_funded");
   });
 
