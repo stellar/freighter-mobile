@@ -53,10 +53,12 @@ export const NotEnoughTokenBottomSheet: React.FC<
     return null;
   }
 
+  // The second sentence names the routes on offer.
   const bodyKey = (() => {
     switch (variant) {
-      case NotEnoughVariant.BUY_OR_TRANSFER:
       case NotEnoughVariant.BUY_SWAP_OR_TRANSFER:
+        return "earnNotEnough.bodySwapBuyOrTransfer";
+      case NotEnoughVariant.BUY_OR_TRANSFER:
         return "earnNotEnough.bodyWithBuy";
       case NotEnoughVariant.SWAP_OR_TRANSFER:
         return "earnNotEnough.bodySwapOnly";

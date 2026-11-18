@@ -56,6 +56,38 @@ describe("NotEnoughTokenBottomSheet", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    [
+      NotEnoughVariant.BUY_SWAP_OR_TRANSFER,
+      "Get EURC to deposit into this pool. Swap, buy or transfer EURC to continue.",
+    ],
+    [
+      NotEnoughVariant.BUY_OR_TRANSFER,
+      "Get EURC to deposit into this pool. Buy or transfer EURC to continue.",
+    ],
+    [
+      NotEnoughVariant.SWAP_OR_TRANSFER,
+      "Get EURC to deposit into this pool. Swap or transfer EURC to continue.",
+    ],
+    [
+      NotEnoughVariant.TRANSFER_ONLY,
+      "Get EURC to deposit into this pool. Transfer EURC to continue.",
+    ],
+  ])("names the routes %s offers in the body", (variant, body) => {
+    const { getByText } = renderWithProviders(
+      <NotEnoughTokenBottomSheet
+        variant={variant}
+        tokenCode="EURC"
+        token={{ ...usdcToken, code: "EURC" }}
+        onBuy={jest.fn()}
+        onSwap={jest.fn()}
+        onReceive={jest.fn()}
+        onClose={jest.fn()}
+      />,
+    );
+    expect(getByText(body)).toBeTruthy();
+  });
+
   describe("BUY_SWAP_OR_TRANSFER (design node 13132:50277)", () => {
     it("renders Buy/Swap side by side with Receive as a text button, each wired to its own handler", () => {
       const onBuy = jest.fn();

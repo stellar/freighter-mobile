@@ -858,8 +858,9 @@
   },
   "earnNotEnough": {
     "title": "Not enough {{tokenCode}}",
+    "bodySwapBuyOrTransfer": "Get {{tokenCode}} to deposit into this pool. Swap, buy or transfer {{tokenCode}} to continue.",
     "bodyWithBuy": "Get {{tokenCode}} to deposit into this pool. Buy or transfer {{tokenCode}} to continue.",
-    "bodySwapOnly": "You'll need {{tokenCode}} to deposit into this pool. Swap or transfer {{tokenCode}} to continue.",
+    "bodySwapOnly": "Get {{tokenCode}} to deposit into this pool. Swap or transfer {{tokenCode}} to continue.",
     "bodyTransferOnly": "Get {{tokenCode}} to deposit into this pool. Transfer {{tokenCode}} to continue.",
     "buy": "Buy {{tokenCode}}",
     "buyWithCoinbase": "Buy with Coinbase",
