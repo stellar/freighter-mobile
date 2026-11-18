@@ -973,7 +973,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       {showQuoteUnavailable && (
         <TouchableOpacity
           className="flex-row items-center justify-center gap-[6px] mt-[16px]"
-          onPress={() => quoteUnavailableSheetRef.current?.present()}
+          onPress={() => {
+            waitForKeyboardDismiss().then(() =>
+              quoteUnavailableSheetRef.current?.present(),
+            );
+          }}
           hitSlop={8}
           testID="swap-quote-unavailable"
         >
