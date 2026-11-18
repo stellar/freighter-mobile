@@ -4,6 +4,7 @@ import {
   missingSwapRouteReason,
   selectSwapRoute,
   swapQuoteErrorReason,
+  type SwapQuoteErrorReason,
 } from "components/screens/SwapScreen/helpers";
 import {
   DEFAULT_DECIMALS,
@@ -54,6 +55,12 @@ interface SwapState {
   swapQuotes: SwapQuotes | null;
   isLoadingPath: boolean;
   pathError: string | null;
+  /**
+   * Set when `pathError` is a quote failure the amount screen shows inline;
+   * readers check this, not the translated text, which a language switch
+   * can make stale.
+   */
+  pathErrorReason: SwapQuoteErrorReason | null;
   /** `swapQuoteKey` of the inputs `pathError` is for. */
   pathErrorQuoteKey: string | null;
   isBuilding: boolean;
@@ -87,6 +94,7 @@ const initialState = {
   swapQuotes: null as SwapQuotes | null,
   isLoadingPath: false,
   pathError: null,
+  pathErrorReason: null as SwapQuoteErrorReason | null,
   pathErrorQuoteKey: null as string | null,
   isBuilding: false,
   buildError: null,
@@ -210,6 +218,7 @@ export const useSwapStore = create<SwapState>((set) => ({
     set({
       isLoadingPath: true,
       pathError: null,
+      pathErrorReason: null,
       pathErrorQuoteKey: null,
       pathResult: null,
       swapQuotes: null,
@@ -271,6 +280,7 @@ export const useSwapStore = create<SwapState>((set) => ({
           swapQuotes,
           destinationAmount: "0",
           pathError: t(QUOTE_ERROR_KEYS[reason]),
+          pathErrorReason: reason,
           pathErrorQuoteKey,
         });
         return;
@@ -321,6 +331,7 @@ export const useSwapStore = create<SwapState>((set) => ({
         isLoadingPath: false,
         destinationAmount: "0",
         pathError: displayError,
+        pathErrorReason: reason,
         pathErrorQuoteKey,
       });
     }
@@ -334,6 +345,7 @@ export const useSwapStore = create<SwapState>((set) => ({
       swapQuotes: null,
       destinationAmount: "0",
       pathError: null,
+      pathErrorReason: null,
       pathErrorQuoteKey: null,
       isLoadingPath: false,
     });

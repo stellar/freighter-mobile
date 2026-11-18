@@ -157,6 +157,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     pathResult,
     isLoadingPath,
     pathError,
+    pathErrorReason,
     pathErrorQuoteKey,
     setSourceToken,
     setDestinationToken,
@@ -239,6 +240,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     spendableAmount,
     sourceTokenSymbol,
     pathError,
+    pathErrorReason,
     pathResult,
     destinationTokenDescriptor,
   });
@@ -433,8 +435,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ctaState.kind !== "insufficient" &&
     !amountError &&
     new BigNumber(sourceAmount || "0").gt(0) &&
-    (pathError === t("swapScreen.errors.noPathFound") ||
-      pathError === t("swapScreen.errors.swapsUnavailable"));
+    pathErrorReason !== null;
 
   useEffect(() => {
     if (!showQuoteUnavailable) quoteUnavailableSheetRef.current?.dismiss();
@@ -989,7 +990,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       {showQuoteUnavailable && (
         <TouchableOpacity
           className="flex-row items-center justify-center gap-[6px] mt-[16px]"
-          onPress={() => quoteUnavailableSheetRef.current?.present()}
+          onPress={() => {
+            waitForKeyboardDismiss(500).then(() =>
+              quoteUnavailableSheetRef.current?.present(),
+            );
+          }}
           hitSlop={8}
           testID="swap-quote-unavailable"
         >
