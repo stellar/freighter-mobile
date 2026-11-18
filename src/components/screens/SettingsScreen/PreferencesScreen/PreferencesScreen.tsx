@@ -7,7 +7,7 @@ import Icon from "components/sds/Icon";
 import { RadioButton } from "components/sds/RadioButton";
 import { Toggle } from "components/sds/Toggle";
 import { Text } from "components/sds/Typography";
-import { FREIGHTER_PRIVACY_URL } from "config/constants";
+import { DEFAULT_PADDING, FREIGHTER_PRIVACY_URL } from "config/constants";
 import { logger } from "config/logger";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { THEME_PREFERENCES, ThemePreference } from "config/themePreference";
@@ -18,7 +18,14 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useRef, useCallback, useEffect } from "react";
-import { View, AppState, AppStateStatus, Pressable } from "react-native";
+import {
+  View,
+  AppState,
+  AppStateStatus,
+  Pressable,
+  ScrollView,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { selectThemePreference } from "services/themePreference";
 
 interface PreferencesScreenProps
@@ -61,6 +68,7 @@ const Divider: React.FC = () => <View className="h-[1px] bg-border-primary" />;
 
 const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
   const { t } = useAppTranslation();
+  const insets = useSafeAreaInsets();
   const { themeColors } = useColors();
   const { open: openInAppBrowser } = useInAppBrowser();
   const themePreference = usePreferencesStore((state) => state.themePreference);
@@ -191,70 +199,79 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
   }, [syncTrackingPermission]);
 
   return (
-    <BaseLayout insets={{ top: false }}>
-      <View className="gap-[16px] mt-4">
-        <View className="gap-[8px]">
-          <SectionLabel>{t("preferences.display.title")}</SectionLabel>
-          <View
-            className="bg-background-secondary rounded-[16px] p-4 flex-row flex-wrap gap-[12px]"
-            accessibilityRole="radiogroup"
-            accessibilityLabel={t("preferences.display.title")}
-          >
-            {THEME_PREFERENCES.map((preference) => (
-              <RadioButton
-                key={preference}
-                testID={`theme-option-${preference}`}
-                label={themeLabels[preference]}
-                checked={themePreference === preference}
-                onPress={() => handleThemeChange(preference)}
-              />
-            ))}
-          </View>
-        </View>
-
-        <View className="gap-[8px]">
-          <SectionLabel>{t("preferences.security.title")}</SectionLabel>
-          <View className="bg-background-secondary rounded-[16px] p-4 gap-[16px]">
-            <SettingRow
-              testID="hide-dust-item"
-              title={t("preferences.hideDust.title")}
-              description={t("preferences.hideDust.belowThreshold")}
-              trailingContent={renderHideDustToggle()}
-            />
-            <Divider />
-            <SettingRow
-              testID="memo-validation-item"
-              title={t("preferences.verifyAddresses.title")}
-              description={t("preferences.verifyAddresses.description")}
-              trailingContent={renderMemoValidationToggle()}
-            />
-            <Divider />
-            <SettingRow
-              testID="anonymous-data-sharing-item"
-              title={t("preferences.usageDataSharing.title")}
-              description={t("preferences.usageDataSharing.description")}
-              trailingContent={renderAnalyticsToggle()}
+    <BaseLayout insets={{ top: false, bottom: false }}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        <View
+          className="gap-[16px] mt-4"
+          style={{ marginBottom: insets.bottom + pxValue(DEFAULT_PADDING) }}
+        >
+          <View className="gap-[8px]">
+            <SectionLabel>{t("preferences.display.title")}</SectionLabel>
+            <View
+              className="bg-background-secondary rounded-[16px] p-4 flex-row flex-wrap gap-[12px]"
+              accessibilityRole="radiogroup"
+              accessibilityLabel={t("preferences.display.title")}
             >
-              <Pressable
-                testID="privacy-policy-link"
-                accessibilityRole="link"
-                onPress={handleOpenPrivacyPolicy}
-                className="flex-row items-center gap-[4px] self-start pb-[6px]"
+              {THEME_PREFERENCES.map((preference) => (
+                <RadioButton
+                  key={preference}
+                  testID={`theme-option-${preference}`}
+                  label={themeLabels[preference]}
+                  checked={themePreference === preference}
+                  onPress={() => handleThemeChange(preference)}
+                />
+              ))}
+            </View>
+          </View>
+
+          <View className="gap-[8px]">
+            <SectionLabel>{t("preferences.security.title")}</SectionLabel>
+            <View className="bg-background-secondary rounded-[16px] p-4 gap-[16px]">
+              <SettingRow
+                testID="hide-dust-item"
+                title={t("preferences.hideDust.title")}
+                description={t("preferences.hideDust.belowThreshold")}
+                trailingContent={renderHideDustToggle()}
+              />
+              <Divider />
+              <SettingRow
+                testID="memo-validation-item"
+                title={t("preferences.verifyAddresses.title")}
+                description={t("preferences.verifyAddresses.description")}
+                trailingContent={renderMemoValidationToggle()}
+              />
+              <Divider />
+              <SettingRow
+                testID="anonymous-data-sharing-item"
+                title={t("preferences.usageDataSharing.title")}
+                description={t("preferences.usageDataSharing.description")}
+                trailingContent={renderAnalyticsToggle()}
               >
-                <Text
-                  sm
-                  semiBold
-                  color={themeColors.lilac[9]}
-                  style={{ lineHeight: SMALL_LINE_HEIGHT, flexShrink: 1 }}
+                <Pressable
+                  testID="privacy-policy-link"
+                  accessibilityRole="link"
+                  onPress={handleOpenPrivacyPolicy}
+                  className="flex-row items-center gap-[4px] self-start pb-[6px]"
                 >
-                  {t("preferences.usageDataSharing.learnMore")}
-                </Text>
-                <Icon.LinkExternal01 size={14} color={themeColors.lilac[9]} />
-              </Pressable>
-            </SettingRow>
+                  <Text
+                    sm
+                    semiBold
+                    color={themeColors.lilac[9]}
+                    style={{ lineHeight: SMALL_LINE_HEIGHT, flexShrink: 1 }}
+                  >
+                    {t("preferences.usageDataSharing.learnMore")}
+                  </Text>
+                  <Icon.LinkExternal01 size={14} color={themeColors.lilac[9]} />
+                </Pressable>
+              </SettingRow>
+            </View>
           </View>
         </View>
-      </View>
+      </ScrollView>
 
       <PermissionModal
         isModalVisible={showPermissionModal}
