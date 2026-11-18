@@ -150,8 +150,10 @@ let mockUseEarnTokens: {
   refetch: jest.Mock;
 };
 
-// The real Earn swap hook, wrapped to capture what the picker passes it.
+// The real Earn swap hook, wrapped to capture what the picker passes it and
+// to let a test stand in for parts of its result, such as a ready quote.
 let mockEarnSwapParams: { onQuoteExpired?: () => void } = {};
+let mockEarnSwapOverrides: Record<string, unknown> = {};
 jest.mock("components/screens/EarnScreen/hooks/useEarnSwap", () => {
   const actual = jest.requireActual(
     "components/screens/EarnScreen/hooks/useEarnSwap",
@@ -160,10 +162,19 @@ jest.mock("components/screens/EarnScreen/hooks/useEarnSwap", () => {
     ...actual,
     useEarnSwap: (params: { onQuoteExpired?: () => void }) => {
       mockEarnSwapParams = params;
-      return actual.useEarnSwap(params);
+      return { ...actual.useEarnSwap(params), ...mockEarnSwapOverrides };
     },
   };
 });
+
+// Blockaid's token scan, which off mainnet always fails as the real one does.
+const mockScanToken = jest.fn<Promise<unknown>, unknown[]>(() =>
+  Promise.reject(new Error("Network not supported")),
+);
+jest.mock("services/blockaid/api", () => ({
+  ...jest.requireActual("services/blockaid/api"),
+  scanToken: (...args: unknown[]) => mockScanToken(...args),
+}));
 
 jest.mock("components/screens/EarnScreen/hooks/useEarnTokens", () => ({
   useEarnTokens: () => mockUseEarnTokens,
@@ -637,6 +648,167 @@ describe("EarnTokenPickerScreen", () => {
       const { getByText } = renderScreen();
 
       expect(getByText(formatTokenForDisplay("50", "USDC"))).toBeTruthy();
+    });
+  });
+
+  // As on main Swap: a swap Blockaid couldn't scan opens the security sheet
+  // before Review, and a clean one opens Review.
+  describe("the Earn swap's Blockaid gate", () => {
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+    });
+
+    afterEach(() => {
+      mockEarnSwapOverrides = {};
+    });
+
+    const findByContent = (type: unknown) =>
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__earnTokenPickerMockSheets.find(
+        ({ props }) =>
+          (props.customContent as React.ReactElement | undefined)?.type ===
+          type,
+      );
+
+    // Opens the Earn swap with a quote ready and presses its Review button.
+    const pressReview = async (
+      scanResult: unknown,
+      overrides: Record<string, unknown> = {},
+    ) => {
+      mockEarnSwapOverrides = {
+        ctaState: { kind: "review" },
+        isCtaDisabled: false,
+        isTokenUnableToScan: false,
+        setupSwapTransaction: jest.fn(() => Promise.resolve({ scanResult })),
+        ...overrides,
+      };
+      mockUseEarnTokens.supported = [
+        {
+          ...makeOption("EURC"),
+          canonicalId:
+            "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+        },
+      ];
+      const { getByTestId } = renderScreen();
+      fireEvent.press(getByTestId("earn-token-option-EURC"));
+      act(() => {
+        (
+          findByContent(NotEnoughTokenBottomSheet)?.props
+            .customContent as React.ReactElement<{ onSwap: () => void }>
+        ).props.onSwap();
+      });
+      const { onReview } = (
+        findByContent(EarnSwapBottomSheet)?.props
+          .customContent as React.ReactElement<{
+          onReview: (() => Promise<void>) | null;
+        }>
+      ).props;
+      await act(async () => {
+        await onReview?.();
+      });
+
+      return {
+        security: findByContent(SecurityDetailBottomSheet),
+        // eslint-disable-next-line no-underscore-dangle
+        review: globalThis.__earnTokenPickerMockSheets.find(
+          ({ props }) => props.analyticsEvent === "swap_confirm",
+        ),
+      };
+    };
+
+    // A destination the account doesn't hold has no verdict from the
+    // balances, so the swap scans it, as main Swap does its default one.
+    it("scans a destination the account doesn't hold", async () => {
+      mockScanToken.mockImplementationOnce(() =>
+        Promise.resolve({ result_type: "Malicious" }),
+      );
+      mockUseEarnTokens.supported = [
+        {
+          ...makeOption("EURC"),
+          canonicalId:
+            "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+        },
+      ];
+      const { getByTestId } = renderScreen();
+      fireEvent.press(getByTestId("earn-token-option-EURC"));
+      await act(async () => {
+        (
+          findByContent(NotEnoughTokenBottomSheet)?.props
+            .customContent as React.ReactElement<{ onSwap: () => void }>
+        ).props.onSwap();
+        await Promise.resolve();
+      });
+
+      expect(mockScanToken).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tokenCode: "EURC",
+          tokenIssuer:
+            "GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+        }),
+      );
+      expect(useSwapStore.getState().destinationToken?.securityLevel).toBe(
+        "MALICIOUS",
+      );
+    });
+
+    it("opens the security sheet first when the swap couldn't be scanned", async () => {
+      const { security, review } = await pressReview(undefined);
+
+      expect(security?.ref.present).toHaveBeenCalledTimes(1);
+      expect(review?.ref.present).not.toHaveBeenCalled();
+    });
+
+    it("opens the security sheet first when a token couldn't be scanned", async () => {
+      const { security, review } = await pressReview(
+        { validation: { result_type: "Benign" } },
+        { isTokenUnableToScan: true },
+      );
+
+      expect(security?.ref.present).toHaveBeenCalledTimes(1);
+      expect(review?.ref.present).not.toHaveBeenCalled();
+    });
+
+    it("opens Review when the scan comes back clean", async () => {
+      const { security, review } = await pressReview({
+        validation: { result_type: "Benign" },
+      });
+
+      expect(review?.ref.present).toHaveBeenCalledTimes(1);
+      expect(security?.ref.present).not.toHaveBeenCalled();
+    });
+
+    it("goes on to Review from the unable-to-scan sheet", async () => {
+      const { security, review } = await pressReview(undefined, {
+        isUnableToScan: true,
+      });
+
+      act(() => {
+        (
+          security?.props.customContent as React.ReactElement<{
+            onProceedAnyway: () => void;
+          }>
+        ).props.onProceedAnyway();
+      });
+
+      expect(review?.ref.present).toHaveBeenCalledTimes(1);
+    });
+
+    it("signs from the sheet on a malicious verdict, as Review's Confirm anyway does", async () => {
+      const executeSwap = jest.fn();
+      const { security } = await pressReview(
+        { validation: { result_type: "Malicious" } },
+        { isUnableToScan: false, isMalicious: true, executeSwap },
+      );
+
+      act(() => {
+        (
+          security?.props.customContent as React.ReactElement<{
+            onProceedAnyway: () => void;
+          }>
+        ).props.onProceedAnyway();
+      });
+
+      expect(executeSwap).toHaveBeenCalledTimes(1);
     });
   });
 
