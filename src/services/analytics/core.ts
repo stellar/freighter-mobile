@@ -109,7 +109,12 @@ export const syncIdentifyTraits = (
   }
 };
 
-let lastIdentifiedThemePreference: ThemePreference | null = null;
+// Keyed by user ID too: a new identity (e.g. the seed-derived ID adopted on
+// unlock) is a new Amplitude profile and needs its own copy.
+let lastIdentifiedTheme: {
+  userId: string | null;
+  preference: ThemePreference;
+} | null = null;
 
 /**
  * Sends the Preferences theme choice as the `preferred_theme` user property.
@@ -124,7 +129,13 @@ export const syncPreferredThemeTrait = (
   preference: ThemePreference,
   { force = false }: { force?: boolean } = {},
 ): void => {
-  if (!force && preference === lastIdentifiedThemePreference) return;
+  const { userId } = useAnalyticsStore.getState();
+  if (
+    !force &&
+    lastIdentifiedTheme?.preference === preference &&
+    lastIdentifiedTheme.userId === userId
+  )
+    return;
   if (!AMPLITUDE_API_KEY || !hasInitialised) return;
   if (!useAnalyticsStore.persist.hasHydrated()) return;
   if (!useAnalyticsStore.getState().isEnabled) return;
@@ -133,7 +144,7 @@ export const syncPreferredThemeTrait = (
     const identify = new amplitude.Identify();
     identify.set("preferred_theme", preference);
     amplitude.identify(identify);
-    lastIdentifiedThemePreference = preference;
+    lastIdentifiedTheme = { userId, preference };
   } catch (error) {
     logger.error(
       DEBUG_CONFIG.LOG_PREFIX,

@@ -91,13 +91,13 @@
   },
   "preferences": {
     "display": {
-      "title": "Display",
-      "system": "Auto(System)",
-      "light": "Light",
-      "dark": "Dark"
+      "title": "Exibição",
+      "system": "Auto (Sistema)",
+      "light": "Claro",
+      "dark": "Escuro"
     },
     "security": {
-      "title": "Security"
+      "title": "Segurança"
     },
     "permissionModal": {
       "enable": {
@@ -115,16 +115,16 @@
     },
     "hideDust": {
       "title": "Ocultar pagamentos pequenos",
-      "belowThreshold": "Hide payments below 0.1 XLM."
+      "belowThreshold": "Ocultar pagamentos abaixo de 0,1 XLM."
     },
     "verifyAddresses": {
-      "title": "Verify addresses",
-      "description": "Check memo requirements with stellar.expert."
+      "title": "Verificar endereços",
+      "description": "Verifique os requisitos de memo com stellar.expert."
     },
-    "shareAnalytics": {
-      "title": "Share analytics data",
-      "description": "Help improve Varial by sharing usage and diagnostic data.",
-      "learnMore": "Learn more about data sharing"
+    "usageDataSharing": {
+      "title": "Compartilhamento de dados de uso",
+      "description": "Ajude-nos a melhorar o Varial compartilhando dados de uso, do dispositivo e de atividade — incluindo suas chaves públicas, endereço IP e um ID persistente que vincula sua carteira entre a extensão e o aplicativo móvel — com nossos provedores de análise de dados e de relatórios de falhas. Você pode desativar essa opção a qualquer momento. Consulte nossa Política de Privacidade para mais detalhes.",
+      "learnMore": "Saiba mais sobre o compartilhamento de dados"
     }
   },
   "shareFeedbackScreen": {

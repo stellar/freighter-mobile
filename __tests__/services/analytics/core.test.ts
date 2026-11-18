@@ -924,6 +924,20 @@ describe("syncPreferredThemeTrait", () => {
     expect(set).toHaveBeenCalledWith("preferred_theme", "system");
   });
 
+  it("re-sends an unchanged preference when the user ID changes", () => {
+    const { mod, store, identify } = load();
+    store.getState.mockReturnValue({ isEnabled: true, userId: "bootstrap" });
+    mod.initAnalytics();
+    mod.syncPreferredThemeTrait("dark");
+    identify.mockClear();
+
+    store.getState.mockReturnValue({ isEnabled: true, userId: "seed-derived" });
+    mod.syncPreferredThemeTrait("dark");
+    mod.syncPreferredThemeTrait("dark");
+
+    expect(identify).toHaveBeenCalledTimes(1);
+  });
+
   it("sends nothing while opted out, even when forced, then sends once opted in", () => {
     const { mod, store, identify } = load();
     store.getState.mockReturnValue({ isEnabled: false });

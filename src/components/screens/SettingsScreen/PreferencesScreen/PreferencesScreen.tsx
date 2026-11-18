@@ -231,8 +231,8 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
             <Divider />
             <SettingRow
               testID="anonymous-data-sharing-item"
-              title={t("preferences.shareAnalytics.title")}
-              description={t("preferences.shareAnalytics.description")}
+              title={t("preferences.usageDataSharing.title")}
+              description={t("preferences.usageDataSharing.description")}
               trailingContent={renderAnalyticsToggle()}
             >
               <Pressable
@@ -245,9 +245,9 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
                   sm
                   semiBold
                   color={themeColors.lilac[9]}
-                  style={{ lineHeight: SMALL_LINE_HEIGHT }}
+                  style={{ lineHeight: SMALL_LINE_HEIGHT, flexShrink: 1 }}
                 >
-                  {t("preferences.shareAnalytics.learnMore")}
+                  {t("preferences.usageDataSharing.learnMore")}
                 </Text>
                 <Icon.LinkExternal01 size={14} color={themeColors.lilac[9]} />
               </Pressable>

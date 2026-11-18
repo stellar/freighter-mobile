@@ -20,8 +20,6 @@ import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 import com.zoontek.rnbootsplash.RNBootSplash
-import androidx.appcompat.app.AppCompatDelegate
-import org.stellar.freighterwallet.ThemePreferenceStore
 
 class MainActivity : ReactActivity() {
 
@@ -68,10 +66,6 @@ class MainActivity : ReactActivity() {
    * https://github.com/software-mansion/react-native-screens/issues/17#issuecomment-424704067
    */
   override fun onCreate(savedInstanceState: Bundle?) {
-    // Before the splash: a pinned theme must already apply to its colors.
-    AppCompatDelegate.setDefaultNightMode(
-      ThemePreferenceStore.appCompatNightMode(ThemePreferenceStore.read(this)),
-    )
     RNBootSplash.init(this, R.style.BootTheme)
     // Blank wallet content in the recents/app-switcher thumbnail (also blocks
     // screenshots) when backgrounded
