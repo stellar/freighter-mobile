@@ -11,6 +11,7 @@ import EarnTokenPickerScreen from "components/screens/EarnScreen/screens/EarnTok
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { usePreferencesStore } from "ducks/preferences";
 import { useSwapStore } from "ducks/swap";
+import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTokenIconsStore } from "ducks/tokenIcons";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { formatTokenForDisplay } from "helpers/formatAmount";
@@ -80,6 +81,19 @@ jest.mock("@react-navigation/native", () => ({
     // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
     require("react").useEffect(effect, [effect]);
   },
+}));
+
+// The network's recommended per-operation fee, in XLM. One object, as the
+// real hook keeps its state: a new one per render would re-run every effect
+// that depends on it.
+const mockNetworkFees = {
+  recommendedFee: "0.00123",
+  networkCongestion: "low",
+  feePresets: { low: "0.00123", medium: "0.00123", high: "0.00123" },
+};
+jest.mock("hooks/useNetworkFees", () => ({
+  useNetworkFees: () => mockNetworkFees,
+  clearNetworkFeesCache: jest.fn(),
 }));
 
 const mockFetchAccountBalances = jest.fn();
@@ -685,6 +699,28 @@ describe("EarnTokenPickerScreen", () => {
         }>
       ).props;
     };
+
+    // As on main Swap, the swap fee starts at the network's recommendation,
+    // scaled by the operations: opening the EURC trustline makes it two.
+    it("starts the swap at the recommended fee", () => {
+      act(() => {
+        useSwapSettingsStore.getState().resetToDefaults();
+      });
+      mockUseEarnTokens.supported = [
+        {
+          ...makeOption("EURC"),
+          canonicalId:
+            "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+        },
+      ];
+      const { getByTestId } = renderScreen();
+      fireEvent.press(getByTestId("earn-token-option-EURC"));
+      act(() => {
+        notEnoughSheetPropsFor().onSwap();
+      });
+
+      expect(useSwapSettingsStore.getState().swapFee).toBe("0.00246");
+    });
 
     it("builds nothing and opens nothing", async () => {
       mockUseEarnTokens.supported = [

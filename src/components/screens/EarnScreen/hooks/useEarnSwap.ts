@@ -13,7 +13,7 @@ import {
   useSwapSecurityAssessments,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
-import { DEFAULT_DECIMALS } from "config/constants";
+import { DEFAULT_DECIMALS, TransactionContext } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
@@ -22,6 +22,8 @@ import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { HeldBalanceItem, useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
+import { useNetworkFees } from "hooks/useNetworkFees";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import { useCallback, useEffect, useMemo } from "react";
 import { scanToken } from "services/blockaid/api";
@@ -109,6 +111,21 @@ export const useEarnSwap = ({
   const destination = useMemo(
     () => (option ? buildEarnSwapDestination(option) : null),
     [option],
+  );
+
+  // Start the swap at the network's recommended fee, as main Swap does,
+  // scaled by its operations: a destination without a trustline adds one.
+  // Frozen once an amount is entered, so a fee refresh can't shrink a
+  // committed amount's spendable balance. Nothing is written while no swap
+  // is open.
+  const { recommendedFee, networkCongestion, feePresets } = useNetworkFees();
+  const hasEnteredSourceAmount = new BigNumber(sourceAmount || "0").gt(0);
+  useInitialRecommendedFee(
+    destination && !hasEnteredSourceAmount ? recommendedFee : "",
+    TransactionContext.Swap,
+    destination?.requiresTrustline ? 2 : 1,
+    networkCongestion,
+    destination ? feePresets : undefined,
   );
 
   /**
