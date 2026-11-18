@@ -22,6 +22,7 @@ import { TokenTypeWithCustomToken, type PricedBalance } from "config/types";
 import { BlendRequestType } from "helpers/blend";
 import { analytics } from "services/analytics";
 import * as backend from "services/backend";
+import { stellarSdkServer } from "services/stellar";
 import {
   buildBlendDepositTransaction,
   buildPaymentTransaction,
@@ -1091,6 +1092,30 @@ describe("buildBlendDepositTransaction", () => {
         message: "Request failed with status code 400",
       });
     });
+  });
+
+  // The other builders take their expiry from the server's clock, so a phone
+  // whose clock is off doesn't sign a deposit that has already expired, or
+  // one that stays valid too long.
+  it("expires on the server's time, not the phone's", async () => {
+    const serverMaxTime = 1700000180;
+    (stellarSdkServer as jest.Mock).mockReturnValueOnce({
+      loadAccount: mockLoadAccount,
+      fetchTimebounds: jest.fn((timeout: number) =>
+        Promise.resolve({
+          minTime: 0,
+          maxTime: serverMaxTime - 180 + timeout,
+        }),
+      ),
+    });
+
+    const result = await buildBlendDepositTransaction(baseParams);
+
+    const parsedTx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.PUBLIC,
+    ) as Transaction;
+    expect(parsedTx.timeBounds?.maxTime).toBe(String(serverMaxTime));
   });
 
   it("returns minResourceFee as null when the simulation response omits it", async () => {

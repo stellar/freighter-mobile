@@ -1098,6 +1098,10 @@ export const buildBlendDepositTransaction = async ({
     // Inclusion fee only — the prepared transaction carries the resource fee
     // once simulation reports it.
     fee: xlmToStroop(transactionFee).toString(),
+    // A finite expiry, so a deposit priced against a live APY expires rather
+    // than sitting signable. Taken from the server's clock, as the other
+    // builders do, so a phone whose clock is off can't skew it.
+    timebounds: await server.fetchTimebounds(transactionTimeout),
     networkPassphrase: networkDetails.networkPassphrase,
   })
     .addOperation(
@@ -1107,9 +1111,6 @@ export const buildBlendDepositTransaction = async ({
         requests: [request],
       }),
     )
-    // A finite timeout, unlike the token-transfer helpers' TimeoutInfinite: a
-    // deposit priced against a live APY should expire rather than sit signable.
-    .setTimeout(transactionTimeout)
     .build();
 
   let simulation;
