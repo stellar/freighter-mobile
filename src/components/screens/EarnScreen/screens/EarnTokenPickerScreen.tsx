@@ -108,7 +108,6 @@ import {
   trackEarnSwapCompleted,
   trackEarnTokenSelected,
 } from "services/analytics/earn";
-import { SecurityLevel } from "services/blockaid/constants";
 import { assessTransactionSecurity } from "services/blockaid/helper";
 
 type EarnTokenPickerScreenProps = NativeStackScreenProps<
@@ -638,19 +637,6 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     }
   }, [earnSwap.isUnableToScan, handleConfirmSwap]);
 
-  const swapSecuritySeverity = useMemo(() => {
-    if (earnSwap.isMalicious) {
-      return SecurityLevel.MALICIOUS;
-    }
-    if (earnSwap.isSuspicious) {
-      return SecurityLevel.SUSPICIOUS;
-    }
-    if (earnSwap.isUnableToScan) {
-      return SecurityLevel.UNABLE_TO_SCAN;
-    }
-    return undefined;
-  }, [earnSwap.isMalicious, earnSwap.isSuspicious, earnSwap.isUnableToScan]);
-
   // The review sheet's footer (settings / Cancel / Confirm) is NOT part of
   // `SwapReviewBottomSheet` -- it is a separate component the sheet takes as
   // `scrollViewFooterComponent`, which also requires `scrollable`. Omitting
@@ -1055,7 +1041,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
             onCancel={handleCancelSwapSecurityWarning}
             onProceedAnyway={handleSwapProceedAnyway}
             onClose={handleCancelSwapSecurityWarning}
-            severity={swapSecuritySeverity}
+            severity={earnSwap.swapSecuritySeverity}
             proceedAnywayText={
               earnSwap.isUnableToScan
                 ? t("common.continue")

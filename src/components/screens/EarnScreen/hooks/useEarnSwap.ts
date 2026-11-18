@@ -362,6 +362,7 @@ export const useEarnSwap = ({
     isUnableToScan,
     isTokenUnableToScan,
     securityWarnings,
+    swapSecuritySeverity,
   } = useSwapSecurityAssessments({
     transactionScanResult,
     overriddenBlockaidResponse,
@@ -432,6 +433,7 @@ export const useEarnSwap = ({
     isUnableToScan,
     isTokenUnableToScan,
     securityWarnings,
+    swapSecuritySeverity,
     isBuilding,
     transactionXDR,
   };
