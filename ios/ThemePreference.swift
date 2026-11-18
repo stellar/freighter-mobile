@@ -1,5 +1,6 @@
 import Foundation
 import React
+import UIKit
 
 // Native copy of the Preferences theme choice ("system" | "light" | "dark").
 //
@@ -42,5 +43,23 @@ class ThemePreference: NSObject {
     }
     UserDefaults.standard.set(value, forKey: ThemePreference.defaultsKey)
     resolver(value)
+  }
+
+  // The device's own scheme. The scene's traits ignore the window override
+  // that a pinned theme sets, so this stays correct while light or dark is
+  // pinned or just being unpinned.
+  @objc
+  func getSystemColorScheme(
+    _ resolver: @escaping RCTPromiseResolveBlock,
+    rejecter: @escaping RCTPromiseRejectBlock
+  ) {
+    DispatchQueue.main.async {
+      let scene = UIApplication.shared.connectedScenes
+        .compactMap { $0 as? UIWindowScene }
+        .first
+      let style = scene?.traitCollection.userInterfaceStyle
+        ?? UIScreen.main.traitCollection.userInterfaceStyle
+      resolver(style == .dark ? "dark" : "light")
+    }
   }
 }

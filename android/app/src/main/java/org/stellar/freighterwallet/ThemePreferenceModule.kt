@@ -2,6 +2,8 @@ package org.stellar.freighterwallet
 
 import android.app.UiModeManager
 import android.content.Context
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import com.facebook.react.bridge.Promise
@@ -60,6 +62,25 @@ object ThemePreferenceStore {
         },
     )
   }
+
+  /**
+   * The device's own scheme. Not the app's configuration: that carries the
+   * per-app night mode set above, which lags behind an unpin. UiModeManager
+   * reports the device setting; a schedule (auto/custom) has no public
+   * current-state getter, so those fall back to the system resources.
+   */
+  fun systemColorScheme(context: Context): String {
+    val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
+    return when (uiModeManager?.nightMode) {
+      UiModeManager.MODE_NIGHT_YES -> "dark"
+      UiModeManager.MODE_NIGHT_NO -> "light"
+      else -> {
+        val nightBits = Resources.getSystem().configuration.uiMode and
+            Configuration.UI_MODE_NIGHT_MASK
+        if (nightBits == Configuration.UI_MODE_NIGHT_YES) "dark" else "light"
+      }
+    }
+  }
 }
 
 class ThemePreferenceModule(private val reactContext: ReactApplicationContext) :
@@ -78,5 +99,10 @@ class ThemePreferenceModule(private val reactContext: ReactApplicationContext) :
     }
     ThemePreferenceStore.syncSystemSplash(reactContext, value)
     promise.resolve(value)
+  }
+
+  @ReactMethod
+  fun getSystemColorScheme(promise: Promise) {
+    promise.resolve(ThemePreferenceStore.systemColorScheme(reactContext))
   }
 }

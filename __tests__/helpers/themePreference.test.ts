@@ -1,6 +1,7 @@
 import {
   applyThemePreference,
   getStoredThemePreference,
+  resolveColorScheme,
   saveThemePreference,
 } from "helpers/themePreference";
 import { Appearance, NativeModules } from "react-native";
@@ -66,6 +67,44 @@ describe("themePreference helpers", () => {
       await expect(saveThemePreference("dark")).rejects.toThrow(
         "ThemePreference native module is unavailable",
       );
+    });
+  });
+
+  describe("resolveColorScheme", () => {
+    it("uses a pinned choice without asking native or Appearance", async () => {
+      const getSystemColorScheme = jest.fn();
+      setNativeModule({ getSystemColorScheme });
+      jest.spyOn(Appearance, "getColorScheme").mockReturnValue("light");
+
+      await expect(resolveColorScheme("dark")).resolves.toBe("dark");
+      await expect(resolveColorScheme("light")).resolves.toBe("light");
+      expect(getSystemColorScheme).not.toHaveBeenCalled();
+    });
+
+    it("asks native for the device scheme for system, not Appearance", async () => {
+      setNativeModule({
+        getSystemColorScheme: jest.fn().mockResolvedValue("dark"),
+      });
+      jest.spyOn(Appearance, "getColorScheme").mockReturnValue("light");
+
+      await expect(resolveColorScheme("system")).resolves.toBe("dark");
+    });
+
+    it.each([
+      ["the module is missing", undefined],
+      [
+        "the native call fails",
+        { getSystemColorScheme: jest.fn().mockRejectedValue(new Error("x")) },
+      ],
+      [
+        "native returns an unknown value",
+        { getSystemColorScheme: jest.fn().mockResolvedValue("sepia") },
+      ],
+    ])("falls back to Appearance when %s", async (_case, module) => {
+      setNativeModule(module);
+      jest.spyOn(Appearance, "getColorScheme").mockReturnValue("dark");
+
+      await expect(resolveColorScheme("system")).resolves.toBe("dark");
     });
   });
 });

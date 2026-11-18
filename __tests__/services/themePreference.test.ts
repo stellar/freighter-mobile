@@ -1,12 +1,4 @@
 import { ThemePreference } from "config/themePreference";
-import { usePreferencesStore } from "ducks/preferences";
-import {
-  applyThemePreference,
-  saveThemePreference,
-} from "helpers/themePreference";
-import { Appearance } from "react-native";
-import { analytics } from "services/analytics";
-import { syncPreferredThemeTrait } from "services/analytics/core";
 
 jest.mock("ducks/preferences", () => {
   let state = { themePreference: "system" };
@@ -22,6 +14,7 @@ jest.mock("ducks/preferences", () => {
 jest.mock("helpers/themePreference", () => ({
   applyThemePreference: jest.fn(),
   saveThemePreference: jest.fn(),
+  resolveColorScheme: jest.fn(),
 }));
 jest.mock("services/analytics", () => ({
   analytics: { trackThemeChanged: jest.fn() },
@@ -30,45 +23,75 @@ jest.mock("services/analytics/core", () => ({
   syncPreferredThemeTrait: jest.fn(),
 }));
 
-// The module under test is loaded with requireActual: services/* imports are
-// mapped to __mocks__ stubs in this repo's Jest config.
-const { selectThemePreference } = jest.requireActual<
-  typeof import("services/themePreference")
->("../../src/services/themePreference");
-
-const mockApply = applyThemePreference as jest.Mock;
-const mockSave = saveThemePreference as jest.Mock;
-const mockTrack = analytics.trackThemeChanged as jest.Mock;
-const mockSyncTrait = syncPreferredThemeTrait as jest.Mock;
+type Store = typeof import("ducks/preferences").usePreferencesStore;
 
 describe("selectThemePreference", () => {
-  let colorScheme: "light" | "dark";
+  let selectThemePreference: typeof import("services/themePreference").selectThemePreference;
+  let store: Store;
+  let mockApply: jest.Mock;
+  let mockSave: jest.Mock;
+  let mockResolve: jest.Mock;
+  let mockTrack: jest.Mock;
+  let mockSyncTrait: jest.Mock;
+
+  const deferredSaves = () => {
+    const pending: Array<{ resolve: () => void; reject: (e: Error) => void }> =
+      [];
+    mockSave.mockImplementation(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          pending.push({ resolve, reject });
+        }),
+    );
+    return pending;
+  };
+
+  const shown = () => store.getState().themePreference;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    usePreferencesStore.setState({ themePreference: "system" });
-    colorScheme = "light";
-    // Stands in for Appearance following the applied preference.
-    mockApply.mockImplementation((preference: ThemePreference) => {
-      colorScheme = preference === "dark" ? "dark" : "light";
+    // Fresh module per test: it keeps pick bookkeeping between calls. The
+    // module under test is loaded with requireActual because services/*
+    // imports are mapped to __mocks__ stubs in this repo's Jest config.
+    jest.isolateModules(() => {
+      ({ selectThemePreference } = jest.requireActual<
+        typeof import("services/themePreference")
+      >("../../src/services/themePreference"));
+      store =
+        jest.requireMock<typeof import("ducks/preferences")>(
+          "ducks/preferences",
+        ).usePreferencesStore;
+      const helpers = jest.requireMock<Record<string, jest.Mock>>(
+        "helpers/themePreference",
+      );
+      mockApply = helpers.applyThemePreference;
+      mockSave = helpers.saveThemePreference;
+      mockResolve = helpers.resolveColorScheme;
+      mockTrack = jest.requireMock<{
+        analytics: Record<string, jest.Mock>;
+      }>("services/analytics").analytics.trackThemeChanged;
+      mockSyncTrait = jest.requireMock<Record<string, jest.Mock>>(
+        "services/analytics/core",
+      ).syncPreferredThemeTrait;
     });
-    jest
-      .spyOn(Appearance, "getColorScheme")
-      .mockImplementation(() => colorScheme);
+    store.setState({ themePreference: "system" });
     mockSave.mockResolvedValue(undefined);
+    mockResolve.mockImplementation((preference: ThemePreference) =>
+      Promise.resolve(preference === "dark" ? "dark" : "light"),
+    );
   });
 
-  it("applies before persisting, then reports the change", async () => {
-    let appliedAtSave: ThemePreference | undefined;
+  it("applies before persisting, then reports the resolved scheme", async () => {
+    let shownAtSave: ThemePreference | undefined;
     mockSave.mockImplementation(() => {
-      appliedAtSave = usePreferencesStore.getState().themePreference;
+      shownAtSave = shown();
       return Promise.resolve();
     });
 
     await selectThemePreference("dark");
 
     expect(mockApply).toHaveBeenCalledWith("dark");
-    expect(appliedAtSave).toBe("dark");
+    expect(shownAtSave).toBe("dark");
+    expect(mockResolve).toHaveBeenCalledWith("dark");
     expect(mockTrack).toHaveBeenCalledWith({
       preference: "dark",
       previous: "system",
@@ -77,35 +100,82 @@ describe("selectThemePreference", () => {
     expect(mockSyncTrait).toHaveBeenCalledWith("dark", { force: true });
   });
 
-  it("reports nothing when the save fails", async () => {
-    mockSave.mockRejectedValue(new Error("disk"));
-
-    await expect(selectThemePreference("dark")).rejects.toThrow("disk");
-
-    expect(mockTrack).not.toHaveBeenCalled();
-    expect(mockSyncTrait).not.toHaveBeenCalled();
-  });
-
   it("does nothing when the choice is already in effect", async () => {
     await selectThemePreference("system");
     expect(mockApply).not.toHaveBeenCalled();
     expect(mockSave).not.toHaveBeenCalled();
   });
 
-  it("labels overlapping picks correctly when saves finish out of order", async () => {
-    const pending: Array<() => void> = [];
-    mockSave.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          pending.push(resolve);
-        }),
-    );
+  it("restores the saved choice and reports nothing when the save fails", async () => {
+    mockSave.mockRejectedValue(new Error("disk"));
+
+    await expect(selectThemePreference("dark")).rejects.toThrow("disk");
+
+    expect(shown()).toBe("system");
+    expect(mockApply).toHaveBeenLastCalledWith("system");
+    expect(mockTrack).not.toHaveBeenCalled();
+    expect(mockSyncTrait).not.toHaveBeenCalledWith("dark", expect.anything());
+  });
+
+  it("lets the same choice be retried after a failed save", async () => {
+    mockSave.mockRejectedValueOnce(new Error("disk"));
+    await expect(selectThemePreference("dark")).rejects.toThrow("disk");
+
+    await selectThemePreference("dark");
+
+    expect(mockSave).toHaveBeenCalledTimes(2);
+    expect(shown()).toBe("dark");
+    expect(mockTrack).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores the last successful save, not the startup value", async () => {
+    await selectThemePreference("light");
+    mockSave.mockRejectedValueOnce(new Error("disk"));
+
+    await expect(selectThemePreference("dark")).rejects.toThrow("disk");
+
+    expect(shown()).toBe("light");
+  });
+
+  it("keeps a newer pick when an older save fails", async () => {
+    const pending = deferredSaves();
 
     const dark = selectThemePreference("dark");
     const light = selectThemePreference("light");
-    pending[1]();
+    pending[0].reject(new Error("disk"));
+    await expect(dark).rejects.toThrow("disk");
+    pending[1].resolve();
     await light;
-    pending[0]();
+
+    expect(shown()).toBe("light");
+    expect(mockSyncTrait).toHaveBeenCalledWith("light", { force: true });
+  });
+
+  it("shows an older pick that saves after the newest pick failed", async () => {
+    const pending = deferredSaves();
+
+    const dark = selectThemePreference("dark");
+    const light = selectThemePreference("light");
+    pending[1].reject(new Error("disk"));
+    await expect(light).rejects.toThrow("disk");
+    expect(shown()).toBe("system");
+
+    pending[0].resolve();
+    await dark;
+
+    expect(shown()).toBe("dark");
+    expect(mockApply).toHaveBeenLastCalledWith("dark");
+    expect(mockSyncTrait).toHaveBeenCalledWith("dark", { force: true });
+  });
+
+  it("labels overlapping picks correctly when saves finish out of order", async () => {
+    const pending = deferredSaves();
+
+    const dark = selectThemePreference("dark");
+    const light = selectThemePreference("light");
+    pending[1].resolve();
+    await light;
+    pending[0].resolve();
     await dark;
 
     expect(mockTrack).toHaveBeenNthCalledWith(1, {
@@ -120,5 +190,6 @@ describe("selectThemePreference", () => {
     });
     expect(mockSyncTrait).toHaveBeenCalledTimes(1);
     expect(mockSyncTrait).toHaveBeenCalledWith("light", { force: true });
+    expect(shown()).toBe("light");
   });
 });
