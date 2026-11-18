@@ -76,7 +76,8 @@ export const useEarnSwap = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { swapFee, swapSlippage } = useSwapSettingsStore();
-  const { isBuilding, transactionXDR } = useTransactionBuilderStore();
+  const { isBuilding, transactionXDR, resetTransaction } =
+    useTransactionBuilderStore();
   const publicKey = account?.publicKey ?? "";
 
   const { balanceItems, scanResults } = useBalancesList({ publicKey, network });
@@ -223,14 +224,17 @@ export const useEarnSwap = ({
   ]);
 
   /**
-   * Clears the swap the sheet was building: source, amount, quote and the
-   * locked destination. Without it the next swap reopened on the previous
-   * one's source and amount, even when that source was now the destination.
+   * Clears the swap the sheet was building: source, amount, quote, the
+   * locked destination and the transaction staged for Review. Without it the
+   * next swap reopened on the previous one's source and amount, even when
+   * that source was now the destination, and a swap built for Review but
+   * never confirmed stayed signable.
    */
   const reset = useCallback(() => {
     setTokenAmount("0");
     resetSwap();
-  }, [setTokenAmount, resetSwap]);
+    resetTransaction();
+  }, [setTokenAmount, resetSwap, resetTransaction]);
 
   // A finished swap is reset once the caller has read what it needs from it.
   const handleSwapClosed = useCallback(() => {
@@ -296,7 +300,7 @@ export const useEarnSwap = ({
     amountError,
   });
 
-  const { ctaLabel, isCtaDisabled } = useSwapCtaState({
+  const { ctaState, ctaLabel, isCtaDisabled } = useSwapCtaState({
     sourceBalance,
     destinationTokenDescriptor,
     sourceAmount,
@@ -379,6 +383,7 @@ export const useEarnSwap = ({
     amountError,
     pathResult,
     isLoadingPath,
+    ctaState,
     ctaLabel,
     isCtaDisabled,
     handlePercentagePress,

@@ -336,10 +336,20 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // security sheet first; its Continue opens Review. The gate reads the
   // fresh transaction scan, not the lagging render state.
   const handleSwapReview = useCallback(async () => {
+    // Only a swap whose quote is ready is built, as on main Swap. Before the
+    // quote arrives the button is live but there is nothing to build, and
+    // opening the security sheet or Review then would offer to sign
+    // whatever transaction was staged before.
+    if (earnSwap.ctaState.kind !== "review") {
+      return;
+    }
     // A retry after an expired quote: its toast has served its purpose.
     dismissToast(SWAP_TOAST_IDS.QUOTE_EXPIRED);
     try {
       const setup = await earnSwap.setupSwapTransaction();
+      if (!setup) {
+        return;
+      }
       Keyboard.dismiss();
       const isTransactionUnableToScan = assessTransactionSecurity(
         setup?.scanResult,

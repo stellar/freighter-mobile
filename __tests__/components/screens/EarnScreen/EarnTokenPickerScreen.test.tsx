@@ -2,6 +2,8 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { act, fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
+import { SecurityDetailBottomSheet } from "components/blockaid/SecurityDetailBottomSheet";
+import { EarnSwapBottomSheet } from "components/screens/EarnScreen/components/EarnSwapBottomSheet";
 import { EarnSwapFromBottomSheet } from "components/screens/EarnScreen/components/EarnSwapFromBottomSheet";
 import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
 import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
@@ -10,6 +12,7 @@ import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { usePreferencesStore } from "ducks/preferences";
 import { useSwapStore } from "ducks/swap";
 import { useTokenIconsStore } from "ducks/tokenIcons";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -358,6 +361,9 @@ describe("EarnTokenPickerScreen", () => {
       act(() => {
         useSwapStore.getState().setSourceToken("XLM", "XLM");
         useSwapStore.getState().setSourceAmount("12");
+        useTransactionBuilderStore.setState({
+          transactionXDR: "unsubmitted-swap-xdr",
+        });
       });
 
       // eslint-disable-next-line no-underscore-dangle
@@ -377,6 +383,8 @@ describe("EarnTokenPickerScreen", () => {
 
       expect(useSwapStore.getState().sourceTokenId).toBe("");
       expect(useSwapStore.getState().sourceAmount).toBe("0");
+      // A swap built for Review but never confirmed can't be signed later.
+      expect(useTransactionBuilderStore.getState().transactionXDR).toBeNull();
       // A setup failure's toast goes with the swap it was about.
       expect(mockDismissToast).toHaveBeenCalledWith(
         "failed-to-setup-transaction",
@@ -652,6 +660,74 @@ describe("EarnTokenPickerScreen", () => {
       expect(swapSheet!.ref.dismiss.mock.invocationCallOrder[0]).toBeLessThan(
         swapFromSheet!.ref.dismiss.mock.invocationCallOrder[0],
       );
+    });
+  });
+
+  // Main Swap builds only once the quote is ready. Before that the button
+  // is live but there is nothing to build, and opening the security sheet
+  // or Review would offer to sign whatever transaction was staged before.
+  describe("the Earn swap's Review button before the quote is ready", () => {
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+    });
+
+    const notEnoughSheetPropsFor = () => {
+      // eslint-disable-next-line no-underscore-dangle
+      const sheets = globalThis.__earnTokenPickerMockSheets;
+      const sheet = sheets.find(
+        ({ props }) =>
+          (props.customContent as React.ReactElement | undefined)?.type ===
+          NotEnoughTokenBottomSheet,
+      );
+      return (
+        sheet?.props.customContent as React.ReactElement<{
+          onSwap: () => void;
+        }>
+      ).props;
+    };
+
+    it("builds nothing and opens nothing", async () => {
+      mockUseEarnTokens.supported = [
+        {
+          ...makeOption("EURC"),
+          canonicalId:
+            "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+        },
+      ];
+      useTransactionBuilderStore.setState({
+        transactionXDR: "unsubmitted-swap-xdr",
+      });
+      const { getByTestId } = renderScreen();
+      fireEvent.press(getByTestId("earn-token-option-EURC"));
+      act(() => {
+        notEnoughSheetPropsFor().onSwap();
+      });
+
+      // eslint-disable-next-line no-underscore-dangle
+      const sheets = globalThis.__earnTokenPickerMockSheets;
+      const findByContent = (type: unknown) =>
+        sheets.find(
+          ({ props }) =>
+            (props.customContent as React.ReactElement | undefined)?.type ===
+            type,
+        );
+      const swapSheet = findByContent(EarnSwapBottomSheet);
+      const { onReview } = (
+        swapSheet?.props.customContent as React.ReactElement<{
+          onReview: (() => Promise<void>) | null;
+        }>
+      ).props;
+      await act(async () => {
+        await onReview?.();
+      });
+
+      const reviewSheet = sheets.find(
+        ({ props }) => props.analyticsEvent === "earn_swap_review",
+      );
+      expect(
+        findByContent(SecurityDetailBottomSheet)?.ref.present,
+      ).not.toHaveBeenCalled();
+      expect(reviewSheet?.ref.present).not.toHaveBeenCalled();
     });
   });
 });
