@@ -51,17 +51,11 @@
     "send": "Send",
     "swap": "Swap",
     "actions": {
-      "settings": "Settings",
-      "myQRCode": "My QR code"
+      "settings": "Settings"
     },
     "manageAccount": {
       "addWallet": "Add wallet",
-      "renameWallet": "Rename wallet",
-      "copyAddress": "Copy address",
-      "viewOnExplorer": "View on stellar.expert"
-    },
-    "account": {
-      "imported": "Imported"
+      "copyAddress": "Copy address"
     }
   },
   "tabBar": {
