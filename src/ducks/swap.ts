@@ -156,6 +156,11 @@ const findClassicSwapPath = async (params: {
   }
 };
 
+// Counts quote requests, plus every clear and reset. Only the latest request
+// may write the quote, its error or its loading flag: a slower response to an
+// earlier amount would otherwise land last and replace the current quote.
+let latestPathRequest = 0;
+
 export const useSwapStore = create<SwapState>((set) => ({
   ...initialState,
 
@@ -208,6 +213,10 @@ export const useSwapStore = create<SwapState>((set) => ({
       network,
     } = params;
 
+    latestPathRequest += 1;
+    const request = latestPathRequest;
+    const isReplaced = () => request !== latestPathRequest;
+
     set({ isLoadingPath: true, pathError: null, pathResult: null });
 
     try {
@@ -242,6 +251,10 @@ export const useSwapStore = create<SwapState>((set) => ({
         network,
       });
 
+      if (isReplaced()) {
+        return;
+      }
+
       if (!pathResult) {
         set({
           isLoadingPath: false,
@@ -271,6 +284,10 @@ export const useSwapStore = create<SwapState>((set) => ({
 
       logger.error("SwapStore", "Failed to find swap path", error);
 
+      if (isReplaced()) {
+        return;
+      }
+
       const displayError = __DEV__
         ? errorMessage
         : t("swapScreen.errors.pathFindFailed");
@@ -282,14 +299,21 @@ export const useSwapStore = create<SwapState>((set) => ({
     }
   },
 
-  clearPath: () =>
+  clearPath: () => {
+    latestPathRequest += 1;
     set({
       pathResult: null,
       destinationAmount: "0",
       pathError: null,
-    }),
+      // A request in flight no longer gets to clear it.
+      isLoadingPath: false,
+    });
+  },
 
-  resetSwap: () => set(initialState),
+  resetSwap: () => {
+    latestPathRequest += 1;
+    set(initialState);
+  },
 }));
 
 /**
