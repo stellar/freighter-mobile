@@ -22,7 +22,13 @@ const props = (quoteKey: string, currentQuoteKey: string | null) => ({
   pathResult: {
     sourceAmount: "10",
     destinationAmount: "2",
-    path: [],
+    route: {
+      source: "classic",
+      fromAmount: "10",
+      toAmount: "2",
+      paths: [],
+      fees: [],
+    },
     conversionRate: "0.2",
     quoteKey,
   },

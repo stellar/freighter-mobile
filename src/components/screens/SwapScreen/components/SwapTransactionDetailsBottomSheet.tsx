@@ -72,6 +72,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
     transactionHash,
     error: transactionError,
     isSubmitting,
+    swapReview,
   } = useTransactionBuilderStore();
 
   const getTransactionStatus = () => {
@@ -137,10 +138,12 @@ const SwapTransactionDetailsBottomSheet: React.FC<
     [actualSourceAmount, actualDestinationAmount],
   );
 
+  // The classic path payment's destMin; a Soroban swap keeps its minimum
+  // backend-side, so that one is estimated from the quote.
   const displayMinimumReceived = calculateMinimumReceived({
     destinationAmount: actualDestinationAmount,
     allowedSlippage: swapSlippage.toString(),
-    minimumReceived: undefined,
+    minimumReceived: swapReview?.minReceived,
   });
 
   // Thread the live prices map so non-held destinations resolve their

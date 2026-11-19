@@ -19,6 +19,7 @@ export * from "./swapDisplayStrings";
 export { shouldShowXlmReservePreflight } from "./swapPreflight";
 export {
   QUOTE_EXPIRED_OPERATION_CODES,
+  SwapSetupAnswerError,
   getQuoteExpiredOperationCodes,
   isQuoteExpiredResultCodes,
 } from "./quoteErrors";
@@ -27,5 +28,5 @@ export {
   selectSwapRoute,
   swapQuoteErrorReason,
   type SwapQuoteErrorReason,
-  swapRouteIntermediateAssets,
 } from "./selectSwapRoute";
+export { decodeSwapTx, type DecodedSwapTx } from "./decodeSwapTx";

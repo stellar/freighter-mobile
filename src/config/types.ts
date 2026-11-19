@@ -353,6 +353,17 @@ export interface SwapQuotesResponse {
   data: SwapQuotes;
 }
 
+/** Wire shape of backend-v2 `POST /swap/tx`. */
+export interface SwapBuildResult {
+  /** Unsigned transaction envelope, base64 */
+  xdr: string;
+  addsTrustline: boolean;
+}
+
+export interface SwapBuildResponse {
+  data: SwapBuildResult;
+}
+
 /**
  * Represents a balance with additional price and display information
  *
