@@ -9,6 +9,7 @@ import {
 } from "config/types";
 import {
   descriptorAsPathBalance,
+  swapPairKey,
   swapQuoteKey,
   useSwapStore,
 } from "ducks/swap";
@@ -204,6 +205,22 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     });
     expect(state.destinationAmount).toBe("2.1000000");
     expect(state.swapQuotes).toEqual(quotes);
+  });
+
+  it("remembers the pair's resource fee past a cleared path, for Max's next quote", async () => {
+    mockFetchSwapQuotes.mockResolvedValue({
+      routes: [{ ...lifiRoute, resourceFee: "0.0858459" }],
+      unavailable: [],
+    });
+
+    await find();
+    useSwapStore.getState().clearPath();
+
+    const { sourceAmount, ...pair } = inputs();
+    expect(useSwapStore.getState().lastResourceFee).toEqual({
+      pairKey: swapPairKey(pair),
+      fee: "0.0858459",
+    });
   });
 
   it("keeps the previous receive amount while quoting and clears it when the quote fails", async () => {
