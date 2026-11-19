@@ -87,7 +87,9 @@
     "deleteAccount": "Excluir conta",
     "deleteAccountDisclaimer": "As contas na rede Stellar são imutáveis e não podem ser excluídas. No entanto, você pode remover qualquer conta do seu aplicativo Varial a qualquer momento usando a opção 'Excluir conta'. Verifique se sua frase de recuperação funciona antes de fazer isso.",
     "deleteAccountConfirmTitle": "Tem certeza?",
-    "deleteAccountConfirmMessage": "Certifique-se de que você tem sua frase de recuperação em um local seguro. Você não conseguirá recuperar sua carteira sem ela."
+    "deleteAccountConfirmMessage": "Certifique-se de que você tem sua frase de recuperação em um local seguro. Você não conseguirá recuperar sua carteira sem ela.",
+    "accountsRecovery": "Contas e recuperação",
+    "manageYourAccounts": "Gerencie suas contas"
   },
   "preferences": {
     "usageDataSharing": {
@@ -445,6 +447,7 @@
       "noKeyPairFound": "Nenhum par de chaves encontrado",
       "noRecoveryPhrase": "Nenhuma frase de recuperação para derivar",
       "unknownRecoveryPhrase": "Frase de recuperação desconhecida",
+      "recoveryPhraseNotFound": "Frase de recuperação não encontrada",
       "failedToSignUp": "Falha ao criar conta",
       "failedToSignIn": "Falha ao entrar",
       "failedToImportWallet": "Falha ao importar carteira",
@@ -560,7 +563,6 @@
     "alreadyInWallet": "Este colecionável já está na sua carteira",
     "showHidden": "Mostrar ocultos"
   },
-
   "collectibles": {
     "errors": {
       "collectionNotFound": "Coleção não encontrada para o endereço fornecido.",
@@ -1389,5 +1391,42 @@
     "title": "Não é possível executar neste dispositivo",
     "description": "Este dispositivo possui root ou jailbreak, o que impede o aplicativo de proteger as chaves da sua carteira.",
     "disclaimer": "O aplicativo está desabilitado em sistemas comprometidos. Instale e use-o em um dispositivo com segurança padrão intacta."
+  },
+  "accountsRecoveryScreen": {
+    "title": "Contas e recuperação",
+    "recoveryPhraseLabel": "Frase de recuperação {{number}}",
+    "secretKeyLabel": "Chave secreta {{number}}",
+    "otherAccounts": "Outras contas",
+    "editAccount": "Editar {{name}}"
+  },
+  "editAccountScreen": {
+    "title": "Editar conta",
+    "accountName": "Nome da conta",
+    "secretKey": "Chave secreta",
+    "unlockToReveal": "Desbloqueie para revelar",
+    "viewOnExplorer": "Ver no explorador de blocos"
+  },
+  "revealSecretScreen": {
+    "consentBannerBody": "Qualquer pessoa que a tenha pode assumir o controle da sua carteira.",
+    "consentSubtitle": "Guarde-a em segurança. Você precisará dela para restaurar sua carteira.",
+    "tapToCopy": "Toque para copiar",
+    "recoveryPhrase": {
+      "title": "Mostrar frase de recuperação",
+      "revealedTitle": "Sua frase de recuperação",
+      "bannerTitle": "Nunca compartilhe sua frase de recuperação",
+      "revealedBannerBody": "Qualquer pessoa que a tenha pode assumir o controle da sua carteira.",
+      "heading": "Sua frase de recuperação controla esta carteira",
+      "acknowledgement": "Entendo que compartilhar minha frase de recuperação pode resultar na <strong>perda permanente de fundos</strong>.",
+      "action": "Revelar frase de recuperação"
+    },
+    "secretKey": {
+      "title": "Mostrar chave secreta",
+      "revealedTitle": "Sua chave secreta",
+      "bannerTitle": "Nunca compartilhe sua chave secreta",
+      "revealedBannerBody": "Qualquer pessoa com esta chave pode acessar sua conta e seus fundos. Mantenha-a privada e guarde-a em segurança.",
+      "heading": "Sua chave secreta controla esta carteira",
+      "acknowledgement": "Entendo que compartilhar minha chave secreta pode resultar na <strong>perda permanente de fundos</strong>.",
+      "action": "Revelar chave secreta"
+    }
   }
 }

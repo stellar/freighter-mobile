@@ -1,13 +1,18 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { images } from "assets/images";
 import BottomSheet from "components/BottomSheet";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import DeleteAccountBottomSheet from "components/screens/SettingsScreen/DeleteAccountBottomSheet";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { DEFAULT_PADDING, FREIGHTER_BASE_URL } from "config/constants";
+import {
+  DEFAULT_PADDING,
+  DEFAULT_PRESS_DELAY,
+  FREIGHTER_BASE_URL,
+} from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
@@ -16,13 +21,58 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useCallback, useRef } from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SettingsScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
   typeof SETTINGS_ROUTES.SETTINGS_SCREEN
 >;
+
+/**
+ * The way into Accounts & recovery. The two overlapping circles are fixed
+ * artwork from the design, shown whatever the number of accounts.
+ */
+const AccountsRecoveryCard: React.FC<{ onPress: () => void }> = ({
+  onPress,
+}) => {
+  const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+
+  return (
+    <TouchableOpacity
+      className="bg-lilac-3 rounded-[16px] px-4 py-5 flex-row items-center gap-3"
+      onPress={onPress}
+      delayPressIn={DEFAULT_PRESS_DELAY}
+      accessibilityRole="button"
+      testID="settings-accounts-recovery"
+    >
+      <View className="flex-1">
+        <Text md semiBold>
+          {t("settings.accountsRecovery")}
+        </Text>
+        <Text sm secondary>
+          {t("settings.manageYourAccounts")}
+        </Text>
+      </View>
+      <View
+        className="flex-row"
+        importantForAccessibility="no-hide-descendants"
+        accessibilityElementsHidden
+      >
+        <Image
+          source={images.accountsCardAvatarFront}
+          className="w-8 h-8 rounded-full z-10"
+        />
+        <Image
+          source={images.accountsCardAvatarBack}
+          className="w-8 h-8 rounded-full -ml-2"
+        />
+      </View>
+      <Icon.ChevronRight color={themeColors.foreground.primary} />
+    </TouchableOpacity>
+  );
+};
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { logout } = useAuthenticationStore();
@@ -163,6 +213,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           className="flex flex-col gap-6 mt-4"
           style={{ marginBottom: insets.bottom + pxValue(DEFAULT_PADDING) }}
         >
+          <AccountsRecoveryCard
+            onPress={() =>
+              navigation.navigate(SETTINGS_ROUTES.ACCOUNTS_RECOVERY_SCREEN)
+            }
+          />
           <List items={topListItems} />
           <List items={midListItems} />
           <List items={bottomListItems} />

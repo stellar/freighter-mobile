@@ -76,6 +76,7 @@ import {
   getHeldMnemonic,
   getPhraseSourceId,
   getSecretKeySourceId,
+  getSecretSources,
   pinFirstSource,
 } from "services/auth/secretSources";
 import { getWalletSources } from "services/auth/walletSources";
@@ -4075,6 +4076,123 @@ export const getActiveMnemonicPhrase = async (): Promise<string | null> => {
     );
     return null;
   }
+};
+
+const assertAuthenticated = (): void => {
+  if (
+    useAuthenticationStore.getState().authStatus !== AUTH_STATUS.AUTHENTICATED
+  ) {
+    throw new Error(t("authStore.error.authenticationExpired"));
+  }
+};
+
+/**
+ * Returns one account's secret key for Edit account's reveal. `accountId` is
+ * the account's keystore id, so the password is checked against that
+ * account's own keystore, even though the session is unlocked, and the key
+ * comes from the same decrypt. Only a keystore the key manager lists is ever
+ * opened.
+ *
+ * @param {Object} input - The input parameters
+ * @param {string} input.accountId - The account's keystore id (`Account.id`)
+ * @param {string} input.password - The wallet password
+ * @returns {Promise<string>} The account's secret key
+ * @throws {Error} When the wallet is locked, the account isn't held, or the password is wrong
+ */
+export const revealAccountSecretKey = async ({
+  accountId,
+  password,
+}: {
+  accountId: string;
+  password: string;
+}): Promise<string> => {
+  assertAuthenticated();
+
+  const key = await getKeyFromKeyManager(password, accountId);
+
+  // A lock that landed during the decrypt keeps the key from leaving.
+  assertAuthenticated();
+
+  if (!key.privateKey) {
+    throw new Error(t("authStore.error.noKeyPairFound"));
+  }
+
+  return key.privateKey;
+};
+
+/**
+ * Returns a recovery phrase for Edit account's reveal, after checking the
+ * password against a keystore. Every keystore shares the wallet password.
+ *
+ * With a `sourceId`, the phrase that roots that account: it must be a phrase
+ * source the wallet records. The session's held copy is used when there is
+ * one; otherwise the phrase is read from one of the source's own keystores
+ * and kept only if it derives to `sourceId`. Without one, the wallet's
+ * default phrase, as Settings → Security shows it.
+ *
+ * @param {Object} input - The input parameters
+ * @param {string} input.password - The wallet password
+ * @param {string} [input.sourceId] - The phrase source to reveal (optional)
+ * @returns {Promise<string>} The recovery phrase
+ * @throws {Error} When the wallet is locked, the password is wrong, or the phrase isn't found
+ */
+export const revealRecoveryPhrase = async ({
+  password,
+  sourceId,
+}: {
+  password: string;
+  sourceId?: string;
+}): Promise<string> => {
+  assertAuthenticated();
+
+  const notFound = () => new Error(t("authStore.error.recoveryPhraseNotFound"));
+
+  if (!sourceId) {
+    await getKeyFromKeyManager(password);
+    const mnemonic = await getActiveMnemonicPhrase();
+    if (!mnemonic) {
+      throw notFound();
+    }
+    return mnemonic;
+  }
+
+  const source = (await getSecretSources())[sourceId];
+  if (source?.type !== SecretSourceType.PHRASE) {
+    throw notFound();
+  }
+
+  const sourceAccountIds = (await getAllAccounts())
+    .filter((account) => account.sourceId === sourceId)
+    .map(({ id }) => id);
+
+  // Checks the password first, so a wrong one reads as a wrong password
+  // rather than as a missing phrase.
+  await getKeyFromKeyManager(password, sourceAccountIds[0]);
+
+  const store = await getTemporaryStore(
+    useAuthenticationStore.getState().authStatus,
+  );
+  let mnemonic = getHeldMnemonic({
+    mnemonics: store?.mnemonics ?? {},
+    sourceId,
+  })?.mnemonic;
+
+  if (!mnemonic) {
+    const read = await readPhraseFromKeystores(sourceAccountIds, password);
+    if (read && (await getPhraseSourceId(read)) === sourceId) {
+      mnemonic = read;
+    }
+  }
+
+  // Nothing may await between this check and the return (see
+  // getActiveMnemonicPhrase).
+  assertAuthenticated();
+
+  if (!mnemonic) {
+    throw notFound();
+  }
+
+  return mnemonic;
 };
 
 /**

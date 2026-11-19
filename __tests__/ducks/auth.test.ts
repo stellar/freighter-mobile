@@ -21,6 +21,8 @@ import {
   clearSessionAuthValidMemo,
   SESSION_AUTH_VALID_TTL_MS,
   getActiveMnemonicPhrase,
+  revealAccountSecretKey,
+  revealRecoveryPhrase,
   getHeldSecrets,
 } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
@@ -3764,6 +3766,234 @@ describe("auth duck", () => {
         );
 
         expect(await getActiveMnemonicPhrase()).toBeNull();
+      });
+    });
+
+    // Edit account's reveals: the password is checked against a keystore
+    // even though the session is unlocked.
+    describe("revealAccountSecretKey", () => {
+      const importedId = "imported-keystore-id";
+
+      beforeEach(() => {
+        mockAuthenticatedSession(mockTemporaryStore);
+        sharedKeyManager.loadAllKeyIds.mockResolvedValue([
+          mockAccountId,
+          importedId,
+        ]);
+        sharedKeyManager.loadKey.mockImplementation(
+          (id: string, password: string) => {
+            if (password !== mockPassword) {
+              return Promise.reject(new Error("bad password"));
+            }
+            return Promise.resolve(
+              id === importedId
+                ? {
+                    id,
+                    publicKey: importedPublicKey,
+                    privateKey: importedSecretKey,
+                  }
+                : { id, publicKey: mockPublicKey, privateKey: mockPrivateKey },
+            );
+          },
+        );
+      });
+
+      it("returns each account's own secret key from its own keystore", async () => {
+        expect(
+          await revealAccountSecretKey({
+            accountId: importedId,
+            password: mockPassword,
+          }),
+        ).toBe(importedSecretKey);
+        expect(sharedKeyManager.loadKey).toHaveBeenLastCalledWith(
+          importedId,
+          mockPassword,
+        );
+
+        expect(
+          await revealAccountSecretKey({
+            accountId: mockAccountId,
+            password: mockPassword,
+          }),
+        ).toBe(mockPrivateKey);
+      });
+
+      it("refuses a wrong password while the wallet is unlocked", async () => {
+        await expect(
+          revealAccountSecretKey({
+            accountId: importedId,
+            password: "wrong-password",
+          }),
+        ).rejects.toThrow("authStore.error.invalidPassword");
+      });
+
+      it("never opens a keystore the key manager doesn't list", async () => {
+        await expect(
+          revealAccountSecretKey({
+            accountId: "not-a-key-id",
+            password: mockPassword,
+          }),
+        ).rejects.toThrow("authStore.error.noKeyPairFound");
+        expect(sharedKeyManager.loadKey).not.toHaveBeenCalled();
+      });
+
+      it("refuses while the wallet is locked", async () => {
+        act(() => {
+          useAuthenticationStore.setState({ authStatus: AUTH_STATUS.LOCKED });
+        });
+
+        await expect(
+          revealAccountSecretKey({
+            accountId: importedId,
+            password: mockPassword,
+          }),
+        ).rejects.toThrow("authStore.error.authenticationExpired");
+        expect(sharedKeyManager.loadKey).not.toHaveBeenCalled();
+      });
+
+      it("withholds the key if a lock lands during the decrypt", async () => {
+        sharedKeyManager.loadKey.mockImplementation(() => {
+          useAuthenticationStore.setState({ authStatus: AUTH_STATUS.LOCKED });
+          return Promise.resolve({
+            id: importedId,
+            privateKey: importedSecretKey,
+          });
+        });
+
+        await expect(
+          revealAccountSecretKey({
+            accountId: importedId,
+            password: mockPassword,
+          }),
+        ).rejects.toThrow("authStore.error.authenticationExpired");
+      });
+    });
+
+    describe("revealRecoveryPhrase", () => {
+      const secretKeySourceId = "secret-key-source";
+
+      beforeEach(() => {
+        dataStorageMemory[STORAGE_KEYS.SECRET_SOURCES] = JSON.stringify({
+          [mockPhraseSourceId]: {
+            id: mockPhraseSourceId,
+            type: SecretSourceType.PHRASE,
+            label: "Seed Phrase 1",
+            createdAt: 1,
+          },
+          [secretKeySourceId]: {
+            id: secretKeySourceId,
+            type: SecretSourceType.SECRET_KEY,
+            label: "Secret Key 1",
+            createdAt: 2,
+          },
+        });
+        dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST] = JSON.stringify([
+          {
+            id: mockAccountId,
+            name: "Account 1",
+            publicKey: mockPublicKey,
+            sourceId: mockPhraseSourceId,
+          },
+        ]);
+        sharedKeyManager.loadKey.mockImplementation(
+          (id: string, password: string) =>
+            password === mockPassword
+              ? Promise.resolve({
+                  id,
+                  publicKey: mockPublicKey,
+                  privateKey: mockPrivateKey,
+                  extra: { mnemonicPhrase: mockMnemonicPhrase },
+                })
+              : Promise.reject(new Error("bad password")),
+        );
+      });
+
+      it("returns the held phrase of the named source", async () => {
+        mockAuthenticatedSession(
+          JSON.stringify({
+            privateKeys: {},
+            mnemonics: { [mockPhraseSourceId]: "held phrase" },
+          }),
+        );
+
+        expect(
+          await revealRecoveryPhrase({
+            password: mockPassword,
+            sourceId: mockPhraseSourceId,
+          }),
+        ).toBe("held phrase");
+        expect(sharedKeyManager.loadKey).toHaveBeenCalledWith(
+          mockAccountId,
+          mockPassword,
+        );
+      });
+
+      it("reads the phrase from the source's keystore when the session doesn't hold it", async () => {
+        mockAuthenticatedSession(
+          JSON.stringify({ privateKeys: {}, mnemonics: {} }),
+        );
+
+        expect(
+          await revealRecoveryPhrase({
+            password: mockPassword,
+            sourceId: mockPhraseSourceId,
+          }),
+        ).toBe(mockMnemonicPhrase);
+      });
+
+      it("refuses a wrong password while the wallet is unlocked", async () => {
+        mockAuthenticatedSession(mockTemporaryStore);
+
+        await expect(
+          revealRecoveryPhrase({
+            password: "wrong-password",
+            sourceId: mockPhraseSourceId,
+          }),
+        ).rejects.toThrow("authStore.error.invalidPassword");
+      });
+
+      it("refuses a source that isn't a recorded phrase", async () => {
+        mockAuthenticatedSession(mockTemporaryStore);
+
+        await expect(
+          revealRecoveryPhrase({
+            password: mockPassword,
+            sourceId: secretKeySourceId,
+          }),
+        ).rejects.toThrow("authStore.error.recoveryPhraseNotFound");
+        await expect(
+          revealRecoveryPhrase({
+            password: mockPassword,
+            sourceId: "unknown-source",
+          }),
+        ).rejects.toThrow("authStore.error.recoveryPhraseNotFound");
+        expect(sharedKeyManager.loadKey).not.toHaveBeenCalled();
+      });
+
+      it("returns the default phrase when no source is named", async () => {
+        mockAuthenticatedSession(
+          JSON.stringify({
+            privateKeys: {},
+            mnemonics: { [mockPhraseSourceId]: "held phrase" },
+          }),
+        );
+
+        expect(await revealRecoveryPhrase({ password: mockPassword })).toBe(
+          "held phrase",
+        );
+      });
+
+      it("refuses while the wallet is locked", async () => {
+        act(() => {
+          useAuthenticationStore.setState({ authStatus: AUTH_STATUS.LOCKED });
+        });
+
+        await expect(
+          revealRecoveryPhrase({
+            password: mockPassword,
+            sourceId: mockPhraseSourceId,
+          }),
+        ).rejects.toThrow("authStore.error.authenticationExpired");
       });
     });
 

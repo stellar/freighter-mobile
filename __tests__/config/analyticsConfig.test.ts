@@ -47,6 +47,15 @@ describe("Analytics Configuration", () => {
       );
     });
 
+    it("splits the legacy recovery phrase reveal into unlock and show", () => {
+      expect(processRouteForAnalytics("ShowRecoveryPhraseScreen")).toBe(
+        AnalyticsEvent.VIEW_UNLOCK_RECOVERY_PHRASE,
+      );
+      expect(processRouteForAnalytics("YourRecoveryPhraseScreen")).toBe(
+        AnalyticsEvent.VIEW_SHOW_RECOVERY_PHRASE,
+      );
+    });
+
     it("should use automatic transformation for other routes", () => {
       expect(processRouteForAnalytics("WelcomeScreen")).toBe(
         AnalyticsEvent.VIEW_WELCOME,

@@ -53,8 +53,10 @@ jest.mock("hooks/useAppTranslation", () => ({
   }),
 }));
 
+const mockNavigate = jest.fn();
 const mockNavigation = {
   goBack: mockGoBack,
+  navigate: mockNavigate,
   setOptions: jest.fn(),
 } as unknown as SettingsScreenNavigationProp;
 
@@ -93,5 +95,17 @@ describe("SettingsScreen", () => {
 
     const versionText = getByTestId("update-button");
     expect(versionText).toHaveTextContent("v1.1 (1)");
+  });
+
+  it("opens Accounts & recovery from the card at the top", () => {
+    const { getByTestId } = renderWithProviders(
+      <SettingsScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    fireEvent.press(getByTestId("settings-accounts-recovery"));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      SETTINGS_ROUTES.ACCOUNTS_RECOVERY_SCREEN,
+    );
   });
 });
