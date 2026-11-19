@@ -22,6 +22,7 @@ import {
   retrieveHiddenTokens,
 } from "helpers/hiddenTokens";
 import { isMainnet } from "helpers/networks";
+import { reportActiveAccountBalances } from "services/analytics/accountFunding";
 import { ApiError, logApiError } from "services/apiFactory";
 import { fetchBalances } from "services/backend";
 import { dataStorage } from "services/storage/storageFactory";
@@ -193,13 +194,17 @@ const getUpdatedPricedBalances = (
 
 /**
  * Fetches and processes priced balances with a timeout for price fetching
+ *
+ * @returns The priced balances, and whether the price fetch succeeded. On a
+ *   price error the balances keep their old prices, so only `pricesOk` tells
+ *   the two cases apart.
  */
 const fetchPricedBalances = async (
   set: (state: Partial<BalancesState>) => void,
   balances: BalanceMap,
   statePricedBalances: PricedBalanceMap,
   params: { publicKey: string; network: NETWORKS },
-): Promise<PricedBalanceMap> => {
+): Promise<{ pricedBalances: PricedBalanceMap; pricesOk: boolean }> => {
   // Initialize pricedBalances with basic balance data
   const existingPricedBalances = getExistingPricedBalances(
     balances,
@@ -230,7 +235,7 @@ const fetchPricedBalances = async (
   }
 
   // Make sure to wait until the prices finishes fetching
-  await priceFetchPromise;
+  const pricesOk = (await priceFetchPromise) === true;
 
   // Get the updated prices for this network from the store
   const { pricesByNetwork, error: pricesError } = usePricesStore.getState();
@@ -238,11 +243,14 @@ const fetchPricedBalances = async (
 
   if (pricesError || Object.keys(prices).length === 0) {
     // Return existing data in case of price fetch error
-    return existingPricedBalances;
+    return { pricedBalances: existingPricedBalances, pricesOk };
   }
 
   // Update pricedBalances with price data from the prices store
-  return getUpdatedPricedBalances(existingPricedBalances, prices);
+  return {
+    pricedBalances: getUpdatedPricedBalances(existingPricedBalances, prices),
+    pricesOk,
+  };
 };
 
 /**
@@ -400,7 +408,7 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
 
       // Get existing state priced balances to preserve price data
       const statePricedBalances = get().pricedBalances;
-      const pricedBalances = await fetchPricedBalances(
+      const { pricedBalances, pricesOk } = await fetchPricedBalances(
         set,
         balances,
         statePricedBalances,
@@ -424,6 +432,26 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         pricedBalances,
         isLoading: false,
         error: null,
+      });
+
+      // account.funded detection. It reads only the data fetched above and
+      // adds no request. Not awaited: telemetry must not delay the fetch.
+      // The hidden tokens are the ones of this account, as the Home total
+      // uses them.
+      const currentState = get();
+      reportActiveAccountBalances({
+        publicKey: params.publicKey,
+        network: params.network,
+        isFunded,
+        pricedBalances,
+        hiddenTokenIds: isSnapshotFor(
+          currentState,
+          params.publicKey,
+          params.network,
+        )
+          ? currentState.hiddenTokenIds
+          : hiddenTokenIds,
+        pricesOk,
       });
     } catch (error) {
       // Backend API errors come from the axios interceptor as plain ApiError
