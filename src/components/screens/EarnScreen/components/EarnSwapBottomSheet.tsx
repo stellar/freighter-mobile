@@ -39,7 +39,8 @@ export interface EarnSwapBottomSheetProps {
   destinationLabel: string;
   /** Quoted receive amount, already formatted. */
   destinationAmount: string;
-  /** Fiat counterpart of the quote, already formatted. */
+  /** Fiat counterpart of the quote, already formatted: $0.00 before there
+   *  is a quote, "--" without a price. Without it the line is hidden. */
   destinationSecondaryText?: string;
 
   onPercentagePress: (percentage: number) => void;

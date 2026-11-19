@@ -321,15 +321,20 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
 
   // The receive card's fiat line, priced by the pool catalog: the account
   // doesn't hold the destination yet, so there is no balance price for it.
+  // It's always there, as on main Swap, so the card doesn't grow when the
+  // first quote arrives: the quote's value, $0.00 before there is one, or
+  // "--" for a token without a price.
   const earnSwapDestinationFiatText = useMemo(() => {
     const price = pool?.reserves.find(
       (reserve) => reserve.assetId === swapOption?.assetId,
     )?.priceUsd;
-    const amount = earnSwap.pathResult?.destinationAmount;
-    if (price === null || price === undefined || !amount) {
-      return undefined;
+    if (price === null || price === undefined) {
+      return "--";
     }
-    return formatFiatAmount(new BigNumber(amount).multipliedBy(price));
+    const amount = earnSwap.pathResult?.destinationAmount;
+    return formatFiatAmount(
+      amount ? new BigNumber(amount).multipliedBy(price) : "0",
+    );
   }, [pool, swapOption, earnSwap.pathResult]);
 
   // "Swap from" stacks over the swap sheet rather than replacing it, so its

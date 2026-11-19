@@ -14,7 +14,7 @@ import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTokenIconsStore } from "ducks/tokenIcons";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { formatTokenForDisplay } from "helpers/formatAmount";
+import { formatFiatAmount, formatTokenForDisplay } from "helpers/formatAmount";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -1276,6 +1276,34 @@ describe("EarnTokenPickerScreen", () => {
       );
       // No amount typed yet, in token mode: its fiat value.
       expect(sourceSecondaryText).toBe("$0.00");
+    });
+
+    // The receive card keeps its fiat line from the start, as on main Swap,
+    // so the card doesn't grow when the first quote arrives.
+    describe("the receive card's fiat line before there is a quote", () => {
+      const receiveFiatText = () =>
+        (
+          findByContent(EarnSwapBottomSheet)?.props
+            .customContent as React.ReactElement<{
+            destinationSecondaryText?: string;
+          }>
+        ).props.destinationSecondaryText;
+
+      it("reads $0.00 for a token with a price", () => {
+        mockUseEarnTokens.pool = {
+          name: "Fixed",
+          reserves: [{ assetId: "CEURCFAKESACADDRESS", priceUsd: 1.08 }],
+        };
+        openEarnSwap();
+
+        expect(receiveFiatText()).toBe(formatFiatAmount("0"));
+      });
+
+      it("reads -- for a token without a price", () => {
+        openEarnSwap();
+
+        expect(receiveFiatText()).toBe("--");
+      });
     });
 
     // A landed swap leaves its amount on the sell card until the sheet
