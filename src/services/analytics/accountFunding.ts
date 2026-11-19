@@ -34,7 +34,10 @@ import {
 export interface FundedStateInput {
   /** The backend flag: the account exists on the ledger. */
   isFunded: boolean | null | undefined;
-  /** The balance fetch failed. */
+  /**
+   * The balance fetch failed, or the balances are not complete (a Horizon or
+   * Soroban error in the response).
+   */
   hasBalanceError: boolean;
   /** The price fetch failed. */
   hasPriceError: boolean;
@@ -57,9 +60,12 @@ export const getFundedState = ({
   hasUnpricedXlm,
   totalUsd,
 }: FundedStateInput): boolean | null => {
+  // Check errors first. With an error, isFunded and the balances can be
+  // incomplete, so even isFunded: false is not a definite result.
+  if (hasBalanceError) return null;
   // No ledger entry, so no balances. No prices are necessary.
   if (isFunded === false) return false;
-  if (hasBalanceError || isFunded == null) return null;
+  if (isFunded == null) return null;
   if (hasPriceError) return null;
   // XLM always has a price on mainnet. A missing XLM price means incomplete
   // price data, not a zero value.
@@ -122,6 +128,11 @@ export const applyActiveAccountFundedState = async ({
 
     const record: FundingRecord =
       (await loadFundingRecord(network, accountIdHash)) ?? {};
+
+    // Check again after the read. The read is asynchronous, so the user can
+    // switch accounts or networks during it.
+    if (!isActiveAccount(publicKey, network)) return;
+
     const previousStatus = record.status;
 
     record.funded = funded;
@@ -189,6 +200,15 @@ const logFundingError = (error: unknown) => {
   );
 };
 
+/** Error information from the balances response (v1 only). */
+type BalancesResponseError =
+  | { horizon?: unknown; soroban?: unknown }
+  | null
+  | undefined;
+
+const hasResponseError = (error: BalancesResponseError): boolean =>
+  !!(error?.horizon || error?.soroban);
+
 /**
  * Reports a result of the active-account fetch (`fetchAccountBalances`).
  *
@@ -202,6 +222,7 @@ export const reportActiveAccountBalances = async ({
   pricedBalances,
   hiddenTokenIds,
   pricesOk,
+  balancesError,
 }: {
   publicKey: string;
   network: NETWORKS;
@@ -209,6 +230,7 @@ export const reportActiveAccountBalances = async ({
   pricedBalances: PricedBalanceMap;
   hiddenTokenIds: string[];
   pricesOk: boolean;
+  balancesError?: BalancesResponseError;
 }): Promise<void> => {
   try {
     if (network !== NETWORKS.PUBLIC) return;
@@ -219,7 +241,7 @@ export const reportActiveAccountBalances = async ({
 
     const funded = getFundedState({
       isFunded,
-      hasBalanceError: false,
+      hasBalanceError: hasResponseError(balancesError),
       hasPriceError: !pricesOk,
       hasUnpricedXlm:
         !!nativeBalance &&
@@ -245,6 +267,10 @@ export const reportActiveAccountBalances = async ({
  * @param isFunded - The raw backend flag, not `isFunded ?? false`
  * @param pricesOk - False when the price fetch for the batch failed
  * @param totalUsd - The total that the fetch cycle already computed
+ * @param balancesError - The Horizon and Soroban errors of the response
+ * @param mayOmitTokens - True when the fetch can leave out balances that the
+ *   active-account fetch includes. Then an unfunded result is not definite,
+ *   but a funded result is, because the missing balances can only add value.
  */
 export const reportListAccountBalances = async ({
   publicKey,
@@ -254,6 +280,8 @@ export const reportListAccountBalances = async ({
   prices,
   pricesOk,
   totalUsd,
+  balancesError,
+  mayOmitTokens = false,
 }: {
   publicKey: string;
   network: NETWORKS;
@@ -262,6 +290,8 @@ export const reportListAccountBalances = async ({
   prices: TokenPricesMap;
   pricesOk: boolean;
   totalUsd: BigNumber;
+  balancesError?: BalancesResponseError;
+  mayOmitTokens?: boolean;
 }): Promise<void> => {
   try {
     if (network !== NETWORKS.PUBLIC) return;
@@ -272,7 +302,7 @@ export const reportListAccountBalances = async ({
 
     const funded = getFundedState({
       isFunded,
-      hasBalanceError: balances === null,
+      hasBalanceError: balances === null || hasResponseError(balancesError),
       hasPriceError: !pricesOk,
       hasUnpricedXlm:
         !!nativeBalance &&
@@ -282,6 +312,7 @@ export const reportListAccountBalances = async ({
     });
 
     if (funded === null) return;
+    if (!funded && mayOmitTokens) return;
 
     await applyListAccountFundedState({ publicKey, network, funded });
   } catch (error) {

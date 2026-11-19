@@ -13,6 +13,7 @@ import {
   useAccountsFiatTotalsStore,
 } from "ducks/accountsFiatTotals";
 import { usePricesStore } from "ducks/prices";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { reportListAccountBalances } from "services/analytics/accountFunding";
 import { fetchBalances } from "services/backend";
 
@@ -570,6 +571,36 @@ describe("accountsFiatTotals duck", () => {
       );
       expect(byKey[PK_1].totalUsd.toString()).toBe("250");
       expect(byKey[PK_2].isFunded).toBeUndefined();
+    });
+
+    it("reports the response error, and mayOmitTokens on the v1 path only", async () => {
+      const mockRemoteConfig = useRemoteConfigStore.getState as jest.Mock;
+      const balancesError = { horizon: null, soroban: { message: "rpc" } };
+      mockFetchBalances.mockResolvedValue({
+        balances: mockBalanceMap,
+        isFunded: true,
+        error: balancesError,
+      });
+
+      mockRemoteConfig.mockReturnValueOnce({ use_balances_v2: false });
+      await useAccountsFiatTotalsStore.getState().fetchAccountsFiatTotals({
+        publicKeys: [PK_1],
+        network: NETWORKS.PUBLIC,
+        forceRefresh: true,
+      });
+      expect(mockReport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ balancesError, mayOmitTokens: true }),
+      );
+
+      mockRemoteConfig.mockReturnValueOnce({ use_balances_v2: true });
+      await useAccountsFiatTotalsStore.getState().fetchAccountsFiatTotals({
+        publicKeys: [PK_1],
+        network: NETWORKS.PUBLIC,
+        forceRefresh: true,
+      });
+      expect(mockReport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ mayOmitTokens: false }),
+      );
     });
 
     it("reports a failed account fetch with null balances", async () => {

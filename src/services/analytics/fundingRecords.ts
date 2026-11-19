@@ -135,6 +135,9 @@ export const getFundedAccountCount = (
 /**
  * Loads the PUBLIC records of the given accounts that are not in the cache.
  *
+ * A record that cannot be read stays out of the cache, so the count stays
+ * unknown and no low count is sent. A later sync tries the read again.
+ *
  * @returns True when it loaded at least one record
  */
 export const loadPublicFundedStates = async (
@@ -146,23 +149,23 @@ export const loadPublicFundedStates = async (
 
   if (missing.length === 0) return false;
 
-  await Promise.all(
+  const results = await Promise.all(
     missing.map(async (hash) => {
       try {
         await loadFundingRecord(NETWORKS.PUBLIC, hash);
+        return true;
       } catch (error) {
-        // A record that cannot be read counts as not funded.
-        publicFundedCache.set(hash, undefined);
         logger.warn(
           DEBUG_CONFIG.LOG_PREFIX,
           "Failed to read an account funding record",
           { error },
         );
+        return false;
       }
     }),
   );
 
-  return true;
+  return results.some(Boolean);
 };
 
 /** Clears the in-memory state. For tests only. */

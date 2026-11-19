@@ -382,12 +382,17 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
       // Fetch balances with combined contract IDs. Read the v2 flag from the
       // store at call time (not a captured value) so a freshly resolved
       // Amplitude flag isn't missed — mirrors the token-prices flag below.
-      const { balances, isFunded, subentryCount, localOnlyTokenIds } =
-        await fetchBalances({
-          ...params,
-          contractIds: allContractIds,
-          useV2: useRemoteConfigStore.getState().use_balances_v2,
-        });
+      const {
+        balances,
+        isFunded,
+        subentryCount,
+        localOnlyTokenIds,
+        error: balancesError,
+      } = await fetchBalances({
+        ...params,
+        contractIds: allContractIds,
+        useV2: useRemoteConfigStore.getState().use_balances_v2,
+      });
 
       if (!balances) {
         throw new Error("No balances returned from API");
@@ -452,6 +457,7 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
           ? currentState.hiddenTokenIds
           : hiddenTokenIds,
         pricesOk,
+        balancesError,
       });
     } catch (error) {
       // Backend API errors come from the axios interceptor as plain ApiError

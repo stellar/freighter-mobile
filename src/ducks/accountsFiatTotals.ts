@@ -282,7 +282,7 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
                   // SEP-41 balances that the balances endpoint returns are
                   // still priced, because the prices backend prices contract
                   // tokens.
-                  const [{ balances, isFunded }, hiddenTokenIds] =
+                  const [{ balances, isFunded, error }, hiddenTokenIds] =
                     await Promise.all([
                       fetchBalances({
                         publicKey,
@@ -304,6 +304,7 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
                     // Raw flag: the account.funded rule tells a missing
                     // value (no definite result) from false (no ledger entry).
                     isFunded,
+                    balancesError: error,
                   };
                 } catch (error) {
                   // One account failing shouldn't blank out the whole list —
@@ -320,6 +321,7 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
                     publicKey,
                     balances: null,
                     isFunded: undefined,
+                    balancesError: undefined,
                   };
                 }
               }),
@@ -373,37 +375,44 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
             // the only place that knows all of it: whether the fetch failed,
             // whether the account is funded, and whether anything priced.
             const batchTotals: Record<string, AccountFiatTotal> = {};
-            results.forEach(({ publicKey, balances, isFunded }) => {
-              const hasError = balances === null;
-              const { total, pricedCount } = balances
-                ? computeFiatTotal(balances, prices ?? {})
-                : { total: new BigNumber(0), pricedCount: 0 };
+            results.forEach(
+              ({ publicKey, balances, isFunded, balancesError }) => {
+                const hasError = balances === null;
+                const { total, pricedCount } = balances
+                  ? computeFiatTotal(balances, prices ?? {})
+                  : { total: new BigNumber(0), pricedCount: 0 };
 
-              batchTotals[publicKey] = {
-                label: getTotalUsdLabel({
+                batchTotals[publicKey] = {
+                  label: getTotalUsdLabel({
+                    hasError,
+                    // Past the guard above, so the network prices tokens.
+                    hasPriceFeed: isMainnet(network),
+                    isFunded: isFunded ?? false,
+                    hasPrices: pricedCount > 0,
+                    totalUsd: total,
+                  }),
                   hasError,
-                  // Past the guard above, so the network prices tokens.
-                  hasPriceFeed: isMainnet(network),
-                  isFunded: isFunded ?? false,
-                  hasPrices: pricedCount > 0,
-                  totalUsd: total,
-                }),
-                hasError,
-              };
+                };
 
-              // Feeds funded_account_count. It changes only `funded` in the
-              // funding record, never the account.funded event state. Not
-              // awaited: telemetry must not delay the cycle.
-              reportListAccountBalances({
-                publicKey,
-                network,
-                balances,
-                isFunded,
-                prices: prices ?? {},
-                pricesOk: batchPricesOk,
-                totalUsd: total,
-              });
-            });
+                // Feeds funded_account_count. It changes only `funded` in the
+                // funding record, never the account.funded event state. Not
+                // awaited: telemetry must not delay the cycle.
+                reportListAccountBalances({
+                  publicKey,
+                  network,
+                  balances,
+                  isFunded,
+                  prices: prices ?? {},
+                  pricesOk: batchPricesOk,
+                  totalUsd: total,
+                  balancesError,
+                  // The v1 path gets no contractIds here, so it can leave out
+                  // custom-token balances that the active-account fetch
+                  // includes. v2 returns every held token.
+                  mayOmitTokens: !useBalancesV2,
+                });
+              },
+            );
 
             set({ fiatTotals: { ...get().fiatTotals, ...batchTotals } });
           }

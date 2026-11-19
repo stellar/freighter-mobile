@@ -977,6 +977,30 @@ describe("balances duck", () => {
       ).toBe("50.25");
     });
 
+    it("reports the Horizon and Soroban errors of the response", async () => {
+      const balancesError = { horizon: null, soroban: { message: "rpc" } };
+      mockFetchBalances.mockResolvedValueOnce({
+        balances: mockBalances,
+        isFunded: true,
+        error: balancesError,
+      });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({
+          prices: mockPrices,
+          fetchPricesForBalances: jest.fn().mockResolvedValue(true),
+        }),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+
+      expect(mockReport).toHaveBeenCalledWith(
+        expect.objectContaining({ balancesError }),
+      );
+    });
+
     it("reports pricesOk: false when the price fetch failed", async () => {
       mockFetchBalances.mockResolvedValueOnce({
         balances: mockBalances,

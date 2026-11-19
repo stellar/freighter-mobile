@@ -13,6 +13,7 @@ import {
 } from "services/analytics/core";
 import {
   getFundedAccountCount,
+  loadPublicFundedStates,
   resetFundingRecordsCacheForTests,
 } from "services/analytics/fundingRecords";
 import { dataStorage } from "services/storage/storageFactory";
@@ -131,6 +132,12 @@ describe("getFundedState", () => {
     hasUnpricedXlm: false,
     totalUsd: new BigNumber(1),
   };
+
+  it("has no definite result when the balances have an error, also when isFunded is false", () => {
+    expect(
+      getFundedState({ ...base, isFunded: false, hasBalanceError: true }),
+    ).toBeNull();
+  });
 
   it("is unfunded without a ledger entry, also when prices failed", () => {
     expect(
@@ -293,6 +300,45 @@ describe("account.funded detection (active-account fetch)", () => {
     expect(recordOf(PK_A)?.status).toBe("unfunded");
   });
 
+  it("does not emit when the account switches while the record is read", async () => {
+    await reportActive(EMPTY);
+
+    let releaseRead: () => void = () => undefined;
+    (dataStorage.getItem as jest.Mock).mockImplementationOnce(
+      (key: string) =>
+        new Promise((resolve) => {
+          releaseRead = () => resolve(mockStorage.get(key) ?? null);
+        }),
+    );
+
+    const update = reportActive(FUNDED);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(dataStorage.getItem).toHaveBeenCalledTimes(2);
+
+    // The user selects another account during the read.
+    mockAuthState.account = { publicKey: PK_B };
+    releaseRead();
+    await update;
+
+    expect(fundedEvents()).toHaveLength(0);
+    expect(recordOf(PK_A)).toEqual({ funded: false, status: "unfunded" });
+  });
+
+  it.each([
+    ["Horizon", { horizon: { status: 500 }, soroban: null }],
+    ["Soroban", { horizon: null, soroban: new Error("rpc") }],
+  ])(
+    "changes no record when the response has a %s error",
+    async (_name, balancesError) => {
+      await reportActive(FUNDED);
+      await reportActive(EMPTY, { balancesError });
+      await reportActive(EMPTY, { balancesError, isFunded: false });
+
+      expect(recordOf(PK_A)).toEqual({ funded: true, status: "funded" });
+    },
+  );
+
   it("sets pending when consent drops the event, then emits after opt-in (VT-15)", async () => {
     await reportActive(EMPTY);
 
@@ -416,6 +462,35 @@ describe("funded_account_count", () => {
       prices: { XLM: { currentPrice: new BigNumber("0.1") } } as never,
     });
     expect(recordOf(PK_B)).toEqual({ funded: true });
+  });
+
+  it("changes no record when the all-accounts response has a Soroban error", async () => {
+    await reportList(PK_B, "0", {
+      balancesError: { horizon: null, soroban: new Error("rpc") },
+    });
+    expect(recordOf(PK_B)).toBeNull();
+  });
+
+  it("ignores an unfunded all-accounts result that can omit tokens, but keeps a funded one", async () => {
+    await reportList(PK_B, "5");
+    await reportList(PK_B, "0", { mayOmitTokens: true });
+    expect(recordOf(PK_B)).toEqual({ funded: true });
+
+    await reportList(PK_A, "5", { mayOmitTokens: true });
+    expect(recordOf(PK_A)).toEqual({ funded: true });
+  });
+
+  it("keeps the count unknown when a record cannot be read", async () => {
+    (dataStorage.getItem as jest.Mock).mockRejectedValueOnce(
+      new Error("storage"),
+    );
+
+    await expect(loadPublicFundedStates(hashes(PK_A))).resolves.toBe(false);
+    expect(getFundedAccountCount(hashes(PK_A))).toBeNull();
+
+    // A later read succeeds.
+    await expect(loadPublicFundedStates(hashes(PK_A))).resolves.toBe(true);
+    expect(getFundedAccountCount(hashes(PK_A))).toBe(0);
   });
 
   it("ignores testnet results and accounts that are not own accounts (VT-28)", async () => {
