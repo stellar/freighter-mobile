@@ -1103,7 +1103,10 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       />
       <BottomSheet
         modalRef={swapProcessingBottomSheetModalRef}
+        // Only X, Close and Done close it: they run the close handler that
+        // ends the swap, which a swipe or a tap outside would skip.
         enablePanDownToClose={false}
+        shouldCloseOnPressBackdrop={false}
         bottomSheetModalProps={{
           onDismiss: () => setSwapProcessingSnapshot(null),
         }}

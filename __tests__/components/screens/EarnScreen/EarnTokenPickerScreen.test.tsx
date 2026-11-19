@@ -555,6 +555,25 @@ describe("EarnTokenPickerScreen", () => {
     });
   });
 
+  describe("the swap's processing sheet", () => {
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+    });
+
+    // Its X, Close and Done run the close handler that ends the swap: the
+    // toast, the refresh and resetting the swap. A swipe or a tap outside
+    // would close it without that.
+    it("closes only from its own buttons", () => {
+      renderScreen();
+      // eslint-disable-next-line no-underscore-dangle
+      const processingSheet = globalThis.__earnTokenPickerMockSheets.find(
+        ({ props }) => props.enablePanDownToClose === false,
+      );
+
+      expect(processingSheet?.props.shouldCloseOnPressBackdrop).toBe(false);
+    });
+  });
+
   describe("icons for tokens the account doesn't hold", () => {
     beforeEach(() => {
       usePreferencesStore.getState().setHasSeenEarnIntro(true);
