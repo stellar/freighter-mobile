@@ -460,6 +460,31 @@ describe("funded_account_count", () => {
     expect(recordOf(PK_B)).toEqual({ funded: false });
   });
 
+  it("does not let a startup read put an older value in the cache", async () => {
+    // The startup read of the record starts first and is slow. It reads the
+    // record before the update below saves it.
+    let releaseRead: (() => void) | undefined;
+    (dataStorage.getItem as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseRead = () => resolve(null);
+        }),
+    );
+    const load = loadPublicFundedStates(hashes(PK_B));
+    const update = reportList(PK_B, "5");
+
+    // Give the update time to save, if it could run before the read ends.
+    for (let i = 0; i < 50; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.resolve();
+    }
+    releaseRead?.();
+    await Promise.all([load, update]);
+
+    // The update runs after the read, so the cache holds its value.
+    expect(getFundedAccountCount(hashes(PK_B))).toBe(1);
+  });
+
   it("does not sync again when an all-accounts result changes nothing", async () => {
     await reportList(PK_B, "5");
     await reportList(PK_B, "5");

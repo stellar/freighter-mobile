@@ -152,7 +152,11 @@ export const loadPublicFundedStates = async (
   const results = await Promise.all(
     missing.map(async (hash) => {
       try {
-        await loadFundingRecord(NETWORKS.PUBLIC, hash);
+        // Read under the record lock. Then a read that starts before an
+        // update cannot finish after it and put the older value in the cache.
+        await withFundingRecordLock(NETWORKS.PUBLIC, hash, () =>
+          loadFundingRecord(NETWORKS.PUBLIC, hash),
+        );
         return true;
       } catch (error) {
         logger.warn(
