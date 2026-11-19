@@ -265,4 +265,50 @@ describe("CollectibleImage", () => {
 
     jest.useRealTimers();
   });
+  describe("inline SVG images", () => {
+    const svgUri =
+      "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='rgb(47,47,50)'/></svg>";
+
+    it("renders an inline SVG data URI with react-native-svg instead of Image", () => {
+      const { getByTestId, queryByTestId } = render(
+        <CollectibleImage imageUri={svgUri} imageClassName="custom-image" />,
+      );
+
+      const svg = getByTestId("collectible-image-svg");
+      expect(svg.props.className).toContain("custom-image");
+      expect(queryByTestId("collectible-image")).toBeFalsy();
+      expect(queryByTestId("collectible-image-placeholder")).toBeFalsy();
+    });
+
+    it("does not show the loading placeholder for an inline SVG", () => {
+      jest.useFakeTimers();
+
+      const { queryByTestId } = render(<CollectibleImage imageUri={svgUri} />);
+
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      expect(queryByTestId("collectible-image-placeholder")).toBeFalsy();
+
+      jest.useRealTimers();
+    });
+
+    it("shows the placeholder when the inline SVG cannot be parsed", () => {
+      const { getByTestId } = render(
+        <CollectibleImage imageUri="data:image/svg+xml,<svg><rect" />,
+      );
+
+      expect(getByTestId("collectible-image-placeholder")).toBeTruthy();
+    });
+
+    it("still uses Image for non-SVG data URIs", () => {
+      const { getByTestId, queryByTestId } = render(
+        <CollectibleImage imageUri="data:image/png;base64,iVBORw0KGgo=" />,
+      );
+
+      expect(getByTestId("collectible-image")).toBeTruthy();
+      expect(queryByTestId("collectible-image-svg")).toBeFalsy();
+    });
+  });
 });

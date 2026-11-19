@@ -143,7 +143,12 @@ describe("migrated areas", () => {
 
   // TrendingCarousel draws its title over a fetched background image, so that
   // text stays light in both schemes or it disappears against the artwork.
-  const DELIBERATELY_PINNED = ["components/TrendingCarousel.tsx"];
+  // The Ethena launch promo is a black page in both schemes by design, drawn
+  // around its dark hero art, so its colors come from the dark palette.
+  const DELIBERATELY_PINNED = [
+    "components/TrendingCarousel.tsx",
+    "components/screens/EthenaLaunchScreen/ethenaLaunchConfig.ts",
+  ];
 
   // THEME and NOTIFICATION_VARIANTS no longer exist; their names stay in the
   // pattern so a dark-pinned alias cannot come back under either of them.
@@ -708,6 +713,7 @@ describe("svg assets", () => {
    */
   const OWN_BACKGROUND = [
     "logos/usdc-logo.svg",
+    "logos/usde.svg",
     "images/rebrand-announcement-tile.svg",
   ];
 

@@ -7,6 +7,10 @@ import {
 } from "config/types";
 import type { Collection, Collectible } from "ducks/collectibles";
 import { fetchMetadataJson } from "helpers/fetchMetadataJson";
+import {
+  isMetadataDataUri,
+  parseMetadataDataUri,
+} from "helpers/parseMetadataDataUri";
 import { t } from "i18next";
 import { BackendCollection } from "services/backend";
 import { dataStorage } from "services/storage/storageFactory";
@@ -244,11 +248,17 @@ export const transformBackendCollections = async (
         const collectibles: Collectible[] = await Promise.all(
           collection.collectibles.map(async (collectible) => {
             try {
-              // Fetch metadata from token_uri using fetchMetadataJson for
-              // bounded, resilient reads (https-only, timeout, size cap).
-              const metadata = await fetchMetadataJson<CollectibleMetadata>(
-                collectible.token_uri,
-              );
+              // Some contracts return the metadata document itself as a
+              // `data:` URI; read those inline. Otherwise fetch it from
+              // token_uri using fetchMetadataJson for bounded, resilient
+              // reads (https-only, timeout, size cap).
+              const metadata = isMetadataDataUri(collectible.token_uri)
+                ? parseMetadataDataUri<CollectibleMetadata>(
+                    collectible.token_uri,
+                  )
+                : await fetchMetadataJson<CollectibleMetadata>(
+                    collectible.token_uri,
+                  );
 
               // Check if collectible is hidden
               const isHidden = isCollectibleHidden(

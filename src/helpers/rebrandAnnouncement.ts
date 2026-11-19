@@ -16,7 +16,8 @@ export const REBRAND_ANNOUNCEMENT_STATUS = {
 export type RebrandAnnouncementStatus =
   (typeof REBRAND_ANNOUNCEMENT_STATUS)[keyof typeof REBRAND_ANNOUNCEMENT_STATUS];
 
-const hasExistingAccounts = async (): Promise<boolean> => {
+/** Whether this install already holds at least one wallet account. */
+export const hasExistingAccounts = async (): Promise<boolean> => {
   const accountListRaw = await dataStorage.getItem(STORAGE_KEYS.ACCOUNT_LIST);
 
   if (!accountListRaw) {
