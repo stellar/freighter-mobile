@@ -696,6 +696,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     // before continuing so any sheet we present next opens at its final
     // position rather than at the keyboard-occluded height first and
     // then jumping down.
+    //
+    // Review's form lock starts now rather than once the keyboard has gone:
+    // the build takes the swap as it is at this tap.
+    if (ctaState.kind === "review") {
+      setIsOpeningReviewSheet(true);
+    }
     await waitForKeyboardDismiss();
 
     if (ctaState.kind === "select") {
@@ -729,6 +735,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
         swapSourceProps(entrySource),
       );
+      // Nothing is built, so the form unlocks.
+      setIsOpeningReviewSheet(false);
       xlmReserveBottomSheetRef.current?.present();
       return;
     }

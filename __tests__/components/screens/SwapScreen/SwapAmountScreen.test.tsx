@@ -893,6 +893,47 @@ describe("SwapAmountScreen", () => {
       });
     });
 
+    it("locks the form from the tap, before the keyboard has gone", async () => {
+      const RN = jest.requireActual("react-native");
+      const dismissSpy = jest.spyOn(RN.Keyboard, "dismiss");
+      const isVisibleSpy = jest
+        .spyOn(RN.Keyboard, "isVisible")
+        .mockReturnValue(true);
+      let hideCallback: (() => void) | null = null;
+      const addListenerSpy = jest
+        .spyOn(RN.Keyboard, "addListener")
+        .mockImplementation((...args: unknown[]) => {
+          if (args[0] === "keyboardDidHide") {
+            hideCallback = args[1] as () => void;
+          }
+          return { remove: jest.fn() } as any;
+        });
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { sourceAmount: "1", destinationAmount: "2" },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      // The keyboard is still hiding, and nothing has been built yet.
+      expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
+      expect(getByTestId("swap-amount-input").props.editable).toBe(false);
+
+      await act(async () => {
+        hideCallback?.();
+        await Promise.resolve();
+      });
+      dismissSpy.mockRestore();
+      isVisibleSpy.mockRestore();
+      addListenerSpy.mockRestore();
+    });
+
     it("unlocks the form when Review can't be built", async () => {
       mockSetupSwapTransaction.mockRejectedValueOnce(new Error("build failed"));
       setSwapStoreState({
@@ -1089,6 +1130,8 @@ describe("SwapAmountScreen", () => {
         (spy) => spy.present.mock.calls.length > 0,
       );
       expect(presentedSheets.length).toBeGreaterThan(0);
+      // Nothing is being built, so the form isn't locked.
+      expect(getByTestId("swap-amount-input").props.editable).not.toBe(false);
     });
 
     // Every swap event says where the swap was opened from.
