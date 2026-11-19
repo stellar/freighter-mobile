@@ -121,19 +121,24 @@ jest.mock("ducks/balances", () => ({
   }),
 }));
 
+// One object, for the same reason as `mockNetworkFees`.
+const mockActiveAccount = {
+  account: {
+    publicKey: "GTESTPUBLICKEY",
+    subentryCount: 0,
+  },
+};
 jest.mock("hooks/useGetActiveAccount", () => ({
   __esModule: true,
-  default: () => ({
-    account: {
-      publicKey: "GTESTPUBLICKEY",
-      subentryCount: 0,
-    },
-  }),
+  default: () => mockActiveAccount,
 }));
 
+// One `t`, as the real hook keeps: a new one per render would re-run every
+// effect that depends on it, and one that sets state would never settle.
+const mockTranslation = { t: (key: string) => key };
 jest.mock("hooks/useAppTranslation", () => ({
   __esModule: true,
-  default: () => ({ t: (key: string) => key }),
+  default: () => mockTranslation,
 }));
 
 const mockOpenInAppBrowser = jest.fn(() => Promise.resolve());
@@ -151,8 +156,10 @@ let mockUseEarnTokens: {
 };
 
 // The real Earn swap hook, wrapped to capture what the picker passes it and
-// to let a test stand in for parts of its result, such as a ready quote.
+// what it returns, and to let a test stand in for parts of its result, such
+// as a ready quote.
 let mockEarnSwapParams: { onQuoteExpired?: () => void } = {};
+let mockEarnSwapResult: Record<string, unknown> = {};
 let mockEarnSwapOverrides: Record<string, unknown> = {};
 jest.mock("components/screens/EarnScreen/hooks/useEarnSwap", () => {
   const actual = jest.requireActual(
@@ -162,7 +169,11 @@ jest.mock("components/screens/EarnScreen/hooks/useEarnSwap", () => {
     ...actual,
     useEarnSwap: (params: { onQuoteExpired?: () => void }) => {
       mockEarnSwapParams = params;
-      return { ...actual.useEarnSwap(params), ...mockEarnSwapOverrides };
+      mockEarnSwapResult = {
+        ...actual.useEarnSwap(params),
+        ...mockEarnSwapOverrides,
+      };
+      return mockEarnSwapResult;
     },
   };
 });
@@ -1030,9 +1041,22 @@ describe("EarnTokenPickerScreen", () => {
 
     afterEach(() => {
       mockUseBalancesList.mockImplementation(defaultBalancesList);
+      act(() => {
+        useSwapStore.getState().resetSwap();
+        useTransactionBuilderStore.getState().resetTransaction();
+      });
     });
 
-    it("shows the spendable XLM and the amount in the other unit", () => {
+    const findByContent = (type: unknown) =>
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__earnTokenPickerMockSheets.find(
+        ({ props }) =>
+          (props.customContent as React.ReactElement | undefined)?.type ===
+          type,
+      );
+
+    // Opens the Earn swap for EURC, which the account doesn't hold.
+    const openEarnSwap = () => {
       mockUseEarnTokens.supported = [
         {
           ...makeOption("EURC"),
@@ -1042,20 +1066,16 @@ describe("EarnTokenPickerScreen", () => {
       ];
       const { getByTestId } = renderScreen();
       fireEvent.press(getByTestId("earn-token-option-EURC"));
-      // eslint-disable-next-line no-underscore-dangle
-      const sheets = globalThis.__earnTokenPickerMockSheets;
-      const findByContent = (type: unknown) =>
-        sheets.find(
-          ({ props }) =>
-            (props.customContent as React.ReactElement | undefined)?.type ===
-            type,
-        );
       act(() => {
         (
           findByContent(NotEnoughTokenBottomSheet)?.props
             .customContent as React.ReactElement<{ onSwap: () => void }>
         ).props.onSwap();
       });
+    };
+
+    it("shows the spendable XLM and the amount in the other unit", () => {
+      openEarnSwap();
 
       const { availableBalanceText, sourceSecondaryText } = (
         findByContent(EarnSwapBottomSheet)?.props
@@ -1072,6 +1092,26 @@ describe("EarnTokenPickerScreen", () => {
       );
       // No amount typed yet, in token mode: its fiat value.
       expect(sourceSecondaryText).toBe("$0.00");
+    });
+
+    // A landed swap leaves its amount on the sell card until the sheet
+    // closes, while the balance refresh takes that amount out of the
+    // account.
+    it("stops calling the amount more than is spendable once the swap is submitted", () => {
+      openEarnSwap();
+      act(() => {
+        useSwapStore.getState().setSourceAmount("99");
+      });
+
+      expect(mockEarnSwapResult.amountError).toBe(
+        "swapScreen.errors.insufficientBalance",
+      );
+
+      act(() => {
+        useTransactionBuilderStore.setState({ transactionHash: "swap-hash" });
+      });
+
+      expect(mockEarnSwapResult.amountError).toBeNull();
     });
   });
 

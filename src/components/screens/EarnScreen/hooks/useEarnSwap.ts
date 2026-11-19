@@ -74,7 +74,7 @@ export const useEarnSwap = ({
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { swapFee, swapSlippage } = useSwapSettingsStore();
-  const { isBuilding, transactionXDR, resetTransaction } =
+  const { isBuilding, transactionXDR, transactionHash, resetTransaction } =
     useTransactionBuilderStore();
   const publicKey = account?.publicKey ?? "";
 
@@ -287,7 +287,9 @@ export const useEarnSwap = ({
     balanceItems,
     swapFee,
     subentryCount: account?.subentryCount || 0,
-    transactionHash: null,
+    // A submitted swap has spent the amount still held here until its
+    // sheet closes, so a balance refresh mustn't call it unaffordable.
+    transactionHash,
     spendableAmount,
     sourceTokenSymbol,
     pathError,
