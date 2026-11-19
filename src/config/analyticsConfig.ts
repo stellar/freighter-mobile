@@ -75,6 +75,8 @@ export enum AnalyticsEvent {
   VIEW_ADD_TOKEN = "add_asset",
   VIEW_REMOVE_TOKEN = "remove_asset",
   VIEW_MANAGE_WALLETS = "manage_wallets",
+  VIEW_ADD_WALLET = "add_wallet",
+  VIEW_CREATE_WALLET = "create_wallet",
   VIEW_IMPORT_SECRET_KEY = "import_secret_key",
   VIEW_BUY_XLM = "add_fund",
   VIEW_SEARCH_TOKEN = "search_asset",
@@ -381,6 +383,14 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_IMPORT_WALLET]: {
     flow: AnalyticsFlow.ONBOARDING,
   },
+  // Adding a wallet from a live one; the extension files these under
+  // onboarding too.
+  [AnalyticsEvent.VIEW_ADD_WALLET]: {
+    flow: AnalyticsFlow.ONBOARDING,
+  },
+  [AnalyticsEvent.VIEW_CREATE_WALLET]: {
+    flow: AnalyticsFlow.ONBOARDING,
+  },
   // Security / re-auth / secret material
   [AnalyticsEvent.VIEW_LOCK_SCREEN]: {
     flow: AnalyticsFlow.SECURITY,
@@ -619,6 +629,9 @@ export const CUSTOM_ROUTE_MAPPINGS: Record<string, AnalyticsEvent> = {
   RecoveryPhraseScreen: AnalyticsEvent.VIEW_RECOVERY_PHRASE,
   ImportWalletScreen: AnalyticsEvent.VIEW_IMPORT_WALLET,
   LockScreen: AnalyticsEvent.VIEW_LOCK_SCREEN,
+
+  // Add wallet override (extension uses a different name)
+  AddAnotherWalletScreen: AnalyticsEvent.VIEW_ADD_WALLET,
 
   // Main tab overrides (extension uses different names)
   Home: AnalyticsEvent.VIEW_HOME,

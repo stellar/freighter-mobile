@@ -1,6 +1,7 @@
 import { NavigationContainerRef } from "@react-navigation/native";
 import { Keypair } from "@stellar/stellar-sdk";
 import { act, renderHook } from "@testing-library/react-hooks";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   AUTO_LOCK_TIMER,
   DEFAULT_AUTO_LOCK_TIMER,
@@ -24,6 +25,9 @@ import {
   revealAccountSecretKey,
   revealRecoveryPhrase,
   getHeldSecrets,
+  generatePendingRecoveryPhrase,
+  getPendingRecoveryPhrase,
+  clearPendingRecoveryPhrase,
 } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -42,6 +46,7 @@ import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { AppState } from "react-native";
 import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
+import { analytics } from "services/analytics";
 import { deriveAuthKeypair } from "services/auth/deriveAuthKeypair";
 import { linkWalletSources } from "services/auth/linkSources";
 import { clearLinkStatus, getLinkConflicts } from "services/auth/linkStatus";
@@ -141,6 +146,7 @@ jest.mock("stellar-hd-wallet", () => ({
   __esModule: true,
   default: {
     fromMnemonic: jest.fn(),
+    generateMnemonic: jest.fn(),
   },
 }));
 
@@ -206,8 +212,11 @@ jest.mock("services/auth/linkStatus", () => ({
   getLinkConflicts: jest.fn(() => Promise.resolve([])),
 }));
 
+// Returns the key, plus the number for numbered names, so default account
+// names stay distinguishable.
 jest.mock("i18next", () => ({
-  t: (key: string) => key,
+  t: (key: string, options?: { number?: number }) =>
+    options?.number === undefined ? key : `${key} ${options.number}`,
 }));
 
 jest.mock("ducks/walletKit", () => ({
@@ -348,6 +357,8 @@ describe("auth duck", () => {
     importSecretKey: useAuthenticationStore.getState().importSecretKey,
     renameAccount: useAuthenticationStore.getState().renameAccount,
     createAccount: useAuthenticationStore.getState().createAccount,
+    addRecoveryPhraseSource:
+      useAuthenticationStore.getState().addRecoveryPhraseSource,
     initializeNetwork: useAuthenticationStore.getState().initializeNetwork,
     softLock: useAuthenticationStore.getState().softLock,
     navigateToLockScreen:
@@ -3120,6 +3131,43 @@ describe("auth duck", () => {
       expect(linkWalletSources).toHaveBeenCalledTimes(1);
     });
 
+    it("importSecretKey skips a default name already in use", async () => {
+      mockAuthenticatedSession(mockTemporaryStore);
+      dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID] = mockAccountId;
+      // One account, renamed to the name the next import would default to.
+      dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST] = JSON.stringify([
+        {
+          id: mockAccountId,
+          name: "authStore.account 2",
+          publicKey: mockPublicKey,
+        },
+      ]);
+      sharedKeyManager.storeKey.mockResolvedValue({
+        id: "imported-account-id",
+      });
+      const { result } = renderHook(() => useAuthenticationStore());
+      act(() => {
+        useAuthenticationStore.setState({
+          importSecretKey: originalStoreMethods.importSecretKey,
+        });
+      });
+
+      await act(async () => {
+        await result.current.importSecretKey({
+          secretKey: importedSecretKey,
+          password: mockPassword,
+        });
+      });
+
+      const accounts = JSON.parse(
+        dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST],
+      ) as Account[];
+      expect(accounts.map(({ name }) => name)).toEqual([
+        "authStore.account 2",
+        "authStore.account 3",
+      ]);
+    });
+
     it("importSecretKey leaves the active account alone when the account list write fails", async () => {
       mockAuthenticatedSession(mockTemporaryStore);
       dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID] = mockAccountId;
@@ -4768,6 +4816,10 @@ describe("auth duck", () => {
 
         expect(result.current.error).toBeNull();
         expect(linkWalletSources).toHaveBeenCalledTimes(1);
+        expect(analytics.track).toHaveBeenCalledWith(
+          AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT,
+          expect.objectContaining({ source: "existing_phrase" }),
+        );
       });
 
       it("adds at the one held phrase's lowest unused index when no source is named", async () => {
@@ -4943,7 +4995,327 @@ describe("auth duck", () => {
           publicKeyAt(mockMnemonicPhrase, 1),
           publicKeyAt(mockMnemonicPhrase, 2),
         ]);
+        expect(storedAccounts().map(({ name }) => name)).toEqual([
+          "authStore.account 1",
+          "authStore.account 2",
+          "authStore.account 3",
+        ]);
         expect(storedIndices()).toEqual({ [mockPhraseSourceId]: [0, 1, 2] });
+      });
+
+      describe("account names", () => {
+        it("names the new account as the caller asks, trimmed", async () => {
+          const { result } = mockAddAccountSession({
+            accounts: [phraseAccount(0)],
+            indices: { [mockPhraseSourceId]: [0] },
+          });
+
+          await act(async () => {
+            await result.current.createAccount(
+              mockPassword,
+              mockPhraseSourceId,
+              "  Savings  ",
+            );
+          });
+
+          expect(storedAccounts()[1].name).toBe("Savings");
+        });
+
+        it("falls back to the default name for a blank one", async () => {
+          const { result } = mockAddAccountSession({
+            accounts: [phraseAccount(0)],
+            indices: { [mockPhraseSourceId]: [0] },
+          });
+
+          await act(async () => {
+            await result.current.createAccount(
+              mockPassword,
+              mockPhraseSourceId,
+              "   ",
+            );
+          });
+
+          expect(storedAccounts()[1].name).toBe("authStore.account 2");
+        });
+      });
+
+      describe("addRecoveryPhraseSource", () => {
+        const newPhrase = "brand new phrase";
+        const newSourceId = `phrase:${newPhrase}`;
+
+        const mockNewPhraseSession = () => {
+          (StellarHDWallet.generateMnemonic as jest.Mock).mockReturnValue(
+            newPhrase,
+          );
+          const hook = mockAddAccountSession({
+            accounts: [phraseAccount(0)],
+            indices: { [mockPhraseSourceId]: [0] },
+          });
+          act(() => {
+            useAuthenticationStore.setState({
+              addRecoveryPhraseSource:
+                originalStoreMethods.addRecoveryPhraseSource,
+            });
+          });
+          return hook;
+        };
+
+        afterEach(() => {
+          clearPendingRecoveryPhrase();
+        });
+
+        it("stores the held phrase as a new source with its first account, named as asked", async () => {
+          const { result } = mockNewPhraseSession();
+          const id = generatePendingRecoveryPhrase();
+          expect(getPendingRecoveryPhrase(id)).toBe(newPhrase);
+
+          await act(async () => {
+            await result.current.addRecoveryPhraseSource(
+              mockPassword,
+              id,
+              "Travel",
+            );
+          });
+
+          expect(result.current.error).toBeNull();
+          expect(storedPublicKeys()).toEqual([publicKeyAt(newPhrase, 0)]);
+          expect(storedAccounts()[1]).toEqual(
+            expect.objectContaining({
+              id: "new-account",
+              name: "Travel",
+              sourceId: newSourceId,
+              publicKey: publicKeyAt(newPhrase, 0),
+            }),
+          );
+          expect(storedIndices()).toEqual({
+            [mockPhraseSourceId]: [0],
+            [newSourceId]: [0],
+          });
+          expect(storedSources()).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                id: newSourceId,
+                type: SecretSourceType.PHRASE,
+              }),
+            ]),
+          );
+          // Held beside the wallet's phrase, not in place of it.
+          const [written] = writtenTemporaryStores();
+          expect(written.mnemonics).toEqual({
+            [mockPhraseSourceId]: mockMnemonicPhrase,
+            [newSourceId]: newPhrase,
+          });
+          expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
+            "new-account",
+          );
+          expect(getPendingRecoveryPhrase(id)).toBeNull();
+          expect(linkWalletSources).toHaveBeenCalledTimes(1);
+          expect(analytics.track).toHaveBeenCalledWith(
+            AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT,
+            expect.objectContaining({ source: "new_phrase" }),
+          );
+        });
+
+        it("refuses when no phrase is held", async () => {
+          const { result } = mockNewPhraseSession();
+
+          await act(async () => {
+            await expect(
+              result.current.addRecoveryPhraseSource(
+                mockPassword,
+                "pending-phrase-0",
+              ),
+            ).rejects.toThrow("authStore.error.pendingRecoveryPhraseMissing");
+          });
+
+          expect(result.current.error).toBe(
+            "authStore.error.pendingRecoveryPhraseMissing",
+          );
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+        });
+
+        it("stores nothing and keeps the phrase on a wrong password", async () => {
+          const { result } = mockNewPhraseSession();
+          const id = generatePendingRecoveryPhrase();
+          sharedKeyManager.loadKey.mockRejectedValue(new Error("bad password"));
+
+          await act(async () => {
+            await expect(
+              result.current.addRecoveryPhraseSource("wrong", id),
+            ).rejects.toThrow();
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(storedSources()).not.toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({ id: newSourceId }),
+            ]),
+          );
+          // The user can retry without generating a new phrase.
+          expect(getPendingRecoveryPhrase(id)).toBe(newPhrase);
+        });
+
+        it("refuses a phrase the wallet already holds", async () => {
+          const { result } = mockNewPhraseSession();
+          (StellarHDWallet.generateMnemonic as jest.Mock).mockReturnValue(
+            mockMnemonicPhrase,
+          );
+          const id = generatePendingRecoveryPhrase();
+          dataStorageMemory[STORAGE_KEYS.SECRET_SOURCES] = JSON.stringify({
+            [mockPhraseSourceId]: {
+              id: mockPhraseSourceId,
+              type: SecretSourceType.PHRASE,
+              label: "Seed Phrase 1",
+              createdAt: 1,
+            },
+          });
+
+          await act(async () => {
+            await expect(
+              result.current.addRecoveryPhraseSource(mockPassword, id),
+            ).rejects.toThrow("authStore.error.recoveryPhraseAlreadyHeld");
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+        });
+
+        it("completes on retry after the account write failed", async () => {
+          const { result } = mockNewPhraseSession();
+          const id = generatePendingRecoveryPhrase();
+          sharedKeyManager.storeKey.mockRejectedValueOnce(
+            new Error("keystore write failed"),
+          );
+
+          await act(async () => {
+            await expect(
+              result.current.addRecoveryPhraseSource(mockPassword, id),
+            ).rejects.toThrow();
+          });
+
+          // The source is registered, but no account lists it yet.
+          const [registered] = storedSources().filter(
+            ({ id: sourceId }) => sourceId === newSourceId,
+          );
+          expect(registered).toBeDefined();
+          expect(getPendingRecoveryPhrase(id)).toBe(newPhrase);
+
+          await act(async () => {
+            await result.current.addRecoveryPhraseSource(mockPassword, id);
+          });
+
+          expect(
+            storedSources().filter(
+              ({ id: sourceId }) => sourceId === newSourceId,
+            ),
+          ).toEqual([registered]);
+          expect(storedAccounts()[1]).toEqual(
+            expect.objectContaining({
+              sourceId: newSourceId,
+              publicKey: publicKeyAt(newPhrase, 0),
+            }),
+          );
+          expect(getPendingRecoveryPhrase(id)).toBeNull();
+        });
+
+        it("stores no account when the source write fails", async () => {
+          const { result } = mockNewPhraseSession();
+          const id = generatePendingRecoveryPhrase();
+          (dataStorage.setItem as jest.Mock).mockImplementationOnce(
+            (key: string) =>
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+              key === STORAGE_KEYS.SECRET_SOURCES
+                ? Promise.reject(new Error("storage failed"))
+                : Promise.resolve(),
+          );
+
+          await act(async () => {
+            await expect(
+              result.current.addRecoveryPhraseSource(mockPassword, id),
+            ).rejects.toThrow("storage failed");
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(getPendingRecoveryPhrase(id)).toBe(newPhrase);
+        });
+
+        it("drops the held phrase when the wallet soft-locks", async () => {
+          mockNewPhraseSession();
+          const id = generatePendingRecoveryPhrase();
+          act(() => {
+            useAuthenticationStore.setState({
+              softLock: originalStoreMethods.softLock,
+            });
+          });
+
+          await act(async () => {
+            await useAuthenticationStore.getState().softLock();
+          });
+
+          expect(getPendingRecoveryPhrase(id)).toBeNull();
+        });
+
+        it("refuses a generation a later one replaced", async () => {
+          const { result } = mockNewPhraseSession();
+          const shown = generatePendingRecoveryPhrase();
+          (StellarHDWallet.generateMnemonic as jest.Mock).mockReturnValue(
+            "another new phrase",
+          );
+          const later = generatePendingRecoveryPhrase();
+          expect(later).not.toBe(shown);
+
+          await act(async () => {
+            await expect(
+              result.current.addRecoveryPhraseSource(mockPassword, shown),
+            ).rejects.toThrow("authStore.error.pendingRecoveryPhraseMissing");
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(getPendingRecoveryPhrase(shown)).toBeNull();
+          expect(getPendingRecoveryPhrase(later)).toBe("another new phrase");
+        });
+
+        it("refuses a confirmation without a generation id", async () => {
+          const { result } = mockNewPhraseSession();
+          generatePendingRecoveryPhrase();
+
+          await act(async () => {
+            await expect(
+              result.current.addRecoveryPhraseSource(mockPassword, ""),
+            ).rejects.toThrow("authStore.error.pendingRecoveryPhraseMissing");
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+        });
+
+        it("clears only the generation it names", () => {
+          const shown = generatePendingRecoveryPhrase();
+          const later = generatePendingRecoveryPhrase();
+
+          clearPendingRecoveryPhrase(shown);
+          expect(getPendingRecoveryPhrase(later)).toBe(newPhrase);
+
+          clearPendingRecoveryPhrase(later);
+          expect(getPendingRecoveryPhrase(later)).toBeNull();
+        });
+
+        // The extension refuses a wallet with no software keystore, since
+        // every password would fail as if wrong. Mobile has no hardware
+        // accounts, but the same case gets its own error here, not
+        // "invalid password", and nothing is written.
+        it("refuses a wallet with no keystore to check the password against", async () => {
+          const { result } = mockNewPhraseSession();
+          const id = generatePendingRecoveryPhrase();
+          sharedKeyManager.loadAllKeyIds.mockResolvedValueOnce([]);
+
+          await act(async () => {
+            await expect(
+              result.current.addRecoveryPhraseSource(mockPassword, id),
+            ).rejects.toThrow("authStore.error.noKeyPairFound");
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(getPendingRecoveryPhrase(id)).toBe(newPhrase);
+        });
       });
     });
 

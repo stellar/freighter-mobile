@@ -7,17 +7,16 @@ import ManageAccountBottomSheet, {
 } from "components/screens/HomeScreen/ManageAccountBottomSheet";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { ERROR_TOAST_DURATION } from "config/constants";
-import { logger } from "config/logger";
 import { RootStackParamList, ROOT_NAVIGATOR_ROUTES } from "config/routes";
-import { Account, SecretSource } from "config/types";
+import { Account } from "config/types";
 import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
+import useSecretSources from "hooks/useSecretSources";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useEffect, useState } from "react";
 import { analytics } from "services/analytics";
-import { getSecretSources } from "services/auth/secretSources";
 
 interface ManageAccountsProps {
   accounts: Account[];
@@ -58,7 +57,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   const { showToast } = useToast();
   const { t } = useAppTranslation();
 
-  const [sources, setSources] = useState<SecretSource[] | null>(null);
+  const { sources, reload: reloadSources } = useSecretSources("ManageAccounts");
   const [switchingToPublicKey, setSwitchingToPublicKey] = useState<
     string | null
   >(null);
@@ -66,14 +65,8 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   // Read while the sheet is still closed (Home keeps this mounted), and again
   // when the list changes, so the groups are ready when it opens.
   useEffect(() => {
-    getSecretSources()
-      .then((map) => setSources(Object.values(map)))
-      .catch((error) => {
-        logger.error("ManageAccounts", "Failed to read secret sources", error);
-        // Still list the wallets, under the trailing group.
-        setSources((current) => current ?? []);
-      });
-  }, [accounts]);
+    reloadSources();
+  }, [accounts, reloadSources]);
 
   const handleSheetPresent = useCallback(
     (index: number) => {

@@ -215,6 +215,34 @@ describe("Analytics Configuration", () => {
           flow: AnalyticsFlow.SETTINGS,
         });
       });
+
+      it("names the add-wallet screens as the extension does", () => {
+        const addWallet = processRouteForAnalytics("AddAnotherWalletScreen");
+        expect(addWallet).toBe(AnalyticsEvent.VIEW_ADD_WALLET);
+        expect(buildScreenViewedProps(addWallet!)).toEqual({
+          screen_name: "add_wallet",
+          flow: AnalyticsFlow.ONBOARDING,
+        });
+
+        const createWallet = processRouteForAnalytics("CreateWalletScreen");
+        expect(createWallet).toBe(AnalyticsEvent.VIEW_CREATE_WALLET);
+        expect(buildScreenViewedProps(createWallet!)).toEqual({
+          screen_name: "create_wallet",
+          flow: AnalyticsFlow.ONBOARDING,
+        });
+
+        // Steps inside create in the extension; their own screens here.
+        expect(
+          buildScreenViewedProps(
+            processRouteForAnalytics("BackupRecoveryPhraseScreen")!,
+          ),
+        ).toEqual({ screen_name: "backup_recovery_phrase" });
+        expect(
+          buildScreenViewedProps(
+            processRouteForAnalytics("VerifyPasswordScreen")!,
+          ),
+        ).toEqual({ screen_name: "verify_password" });
+      });
     });
   });
 
