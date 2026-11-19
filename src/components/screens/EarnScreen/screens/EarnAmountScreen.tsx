@@ -266,6 +266,10 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     latestTokenAmountRef.current = tokenAmount;
   }, [tokenAmount]);
 
+  // Counts the times this screen went away, so a deposit still being built
+  // when the user left shows nothing once it's ready.
+  const exitCountRef = useRef(0);
+
   // `scanResult` is undefined both before any simulation has run and when the
   // scan itself was unavailable (e.g. testnet, where Blockaid throws
   // NETWORK_NOT_SUPPORTED) — `assessTransactionSecurity` already treats both
@@ -697,6 +701,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     }
 
     const amountToReview = tokenAmount;
+    const exitCount = exitCountRef.current;
     const result = await simulate({
       assetId,
       amount: amountToReview,
@@ -706,6 +711,12 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       network,
       senderAddress: account.publicKey,
     });
+
+    // The user left while the deposit was being built: no Review, and no
+    // fee toast over whatever screen they went to.
+    if (exitCountRef.current !== exitCount) {
+      return;
+    }
 
     if (!result) {
       // On failure, the effect above surfaces `simulateError` as a toast —
@@ -804,7 +815,13 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   // this screen without depositing. Forward navigation to Review/Processing
   // (Tasks 12/13) keeps this screen mounted underneath, so this only fires
   // on a genuine exit, not on a successful hand-off.
-  useEffect(() => () => resetTransaction(), [resetTransaction]);
+  useEffect(
+    () => () => {
+      exitCountRef.current += 1;
+      resetTransaction();
+    },
+    [resetTransaction],
+  );
 
   // The fee-shortfall sheet's action: send the user to buy XLM rather than
   // just telling them they need it. Same destination as

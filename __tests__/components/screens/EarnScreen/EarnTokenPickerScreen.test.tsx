@@ -423,7 +423,9 @@ describe("EarnTokenPickerScreen", () => {
       });
     });
 
-    it("clears the swap when the swap sheets close", () => {
+    // X, a tap outside and a swipe down all end in gorhom calling the swap
+    // sheet's onDismiss once it has closed.
+    it("clears the swap once the swap sheet has closed, however it closed", () => {
       renderScreen();
       act(() => {
         useSwapStore.getState().setSourceToken("XLM", "XLM");
@@ -434,18 +436,14 @@ describe("EarnTokenPickerScreen", () => {
       });
 
       // eslint-disable-next-line no-underscore-dangle
-      const swapFromSheet = globalThis.__earnTokenPickerMockSheets.find(
-        (sheet) =>
-          (sheet.props.customContent as React.ReactElement | undefined)
-            ?.type === EarnSwapFromBottomSheet,
+      const swapSheet = globalThis.__earnTokenPickerMockSheets.find(
+        ({ props }) => props.analyticsEvent === "swap_amount",
       );
-      const { onClose } = (
-        swapFromSheet?.props.customContent as React.ReactElement<{
-          onClose: () => void;
-        }>
-      ).props;
+      const { onDismiss } = swapSheet?.props.bottomSheetModalProps as {
+        onDismiss: () => void;
+      };
       act(() => {
-        onClose();
+        onDismiss();
       });
 
       expect(useSwapStore.getState().sourceTokenId).toBe("");
@@ -881,6 +879,112 @@ describe("EarnTokenPickerScreen", () => {
       expect(review!.ref.dismiss.mock.invocationCallOrder[0]).toBeLessThan(
         security!.ref.dismiss.mock.invocationCallOrder[0],
       );
+    });
+
+    it("opens nothing once the swap is built if the user has left it", async () => {
+      let finishSetup: (setup: unknown) => void = () => {};
+      mockEarnSwapOverrides = {
+        ctaState: { kind: "review" },
+        isCtaDisabled: false,
+        isTokenUnableToScan: false,
+        setupSwapTransaction: jest.fn(
+          () =>
+            new Promise((resolve) => {
+              finishSetup = resolve;
+            }),
+        ),
+      };
+      mockUseEarnTokens.supported = [
+        {
+          ...makeOption("EURC"),
+          canonicalId:
+            "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+        },
+      ];
+      const { getByTestId } = renderScreen();
+      fireEvent.press(getByTestId("earn-token-option-EURC"));
+      act(() => {
+        (
+          findByContent(NotEnoughTokenBottomSheet)?.props
+            .customContent as React.ReactElement<{ onSwap: () => void }>
+        ).props.onSwap();
+      });
+      const { onReview } = (
+        findByContent(EarnSwapBottomSheet)?.props
+          .customContent as React.ReactElement<{
+          onReview: (() => Promise<void>) | null;
+        }>
+      ).props;
+      // eslint-disable-next-line no-underscore-dangle
+      const sheets = globalThis.__earnTokenPickerMockSheets;
+      const swapSheet = sheets.find(
+        ({ props }) => props.analyticsEvent === "swap_amount",
+      );
+      const review = sheets.find(
+        ({ props }) => props.analyticsEvent === "swap_confirm",
+      );
+
+      let reviewPressed: Promise<void> | undefined;
+      act(() => {
+        reviewPressed = onReview?.();
+      });
+      // A swipe down while the swap builds; gorhom then calls onDismiss.
+      act(() => {
+        (
+          swapSheet?.props.bottomSheetModalProps as { onDismiss: () => void }
+        ).onDismiss();
+      });
+      await act(async () => {
+        finishSetup({ scanResult: { validation: { result_type: "Benign" } } });
+        await reviewPressed;
+      });
+
+      expect(review?.ref.present).not.toHaveBeenCalled();
+      expect(
+        findByContent(SecurityDetailBottomSheet)?.ref.present,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("keeps the swap when Confirm closes the swap sheet to submit it", async () => {
+      const reset = jest.fn();
+      const { security } = await pressReview(
+        { validation: { result_type: "Malicious" } },
+        {
+          isUnableToScan: false,
+          isMalicious: true,
+          executeSwap: jest.fn(),
+          reset,
+        },
+      );
+      // gorhom calls onDismiss once the swap sheet has closed.
+      const swapSheetClosed = () => {
+        // eslint-disable-next-line no-underscore-dangle
+        const swapSheet = globalThis.__earnTokenPickerMockSheets.find(
+          ({ props }) => props.analyticsEvent === "swap_amount",
+        );
+        (
+          swapSheet?.props.bottomSheetModalProps as { onDismiss: () => void }
+        ).onDismiss();
+      };
+
+      act(() => {
+        (
+          security?.props.customContent as React.ReactElement<{
+            onProceedAnyway: () => void;
+          }>
+        ).props.onProceedAnyway();
+        swapSheetClosed();
+      });
+
+      expect(reset).not.toHaveBeenCalled();
+
+      // The next close, as after an expired quote brings the swap sheet
+      // back, is the user leaving the swap.
+      act(() => {
+        swapSheetClosed();
+      });
+
+      expect(reset).toHaveBeenCalledTimes(1);
     });
   });
 

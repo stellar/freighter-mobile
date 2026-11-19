@@ -583,6 +583,35 @@ describe("EarnAmountScreen", () => {
       );
     });
 
+    it("shows nothing once the deposit is built if the user has left", async () => {
+      mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
+      setSpendable({ deposit: "100", xlm: "100" });
+      setTokenAmount("100");
+      let resolveSimulate: (value: unknown) => void = () => {};
+      mockSimulate.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSimulate = resolve;
+          }),
+      );
+      const { getByTestId, unmount } = renderScreen();
+
+      fireEvent.press(getByTestId("earn-amount-cta"));
+      unmount();
+      await act(async () => {
+        // Depositing all 100 XLM leaves nothing for this fee.
+        useTransactionBuilderStore.setState({
+          sorobanResourceFeeXlm: "0.0546395",
+        });
+        resolveSimulate({ preparedXdr: "prepared-xdr", scanResult: undefined });
+        await Promise.resolve();
+      });
+
+      expect(mockShowToast).not.toHaveBeenCalledWith(
+        expect.objectContaining({ toastId: "earn-fee-shortfall" }),
+      );
+    });
+
     it("lets a non-XLM deposit through when the spendable XLM covers the measured fee", async () => {
       // Deposit asset is USDC (this suite's default balance); depositing the
       // whole USDC balance doesn't touch the XLM the fee is paid from.

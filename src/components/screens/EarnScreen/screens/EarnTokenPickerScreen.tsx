@@ -381,6 +381,13 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // True once the user confirms the swap, so its Review closing for the
   // submit isn't reported as a rejection. Reset each time Review opens.
   const hasApprovedSwapRef = useRef(false);
+  // True from Confirm until the swap sheet has closed for the submit, so
+  // that close keeps the swap about to be signed. Every other way out of
+  // the swap sheet clears the swap.
+  const isSubmittingSwapRef = useRef(false);
+  // Counts the times the user left the swap, so a Review still being built
+  // when they left is dropped instead of opening over the picker.
+  const swapExitCountRef = useRef(0);
 
   // Leaving the swap's Review without confirming is reported as a rejection,
   // as main Swap reports it, whichever way the sheet closed.
@@ -401,9 +408,11 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     }
     // A retry after an expired quote: its toast has served its purpose.
     dismissToast(SWAP_TOAST_IDS.QUOTE_EXPIRED);
+    const exitCount = swapExitCountRef.current;
+    const hasLeftSwap = () => swapExitCountRef.current !== exitCount;
     try {
       const setup = await earnSwap.setupSwapTransaction();
-      if (!setup) {
+      if (!setup || hasLeftSwap()) {
         return;
       }
       Keyboard.dismiss();
@@ -423,6 +432,10 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
         "Failed to setup the earn swap transaction",
         setupError,
       );
+      // A swap the user has left has no sheet to stay on.
+      if (hasLeftSwap()) {
+        return;
+      }
       showToast({
         variant: "error",
         title:
@@ -620,6 +633,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // `executeSwap` bare rather than awaiting it.
   const handleConfirmSwap = useCallback(() => {
     hasApprovedSwapRef.current = true;
+    isSubmittingSwapRef.current = true;
     dismissSwapSheets();
     earnSwap.executeSwap();
     swapProcessingBottomSheetModalRef.current?.present();
@@ -698,21 +712,30 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   });
 
   // Leaves the swap branch entirely, releasing its captured reserve and
-  // clearing the swap, so the next one starts clean.
-  const handleCloseSwap = useCallback(() => {
-    dismissSwapSheets();
+  // clearing the swap, so the next one starts clean. Runs once the swap
+  // sheet has closed, whether by X, a tap outside or a swipe down, except
+  // when Confirm closed it to submit. The sheets stacked over it only hide
+  // it, so opening them doesn't count as a close.
+  const handleSwapSheetDismiss = useCallback(() => {
+    if (isSubmittingSwapRef.current) {
+      isSubmittingSwapRef.current = false;
+      return;
+    }
+    swapExitCountRef.current += 1;
     setSwapOption(null);
     earnSwap.reset();
     // These toasts stay up until dismissed; they go with the swap they
     // were about.
     dismissToast(SWAP_TOAST_IDS.FAILED_TO_SETUP_TRANSACTION);
     dismissToast(SWAP_TOAST_IDS.QUOTE_EXPIRED);
-  }, [dismissSwapSheets, earnSwap, dismissToast]);
+  }, [earnSwap, dismissToast]);
 
   useEffect(
     () => () => {
       dismissToast(SWAP_TOAST_IDS.FAILED_TO_SETUP_TRANSACTION);
       dismissToast(SWAP_TOAST_IDS.QUOTE_EXPIRED);
+      // Leaving Earn, by Android's back for one, leaves the swap too.
+      swapExitCountRef.current += 1;
     },
     [dismissToast],
   );
@@ -1020,6 +1043,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
         modalRef={swapBottomSheetModalRef}
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_AMOUNT}
         analyticsProps={EARN_SWAP_ANALYTICS_PROPS}
+        bottomSheetModalProps={{ onDismiss: handleSwapSheetDismiss }}
         customContent={
           swapOption && earnSwap.destination ? (
             <EarnSwapBottomSheet
@@ -1042,7 +1066,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
               destinationSecondaryText={earnSwapDestinationFiatText}
               onPercentagePress={earnSwap.handlePercentagePress}
               onSettingsPress={handleSwapSettingsPress}
-              onClose={handleCloseSwap}
+              onClose={dismissSwapSheets}
               onReview={earnSwap.isCtaDisabled ? null : handleSwapReview}
               ctaLabel={earnSwap.ctaLabel}
               isReviewLoading={earnSwap.isLoadingPath}
@@ -1131,7 +1155,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
             network={network}
             onSelect={handleSwapSourceSelected}
             onBack={() => swapFromBottomSheetModalRef.current?.dismiss()}
-            onClose={handleCloseSwap}
+            onClose={dismissSwapSheets}
           />
         }
       />
