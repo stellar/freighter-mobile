@@ -1,5 +1,5 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
-import { renderHook, act } from "@testing-library/react-hooks";
+import { renderHook, act } from "@testing-library/react-native";
 import { useSimulateEarnDeposit } from "components/screens/EarnScreen/hooks/useSimulateEarnDeposit";
 import { NETWORKS } from "config/constants";
 

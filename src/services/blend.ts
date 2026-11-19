@@ -101,9 +101,10 @@ export const getBlendEarnOptions = async ({
   });
 
   // A 200 without a `data` payload is still a failure — returning undefined
-  // would violate the return contract.
+  // would violate the return contract. The callers report the thrown error,
+  // so here, and below, the reason is only a breadcrumb.
   if (!data?.data) {
-    logger.error("getBlendEarnOptions", "Missing data envelope", data);
+    logger.warn("getBlendEarnOptions", "Missing data envelope");
     throw new Error("Failed to fetch Blend earn options");
   }
 
@@ -126,7 +127,7 @@ export const getBlendPools = async ({
   });
 
   if (!data?.data) {
-    logger.error("getBlendPools", "Missing data envelope", data);
+    logger.warn("getBlendPools", "Missing data envelope");
     throw new Error("Failed to fetch Blend pools");
   }
 
@@ -167,7 +168,7 @@ export const getBlendSuppliedTokens = async ({
   );
 
   if (!data?.data) {
-    logger.error("getBlendSuppliedTokens", "Missing data envelope", data);
+    logger.warn("getBlendSuppliedTokens", "Missing data envelope");
     throw new Error("Failed to fetch Blend positions");
   }
 

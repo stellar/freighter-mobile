@@ -2,11 +2,12 @@ import { BottomSheetHeader } from "components/BottomSheetHeader";
 import { TokenIcon } from "components/TokenIcon";
 import { NotEnoughVariant } from "components/screens/EarnScreen/helpers";
 import { Button } from "components/sds/Button";
+import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { Balance, Token } from "config/types";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 
 export interface NotEnoughTokenBottomSheetProps {
   variant: NotEnoughVariant;
@@ -160,16 +161,12 @@ export const NotEnoughTokenBottomSheet: React.FC<
               <View className="h-px flex-1 bg-border-primary" />
             </View>
 
-            {/* A text button: no fill, no border. */}
-            <TouchableOpacity
+            <TextButton
+              text={receiveLabel}
               onPress={onReceive}
-              className="h-[52px] items-center justify-center px-[16px] pb-[16px] pt-[8px]"
+              className="h-[52px] px-[16px] pb-[16px] pt-[8px]"
               testID="not-enough-token-receive-link"
-            >
-              <Text md semiBold secondary>
-                {receiveLabel}
-              </Text>
-            </TouchableOpacity>
+            />
           </View>
         );
       case NotEnoughVariant.SWAP_OR_TRANSFER:

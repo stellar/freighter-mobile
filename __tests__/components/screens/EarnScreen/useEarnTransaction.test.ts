@@ -1,5 +1,5 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
-import { renderHook, act } from "@testing-library/react-hooks";
+import { renderHook, act } from "@testing-library/react-native";
 import { useEarnTransaction } from "components/screens/EarnScreen/hooks/useEarnTransaction";
 import { NETWORKS } from "config/constants";
 import type { ActiveAccount } from "ducks/auth";
