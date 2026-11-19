@@ -244,40 +244,6 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     [availableBalanceBn, tokenAmount, isAmountTooHigh],
   );
 
-  // Swap's toast and copy, re-shown as the user keeps typing past the
-  // maximum, and taken down once the amount fits.
-  const isInsufficientBalanceToastShownRef = useRef(false);
-  useEffect(() => {
-    if (!isAmountTooHigh) {
-      if (isInsufficientBalanceToastShownRef.current) {
-        isInsufficientBalanceToastShownRef.current = false;
-        dismissToast(EARN_TOAST_IDS.INSUFFICIENT_BALANCE);
-      }
-      return;
-    }
-    isInsufficientBalanceToastShownRef.current = true;
-    showToast({
-      variant: "error",
-      title: t("swapScreen.errors.insufficientBalance", {
-        amount: formatBigNumberForDisplay(availableBalanceBn, {
-          decimalPlaces: depositDecimals ?? DEFAULT_DECIMALS,
-        }),
-        symbol: tokenCode,
-      }),
-      toastId: EARN_TOAST_IDS.INSUFFICIENT_BALANCE,
-      duration: 3000,
-    });
-  }, [
-    isAmountTooHigh,
-    tokenAmount,
-    availableBalanceBn,
-    depositDecimals,
-    tokenCode,
-    showToast,
-    dismissToast,
-    t,
-  ]);
-
   const ctaLabelKeys: Record<typeof ctaState.labelKey, string> = {
     enter: t("earnAmount.enterAmount"),
     insufficient: t("swapScreen.cta.insufficientBalance"),
@@ -520,6 +486,43 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     reset: resetEarnTransactionStatus,
     abandon: abandonEarnTransaction,
   } = useEarnTransaction({ account, network });
+
+  // Swap's toast and copy, re-shown as the user keeps typing past the
+  // maximum, and taken down once the amount fits. Not while a deposit is
+  // being processed or has landed: its own balance refresh then puts the
+  // amount above what's left, which isn't the user typing too much.
+  const isInsufficientBalanceToastShownRef = useRef(false);
+  useEffect(() => {
+    if (!isAmountTooHigh || earnTransactionStatus !== "idle") {
+      if (isInsufficientBalanceToastShownRef.current) {
+        isInsufficientBalanceToastShownRef.current = false;
+        dismissToast(EARN_TOAST_IDS.INSUFFICIENT_BALANCE);
+      }
+      return;
+    }
+    isInsufficientBalanceToastShownRef.current = true;
+    showToast({
+      variant: "error",
+      title: t("swapScreen.errors.insufficientBalance", {
+        amount: formatBigNumberForDisplay(availableBalanceBn, {
+          decimalPlaces: depositDecimals ?? DEFAULT_DECIMALS,
+        }),
+        symbol: tokenCode,
+      }),
+      toastId: EARN_TOAST_IDS.INSUFFICIENT_BALANCE,
+      duration: 3000,
+    });
+  }, [
+    isAmountTooHigh,
+    earnTransactionStatus,
+    tokenAmount,
+    availableBalanceBn,
+    depositDecimals,
+    tokenCode,
+    showToast,
+    dismissToast,
+    t,
+  ]);
 
   /**
    * Confirms the deposit from the review sheet. `submitEarnTransaction`

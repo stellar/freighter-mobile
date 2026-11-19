@@ -458,6 +458,24 @@ describe("EarnAmountScreen", () => {
           expect.objectContaining({ toastId: "earn-insufficient-balance" }),
         );
       });
+
+      // The deposit's own balance refresh puts the amount above what's left;
+      // that isn't the user typing too much. It showed on "Deposit complete"
+      // and followed the user Home.
+      it.each(["submitting", "success"] as const)(
+        "stays quiet while the deposit is %s",
+        (status) => {
+          mockEarnTransactionStatus = status;
+          setSpendable({ deposit: "0.5", xlm: "10" });
+          setTokenAmount("1");
+
+          renderScreen();
+
+          expect(mockShowToast).not.toHaveBeenCalledWith(
+            expect.objectContaining({ toastId: "earn-insufficient-balance" }),
+          );
+        },
+      );
     });
 
     it("enables the CTA with 'review' once a valid amount is entered", () => {
