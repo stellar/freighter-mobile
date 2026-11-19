@@ -2,10 +2,9 @@ import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ImportRecoveryPhraseTemplate } from "components/templates/ImportRecoveryPhraseTemplate";
 import { AUTH_STACK_ROUTES, AuthStackParamList } from "config/routes";
-import { useAuthenticationStore } from "ducks/auth";
 import { useLoginDataStore } from "ducks/loginData";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
-import { normalizeAndTrimRecoveryPhrase } from "helpers/recoveryPhrase";
+import { parseImportSecret } from "helpers/parseImportSecret";
 import useAppTranslation from "hooks/useAppTranslation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { TextInput } from "react-native";
@@ -16,9 +15,10 @@ type ImportWalletScreenProps = NativeStackScreenProps<
 >;
 
 /**
- * Import Wallet, the first step of importing a wallet: the recovery phrase,
- * then Set Password. Next checks the phrase and keeps it in memory for Set
- * Password, which finishes the import.
+ * Import Wallet, the first step of importing a wallet: a recovery phrase or a
+ * secret key, then Set Password. Next works out which one the field holds and
+ * keeps it in memory for Set Password, which finishes the import. A secret key
+ * keeps its case, so the field doesn't lowercase what's typed or pasted.
  *
  * Design: empty ?node-id=2091-40745, masked 2091-40994, shown 3514-104321
  * (light); colors from 2091-41871 (dark).
@@ -27,15 +27,13 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const { error, clearError, verifyMnemonicPhrase } = useAuthenticationStore();
-  const setMnemonicPhrase = useLoginDataStore(
-    (state) => state.setMnemonicPhrase,
-  );
-  const [phrase, setPhrase] = useState("");
-  const [isValidating, setIsValidating] = useState(false);
+  const { clearLoginData, setMnemonicPhrase, setSecretKey } =
+    useLoginDataStore();
+  const [input, setInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
-  // Set from Next until the phrase fails its check or the screen has moved
-  // on, so a second tap meanwhile doesn't check it or move on twice.
+  // Set from Next until the screen has moved on, so a second tap meanwhile
+  // doesn't move on twice.
   const isSubmittingRef = useRef(false);
 
   // Raises the keyboard once the screen has slid in: raising it while the
@@ -53,57 +51,48 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   }, [navigation]);
 
   // Every visit starts fresh. Coming back from Set Password clears the
-  // phrase, its error and the copy kept in memory, ready for a new paste.
+  // field, its error and the copy kept in memory, ready for a new paste.
   useFocusEffect(
     useCallback(() => {
-      setPhrase("");
-      clearError();
-      setMnemonicPhrase(null);
-    }, [clearError, setMnemonicPhrase]),
+      setInput("");
+      setError(null);
+      clearLoginData();
+    }, [clearLoginData]),
   );
 
-  const handleChangePhrase = useCallback(
-    (text: string) => {
-      setPhrase(text);
-      // The error was about the phrase as it was; an edited one hasn't been
-      // checked yet.
-      if (error) clearError();
-    },
-    [clearError, error],
-  );
+  const handleChangeInput = useCallback((text: string) => {
+    setInput(text);
+    // The error was about the text as it was; edited, it hasn't been checked.
+    setError(null);
+  }, []);
 
   const handleNext = useCallback(() => {
-    if (!phrase || isSubmittingRef.current) return;
+    if (!input || isSubmittingRef.current) return;
+
+    // Checking a phrase's wordlist and checksum is cheap, so it runs before
+    // the keyboard goes and an invalid one leaves the keyboard up to fix it.
+    const parsed = parseImportSecret(input);
+    if (parsed.type === "invalid") {
+      setError(t("importWalletScreen.invalidInput"));
+      return;
+    }
 
     isSubmittingRef.current = true;
-    // Typing word by word can leave a space after the last word, which the
-    // masked field hides and which would fail the check.
-    const normalizedPhrase = normalizeAndTrimRecoveryPhrase(phrase);
+    if (parsed.type === "phrase") {
+      setMnemonicPhrase(parsed.mnemonicPhrase);
+    } else {
+      setSecretKey(parsed.secretKey);
+    }
 
-    // The keyboard goes first, so the button has settled at the bottom
-    // before its spinner shows. Set Password then comes in with the keyboard
-    // down; arriving while it's still up leaves the acknowledgement and the
-    // button under it.
+    // Set Password comes in with the keyboard down; arriving while it's
+    // still up leaves the acknowledgement and the button under it.
     waitForKeyboardDismiss().then(() => {
-      setIsValidating(true);
-
-      // Checking the phrase derives its seed synchronously and blocks the JS
-      // thread for a moment, so let the button's spinner paint first.
-      setTimeout(() => {
-        const isValid = verifyMnemonicPhrase(normalizedPhrase);
-        isSubmittingRef.current = false;
-        setIsValidating(false);
-
-        // An invalid phrase leaves the store's error under the field.
-        if (!isValid) return;
-
-        setMnemonicPhrase(normalizedPhrase);
-        navigation.navigate(AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN, {
-          isImporting: true,
-        });
-      }, 0);
+      isSubmittingRef.current = false;
+      navigation.navigate(AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN, {
+        isImporting: true,
+      });
     });
-  }, [navigation, phrase, setMnemonicPhrase, verifyMnemonicPhrase]);
+  }, [input, navigation, setMnemonicPhrase, setSecretKey, t]);
 
   return (
     <ImportRecoveryPhraseTemplate
@@ -112,12 +101,12 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
       description={t("importWalletScreen.description")}
       placeholder={t("importWalletScreen.textAreaPlaceholder")}
       submitButtonText={t("onboarding.next")}
-      phrase={phrase}
-      onChangePhrase={handleChangePhrase}
+      phrase={input}
+      onChangePhrase={handleChangeInput}
       onSubmit={handleNext}
       error={error}
-      isSubmitting={isValidating}
       inputRef={inputRef}
+      preserveCase
     />
   );
 };

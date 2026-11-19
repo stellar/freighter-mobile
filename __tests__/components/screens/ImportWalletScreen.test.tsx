@@ -19,19 +19,10 @@ jest.mock("@react-navigation/native", () => {
   };
 });
 
-const mockVerifyMnemonicPhrase = jest.fn();
-const mockClearError = jest.fn();
-let mockError: string | null = null;
-jest.mock("ducks/auth", () => ({
-  useAuthenticationStore: () => ({
-    error: mockError,
-    clearError: mockClearError,
-    verifyMnemonicPhrase: mockVerifyMnemonicPhrase,
-  }),
-}));
-
+// A valid 12-word phrase, and a secret key that isn't one.
 const PHRASE =
-  "abandon ability able about above absent absorb abstract absurd abuse access accident";
+  "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+const SECRET_KEY = "SBUV3MRWKNS6AYKZ6E6MOUVF2OYMON3MIUASWL3JLY5E3ISDJFELYBRZ";
 const mockNavigate = jest.fn();
 const mockAddListener = jest.fn<
   () => void,
@@ -56,11 +47,8 @@ const finishSlidingIn = () => {
   act(() => onTransitionEnd?.({ data: { closing: false } }));
 };
 
-/**
- * Lets the check run once the keyboard is down: the button's spinner
- * paints, then the phrase is checked and the screen moves on.
- */
-const finishCheck = async () => {
+/** Lets a pending keyboard dismissal and the move on settle. */
+const settle = async () => {
   await act(async () => {});
   act(() => {
     jest.runAllTimers();
@@ -68,10 +56,10 @@ const finishCheck = async () => {
   await act(async () => {});
 };
 
-/** Presses Next and lets the check run and the screen move on. */
+/** Presses Next and lets the screen move on. */
 const pressNext = async ({ getByTestId }: ReturnType<typeof renderScreen>) => {
   fireEvent.press(getByTestId("default-action-button"));
-  await finishCheck();
+  await settle();
 };
 
 /**
@@ -96,8 +84,11 @@ describe("ImportWalletScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
-    mockError = null;
-    useLoginDataStore.setState({ password: null, mnemonicPhrase: null });
+    useLoginDataStore.setState({
+      password: null,
+      mnemonicPhrase: null,
+      secretKey: null,
+    });
   });
 
   afterEach(() => {
@@ -105,23 +96,24 @@ describe("ImportWalletScreen", () => {
     jest.restoreAllMocks();
   });
 
-  it("asks for the phrase with one description and Paste inside the field", () => {
+  it("asks for a phrase or secret key with one description and Paste inside the field", () => {
     const { getByText, getByPlaceholderText, getByTestId, queryByText } =
       renderScreen();
 
     expect(getByText("Import Wallet")).toBeTruthy();
     expect(
-      getByText("Import your wallet with the 12 or 24-word recovery phrase"),
+      getByText("Import your wallet using a recovery phrase or secret key"),
     ).toBeTruthy();
-    expect(getByPlaceholderText("Enter your recovery phrase")).toBeTruthy();
+    expect(
+      getByPlaceholderText("Enter your recovery phrase or secret key"),
+    ).toBeTruthy();
     expect(getByTestId("clipboard-button")).toBeTruthy();
     expect(queryByText("Paste from clipboard")).toBeNull();
-    expect(queryByText("Phrases are usually 12 or 24 words")).toBeNull();
   });
 
   // Raising the keyboard while the screen is still sliding in glitches, so
   // the field waits for the screen to settle.
-  it("focuses the phrase field once the screen has slid in", () => {
+  it("focuses the field once the screen has slid in", () => {
     const screen = renderScreen();
     const input = screen.UNSAFE_getByType(TextInput).instance;
     const focus = input.focus as jest.Mock;
@@ -147,31 +139,55 @@ describe("ImportWalletScreen", () => {
     );
   });
 
-  it("keeps Next disabled until a phrase is entered", async () => {
+  it("keeps Next disabled until something is entered", async () => {
     const screen = renderScreen();
 
     await pressNext(screen);
 
-    expect(mockVerifyMnemonicPhrase).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("keeps a valid phrase in memory and asks for a password", async () => {
-    mockVerifyMnemonicPhrase.mockReturnValue(true);
     const screen = renderScreen();
 
     fireEvent.changeText(screen.getByTestId("import-wallet-input"), PHRASE);
     await pressNext(screen);
 
-    expect(mockVerifyMnemonicPhrase).toHaveBeenCalledWith(PHRASE);
     expect(useLoginDataStore.getState().mnemonicPhrase).toBe(PHRASE);
+    expect(useLoginDataStore.getState().secretKey).toBeNull();
     expect(mockNavigate).toHaveBeenCalledWith(
       AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN,
       { isImporting: true },
     );
   });
 
+  it("keeps a valid secret key in memory, case intact, and asks for a password", async () => {
+    const screen = renderScreen();
+
+    fireEvent.changeText(screen.getByTestId("import-wallet-input"), SECRET_KEY);
+    await pressNext(screen);
+
+    expect(useLoginDataStore.getState().secretKey).toBe(SECRET_KEY);
+    expect(useLoginDataStore.getState().mnemonicPhrase).toBeNull();
+    expect(mockNavigate).toHaveBeenCalledWith(
+      AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN,
+      { isImporting: true },
+    );
+  });
+
+  it("lowercases a phrase typed with capitals before keeping it", async () => {
+    const screen = renderScreen();
+
+    fireEvent.changeText(
+      screen.getByTestId("import-wallet-input"),
+      PHRASE.toUpperCase(),
+    );
+    await pressNext(screen);
+
+    expect(useLoginDataStore.getState().mnemonicPhrase).toBe(PHRASE);
+  });
+
   it("drops a space typed after the last word", async () => {
-    mockVerifyMnemonicPhrase.mockReturnValue(true);
     const screen = renderScreen();
     const input = () => screen.getByTestId("import-wallet-input");
 
@@ -181,81 +197,70 @@ describe("ImportWalletScreen", () => {
     fireEvent.changeText(input(), `${input().props.value} `);
     await pressNext(screen);
 
-    expect(mockVerifyMnemonicPhrase).toHaveBeenCalledWith(PHRASE);
     expect(useLoginDataStore.getState().mnemonicPhrase).toBe(PHRASE);
   });
 
-  it("stays put on an invalid phrase", async () => {
-    mockVerifyMnemonicPhrase.mockReturnValue(false);
+  it.each([
+    ["a phrase with a bad checksum", PHRASE.replace(/about$/, "abandon")],
+    ["a secret key with a bad checksum", `${SECRET_KEY.slice(0, -1)}A`],
+    ["something else", "hello"],
+  ])("stays put with an error on %s", async (_label, text) => {
     const screen = renderScreen();
 
-    fireEvent.changeText(screen.getByTestId("import-wallet-input"), PHRASE);
+    fireEvent.changeText(screen.getByTestId("import-wallet-input"), text);
     await pressNext(screen);
 
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(useLoginDataStore.getState().mnemonicPhrase).toBeNull();
+    expect(useLoginDataStore.getState().secretKey).toBeNull();
+    expect(
+      screen.getByText("Enter a valid recovery phrase or secret key"),
+    ).toBeTruthy();
   });
 
-  it("shows the store's error under the field", () => {
-    mockError = "Invalid recovery phrase";
-    const { getByText } = renderScreen();
-
-    expect(getByText("Invalid recovery phrase")).toBeTruthy();
-  });
-
-  it("clears the error as soon as the phrase changes", () => {
-    mockError = "Invalid recovery phrase";
+  it("clears the error as soon as the text changes", async () => {
     const screen = renderScreen();
-    // Coming into view clears it once; only the edit counts here.
-    mockClearError.mockClear();
+    const input = () => screen.getByTestId("import-wallet-input");
+    fireEvent.changeText(input(), "hello");
+    await pressNext(screen);
+    const error = "Enter a valid recovery phrase or secret key";
+    expect(screen.getByText(error)).toBeTruthy();
 
-    fireEvent.changeText(screen.getByTestId("import-wallet-input"), PHRASE);
+    fireEvent.changeText(input(), "hello there");
 
-    expect(mockClearError).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(error)).toBeNull();
   });
 
   it("starts over whenever it comes back into view", async () => {
-    mockVerifyMnemonicPhrase.mockReturnValue(true);
     const screen = renderScreen();
-    fireEvent.changeText(screen.getByTestId("import-wallet-input"), PHRASE);
+    fireEvent.changeText(screen.getByTestId("import-wallet-input"), SECRET_KEY);
     await pressNext(screen);
-    expect(useLoginDataStore.getState().mnemonicPhrase).toBe(PHRASE);
+    expect(useLoginDataStore.getState().secretKey).toBe(SECRET_KEY);
 
     act(() => {
       mockRefocus();
     });
 
+    expect(useLoginDataStore.getState().secretKey).toBeNull();
     expect(useLoginDataStore.getState().mnemonicPhrase).toBeNull();
     expect(screen.getByTestId("clipboard-button")).toBeTruthy();
-    expect(mockClearError).toHaveBeenCalled();
   });
 
   // Set Password comes in once the keyboard is down. Arriving with it still
   // up left the acknowledgement and the button under it.
   describe("leaving with the keyboard up", () => {
-    beforeEach(() => {
-      mockVerifyMnemonicPhrase.mockReturnValue(true);
-    });
-
-    // The keyboard goes as soon as Next is tapped, so the button has
-    // settled at the bottom before its spinner shows and the check runs.
-    it("closes the keyboard at once, then checks the phrase with the button at the bottom", async () => {
+    it("closes the keyboard, then asks for a password", async () => {
       const hideKeyboard = withKeyboardUp();
       const dismiss = jest.spyOn(Keyboard, "dismiss");
       const screen = renderScreen();
-      const spinner = () => screen.queryByTestId("button-loading-indicator");
 
       fireEvent.changeText(screen.getByTestId("import-wallet-input"), PHRASE);
       await pressNext(screen);
       expect(dismiss).toHaveBeenCalled();
-      expect(spinner()).toBeNull();
-      expect(mockVerifyMnemonicPhrase).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
 
       await hideKeyboard();
-      expect(spinner()).not.toBeNull();
-
-      await finishCheck();
-      expect(mockVerifyMnemonicPhrase).toHaveBeenCalledWith(PHRASE);
+      await settle();
       expect(mockNavigate).toHaveBeenCalledWith(
         AUTH_STACK_ROUTES.CHOOSE_PASSWORD_SCREEN,
         { isImporting: true },
@@ -270,9 +275,8 @@ describe("ImportWalletScreen", () => {
       await pressNext(screen);
       await pressNext(screen);
       await hideKeyboard();
-      await finishCheck();
+      await settle();
 
-      expect(mockVerifyMnemonicPhrase).toHaveBeenCalledTimes(1);
       expect(mockNavigate).toHaveBeenCalledTimes(1);
     });
   });
