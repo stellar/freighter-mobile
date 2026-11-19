@@ -1,8 +1,19 @@
 import BigNumber from "bignumber.js";
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
-import { PricedBalance, SwapQuotes, SwapRoute } from "config/types";
-import { swapQuoteKey, useSwapStore } from "ducks/swap";
+import {
+  PricedBalance,
+  SwapQuotes,
+  SwapRoute,
+  TokenTypeWithCustomToken,
+} from "config/types";
+import {
+  descriptorAsPathBalance,
+  swapPairKey,
+  swapQuoteKey,
+  useSwapStore,
+} from "ducks/swap";
+import en from "i18n/locales/en/translations.json";
 import { fetchSwapQuotes } from "services/backend";
 
 jest.mock("services/backend", () => ({
@@ -116,6 +127,63 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     });
   });
 
+  describe("contract tokens", () => {
+    const TOKEN = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    const heldToken = {
+      id: `TKN:${TOKEN}`,
+      tokenCode: "TKN",
+      contractId: TOKEN,
+      decimals: 18,
+      token: { code: "TKN", issuer: { key: TOKEN }, type: "custom_token" },
+      total: new BigNumber("5"),
+      available: new BigNumber("5"),
+    } as unknown as PricedBalance;
+
+    it("quotes a held contract token by its contract ID", async () => {
+      mockFetchSwapQuotes.mockResolvedValue({ routes: [], unavailable: [] });
+
+      await useSwapStore.getState().findSwapPath({
+        ...inputs("1.000000000000000001"),
+        sourceBalance: heldToken,
+      });
+
+      expect(mockFetchSwapQuotes).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromAsset: TOKEN,
+          toAsset: USDC,
+          amount: "1.000000000000000001",
+        }),
+      );
+    });
+
+    it("quotes into a contract token picked from search, at its decimals", async () => {
+      mockFetchSwapQuotes.mockResolvedValue({
+        routes: [{ ...lifiRoute, toAmount: "4.123456789012345678" }],
+        unavailable: [],
+      });
+      const destinationBalance = descriptorAsPathBalance({
+        id: `TKN:${TOKEN}`,
+        tokenCode: "TKN",
+        issuer: TOKEN,
+        decimals: 18,
+        tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        requiresTrustline: false,
+      });
+
+      await useSwapStore.getState().findSwapPath({
+        ...inputs(),
+        destinationBalance,
+      });
+
+      expect(mockFetchSwapQuotes).toHaveBeenCalledWith(
+        expect.objectContaining({ fromAsset: "XLM", toAsset: TOKEN }),
+      );
+      expect(useSwapStore.getState().pathResult?.destinationAmount).toBe(
+        "4.123456789012345678",
+      );
+    });
+  });
+
   it("builds the path result from the first-ranked route, whichever source quoted it", async () => {
     const quotes: SwapQuotes = {
       routes: [lifiRoute, classicRoute],
@@ -137,6 +205,22 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     });
     expect(state.destinationAmount).toBe("2.1000000");
     expect(state.swapQuotes).toEqual(quotes);
+  });
+
+  it("remembers the pair's resource fee past a cleared path, for Max's next quote", async () => {
+    mockFetchSwapQuotes.mockResolvedValue({
+      routes: [{ ...lifiRoute, resourceFee: "0.0858459" }],
+      unavailable: [],
+    });
+
+    await find();
+    useSwapStore.getState().clearPath();
+
+    const { sourceAmount, ...pair } = inputs();
+    expect(useSwapStore.getState().lastResourceFee).toEqual({
+      pairKey: swapPairKey(pair),
+      fee: "0.0858459",
+    });
   });
 
   it("keeps the previous receive amount while quoting and clears it when the quote fails", async () => {
@@ -182,6 +266,32 @@ describe("useSwapStore.findSwapPath — backend quotes", () => {
     expect(state.pathErrorReason).toBe("noRoute");
     expect(state.pathErrorQuoteKey).toBe(swapQuoteKey(inputs("10")));
     expect(state.swapQuotes).toEqual(quotes);
+  });
+
+  it("shows no quote available for a Soroban pair no source can quote", async () => {
+    mockFetchSwapQuotes.mockResolvedValue({
+      routes: [],
+      unavailable: [
+        { source: "classic", reason: "unsupported" },
+        { source: "lifi", reason: "no_route" },
+      ],
+    });
+
+    await useSwapStore.getState().findSwapPath({
+      ...inputs(),
+      destinationBalance: descriptorAsPathBalance({
+        id: "TKN:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+        tokenCode: "TKN",
+        issuer: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+        decimals: 7,
+        tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        requiresTrustline: false,
+      }),
+    });
+
+    const key = useSwapStore.getState().pathError ?? "";
+    expect(key).toBe("swapScreen.errors.noPathFound");
+    expect(en.swapScreen.errors.noPathFound).toBe("No quote available");
   });
 
   it("treats a 400 as bad input (no path), not as an outage", async () => {

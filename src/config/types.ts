@@ -318,6 +318,8 @@ export interface SwapHop {
   from: string;
   to: string;
   pool?: string;
+  /** Estimated output of this hop, in `to`'s display units (not base units). Set on every hop of a LI.FI route or on none. */
+  toAmount?: string;
 }
 
 export interface SwapRoutePath {
@@ -337,6 +339,8 @@ export interface SwapRoute {
   toAmount: string;
   paths: SwapRoutePath[];
   fees: SwapFee[];
+  /** LI.FI only: the Soroban resource fee in XLM. /swap/tx adds the inclusion fee. */
+  resourceFee?: string;
 }
 
 export interface SwapUnavailable {
@@ -462,6 +466,8 @@ export interface GetTokenDetailsParams {
   network: NETWORKS;
   shouldFetchBalance?: boolean;
   signal?: AbortSignal;
+  /** Throw a failed request instead of answering null, as for a non-token. */
+  throwOnFailure?: boolean;
 }
 
 export type FormattedSearchTokenRecord = {

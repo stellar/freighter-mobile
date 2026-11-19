@@ -10,4 +10,15 @@ describe("swapMinOut", () => {
   ])("%s at %s%% slippage is %s, rounded down", (toAmount, slippage, want) => {
     expect(swapMinOut(toAmount, slippage)).toBe(want);
   });
+
+  it.each([
+    ["1.000000000000000001", 1, 18, "0.990000000000000000"],
+    ["17.55", 2, 2, "17.19"],
+    ["3", 50, 0, "1"],
+  ])(
+    "%s at %s%% slippage is rounded down to the token's %s decimals: %s",
+    (toAmount, slippage, decimals, want) => {
+      expect(swapMinOut(toAmount, slippage, decimals)).toBe(want);
+    },
+  );
 });

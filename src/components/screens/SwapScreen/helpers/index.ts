@@ -3,7 +3,7 @@ export * from "./swapCalculations";
 export * from "./swapEnums";
 export * from "./types";
 export * from "./descriptors";
-export { formatClassicRecord } from "./formatClassicRecord";
+export { formatSearchRecord } from "./formatSearchRecord";
 export { computeTrendingIntersection } from "./computeTrendingIntersection";
 export { canonicalId } from "./canonicalId";
 export { mergeBlockaidScans } from "./mergeBlockaidScans";
@@ -12,6 +12,8 @@ export {
   isClassicTokenType,
   isHeldToken,
   isSorobanRecord,
+  isSwappableRecord,
+  isSwappableTokenType,
   type StellarExpertRecord,
   type SwapToListItem,
 } from "./recordPredicates";
@@ -30,3 +32,13 @@ export {
   type SwapQuoteErrorReason,
 } from "./selectSwapRoute";
 export { decodeSwapTx, type DecodedSwapTx } from "./decodeSwapTx";
+export { withTokenDecimals } from "./tokenDecimals";
+export {
+  buildSwapRouteView,
+  formatRouteShare,
+  MAX_PATH_VENUE_ICONS,
+  type SwapRoutePathView,
+  type SwapRouteToken,
+  type SwapRouteVenue,
+  type SwapRouteView,
+} from "./swapRouteView";

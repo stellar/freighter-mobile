@@ -1095,6 +1095,7 @@ export const getTokenDetails = async ({
   network,
   shouldFetchBalance,
   signal,
+  throwOnFailure,
 }: GetTokenDetailsParams): Promise<TokenDetailsResponse | null> => {
   try {
     // TODO: Add verification for custom network.
@@ -1139,6 +1140,7 @@ export const getTokenDetails = async ({
       );
     }
 
+    if (throwOnFailure && !isRequestCanceled(error)) throw error;
     return null;
   }
 };
@@ -1325,6 +1327,7 @@ export const handleContractLookup = async (
   network: NETWORKS,
   publicKey?: string,
   signal?: AbortSignal,
+  throwOnFailure = false,
 ): Promise<FormattedSearchTokenRecord | null> => {
   const { networkPassphrase } = mapNetworkToNetworkDetails(network);
 
@@ -1348,6 +1351,7 @@ export const handleContractLookup = async (
     publicKey: publicKey ?? "",
     network,
     signal,
+    throwOnFailure,
   });
 
   if (!tokenDetails) {
