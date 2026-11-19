@@ -435,6 +435,31 @@ describe("funded_account_count", () => {
     expect(getFundedAccountCount(hashes(PK_B))).toBe(0);
   });
 
+  it("applies all-accounts results in call order, so an older cycle cannot overwrite a newer one", async () => {
+    // The older cycle reports first. Its storage read is slow, so its write
+    // ends after the newer cycle has already reported.
+    let releaseRead: (() => void) | undefined;
+    (dataStorage.getItem as jest.Mock).mockImplementationOnce(
+      (key: string) =>
+        new Promise((resolve) => {
+          releaseRead = () => resolve(mockStorage.get(key) ?? null);
+        }),
+    );
+    const older = reportList(PK_B, "5");
+    const newer = reportList(PK_B, "0");
+
+    // Wait until the older write is inside the lock, then let it finish.
+    while (!releaseRead) {
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.resolve();
+    }
+    releaseRead();
+    await Promise.all([older, newer]);
+
+    // The newer result wins.
+    expect(recordOf(PK_B)).toEqual({ funded: false });
+  });
+
   it("does not sync again when an all-accounts result changes nothing", async () => {
     await reportList(PK_B, "5");
     await reportList(PK_B, "5");
