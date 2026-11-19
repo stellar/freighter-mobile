@@ -882,9 +882,11 @@ describe("EarnTokenPickerScreen", () => {
     });
 
     // Opens the Earn swap and presses Review, leaving the build pending
-    // until `finishSetup` is called.
+    // until `finishSetup` is called. `pressReviewAgain` starts another
+    // build, which `finishSetup(1)` ends.
     const startReviewBuild = () => {
-      let resolveSetup: (setup: unknown) => void = () => {};
+      const setups: ((setup: unknown) => void)[] = [];
+      const reviewPresses: (Promise<void> | undefined)[] = [];
       mockEarnSwapOverrides = {
         ctaState: { kind: "review" },
         isCtaDisabled: false,
@@ -892,7 +894,7 @@ describe("EarnTokenPickerScreen", () => {
         setupSwapTransaction: jest.fn(
           () =>
             new Promise((resolve) => {
-              resolveSetup = resolve;
+              setups.push(resolve);
             }),
         ),
       };
@@ -916,28 +918,41 @@ describe("EarnTokenPickerScreen", () => {
           findByContent(EarnSwapBottomSheet)?.props
             .customContent as React.ReactElement<{
             onReview: (() => Promise<void>) | null;
+            onClose: () => void;
             isBuildingReview?: boolean;
             isReviewLoading?: boolean;
           }>
         ).props;
-
-      let reviewPressed: Promise<void> | undefined;
-      act(() => {
-        reviewPressed = swapSheetContent().onReview?.();
-      });
+      const pressReviewAgain = () => {
+        act(() => {
+          reviewPresses.push(swapSheetContent().onReview?.());
+        });
+      };
+      pressReviewAgain();
 
       return {
         swapSheetContent,
-        finishSetup: async () => {
+        pressReviewAgain,
+        finishSetup: async (build = 0) => {
           await act(async () => {
-            resolveSetup({
+            setups[build]({
               scanResult: { validation: { result_type: "Benign" } },
             });
-            await reviewPressed;
+            await reviewPresses[build];
           });
         },
       };
     };
+
+    // gorhom's calls on the swap sheet, which the stubbed sheet doesn't make.
+    const swapSheetModalProps = () =>
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__earnTokenPickerMockSheets.find(
+        ({ props }) => props.analyticsEvent === "swap_amount",
+      )?.props.bottomSheetModalProps as {
+        onAnimate: (fromIndex: number, toIndex: number) => void;
+        onDismiss: () => void;
+      };
 
     it("locks the swap sheet while Review is being built", async () => {
       const { swapSheetContent, finishSetup } = startReviewBuild();
@@ -950,29 +965,64 @@ describe("EarnTokenPickerScreen", () => {
       expect(swapSheetContent().isBuildingReview).toBe(false);
     });
 
-    it("opens nothing once the swap is built if the user has left it", async () => {
-      const { finishSetup } = startReviewBuild();
-      // eslint-disable-next-line no-underscore-dangle
-      const sheets = globalThis.__earnTokenPickerMockSheets;
-      const swapSheet = sheets.find(
-        ({ props }) => props.analyticsEvent === "swap_amount",
-      );
-      const review = sheets.find(
-        ({ props }) => props.analyticsEvent === "swap_confirm",
-      );
+    it.each([
+      [
+        "X",
+        (content: { onClose: () => void }) => {
+          content.onClose();
+        },
+      ],
+      // A tap outside or a swipe down starts the close on gorhom's side.
+      [
+        "a tap outside or a swipe down",
+        () => {
+          swapSheetModalProps().onAnimate(0, -1);
+        },
+      ],
+      [
+        "a close that has already finished",
+        () => {
+          swapSheetModalProps().onDismiss();
+        },
+      ],
+    ])(
+      "opens nothing once the swap is built if the user left it by %s",
+      async (_exit, leave) => {
+        const { swapSheetContent, finishSetup } = startReviewBuild();
+        // eslint-disable-next-line no-underscore-dangle
+        const review = globalThis.__earnTokenPickerMockSheets.find(
+          ({ props }) => props.analyticsEvent === "swap_confirm",
+        );
 
-      // A swipe down while the swap builds; gorhom then calls onDismiss.
+        act(() => {
+          leave(swapSheetContent());
+        });
+        await finishSetup();
+
+        expect(review?.ref.present).not.toHaveBeenCalled();
+        expect(
+          findByContent(SecurityDetailBottomSheet)?.ref.present,
+        ).not.toHaveBeenCalled();
+      },
+    );
+
+    it("unlocks a swap reopened before the build the user left has ended", async () => {
+      const { swapSheetContent, pressReviewAgain, finishSetup } =
+        startReviewBuild();
+
       act(() => {
-        (
-          swapSheet?.props.bottomSheetModalProps as { onDismiss: () => void }
-        ).onDismiss();
+        swapSheetModalProps().onAnimate(0, -1);
       });
-      await finishSetup();
 
-      expect(review?.ref.present).not.toHaveBeenCalled();
-      expect(
-        findByContent(SecurityDetailBottomSheet)?.ref.present,
-      ).not.toHaveBeenCalled();
+      expect(swapSheetContent().isBuildingReview).toBe(false);
+
+      // The next swap's own build, which the old one ending mustn't unlock.
+      pressReviewAgain();
+      await finishSetup(0);
+
+      expect(swapSheetContent().isBuildingReview).toBe(true);
+
+      await finishSetup(1);
     });
 
     it("keeps the swap when Confirm closes the swap sheet to submit it", async () => {
