@@ -1069,7 +1069,9 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
               onClose={dismissSwapSheets}
               onReview={earnSwap.isCtaDisabled ? null : handleSwapReview}
               ctaLabel={earnSwap.ctaLabel}
-              isReviewLoading={earnSwap.isLoadingPath}
+              // As on main Swap: also while the quote is catching up with
+              // the amount, when Review does nothing yet.
+              isReviewLoading={earnSwap.ctaState.kind === "loading"}
             />
           ) : null
         }

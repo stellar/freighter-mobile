@@ -74,7 +74,13 @@ export const useSwapCtaState = ({
 
     if (isLoadingPath || isBuilding) return { kind: "loading" };
 
-    if (pathResult && !pathError) return { kind: "review" };
+    if (pathResult && !pathError) {
+      // Path-finding waits for typing to pause, so for a moment after each
+      // keystroke the quote is still the previous amount's. Review would
+      // build the new amount with that quote's minimum received.
+      if (!amountBN.eq(pathResult.sourceAmount)) return { kind: "loading" };
+      return { kind: "review" };
+    }
 
     // Path-finding finished without a result (or threw) — keep the user on
     // the amount step. The persistent toast (set up by the screen) already
