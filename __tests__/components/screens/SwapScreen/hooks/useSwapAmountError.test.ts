@@ -60,6 +60,13 @@ const baseDestinationDescriptor = {
 // gate writes back to activeError.
 const STABLE_BALANCE_ITEMS: never[] = [];
 const STABLE_SPENDABLE = new BigNumber("10");
+const STABLE_SOROBAN_SOURCE = {
+  id: "TKN:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+  tokenCode: "TKN",
+  decimals: 18,
+  total: new BigNumber("1000000"),
+} as never;
+const STABLE_TINY_SPENDABLE = new BigNumber("0.000000000001");
 
 const baseProps: HookProps = {
   sourceBalance: baseSourceBalance,
@@ -71,6 +78,7 @@ const baseProps: HookProps = {
   spendableAmount: STABLE_SPENDABLE,
   sourceTokenSymbol: "USDC",
   pathError: null,
+  pathErrorReason: null,
   pathResult: null,
   destinationTokenDescriptor: baseDestinationDescriptor,
 };
@@ -203,6 +211,40 @@ describe("useSwapAmountError", () => {
     });
   });
 
+  it("checks a Soroban source's spendable balance in its own units", () => {
+    const sorobanSource = {
+      id: "TKN:CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      tokenCode: "TKN",
+      decimals: 18,
+      total: new BigNumber("5000000000000000000"),
+    } as never;
+
+    renderHook(() =>
+      useSwapAmountError({
+        ...baseProps,
+        sourceBalance: sorobanSource,
+        sourceAmount: "1.5",
+      }),
+    );
+
+    expect(mockIsAmountSpendable).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: "1500000000000000000" }),
+    );
+  });
+
+  it("shows a Soroban source's spendable amount at the token's decimals", () => {
+    mockIsAmountSpendable.mockReturnValue(false);
+    const props = {
+      ...baseProps,
+      sourceBalance: STABLE_SOROBAN_SOURCE,
+      spendableAmount: STABLE_TINY_SPENDABLE,
+    };
+
+    const { result } = renderHook(() => useSwapAmountError(props));
+
+    expect(result.current.amountError).toContain("0.000000000001");
+  });
+
   describe("path-error toast lifecycle", () => {
     it("does NOT fire path-error toast when amount is empty / 0", () => {
       renderHook(() =>
@@ -238,6 +280,29 @@ describe("useSwapAmountError", () => {
       expect(pathErrorCalls.length).toBe(0);
     });
 
+    // The amount screen renders these two as a persistent "Quote unavailable"
+    // row with its own sheet; a toast on top would say the same thing twice.
+    it.each(["noRoute", "unavailable"] as const)(
+      "does NOT toast a %s error, which the screen shows inline",
+      (reason) => {
+        renderHook(() =>
+          useSwapAmountError({
+            ...baseProps,
+            // Translated before a language switch: the reason still decides.
+            pathError: "Texto en otro idioma",
+            pathErrorReason: reason,
+          }),
+        );
+
+        const pathErrorCalls = mockShowToast.mock.calls.filter(
+          ([arg]) =>
+            (arg as { toastId?: string }).toastId ===
+            SWAP_TOAST_IDS.SWAP_PATH_ERROR,
+        );
+        expect(pathErrorCalls.length).toBe(0);
+      },
+    );
+
     it("dismisses the path-error toast when a subsequent pathResult arrives without a pathError", () => {
       const initialProps: HookProps = {
         ...baseProps,
@@ -257,9 +322,7 @@ describe("useSwapAmountError", () => {
         ...baseProps,
         pathError: null,
         pathResult: {
-          path: [],
           destinationAmount: "1",
-          destinationAmountMin: "0.99",
           sourceAmount: "1",
           conversionRate: "1",
         } as never,
