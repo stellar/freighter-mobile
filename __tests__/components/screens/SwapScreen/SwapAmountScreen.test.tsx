@@ -2458,6 +2458,100 @@ describe("SwapAmountScreen", () => {
 
         expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.5000000");
       });
+
+      describe("when the pair's first quote lands after Max", () => {
+        const renderWithoutQuote = (sourceAmount = "1") => {
+          setSwapStoreState({
+            sourceTokenId: "XLM",
+            sourceTokenSymbol: "XLM",
+            sourceAmount,
+            pathResult: null,
+            swapQuotes: null,
+            lastResourceFee: null,
+          } as Partial<SwapStoreState>);
+          return renderWithProviders(
+            <SwapAmountScreen
+              navigation={makeNavigation()}
+              route={makeRoute()}
+            />,
+          );
+        };
+        const quoteLands = (
+          rerender: (ui: React.ReactElement) => void,
+          sourceAmount: string,
+          resourceFee: string,
+        ) => {
+          const route = feeRoute(resourceFee);
+          setSwapStoreState({
+            sourceTokenId: "XLM",
+            sourceTokenSymbol: "XLM",
+            sourceAmount,
+            pathResult: {
+              destinationAmount: "2",
+              quoteKey: "quote-key",
+              route,
+            },
+            swapQuotes: { routes: [route], unavailable: [] },
+          } as Partial<SwapStoreState>);
+          act(() => {
+            rerender(
+              <SwapAmountScreen
+                navigation={makeNavigation()}
+                route={makeRoute()}
+              />,
+            );
+          });
+        };
+
+        it("re-applies Max to leave the quote's resource fee", () => {
+          jest.spyOn(analytics, "track").mockClear();
+          const { getByTestId, rerender } = renderWithoutQuote();
+          act(() => {
+            fireEvent.press(getByTestId("percentage-100"));
+          });
+          expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.5000000");
+
+          quoteLands(rerender, "899.5000000", "0.0858459");
+
+          expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.4141541");
+          // The re-apply isn't a tap.
+          expect(
+            (analytics.track as jest.Mock).mock.calls.filter(
+              ([event]) => event === AnalyticsEvent.SEND_PAYMENT_SET_MAX,
+            ),
+          ).toHaveLength(1);
+        });
+
+        it("leaves an amount typed after Max", () => {
+          const { getByTestId, rerender } = renderWithoutQuote();
+          act(() => {
+            fireEvent.press(getByTestId("percentage-100"));
+          });
+          quoteLands(rerender, "50", "0.0858459");
+
+          expect(mockSetSourceAmount).not.toHaveBeenCalledWith("899.4141541");
+        });
+
+        it("re-applies once per tap", () => {
+          const { getByTestId, rerender } = renderWithoutQuote();
+          act(() => {
+            fireEvent.press(getByTestId("percentage-100"));
+          });
+          quoteLands(rerender, "899.5000000", "0.0858459");
+          quoteLands(rerender, "899.4141541", "0.1");
+
+          expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.4141541");
+        });
+
+        it("leaves an amount the user typed", () => {
+          const { rerender } = renderWithoutQuote("899.5000000");
+          mockSetSourceAmount.mockClear();
+
+          quoteLands(rerender, "899.5000000", "0.0858459");
+
+          expect(mockSetSourceAmount).not.toHaveBeenCalledWith("899.4141541");
+        });
+      });
     });
 
     it("hides the fee line until there is a quote", () => {

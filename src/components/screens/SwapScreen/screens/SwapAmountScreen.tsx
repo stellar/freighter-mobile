@@ -606,9 +606,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     openSourcePicker,
   } = useSwapNavigation({ navigation });
 
+  // Max taps before the pair's first quote can't know its resource fee. When
+  // that quote leaves the Max amount over spendable, Max is applied again, once
+  // per tap, so a fee that moves with the amount can't keep re-sizing it.
+  const maxPendingRef = useRef<string | null>(null);
   const handlePercentagePress = useCallback(
-    (percentage: number) => {
+    (percentage: number, isTap = true) => {
       if (!spendableAmount) return;
+      maxPendingRef.current = null;
       const decimals = sourceBalance
         ? getTokenDecimals(sourceBalance)
         : DEFAULT_DECIMALS;
@@ -618,9 +623,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           ? spendableAmount
           : spendableAmount.multipliedBy(percentage / 100);
 
-      if (percentage === 100) {
+      if (percentage === 100 && isTap) {
         analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
       }
+      const trackMax = (amount: string) => {
+        if (percentage === 100 && isTap) maxPendingRef.current = amount;
+      };
 
       // In fiat-input mode the primary display IS the fiat field, so we
       // have to update fiatAmountDisplay alongside the token amount —
@@ -647,11 +655,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
           updateFiatDisplay(finalFiat);
           setTokenAmount(finalToken.toFixed(decimals));
+          trackMax(finalToken.toFixed(decimals));
           return;
         }
       }
 
       setTokenAmount(targetAmount.toFixed(decimals));
+      trackMax(targetAmount.toFixed(decimals));
     },
     [
       spendableAmount,
@@ -661,6 +671,23 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       updateFiatDisplay,
     ],
   );
+
+  useEffect(() => {
+    const pending = maxPendingRef.current;
+    // Only the quote for the Max amount itself settles it.
+    if (
+      pending === null ||
+      !isQuoteCurrent ||
+      !spendableAmount ||
+      !new BigNumber(pending).eq(sourceAmount || "0")
+    ) {
+      return;
+    }
+    maxPendingRef.current = null;
+    if (spendableAmount.lt(pending)) {
+      handlePercentagePress(100, false);
+    }
+  }, [isQuoteCurrent, spendableAmount, sourceAmount, handlePercentagePress]);
 
   // XlmReserveBottomSheet's "Swap for 0.5 XLM" affordance — see hook.
   const {
