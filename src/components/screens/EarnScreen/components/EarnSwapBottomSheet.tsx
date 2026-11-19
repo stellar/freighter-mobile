@@ -49,6 +49,9 @@ export interface EarnSwapBottomSheetProps {
   onReview: (() => void) | null;
   ctaLabel: string;
   isReviewLoading?: boolean;
+  /** Review is being built: the amount, the source and the settings stay as
+   *  they are until it opens. X still closes the sheet. */
+  isBuildingReview?: boolean;
 }
 
 /** Earn offers 25% / 50% / Max, without main Swap's 75%. */
@@ -93,6 +96,7 @@ export const EarnSwapBottomSheet: React.FC<EarnSwapBottomSheetProps> = ({
   onReview,
   ctaLabel,
   isReviewLoading,
+  isBuildingReview,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -105,6 +109,7 @@ export const EarnSwapBottomSheet: React.FC<EarnSwapBottomSheetProps> = ({
       <View className="flex-row items-center justify-between">
         <TouchableOpacity
           onPress={onSettingsPress}
+          disabled={isBuildingReview}
           hitSlop={12}
           accessibilityRole="button"
           accessibilityLabel={t("earnSwap.settings")}
@@ -130,6 +135,7 @@ export const EarnSwapBottomSheet: React.FC<EarnSwapBottomSheetProps> = ({
           selectedToken={sourceBalance}
           pickerLabel={sourceLabel ?? t("swapScreen.selectToken")}
           onPickerPress={onSourcePickerPress}
+          disabled={isBuildingReview}
           pickerTestID="earn-swap-sell-pill"
           inputTestID="earn-swap-amount-input"
           focusTriggerTestID="earn-swap-amount-focus-trigger"

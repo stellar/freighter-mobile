@@ -18,6 +18,9 @@ export interface PercentageButtonsProps {
   percentages?: PercentageOption[];
   /** Test ID for the row container (optional). */
   testID?: string;
+  /** Ignores presses, e.g. while the screen builds the transaction for
+   *  Review. */
+  disabled?: boolean;
 }
 
 /**
@@ -30,6 +33,7 @@ export const PercentageButtons: React.FC<PercentageButtonsProps> = ({
   onPress,
   percentages = DEFAULT_PERCENTAGES,
   testID,
+  disabled,
 }) => {
   const { t } = useAppTranslation();
   const labels: Record<PercentageOption, string> = {
@@ -47,6 +51,7 @@ export const PercentageButtons: React.FC<PercentageButtonsProps> = ({
             tertiary
             xl
             onPress={() => onPress(value)}
+            disabled={disabled}
             testID={`percentage-${value}`}
           >
             {labels[value]}

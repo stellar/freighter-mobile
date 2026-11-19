@@ -3512,4 +3512,56 @@ describe("TransactionAmountScreen - muxed recipients (W and M)", () => {
       expect(queryByTestId("percentage-25")).toBeNull();
     });
   });
+
+  // Review shows the send as it is when it opens.
+  describe("while Review is being built", () => {
+    it("locks the form, and unlocks it once Review opens", async () => {
+      setSettingsStore({
+        selectedTokenId: "XLM",
+        recipientAddress: G_ACCOUNT,
+        transactionMemo: "",
+      });
+      let finishBuild: (xdr: string) => void = () => {};
+      mockBuildTransactionFn.mockImplementationOnce(
+        () =>
+          new Promise<string>((resolve) => {
+            finishBuild = resolve;
+          }),
+      );
+      const { useRightHeaderButton } = jest.requireMock("hooks/useRightHeader");
+      const { getByTestId } = render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={routeFor("XLM", G_ACCOUNT)}
+        />,
+      );
+      await waitForAutoSimulation();
+
+      await act(() => {
+        fireEvent.press(getByTestId("send-continue-button"));
+        return Promise.resolve();
+      });
+
+      expect(getByTestId("amount-text-input").props.editable).toBe(false);
+      expect(
+        getByTestId("percentage-50").props.accessibilityState?.disabled,
+      ).toBe(true);
+      // A right header button without onPress is disabled.
+      expect(useRightHeaderButton).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          testID: "send-settings-button",
+          onPress: undefined,
+        }),
+      );
+
+      await act(async () => {
+        finishBuild("mockXDR");
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 0);
+        });
+      });
+
+      expect(getByTestId("amount-text-input").props.editable).not.toBe(false);
+    });
+  });
 });

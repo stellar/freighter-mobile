@@ -583,6 +583,29 @@ describe("EarnAmountScreen", () => {
       );
     });
 
+    // Review shows the deposit as it is when it opens.
+    it("locks the amount while the deposit is being built", async () => {
+      let resolveSimulate: (value: unknown) => void = () => {};
+      mockSimulate.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSimulate = resolve;
+          }),
+      );
+      const { getByTestId } = renderScreen();
+
+      fireEvent.press(getByTestId("earn-amount-cta"));
+
+      expect(getByTestId("earn-amount-input").props.editable).toBe(false);
+
+      await act(async () => {
+        resolveSimulate({ preparedXdr: "prepared-xdr", scanResult: undefined });
+        await Promise.resolve();
+      });
+
+      expect(getByTestId("earn-amount-input").props.editable).not.toBe(false);
+    });
+
     it("shows nothing once the deposit is built if the user has left", async () => {
       mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
       setSpendable({ deposit: "100", xlm: "100" });

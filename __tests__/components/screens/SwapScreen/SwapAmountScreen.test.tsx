@@ -852,6 +852,65 @@ describe("SwapAmountScreen", () => {
       expect(mockSetupSwapTransaction).toHaveBeenCalled();
     });
 
+    // Review shows the swap as it is when it opens.
+    it("locks the form while Review is being built", async () => {
+      let finishSetup: () => void = () => {};
+      mockSetupSwapTransaction.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishSetup = resolve;
+          }),
+      );
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { sourceAmount: "1", destinationAmount: "2" },
+      });
+      const { useRightHeaderButton } = jest.requireMock("hooks/useRightHeader");
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      expect(getByTestId("swap-amount-input").props.editable).toBe(false);
+      expect(
+        getByTestId("swap-direction-toggle").props.accessibilityState?.disabled,
+      ).toBe(true);
+      expect(
+        getByTestId("percentage-50").props.accessibilityState?.disabled,
+      ).toBe(true);
+      // The header gear: a right header button without onPress is disabled.
+      expect(useRightHeaderButton).toHaveBeenLastCalledWith(
+        expect.objectContaining({ onPress: undefined }),
+      );
+
+      await act(async () => {
+        finishSetup();
+        await Promise.resolve();
+      });
+    });
+
+    it("unlocks the form when Review can't be built", async () => {
+      mockSetupSwapTransaction.mockRejectedValueOnce(new Error("build failed"));
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { sourceAmount: "1", destinationAmount: "2" },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      expect(getByTestId("swap-amount-input").props.editable).not.toBe(false);
+    });
+
     it("dismisses the keyboard AND waits for keyboardDidHide before opening the Review sheet", async () => {
       // Regression: the system keyboard previously stayed up when the user
       // tapped "Review swap", squishing the bottom sheet content. Now we

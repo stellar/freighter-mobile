@@ -90,6 +90,11 @@ type AmountCardCommonProps = {
    *  Additive -- defaults to false, so every
    *  existing Send/Swap caller is unchanged. */
   isLocked?: boolean;
+  /** Ignores input for a while without changing how the card looks: the
+   *  amount can't be edited and the picker chip and $↔token toggle don't
+   *  respond. For while the screen builds the transaction for Review.
+   *  Additive -- defaults to false. */
+  disabled?: boolean;
   pickerTestID?: string;
   testID?: string;
   /** Shown on the right of the label row. Hidden when null/undefined. */
@@ -184,8 +189,18 @@ const PickerChip: React.FC<{
   iconUrl?: string;
   onPress: () => void;
   isLocked?: boolean;
+  disabled?: boolean;
   testID?: string;
-}> = ({ token, label, securityLevel, iconUrl, onPress, isLocked, testID }) => {
+}> = ({
+  token,
+  label,
+  securityLevel,
+  iconUrl,
+  onPress,
+  isLocked,
+  disabled,
+  testID,
+}) => {
   const { themeColors } = useColors();
   // PricedBalance / Balance carry `tokenCode`; bare `Token` carries `code`.
   // Fall back to whichever exists so non-held descriptors still get a label.
@@ -202,6 +217,7 @@ const PickerChip: React.FC<{
   return (
     <Container
       onPress={isLocked ? undefined : onPress}
+      disabled={disabled}
       className="flex-row items-center gap-[4px] rounded-full bg-base-0 px-[10px] py-[4px]"
       testID={testID}
     >
@@ -253,6 +269,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
   accessibilityLabel,
   accessibilityHint,
   isError,
+  disabled,
 }) => {
   const { themeColors } = useColors();
 
@@ -342,6 +359,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
         <TouchableOpacity
           className="flex-1"
           onPressIn={focusInput}
+          disabled={disabled}
           activeOpacity={1}
           accessible={false}
           testID={focusTriggerTestID}
@@ -380,6 +398,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
               value={isEmpty ? "" : primaryText}
               placeholder="0"
               placeholderTextColor={amountPlaceholderColor}
+              editable={!disabled}
               onChangeText={converter.setDisplayAmountFromText}
               onSubmitEditing={() => Keyboard.dismiss()}
               underlineColorAndroid="transparent"
@@ -404,6 +423,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
           iconUrl={pickerIconUrl}
           onPress={onPickerPress}
           isLocked={isLocked}
+          disabled={disabled}
           testID={pickerTestID}
         />
       </View>
@@ -427,6 +447,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
             onPress={() =>
               converter.setShowFiatAmount(!converter.showFiatAmount)
             }
+            disabled={disabled}
             className="rounded-full bg-background-primary p-[2px]"
             testID={fiatToggleTestID}
           >
@@ -449,6 +470,7 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
   pickerIconUrl,
   onPickerPress,
   isLocked,
+  disabled,
   pickerTestID,
   testID,
   availableBalanceText,
@@ -490,6 +512,7 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
           iconUrl={pickerIconUrl}
           onPress={onPickerPress}
           isLocked={isLocked}
+          disabled={disabled}
           testID={pickerTestID}
         />
       </View>

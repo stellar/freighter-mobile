@@ -881,8 +881,10 @@ describe("EarnTokenPickerScreen", () => {
       );
     });
 
-    it("opens nothing once the swap is built if the user has left it", async () => {
-      let finishSetup: (setup: unknown) => void = () => {};
+    // Opens the Earn swap and presses Review, leaving the build pending
+    // until `finishSetup` is called.
+    const startReviewBuild = () => {
+      let resolveSetup: (setup: unknown) => void = () => {};
       mockEarnSwapOverrides = {
         ctaState: { kind: "review" },
         isCtaDisabled: false,
@@ -890,7 +892,7 @@ describe("EarnTokenPickerScreen", () => {
         setupSwapTransaction: jest.fn(
           () =>
             new Promise((resolve) => {
-              finishSetup = resolve;
+              resolveSetup = resolve;
             }),
         ),
       };
@@ -909,12 +911,47 @@ describe("EarnTokenPickerScreen", () => {
             .customContent as React.ReactElement<{ onSwap: () => void }>
         ).props.onSwap();
       });
-      const { onReview } = (
-        findByContent(EarnSwapBottomSheet)?.props
-          .customContent as React.ReactElement<{
-          onReview: (() => Promise<void>) | null;
-        }>
-      ).props;
+      const swapSheetContent = () =>
+        (
+          findByContent(EarnSwapBottomSheet)?.props
+            .customContent as React.ReactElement<{
+            onReview: (() => Promise<void>) | null;
+            isBuildingReview?: boolean;
+            isReviewLoading?: boolean;
+          }>
+        ).props;
+
+      let reviewPressed: Promise<void> | undefined;
+      act(() => {
+        reviewPressed = swapSheetContent().onReview?.();
+      });
+
+      return {
+        swapSheetContent,
+        finishSetup: async () => {
+          await act(async () => {
+            resolveSetup({
+              scanResult: { validation: { result_type: "Benign" } },
+            });
+            await reviewPressed;
+          });
+        },
+      };
+    };
+
+    it("locks the swap sheet while Review is being built", async () => {
+      const { swapSheetContent, finishSetup } = startReviewBuild();
+
+      expect(swapSheetContent().isBuildingReview).toBe(true);
+      expect(swapSheetContent().isReviewLoading).toBe(true);
+
+      await finishSetup();
+
+      expect(swapSheetContent().isBuildingReview).toBe(false);
+    });
+
+    it("opens nothing once the swap is built if the user has left it", async () => {
+      const { finishSetup } = startReviewBuild();
       // eslint-disable-next-line no-underscore-dangle
       const sheets = globalThis.__earnTokenPickerMockSheets;
       const swapSheet = sheets.find(
@@ -924,20 +961,13 @@ describe("EarnTokenPickerScreen", () => {
         ({ props }) => props.analyticsEvent === "swap_confirm",
       );
 
-      let reviewPressed: Promise<void> | undefined;
-      act(() => {
-        reviewPressed = onReview?.();
-      });
       // A swipe down while the swap builds; gorhom then calls onDismiss.
       act(() => {
         (
           swapSheet?.props.bottomSheetModalProps as { onDismiss: () => void }
         ).onDismiss();
       });
-      await act(async () => {
-        finishSetup({ scanResult: { validation: { result_type: "Benign" } } });
-        await reviewPressed;
-      });
+      await finishSetup();
 
       expect(review?.ref.present).not.toHaveBeenCalled();
       expect(

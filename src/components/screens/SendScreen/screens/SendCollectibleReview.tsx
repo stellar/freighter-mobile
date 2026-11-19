@@ -200,12 +200,19 @@ const SendCollectibleReviewScreen: React.FC<
   const signTransactionDetails = useSignTransactionDetails({
     xdr: transactionXDR ?? "",
   });
+  // From the Review tap until Review or the security sheet opens, or the
+  // build fails. Review shows the send as it is when it opens, so nothing
+  // may change while the transaction is built.
+  const [isPreparingReview, setIsPreparingReview] = useState(false);
 
   useRightHeaderButton({
     icon: Icon.Settings04,
-    onPress: () => {
-      transactionSettingsBottomSheetModalRef.current?.present();
-    },
+    // A right header button without onPress is disabled.
+    onPress: isPreparingReview
+      ? undefined
+      : () => {
+          transactionSettingsBottomSheetModalRef.current?.present();
+        },
   });
 
   const onConfirmAddMemo = useCallback(() => {
@@ -491,7 +498,8 @@ const SendCollectibleReviewScreen: React.FC<
           return;
         }
 
-        scanTransaction(xdr, "internal")
+        // Awaited so a caller knows when Review has opened.
+        await scanTransaction(xdr, "internal")
           .then((scanResult) => {
             setTransactionScanResult(scanResult);
 
@@ -808,13 +816,18 @@ const SendCollectibleReviewScreen: React.FC<
     );
   }
 
-  const handleContinueButtonPress = () => {
+  const handleContinueButtonPress = async () => {
     if (!recipientAddress) {
       navigateToSelectContactScreen();
       return;
     }
 
-    prepareTransaction(true);
+    setIsPreparingReview(true);
+    try {
+      await prepareTransaction(true);
+    } finally {
+      setIsPreparingReview(false);
+    }
   };
 
   const getContinueButtonText = () => {
@@ -831,7 +844,9 @@ const SendCollectibleReviewScreen: React.FC<
         <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary max-xs:mt-[4px]">
           <ContactRow
             isSingleRow
-            onPress={navigateToSelectContactScreen}
+            onPress={
+              isPreparingReview ? undefined : navigateToSelectContactScreen
+            }
             address={recipientAddress}
             rightElement={
               <IconButton Icon={Icon.ChevronRight} size="sm" variant="ghost" />
@@ -879,6 +894,7 @@ const SendCollectibleReviewScreen: React.FC<
             xl
             onPress={handleContinueButtonPress}
             disabled={isContinueButtonDisabled}
+            isLoading={isPreparingReview}
             testID="send-collectible-continue-button"
           >
             {getContinueButtonText()}

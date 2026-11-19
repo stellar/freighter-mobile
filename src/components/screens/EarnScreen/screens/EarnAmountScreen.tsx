@@ -261,6 +261,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   // opens. Review, a settings rebuild and the processing screen all use it,
   // never the live field, which the user can keep editing while a build runs.
   const [reviewedAmount, setReviewedAmount] = useState<string | null>(null);
+  // From the CTA tap until the deposit is built.
+  const [isBuildingReview, setIsBuildingReview] = useState(false);
   const latestTokenAmountRef = useRef(tokenAmount);
   useEffect(() => {
     latestTokenAmountRef.current = tokenAmount;
@@ -702,15 +704,25 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
 
     const amountToReview = tokenAmount;
     const exitCount = exitCountRef.current;
-    const result = await simulate({
-      assetId,
-      amount: amountToReview,
-      decimals: depositDecimals,
-      transactionFee,
-      transactionTimeout,
-      network,
-      senderAddress: account.publicKey,
-    });
+    // Review shows the deposit as it is when it opens, so the field stays as
+    // it is while the deposit is built from it.
+    amountInputRef.current?.blur();
+    Keyboard.dismiss();
+    setIsBuildingReview(true);
+    let result: Awaited<ReturnType<typeof simulate>>;
+    try {
+      result = await simulate({
+        assetId,
+        amount: amountToReview,
+        decimals: depositDecimals,
+        transactionFee,
+        transactionTimeout,
+        network,
+        senderAddress: account.publicKey,
+      });
+    } finally {
+      setIsBuildingReview(false);
+    }
 
     // The user left while the deposit was being built: no Review, and no
     // fee toast over whatever screen they went to.
@@ -904,6 +916,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
           selectedToken={depositBalance}
           pickerLabel={tokenCode}
           onPickerPress={() => navigation.goBack()}
+          disabled={isBuildingReview}
           pickerTestID="earn-amount-token-pill"
           inputTestID="earn-amount-input"
           focusTriggerTestID="earn-amount-focus-trigger"
@@ -933,7 +946,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
             xl
             onPress={handleCtaPress}
             disabled={ctaState.disabled}
-            isLoading={isSimulating}
+            isLoading={isSimulating || isBuildingReview}
             testID="earn-amount-cta"
           >
             {ctaLabelKeys[ctaState.labelKey]}

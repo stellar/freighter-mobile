@@ -388,6 +388,9 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // Counts the times the user left the swap, so a Review still being built
   // when they left is dropped instead of opening over the picker.
   const swapExitCountRef = useRef(0);
+  // From the Review tap until Review or the security sheet opens, or the
+  // build fails.
+  const [isBuildingSwapReview, setIsBuildingSwapReview] = useState(false);
 
   // Leaving the swap's Review without confirming is reported as a rejection,
   // as main Swap reports it, whichever way the sheet closed.
@@ -410,12 +413,15 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     dismissToast(SWAP_TOAST_IDS.QUOTE_EXPIRED);
     const exitCount = swapExitCountRef.current;
     const hasLeftSwap = () => swapExitCountRef.current !== exitCount;
+    // Review shows the swap as it is when it opens, so nothing on the sheet
+    // may change while the transaction is built from it.
+    Keyboard.dismiss();
+    setIsBuildingSwapReview(true);
     try {
       const setup = await earnSwap.setupSwapTransaction();
       if (!setup || hasLeftSwap()) {
         return;
       }
-      Keyboard.dismiss();
       hasApprovedSwapRef.current = false;
       const isTransactionUnableToScan = assessTransactionSecurity(
         setup?.scanResult,
@@ -445,6 +451,8 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
         toastId: SWAP_TOAST_IDS.FAILED_TO_SETUP_TRANSACTION,
         duration: 0,
       });
+    } finally {
+      setIsBuildingSwapReview(false);
     }
   }, [earnSwap, overriddenBlockaidResponse, showToast, dismissToast, t]);
 
@@ -1071,7 +1079,10 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
               ctaLabel={earnSwap.ctaLabel}
               // As on main Swap: also while the quote is catching up with
               // the amount, when Review does nothing yet.
-              isReviewLoading={earnSwap.ctaState.kind === "loading"}
+              isReviewLoading={
+                earnSwap.ctaState.kind === "loading" || isBuildingSwapReview
+              }
+              isBuildingReview={isBuildingSwapReview}
             />
           ) : null
         }

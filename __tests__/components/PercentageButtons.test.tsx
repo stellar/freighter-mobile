@@ -51,4 +51,15 @@ describe("PercentageButtons", () => {
     fireEvent.press(getByTestId("percentage-100"));
     expect(onPress).toHaveBeenCalledWith(100);
   });
+
+  it("ignores presses while disabled", () => {
+    const onPress = jest.fn();
+    const { getByTestId } = renderWithProviders(
+      <PercentageButtons onPress={onPress} disabled />,
+    );
+
+    fireEvent.press(getByTestId("percentage-50"));
+
+    expect(onPress).not.toHaveBeenCalled();
+  });
 });

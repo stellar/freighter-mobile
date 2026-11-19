@@ -135,6 +135,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   // flips back to false) and the review sheet's mount animation finishing
   // — without this latch the CTA briefly snaps out of its loading state
   // while the sheet is still sliding up.
+  //
+  // It also locks the form for that span: Review shows the swap as it is
+  // when it opens, so nothing may change while the transaction is built.
   const [isOpeningReviewSheet, setIsOpeningReviewSheet] = useState(false);
 
   const { balanceItems, scanResults } = useBalancesList({
@@ -445,6 +448,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   } = useSwapTransactionSettings({
     recommendedFee,
     operationCount: swapOperationCount,
+    isHeaderButtonDisabled: isOpeningReviewSheet,
   });
 
   const {
@@ -523,9 +527,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   });
 
   // Swap source ↔ destination via the chevron-down button between the
-  // cards. Always enabled: the held source token can always be moved down
-  // to the receive slot. The receive-side token only moves UP to the sell
-  // slot when it's held; otherwise the sell side resets to "Select".
+  // cards. Enabled whenever the form is: the held source token can always be
+  // moved down to the receive slot. The receive-side token only moves UP to
+  // the sell slot when it's held; otherwise the sell side resets to "Select".
   const { handleSwapDirection } = useSwapDirectionToggle({
     sourceBalance,
     destinationBalance,
@@ -797,10 +801,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         item={item}
         prices={prices}
         network={network}
-        onPress={() => openTrendingDetail(item, index)}
+        onPress={() => {
+          // The detail sheet can change the destination.
+          if (!isOpeningReviewSheet) openTrendingDetail(item, index);
+        }}
       />
     ),
-    [prices, network, openTrendingDetail],
+    [prices, network, openTrendingDetail, isOpeningReviewSheet],
   );
 
   if (isProcessing) {
@@ -853,6 +860,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         }
         pickerSecurityLevel={sourceSecurityAssessment.level}
         onPickerPress={() => openSourcePicker(SwapPickerEntrypoint.DROPDOWN)}
+        disabled={isOpeningReviewSheet}
         pickerTestID={
           sourceBalance ? "swap-sell-pill" : "swap-sell-choose-pill"
         }
@@ -870,13 +878,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         secondaryAmountText={sellSmallText}
       />
 
-      {/* Swaps source ↔ destination. Always enabled — when the previous
-          destination is non-held the sell side resets to "Select" rather
-          than being prevented. */}
+      {/* Swaps source ↔ destination. Enabled except while Review is being
+          built — when the previous destination is non-held the sell side
+          resets to "Select" rather than being prevented. */}
       <View className="items-center my-[-14px] z-10" pointerEvents="box-none">
         <TouchableOpacity
           testID="swap-direction-toggle"
           onPress={handleSwapDirection}
+          disabled={isOpeningReviewSheet}
           hitSlop={10}
           className="w-[40px] h-[40px] rounded-full items-center justify-center bg-background-secondary"
         >
@@ -903,6 +912,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         // balances pipeline hydrates useTokenIconsStore.
         pickerIconUrl={destinationTokenDescriptor?.iconUrl}
         onPickerPress={openDestinationFromDropdown}
+        disabled={isOpeningReviewSheet}
         pickerTestID={
           destinationTokenDescriptor
             ? "swap-receive-pill"
@@ -916,7 +926,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       />
 
       <View className="items-center mt-[24px]">
-        <PercentageButtons onPress={handlePercentagePress} />
+        <PercentageButtons
+          onPress={handlePercentagePress}
+          disabled={isOpeningReviewSheet}
+        />
       </View>
 
       {(showTrending || showTrendingSpinner) && (
