@@ -1196,7 +1196,8 @@
     },
     "buyWithCoinbase": {
       "title": "Comprar com Coinbase",
-      "description": "Transferir de Coinbase & outras opções"
+      "description": "Transferir de Coinbase & outras opções",
+      "error": "Não foi possível se comunicar com a Coinbase"
     }
   },
   "importSecretKeyScreen": {

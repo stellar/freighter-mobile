@@ -165,7 +165,8 @@
     },
     "buyWithCoinbase": {
       "title": "Buy with Coinbase",
-      "description": "Transfer from Coinbase & other options"
+      "description": "Transfer from Coinbase & other options",
+      "error": "Unable to communicate with Coinbase"
     }
   },
   "changeNetworkScreen": {
