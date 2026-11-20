@@ -94,7 +94,8 @@
       "title": "Exibição",
       "system": "Auto (Sistema)",
       "light": "Claro",
-      "dark": "Escuro"
+      "dark": "Escuro",
+      "updated": "Preferência de tema atualizada"
     },
     "security": {
       "title": "Segurança"

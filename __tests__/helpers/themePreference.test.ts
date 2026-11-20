@@ -1,5 +1,6 @@
 import {
   applyThemePreference,
+  applyThemePreferenceWithFade,
   getStoredThemePreference,
   resolveColorScheme,
   saveThemePreference,
@@ -105,6 +106,69 @@ describe("themePreference helpers", () => {
       jest.spyOn(Appearance, "getColorScheme").mockReturnValue("dark");
 
       await expect(resolveColorScheme("system")).resolves.toBe("dark");
+    });
+  });
+  describe("applyThemePreferenceWithFade", () => {
+    const setup = (currentScheme: "light" | "dark") => {
+      const beginThemeTransition = jest.fn().mockResolvedValue(true);
+      const endThemeTransition = jest.fn();
+      setNativeModule({ beginThemeTransition, endThemeTransition });
+      jest.spyOn(Appearance, "getColorScheme").mockReturnValue(currentScheme);
+      let onChange: (() => void) | undefined;
+      jest.spyOn(Appearance, "addChangeListener").mockImplementation((cb) => {
+        onChange = () => cb({ colorScheme: null });
+        return { remove: jest.fn() };
+      });
+      const setColorScheme = jest
+        .spyOn(Appearance, "setColorScheme")
+        .mockImplementation(() => onChange?.());
+      return { beginThemeTransition, endThemeTransition, setColorScheme };
+    };
+
+    it("freezes the screen, applies, then fades once the scheme changes", async () => {
+      const { beginThemeTransition, endThemeTransition, setColorScheme } =
+        setup("light");
+
+      await applyThemePreferenceWithFade("dark");
+
+      expect(beginThemeTransition).toHaveBeenCalled();
+      expect(setColorScheme).toHaveBeenCalledWith("dark");
+      expect(endThemeTransition).toHaveBeenCalledWith(expect.any(Number));
+      expect(beginThemeTransition.mock.invocationCallOrder[0]).toBeLessThan(
+        setColorScheme.mock.invocationCallOrder[0],
+      );
+    });
+
+    it("applies without a fade when the scheme won't change", async () => {
+      const { beginThemeTransition, setColorScheme } = setup("dark");
+
+      await applyThemePreferenceWithFade("dark");
+
+      expect(beginThemeTransition).not.toHaveBeenCalled();
+      expect(setColorScheme).toHaveBeenCalledWith("dark");
+    });
+
+    it("applies without a fade when native can't freeze the screen", async () => {
+      const { beginThemeTransition, endThemeTransition, setColorScheme } =
+        setup("light");
+      beginThemeTransition.mockResolvedValue(false);
+
+      await applyThemePreferenceWithFade("dark");
+
+      expect(setColorScheme).toHaveBeenCalledWith("dark");
+      expect(endThemeTransition).not.toHaveBeenCalled();
+    });
+
+    it("drops a pick a newer one replaced while it waited", async () => {
+      const { endThemeTransition, setColorScheme } = setup("light");
+      let isWanted = true;
+      const pending = applyThemePreferenceWithFade("dark", () => isWanted);
+      isWanted = false;
+
+      await pending;
+
+      expect(setColorScheme).not.toHaveBeenCalled();
+      expect(endThemeTransition).not.toHaveBeenCalledWith(expect.any(Number));
     });
   });
 });

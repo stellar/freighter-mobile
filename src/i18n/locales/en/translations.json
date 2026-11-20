@@ -94,7 +94,8 @@
       "title": "Display",
       "system": "Auto(System)",
       "light": "Light",
-      "dark": "Dark"
+      "dark": "Dark",
+      "updated": "Theme preference updated"
     },
     "security": {
       "title": "Security"

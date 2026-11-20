@@ -89,8 +89,8 @@ jest.mock("ducks/balances", () => ({
     getState: jest.fn(() => ({ isFunded: false, fetchedPublicKey: null })),
   },
 }));
-jest.mock("ducks/preferences", () => ({
-  usePreferencesStore: {
+jest.mock("ducks/themePreference", () => ({
+  useThemePreferenceStore: {
     getState: jest.fn(() => ({ themePreference: "system" })),
   },
 }));

@@ -62,4 +62,48 @@ class ThemePreference: NSObject {
       resolver(style == .dark ? "dark" : "light")
     }
   }
+
+  // Cross-fade for a theme change: JS freezes the current frame on top, swaps
+  // the theme underneath, then fades the frozen frame out once the new theme
+  // has rendered. Main-queue only.
+  private var transitionSnapshot: UIView?
+
+  @objc
+  func beginThemeTransition(
+    _ resolver: @escaping RCTPromiseResolveBlock,
+    rejecter: @escaping RCTPromiseRejectBlock
+  ) {
+    DispatchQueue.main.async {
+      self.transitionSnapshot?.removeFromSuperview()
+      self.transitionSnapshot = nil
+      let window = UIApplication.shared.connectedScenes
+        .compactMap { $0 as? UIWindowScene }
+        .flatMap { $0.windows }
+        .first { $0.isKeyWindow }
+      guard let window, let snapshot = window.snapshotView(afterScreenUpdates: false) else {
+        resolver(false)
+        return
+      }
+      snapshot.frame = window.bounds
+      snapshot.isUserInteractionEnabled = false
+      window.addSubview(snapshot)
+      self.transitionSnapshot = snapshot
+      resolver(true)
+    }
+  }
+
+  @objc
+  func endThemeTransition(_ durationMs: NSNumber) {
+    DispatchQueue.main.async {
+      guard let snapshot = self.transitionSnapshot else { return }
+      self.transitionSnapshot = nil
+      UIView.animate(
+        withDuration: durationMs.doubleValue / 1000,
+        delay: 0,
+        options: [.curveEaseInOut, .beginFromCurrentState],
+        animations: { snapshot.alpha = 0 },
+        completion: { _ in snapshot.removeFromSuperview() }
+      )
+    }
+  }
 }

@@ -34,10 +34,9 @@ export const RadioButton: React.FC<RadioButtonProps> = ({
       accessibilityRole="radio"
       accessibilityState={{ checked }}
       accessibilityLabel={label}
-      className="flex-row items-start gap-[8px]"
+      className="flex-row items-center gap-[8px]"
     >
-      {/* Centres the circle on the label's 24pt line. */}
-      <View className="pt-[4px]">
+      <View>
         <View
           className="items-center justify-center"
           style={{

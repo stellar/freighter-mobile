@@ -4,18 +4,26 @@ import android.app.UiModeManager
 import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.view.PixelCopy
+import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.appcompat.app.AppCompatDelegate
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.UiThreadUtil
 
 /**
  * Native copy of the Preferences theme choice ("system" | "light" | "dark").
  *
  * JS keeps no other copy: it reads the stored value synchronously at startup
- * (getConstants) and writes here on change. Being native lets MainActivity
+ * (getConstants) and writes here on change. Being native lets MainApplication
  * apply a pinned theme before the splash is drawn, which AsyncStorage can't.
  */
 object ThemePreferenceStore {
@@ -104,5 +112,80 @@ class ThemePreferenceModule(private val reactContext: ReactApplicationContext) :
   @ReactMethod
   fun getSystemColorScheme(promise: Promise) {
     promise.resolve(ThemePreferenceStore.systemColorScheme(reactContext))
+  }
+
+  // Cross-fade for a theme change: JS freezes the current frame on top, swaps
+  // the theme underneath, then fades the frozen frame out once the new theme
+  // has rendered. Only touched on the UI thread.
+  private var transitionOverlay: ImageView? = null
+
+  @ReactMethod
+  fun beginThemeTransition(promise: Promise) {
+    val activity = reactContext.currentActivity
+    if (activity == null) {
+      promise.resolve(false)
+      return
+    }
+    UiThreadUtil.runOnUiThread {
+      removeTransitionOverlay()
+      val decor = activity.window.decorView as? ViewGroup
+      if (decor == null || decor.width == 0 || decor.height == 0) {
+        promise.resolve(false)
+        return@runOnUiThread
+      }
+      val bitmap = Bitmap.createBitmap(decor.width, decor.height, Bitmap.Config.ARGB_8888)
+      val attach = {
+        val overlay = ImageView(activity).apply {
+          setImageBitmap(bitmap)
+          scaleType = ImageView.ScaleType.FIT_XY
+        }
+        decor.addView(
+            overlay,
+            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+        )
+        transitionOverlay = overlay
+        promise.resolve(true)
+      }
+      // Drawing the view tree misses hardware-only content (blurs, Skia), so
+      // copy the window's pixels where the API exists.
+      val drawFallback = {
+        try {
+          decor.draw(Canvas(bitmap))
+          attach()
+        } catch (e: Exception) {
+          promise.resolve(false)
+        }
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        PixelCopy.request(
+            activity.window,
+            bitmap,
+            { result -> if (result == PixelCopy.SUCCESS) attach() else drawFallback() },
+            Handler(Looper.getMainLooper()),
+        )
+      } else {
+        drawFallback()
+      }
+    }
+  }
+
+  @ReactMethod
+  fun endThemeTransition(durationMs: Double) {
+    UiThreadUtil.runOnUiThread {
+      val overlay = transitionOverlay ?: return@runOnUiThread
+      transitionOverlay = null
+      overlay
+          .animate()
+          .alpha(0f)
+          .setDuration(durationMs.toLong())
+          .withEndAction { (overlay.parent as? ViewGroup)?.removeView(overlay) }
+          .start()
+    }
+  }
+
+  private fun removeTransitionOverlay() {
+    val overlay = transitionOverlay ?: return
+    transitionOverlay = null
+    (overlay.parent as? ViewGroup)?.removeView(overlay)
   }
 }

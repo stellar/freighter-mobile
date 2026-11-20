@@ -9,4 +9,9 @@ RCT_EXTERN_METHOD(setThemePreference:(NSString *)value
 RCT_EXTERN_METHOD(getSystemColorScheme:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(beginThemeTransition:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(endThemeTransition:(nonnull NSNumber *)durationMs)
+
 @end

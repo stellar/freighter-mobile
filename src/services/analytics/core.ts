@@ -10,7 +10,7 @@ import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useNetworkStore } from "ducks/networkInfo";
-import { usePreferencesStore } from "ducks/preferences";
+import { useThemePreferenceStore } from "ducks/themePreference";
 import { isE2ETest } from "helpers/isEnv";
 import { throttle, memoize } from "lodash";
 import { Appearance, Platform } from "react-native";
@@ -156,7 +156,7 @@ export const syncPreferredThemeTrait = (
 
 const syncProfileTraits = (): void => {
   syncIdentifyTraits(useAuthenticationStore.getState().allAccounts);
-  syncPreferredThemeTrait(usePreferencesStore.getState().themePreference);
+  syncPreferredThemeTrait(useThemePreferenceStore.getState().themePreference);
 };
 
 export const initAnalytics = (): void => {

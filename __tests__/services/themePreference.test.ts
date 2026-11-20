@@ -1,9 +1,9 @@
 import { ThemePreference } from "config/themePreference";
 
-jest.mock("ducks/preferences", () => {
+jest.mock("ducks/themePreference", () => {
   let state = { themePreference: "system" };
   return {
-    usePreferencesStore: {
+    useThemePreferenceStore: {
       getState: () => state,
       setState: (partial: Partial<typeof state>) => {
         state = { ...state, ...partial };
@@ -12,7 +12,7 @@ jest.mock("ducks/preferences", () => {
   };
 });
 jest.mock("helpers/themePreference", () => ({
-  applyThemePreference: jest.fn(),
+  applyThemePreferenceWithFade: jest.fn(() => Promise.resolve()),
   saveThemePreference: jest.fn(),
   resolveColorScheme: jest.fn(),
 }));
@@ -23,7 +23,7 @@ jest.mock("services/analytics/core", () => ({
   syncPreferredThemeTrait: jest.fn(),
 }));
 
-type Store = typeof import("ducks/preferences").usePreferencesStore;
+type Store = typeof import("ducks/themePreference").useThemePreferenceStore;
 
 describe("selectThemePreference", () => {
   let selectThemePreference: typeof import("services/themePreference").selectThemePreference;
@@ -56,14 +56,13 @@ describe("selectThemePreference", () => {
       ({ selectThemePreference } = jest.requireActual<
         typeof import("services/themePreference")
       >("../../src/services/themePreference"));
-      store =
-        jest.requireMock<typeof import("ducks/preferences")>(
-          "ducks/preferences",
-        ).usePreferencesStore;
+      store = jest.requireMock<typeof import("ducks/themePreference")>(
+        "ducks/themePreference",
+      ).useThemePreferenceStore;
       const helpers = jest.requireMock<Record<string, jest.Mock>>(
         "helpers/themePreference",
       );
-      mockApply = helpers.applyThemePreference;
+      mockApply = helpers.applyThemePreferenceWithFade;
       mockSave = helpers.saveThemePreference;
       mockResolve = helpers.resolveColorScheme;
       mockTrack = jest.requireMock<{
@@ -87,9 +86,9 @@ describe("selectThemePreference", () => {
       return Promise.resolve();
     });
 
-    await selectThemePreference("dark");
+    await expect(selectThemePreference("dark")).resolves.toBe(true);
 
-    expect(mockApply).toHaveBeenCalledWith("dark");
+    expect(mockApply).toHaveBeenCalledWith("dark", expect.any(Function));
     expect(shownAtSave).toBe("dark");
     expect(mockResolve).toHaveBeenCalledWith("dark");
     expect(mockTrack).toHaveBeenCalledWith({
@@ -101,7 +100,7 @@ describe("selectThemePreference", () => {
   });
 
   it("does nothing when the choice is already in effect", async () => {
-    await selectThemePreference("system");
+    await expect(selectThemePreference("system")).resolves.toBe(false);
     expect(mockApply).not.toHaveBeenCalled();
     expect(mockSave).not.toHaveBeenCalled();
   });
@@ -112,7 +111,7 @@ describe("selectThemePreference", () => {
     await expect(selectThemePreference("dark")).rejects.toThrow("disk");
 
     expect(shown()).toBe("system");
-    expect(mockApply).toHaveBeenLastCalledWith("system");
+    expect(mockApply).toHaveBeenLastCalledWith("system", expect.any(Function));
     expect(mockTrack).not.toHaveBeenCalled();
     expect(mockSyncTrait).not.toHaveBeenCalledWith("dark", expect.anything());
   });
@@ -164,7 +163,7 @@ describe("selectThemePreference", () => {
     await dark;
 
     expect(shown()).toBe("dark");
-    expect(mockApply).toHaveBeenLastCalledWith("dark");
+    expect(mockApply).toHaveBeenLastCalledWith("dark", expect.any(Function));
     expect(mockSyncTrait).toHaveBeenCalledWith("dark", { force: true });
   });
 

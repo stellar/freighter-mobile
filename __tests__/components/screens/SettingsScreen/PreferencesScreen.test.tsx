@@ -22,7 +22,7 @@ jest.mock("hooks/useAnalyticsPermissions", () => ({
   useAnalyticsPermissions: jest.fn(),
 }));
 
-const mockSelectThemePreference = jest.fn(() => Promise.resolve());
+const mockSelectThemePreference = jest.fn(() => Promise.resolve(true));
 jest.mock("services/themePreference", () => ({
   selectThemePreference: (...args: unknown[]) =>
     mockSelectThemePreference(...(args as [])),
@@ -181,6 +181,23 @@ describe("PreferencesScreen", () => {
     await userEvent.press(getByTestId("theme-option-dark"));
 
     expect(mockSelectThemePreference).toHaveBeenCalledWith("dark");
+  });
+
+  it("confirms a saved theme change with a toast", async () => {
+    const { getByTestId, findByText } = renderPreferencesScreen();
+
+    await userEvent.press(getByTestId("theme-option-dark"));
+
+    expect(await findByText("Theme preference updated")).toBeTruthy();
+  });
+
+  it("shows no toast when the choice didn't change", async () => {
+    mockSelectThemePreference.mockResolvedValueOnce(false);
+    const { getByTestId, queryByText } = renderPreferencesScreen();
+
+    await userEvent.press(getByTestId("theme-option-system"));
+
+    expect(queryByText("Theme preference updated")).toBeNull();
   });
 
   it("opens the privacy policy from the data sharing row", async () => {

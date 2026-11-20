@@ -5,6 +5,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import PermissionModal from "components/screens/SettingsScreen/PreferencesScreen/PermissionModal";
 import Icon from "components/sds/Icon";
 import { RadioButton } from "components/sds/RadioButton";
+import { SuccessToastBanner } from "components/sds/Toast/SuccessToastBanner";
 import { Toggle } from "components/sds/Toggle";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, FREIGHTER_PRIVACY_URL } from "config/constants";
@@ -12,11 +13,13 @@ import { logger } from "config/logger";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { THEME_PREFERENCES, ThemePreference } from "config/themePreference";
 import { usePreferencesStore } from "ducks/preferences";
+import { useThemePreferenceStore } from "ducks/themePreference";
 import { pxValue } from "helpers/dimensions";
 import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
+import { useToast } from "providers/ToastProvider";
 import React, { useRef, useCallback, useEffect } from "react";
 import {
   View,
@@ -71,7 +74,10 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const { themeColors } = useColors();
   const { open: openInAppBrowser } = useInAppBrowser();
-  const themePreference = usePreferencesStore((state) => state.themePreference);
+  const { showToast } = useToast();
+  const themePreference = useThemePreferenceStore(
+    (state) => state.themePreference,
+  );
 
   const themeLabels: Record<ThemePreference, string> = {
     system: t("preferences.display.system"),
@@ -85,15 +91,30 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
     });
   }, [openInAppBrowser]);
 
-  const handleThemeChange = useCallback((preference: ThemePreference) => {
-    selectThemePreference(preference).catch((error) => {
-      logger.error(
-        "PreferencesScreen",
-        "Failed to save theme preference",
-        error,
-      );
-    });
-  }, []);
+  const handleThemeChange = useCallback(
+    (preference: ThemePreference) => {
+      selectThemePreference(preference)
+        .then((isSaved) => {
+          if (isSaved) {
+            const title = t("preferences.display.updated");
+            showToast({
+              variant: "success",
+              title,
+              content: <SuccessToastBanner title={title} />,
+              toastId: "theme-preference-updated",
+            });
+          }
+        })
+        .catch((error) => {
+          logger.error(
+            "PreferencesScreen",
+            "Failed to save theme preference",
+            error,
+          );
+        });
+    },
+    [showToast, t],
+  );
 
   const {
     isTrackingEnabled,

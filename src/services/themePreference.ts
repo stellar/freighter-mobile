@@ -1,7 +1,7 @@
 import { ThemePreference } from "config/themePreference";
-import { usePreferencesStore } from "ducks/preferences";
+import { useThemePreferenceStore } from "ducks/themePreference";
 import {
-  applyThemePreference,
+  applyThemePreferenceWithFade,
   resolveColorScheme,
   saveThemePreference,
 } from "helpers/themePreference";
@@ -18,22 +18,26 @@ let lastFailedPick = 0;
 let lastSavedPreference: ThemePreference | undefined;
 
 const showPreference = (preference: ThemePreference): void => {
-  usePreferencesStore.setState({ themePreference: preference });
-  applyThemePreference(preference);
+  useThemePreferenceStore.setState({ themePreference: preference });
+  applyThemePreferenceWithFade(
+    preference,
+    () => useThemePreferenceStore.getState().themePreference === preference,
+  ).catch(() => {});
 };
 
 /**
  * Handles a pick in the Preferences theme picker: applies it immediately,
  * persists it natively, then reports it. If the newest pick fails to save, the
  * screen goes back to what is saved, so it never shows a choice that would be
- * lost on relaunch; the error is rethrown and nothing is reported.
+ * lost on relaunch; the error is rethrown and nothing is reported. Resolves
+ * true once a new choice is saved, false for the option already in effect.
  */
 export const selectThemePreference = async (
   preference: ThemePreference,
-): Promise<void> => {
-  const previous = usePreferencesStore.getState().themePreference;
+): Promise<boolean> => {
+  const previous = useThemePreferenceStore.getState().themePreference;
   if (preference === previous) {
-    return;
+    return false;
   }
   lastSavedPreference ??= previous;
   latestPick += 1;
@@ -67,7 +71,8 @@ export const selectThemePreference = async (
   analytics.trackThemeChanged({ preference, previous, colorScheme });
   // A newer pick reports its own value; an older save finishing later must
   // not overwrite it.
-  if (preference === usePreferencesStore.getState().themePreference) {
+  if (preference === useThemePreferenceStore.getState().themePreference) {
     syncPreferredThemeTrait(preference, { force: true });
   }
+  return true;
 };
