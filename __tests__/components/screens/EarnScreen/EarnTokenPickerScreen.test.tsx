@@ -1484,6 +1484,90 @@ describe("EarnTokenPickerScreen", () => {
       });
     });
 
+    // As on main Swap: switching the sell card to fiat switches the receive
+    // card too, so both cards lead with the same unit.
+    describe("the receive card in fiat mode", () => {
+      afterEach(() => {
+        mockEarnSwapOverrides = {};
+      });
+
+      const sheetProps = () =>
+        (
+          findByContent(EarnSwapBottomSheet)?.props
+            .customContent as React.ReactElement<{
+            converter: { setShowFiatAmount: (show: boolean) => void };
+            destinationAmount: string;
+            destinationSecondaryText?: string;
+          }>
+        ).props;
+
+      // Fiat mode needs a priced source: the converter leaves it for an
+      // unpriced one, whose card has no toggle.
+      const openWithEurcPrice = () => {
+        mockUseBalancesList.mockReturnValue({
+          balanceItems: [
+            {
+              id: "native",
+              tokenType: "native",
+              token: { type: "native", code: "XLM" },
+              tokenCode: "XLM",
+              total: new BigNumber("100"),
+              available: new BigNumber("100"),
+              minimumBalance: new BigNumber("1"),
+              currentPrice: new BigNumber("0.5"),
+            },
+          ],
+          hiddenBalanceItems: [],
+          scanResults: {},
+        });
+        mockUseEarnTokens.pool = {
+          name: "Fixed",
+          reserves: [{ assetId: "CEURCFAKESACADDRESS", priceUsd: 1.08 }],
+        };
+        openEarnSwap();
+      };
+
+      it("leads with the fiat value before there is a quote", () => {
+        openWithEurcPrice();
+
+        act(() => {
+          sheetProps().converter.setShowFiatAmount(true);
+        });
+
+        expect(sheetProps().destinationAmount).toBe(formatFiatAmount("0"));
+        expect(sheetProps().destinationSecondaryText).toBe(
+          `${formatTokenForDisplay("0")} EURC`,
+        );
+      });
+
+      it("leads with the quote's fiat value, and back with its token amount", () => {
+        mockEarnSwapOverrides = { pathResult: { destinationAmount: "10" } };
+        openWithEurcPrice();
+
+        act(() => {
+          sheetProps().converter.setShowFiatAmount(true);
+        });
+
+        expect(sheetProps().destinationAmount).toBe(
+          formatFiatAmount(new BigNumber("10.8")),
+        );
+        expect(sheetProps().destinationSecondaryText).toBe(
+          `${formatTokenForDisplay("10")} EURC`,
+        );
+
+        act(() => {
+          sheetProps().converter.setShowFiatAmount(false);
+        });
+
+        expect(sheetProps().destinationAmount).toBe(
+          formatTokenForDisplay("10"),
+        );
+        expect(sheetProps().destinationSecondaryText).toBe(
+          formatFiatAmount(new BigNumber("10.8")),
+        );
+      });
+    });
+
     // Review reads the receive token's fiat from the prices store, and an
     // unheld token has no balance price to fall back on.
     describe("the receive token's price", () => {

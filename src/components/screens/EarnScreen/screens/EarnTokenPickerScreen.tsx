@@ -48,6 +48,7 @@ import { EarnIntroScreen } from "components/screens/EarnScreen/screens/EarnIntro
 import { SwapDetailsBottomSheet } from "components/screens/SwapScreen/components";
 import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
 import {
+  buildReceiveTexts,
   buildSellSecondaryText,
   buildSourceBalanceRight,
   descriptorFromBalance,
@@ -89,7 +90,7 @@ import { useTokenIconsStore } from "ducks/tokenIcons";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, getTokenIdentifier } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
-import { formatFiatAmount, formatTokenForDisplay } from "helpers/formatAmount";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HeldBalanceItem } from "hooks/useBalancesList";
@@ -325,23 +326,36 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     fiatAmountDisplay: earnSwap.converter.fiatAmountDisplay,
   });
 
-  // The receive card's fiat line, priced by the pool catalog: the account
-  // doesn't hold the destination yet, so there is no balance price for it.
-  // It's always there, as on main Swap, so the card doesn't grow when the
-  // first quote arrives: the quote's value, $0.00 before there is one, or
-  // "--" for a token without a price.
-  const earnSwapDestinationFiatText = useMemo(() => {
+  // The receive card's two lines, built as on main Swap: the token amount
+  // over its fiat value, or the other way round in fiat mode, so both cards
+  // lead with the same unit. The fiat line is always there, so the card
+  // doesn't grow when the first quote arrives: the quote's value, $0.00
+  // before there is one, or "--" for a token without a price. It's priced
+  // by the pool catalog: the account doesn't hold the destination yet, so
+  // there is no balance price for it.
+  const earnSwapReceiveTexts = useMemo(() => {
     const price = pool?.reserves.find(
       (reserve) => reserve.assetId === swapOption?.assetId,
     )?.priceUsd;
-    if (price === null || price === undefined) {
-      return "--";
-    }
-    const amount = earnSwap.pathResult?.destinationAmount;
-    return formatFiatAmount(
-      amount ? new BigNumber(amount).multipliedBy(price) : "0",
-    );
-  }, [pool, swapOption, earnSwap.pathResult]);
+    const hasDestinationPrice = price !== null && price !== undefined;
+    const destinationAmount = earnSwap.pathResult?.destinationAmount ?? "0";
+    const amount = new BigNumber(destinationAmount);
+    return buildReceiveTexts({
+      showFiatAmount: earnSwap.converter.showFiatAmount,
+      destinationAmount,
+      destinationFiat:
+        hasDestinationPrice && amount.isFinite() && !amount.isZero()
+          ? amount.multipliedBy(price)
+          : undefined,
+      hasDestinationPrice,
+      destinationTokenLabel: swapOption?.code ?? "",
+    });
+  }, [
+    pool,
+    swapOption,
+    earnSwap.pathResult,
+    earnSwap.converter.showFiatAmount,
+  ]);
 
   // "Swap from" stacks over the swap sheet rather than replacing it, so its
   // back arrow can return with the source unchanged. The swap sheet stays
@@ -1160,9 +1174,9 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
                 issuer: { key: earnSwap.destination.issuer ?? "" },
               }}
               destinationLabel={swapOption.code}
-              destinationAmount={earnSwap.pathResult?.destinationAmount ?? "0"}
+              destinationAmount={earnSwapReceiveTexts.receiveBigText}
               sourceSecondaryText={earnSwapSourceSecondaryText}
-              destinationSecondaryText={earnSwapDestinationFiatText}
+              destinationSecondaryText={earnSwapReceiveTexts.receiveSmallText}
               onPercentagePress={earnSwap.handlePercentagePress}
               onSettingsPress={handleSwapSettingsPress}
               onClose={handleCloseSwap}

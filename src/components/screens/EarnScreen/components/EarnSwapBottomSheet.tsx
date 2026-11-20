@@ -41,10 +41,12 @@ export interface EarnSwapBottomSheetProps {
    */
   destinationToken: Token;
   destinationLabel: string;
-  /** Quoted receive amount, already formatted. */
+  /** The receive card's main line, already formatted: the quoted amount,
+   *  or its fiat value in fiat mode, as on main Swap. */
   destinationAmount: string;
-  /** Fiat counterpart of the quote, already formatted: $0.00 before there
-   *  is a quote, "--" without a price. Without it the line is hidden. */
+  /** The receive card's small line, already formatted: the quote's fiat
+   *  value ($0.00 before there is a quote, "--" without a price), or the
+   *  amount with its code in fiat mode. Without it the line is hidden. */
   destinationSecondaryText?: string;
   /** The quote for the current amount is on its way: the receive amount
    *  shimmers, as on main Swap. */
