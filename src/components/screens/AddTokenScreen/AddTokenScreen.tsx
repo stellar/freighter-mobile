@@ -137,21 +137,24 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
       sorobanOffMainnet: true,
     });
 
-  // Blockaid is mainnet-only, so off mainnet the verdict must match the search
-  // rows' (SAFE), not the lookup's "unable to scan".
-  const popularRows = useMemo(
-    () =>
-      isMainnet(network)
-        ? popularTokens
-        : popularTokens.map((token) => ({
-            ...token,
-            isSuspicious: false,
-            isMalicious: false,
-            isUnableToScan: false,
-            securityLevel: SecurityLevel.SAFE,
-          })),
-    [network, popularTokens],
-  );
+  // `hasTrustline` on a record can be stale (cached from when the trending list
+  // was built) and Popular is non-held by construction, so a row must offer
+  // Add. Blockaid is mainnet-only, so off mainnet the verdict must match the
+  // search rows' (SAFE), not the lookup's "unable to scan".
+  const popularRows = useMemo(() => {
+    const offMainnet = !isMainnet(network);
+
+    return popularTokens.map((token) => ({
+      ...token,
+      hasTrustline: false,
+      ...(offMainnet && {
+        isSuspicious: false,
+        isMalicious: false,
+        isUnableToScan: false,
+        securityLevel: SecurityLevel.SAFE,
+      }),
+    }));
+  }, [network, popularTokens]);
 
   const isTokenMalicious = scannedToken.isMalicious;
   const isTokenSuspicious = scannedToken.isSuspicious;

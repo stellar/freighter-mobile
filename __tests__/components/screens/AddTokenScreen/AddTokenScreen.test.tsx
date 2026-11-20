@@ -334,6 +334,17 @@ describe("AddTokenScreen — Popular tokens", () => {
     },
   );
 
+  it("offers Add, not the manage menu, for a Popular record with a stale hasTrustline", () => {
+    (useSwapTokenLookup as jest.Mock).mockReturnValue({
+      popularTokens: [{ ...makeRecord("AQUA"), hasTrustline: true }],
+      isTrendingLoading: false,
+      stellarExpertDown: false,
+    });
+    const { getAllByTestId } = renderScreen();
+
+    expect(getAllByTestId("add-token-button")).toHaveLength(1);
+  });
+
   describe("security verdict on Add", () => {
     const unscanned = {
       ...makeRecord("AQUA"),

@@ -284,7 +284,8 @@ export const useSwapTokenLookup = ({
       ),
     [hiddenTokenIds],
   );
-  // Off mainnet, LI.FI can't quote a Soroban token, so only held ones list.
+  // Off mainnet the swap pickers list only held Soroban tokens (LI.FI can't
+  // quote the rest); Add token opts in with `sorobanOffMainnet`.
   const visibleRecords = useCallback(
     (tokens: FormattedSearchTokenRecord[]) =>
       tokens.filter(
