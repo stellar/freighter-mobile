@@ -96,6 +96,8 @@ export interface UseSwapTokenLookupProps {
   holdsOnly?: boolean;
   /** The active account, for the contract-ID lookup. */
   publicKey?: string;
+  /** Add token lists Soroban tokens off mainnet; the swap pickers can't route them there. */
+  sorobanOffMainnet?: boolean;
 }
 
 /** Partial-match: does `text` contain `term` (case-insensitive)? */
@@ -138,6 +140,7 @@ export const useSwapTokenLookup = ({
   network,
   balanceItems,
   holdsOnly = false,
+  sorobanOffMainnet = false,
   publicKey,
 }: UseSwapTokenLookupProps): SwapTokenLookupResult => {
   const latestRequestRef = useRef(0);
@@ -288,10 +291,11 @@ export const useSwapTokenLookup = ({
         (t) =>
           !hiddenIdsSet.has(canonicalId(t.tokenCode, t.issuer)) &&
           (isMainnet(network) ||
+            sorobanOffMainnet ||
             t.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN ||
             hasExistingTrustline(t.tokenCode, t.issuer)),
       ),
-    [hiddenIdsSet, network, hasExistingTrustline],
+    [hiddenIdsSet, network, sorobanOffMainnet, hasExistingTrustline],
   );
 
   // -- Idle surface ---------------------------------------------------------
