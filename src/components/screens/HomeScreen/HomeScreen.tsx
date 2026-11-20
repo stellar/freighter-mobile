@@ -168,7 +168,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       !isCollectiblesLoading && !isCollectiblesGridEmpty && !collectiblesError;
 
     // Earn needs an allowlisted Blend pool on this network and the
-    // `earn_deposit` kill switch. The switch is read only once the flags have
+    // `earn_deposit` flag. The flag is read only once the flags have
     // loaded, so the button never shows before Amplitude could turn it off;
     // a failed fetch also counts as loaded, so it can't stay hidden forever.
     const isEarnFlagOn = useRemoteConfigStore(

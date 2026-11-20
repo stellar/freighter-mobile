@@ -70,8 +70,8 @@ describe("production defaults", () => {
           );
 
         expect(store.getState().use_token_price_history).toBe(true);
-        // Earn's kill switch ships ON too, as in the extension.
-        expect(store.getState().earn_deposit).toBe(true);
+        // Earn ships OFF until Amplitude turns it on.
+        expect(store.getState().earn_deposit).toBe(false);
         // Proves the production branch was read: swap is ON in dev and
         // follows isAndroid (mocked false) in production.
         expect(store.getState().swap_enabled).toBe(false);
@@ -239,6 +239,25 @@ describe("remoteConfig duck", () => {
       });
 
       expect(result.current.use_balances_v2).toBe(false);
+    });
+
+    it("turns earn_deposit on when the variant is on", async () => {
+      act(() => {
+        useRemoteConfigStore.setState({ earn_deposit: false });
+      });
+      const mockClient = createMockExperimentClient();
+      mockClient.all.mockReturnValue({
+        earn_deposit: { value: "on" },
+      });
+      mockGetExperimentClient.mockReturnValue(mockClient);
+
+      const { result } = renderHook(() => useRemoteConfigStore());
+
+      await act(async () => {
+        await result.current.fetchFeatureFlags();
+      });
+
+      expect(result.current.earn_deposit).toBe(true);
     });
 
     it("turns earn_deposit off when the variant is off", async () => {
