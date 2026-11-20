@@ -23,6 +23,7 @@ import ErrorState from "components/screens/AddTokenScreen/ErrorState";
 import RemoveTokenBottomSheetContent from "components/screens/AddTokenScreen/RemoveTokenBottomSheet";
 import TokenItem from "components/screens/AddTokenScreen/TokenItem";
 import { detailsRouteForRecord } from "components/screens/SwapScreen/helpers";
+import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
@@ -124,6 +125,17 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     publicKey: account?.publicKey,
     balanceItems,
   });
+
+  // Only `popularTokens` is used; search stays with `useTokenLookup`, which
+  // also scans for malicious tokens. Off mainnet, trending Soroban tokens are
+  // kept because this screen can add them.
+  const { popularTokens, isTrendingLoading, stellarExpertDown } =
+    useSwapTokenLookup({
+      network,
+      balanceItems,
+      publicKey: account?.publicKey,
+      sorobanOffMainnet: true,
+    });
 
   const isTokenMalicious = scannedToken.isMalicious;
   const isTokenSuspicious = scannedToken.isSuspicious;
@@ -478,6 +490,11 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   // Only before the user starts searching: once there is a query, a hidden
   // token that matches shows Unhide on its own row instead.
   const isSearchEmpty = searchTerm.trim() === "";
+  const popularIdle =
+    isSearchEmpty && status === HookStatus.IDLE && !stellarExpertDown;
+  const showPopular = popularIdle && popularTokens.length > 0;
+  const showPopularSpinner =
+    popularIdle && isTrendingLoading && popularTokens.length === 0;
 
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
@@ -630,6 +647,36 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
             </View>
           )}
         </View>
+        {showPopularSpinner && (
+          <View className="items-center py-8">
+            <Spinner testID="add-token-popular-spinner" />
+          </View>
+        )}
+        {showPopular && (
+          <ScrollView
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+            alwaysBounceVertical={false}
+          >
+            <View
+              className="mt-4 mb-6 flex-row items-center gap-2"
+              testID="add-token-popular-header"
+            >
+              <Text md medium secondary>
+                {t("swapScreen.popularTokensSection")}
+              </Text>
+            </View>
+            {popularTokens.map((token) => (
+              <TokenItem
+                key={`${token.tokenCode}:${token.issuer}`}
+                token={token}
+                handleAddToken={handleAddTokenMemo}
+                handleRemoveToken={handleRemoveTokenMemo}
+                onPress={canViewDetails ? openTokenDetails : undefined}
+              />
+            ))}
+          </ScrollView>
+        )}
         {status === HookStatus.LOADING && <Spinner />}
         {status === HookStatus.SUCCESS && (
           <ScrollView

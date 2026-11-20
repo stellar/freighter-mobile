@@ -2,6 +2,7 @@
 import { fireEvent } from "@testing-library/react-native";
 import AddTokenScreen from "components/screens/AddTokenScreen/AddTokenScreen";
 import { recordTokenId } from "components/screens/SwapScreen/helpers";
+import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { ROOT_NAVIGATOR_ROUTES } from "config/routes";
 import { HookStatus, TokenTypeWithCustomToken } from "config/types";
 import { renderWithProviders } from "helpers/testUtils";
@@ -9,6 +10,10 @@ import { useTokenLookup } from "hooks/useTokenLookup";
 import React from "react";
 
 jest.mock("hooks/useTokenLookup", () => ({ useTokenLookup: jest.fn() }));
+
+jest.mock("components/screens/SwapScreen/hooks/useSwapTokenLookup", () => ({
+  useSwapTokenLookup: jest.fn(),
+}));
 
 const mockPriceHistoryEnabled = jest.fn(() => false);
 jest.mock("hooks/usePriceHistoryEnabled", () => ({
@@ -63,6 +68,14 @@ const makeRecord = (tokenCode: string) => ({
 });
 const verified = makeRecord("USDC");
 const unverified = makeRecord("SCAM");
+
+beforeEach(() => {
+  (useSwapTokenLookup as jest.Mock).mockReturnValue({
+    popularTokens: [],
+    isTrendingLoading: false,
+    stellarExpertDown: false,
+  });
+});
 
 describe("AddTokenScreen — View details gate", () => {
   beforeEach(() => {
@@ -167,5 +180,103 @@ describe("AddTokenScreen — View details gate", () => {
     expect(queryByTestId("token-item-body-USDC")).toBeNull();
     expect(queryByTestId("token-item-body-SCAM")).toBeNull();
     expect(getAllByTestId("add-token-button")).toHaveLength(2);
+  });
+});
+
+describe("AddTokenScreen — Popular tokens", () => {
+  const renderScreen = () =>
+    renderWithProviders(
+      <AddTokenScreen navigation={navigation} route={{} as any} />,
+    );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPriceHistoryEnabled.mockReturnValue(false);
+    (useTokenLookup as jest.Mock).mockReturnValue({
+      searchResults: [],
+      verifiedTokens: [],
+      unverifiedTokens: [],
+      hasScanFailed: false,
+      status: HookStatus.IDLE,
+      handleSearch: jest.fn(),
+      resetSearch: jest.fn(),
+    });
+    (useSwapTokenLookup as jest.Mock).mockReturnValue({
+      popularTokens: [makeRecord("AQUA"), makeRecord("EURC")],
+      isTrendingLoading: false,
+      stellarExpertDown: false,
+    });
+  });
+
+  it("lists Popular tokens before typing, each with Add", () => {
+    const { getByText, getAllByTestId } = renderScreen();
+
+    expect(getByText("Popular tokens")).toBeTruthy();
+    expect(getAllByTestId("add-token-button")).toHaveLength(2);
+  });
+
+  it("passes sorobanOffMainnet and the account's balances to the lookup", () => {
+    renderScreen();
+
+    expect(useSwapTokenLookup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sorobanOffMainnet: true,
+        network: "PUBLIC",
+        balanceItems: [],
+        publicKey: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+      }),
+    );
+  });
+
+  it("hides Popular while the field has text and restores it when cleared", () => {
+    const { getByTestId, queryByText } = renderScreen();
+
+    fireEvent.changeText(getByTestId("add-token-search-input"), "aq");
+    expect(queryByText("Popular tokens")).toBeNull();
+
+    fireEvent.changeText(getByTestId("add-token-search-input"), "");
+    expect(queryByText("Popular tokens")).toBeTruthy();
+  });
+
+  it("opens token details with source add_token from a popular row when the gate is open", () => {
+    mockPriceHistoryEnabled.mockReturnValue(true);
+    const { getByTestId } = renderScreen();
+
+    fireEvent.press(getByTestId("token-item-body-AQUA"));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+      expect.objectContaining({ tokenSymbol: "AQUA", source: "add_token" }),
+    );
+  });
+
+  it("renders no pressable body on a popular row when the gate is closed", () => {
+    const { queryByTestId } = renderScreen();
+
+    expect(queryByTestId("token-item-body-AQUA")).toBeNull();
+  });
+
+  it("shows a spinner while Popular loads and no empty state", () => {
+    (useSwapTokenLookup as jest.Mock).mockReturnValue({
+      popularTokens: [],
+      isTrendingLoading: true,
+      stellarExpertDown: false,
+    });
+    const { getByTestId, queryByText } = renderScreen();
+
+    expect(getByTestId("add-token-popular-spinner")).toBeTruthy();
+    expect(queryByText("No tokens found")).toBeNull();
+  });
+
+  it("shows nothing below the field when the list is empty or stellar.expert is down", () => {
+    (useSwapTokenLookup as jest.Mock).mockReturnValue({
+      popularTokens: [],
+      isTrendingLoading: false,
+      stellarExpertDown: true,
+    });
+    const { queryByText, queryByTestId } = renderScreen();
+
+    expect(queryByText("Popular tokens")).toBeNull();
+    expect(queryByTestId("add-token-popular-spinner")).toBeNull();
   });
 });
