@@ -13,6 +13,7 @@ import { SwapDetailsBottomSheet } from "components/screens/SwapScreen/components
 import { NETWORKS } from "config/constants";
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { usePreferencesStore } from "ducks/preferences";
+import { usePricesStore } from "ducks/prices";
 import { descriptorAsPathBalance, swapPairKey, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTokenIconsStore } from "ducks/tokenIcons";
@@ -114,7 +115,12 @@ jest.mock("providers/ToastProvider", () => {
 });
 
 jest.mock("ducks/auth", () => ({
-  useAuthenticationStore: () => ({ network: "TESTNET" }),
+  useAuthenticationStore: (
+    selector?: (state: { network: string }) => unknown,
+  ) => {
+    const state = { network: "TESTNET" };
+    return selector ? selector(state) : state;
+  },
 }));
 
 jest.mock("ducks/balances", () => ({
@@ -1306,6 +1312,29 @@ describe("EarnTokenPickerScreen", () => {
         openEarnSwap();
 
         expect(receiveFiatText()).toBe("--");
+      });
+    });
+
+    // Review reads the receive token's fiat from the prices store, and an
+    // unheld token has no balance price to fall back on.
+    describe("the receive token's price", () => {
+      const { fetchPricesForTokenIds } = usePricesStore.getState();
+      afterEach(() => {
+        usePricesStore.setState({ fetchPricesForTokenIds });
+      });
+
+      it("is fetched as on main Swap", () => {
+        const mockFetchPrices = jest.fn(() => Promise.resolve(true));
+        usePricesStore.setState({ fetchPricesForTokenIds: mockFetchPrices });
+
+        openEarnSwap();
+
+        expect(mockFetchPrices).toHaveBeenCalledWith({
+          tokens: [
+            "EURC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+          ],
+          network: NETWORKS.TESTNET,
+        });
       });
     });
 

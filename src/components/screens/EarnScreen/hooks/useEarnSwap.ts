@@ -21,10 +21,14 @@ import {
   useSwapQuoteFees,
   useSwapRouteView,
   useSwapSecurityAssessments,
+  useSwapTokenPrices,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import { DEFAULT_DECIMALS, TransactionContext } from "config/constants";
-import { TokenTypeWithCustomToken } from "config/types";
+import {
+  FormattedSearchTokenRecord,
+  TokenTypeWithCustomToken,
+} from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
@@ -41,6 +45,9 @@ import {
   assessTokenSecurity,
   extractSecurityWarnings,
 } from "services/blockaid/helper";
+
+// Earn's swap has no Trending list to price.
+const NO_TRENDING_TOKENS: FormattedSearchTokenRecord[] = [];
 
 export interface UseEarnSwapParams {
   /**
@@ -227,6 +234,14 @@ export const useEarnSwap = ({
       defaultSourceBalance.tokenCode ?? "",
     );
   }, [destination, sourceTokenId, defaultSourceBalance, setSourceToken]);
+
+  // As on main Swap: Review prices the receive token from the prices store,
+  // and a token the account doesn't hold has no balance price there.
+  useSwapTokenPrices({
+    enabled: false,
+    tokens: NO_TRENDING_TOKENS,
+    extraTokenIds: destination ? [destination.id] : [],
+  });
 
   const { sourceBalance, destinationBalance } = useSwapBalances({
     balanceItems,
