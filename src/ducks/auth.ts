@@ -49,6 +49,7 @@ import {
   decryptDataWithDerivedKey,
   encryptDataWithDerivedKey,
 } from "helpers/encryptPassword";
+import { markEthenaLaunchPromoSeen } from "helpers/ethenaLaunchPromo";
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { markRebrandAnnouncementSeen } from "helpers/rebrandAnnouncement";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
@@ -1404,14 +1405,9 @@ export function clearAccountData(
     isFetching: false,
   });
 
-  // Clear prices data
-  usePricesStore.setState({
-    pricesByNetwork: {},
-    sourceByNetwork: {},
-    isLoading: false,
-    error: null,
-    lastUpdated: null,
-  });
+  // Clear prices data, and drop the responses of in-flight price requests so
+  // they cannot write this account's prices back into the cleared store.
+  usePricesStore.getState().reset();
 
   // Clear collectibles data
   useCollectiblesStore.setState({
@@ -2226,9 +2222,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             clearAuthKeypairCache();
 
             // A reset leads into onboarding, which must not show the rebrand
-            // announcement. Written first so a failed or interrupted wipe
-            // cannot leave it pending.
+            // announcement or the Ethena launch promo. Written first so a
+            // failed or interrupted wipe cannot leave either pending.
             await markRebrandAnnouncementSeen();
+            await markEthenaLaunchPromoSeen();
 
             // Capture navigationRef before ...initialState clears it to null
             const { navigationRef: navRef } = get();

@@ -27,7 +27,7 @@ jest.mock("ducks/prices", () => ({
 
 jest.mock("ducks/remoteConfig", () => ({
   useRemoteConfigStore: {
-    getState: jest.fn(() => ({ use_token_prices_v2: true })),
+    getState: jest.fn(() => ({})),
   },
 }));
 
@@ -354,7 +354,6 @@ describe("accountsFiatTotals duck", () => {
     expect(mockFetchPricesForTokenIds).toHaveBeenCalledWith({
       tokens: ["XLM", `USDC:${USDC_ISSUER}`],
       network: NETWORKS.PUBLIC,
-      useV2: true,
       forceRefresh: true,
     });
 

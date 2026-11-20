@@ -22,6 +22,7 @@ import {
   getTokenIdentifier,
   getTokenType,
 } from "helpers/balances";
+import { formatSorobanSearchRecord } from "helpers/formatSorobanSearchRecord";
 import { isMainnet } from "helpers/networks";
 import { isContractId } from "helpers/soroban";
 import { splitVerifiedTokens } from "helpers/splitVerifiedTokens";
@@ -252,32 +253,20 @@ export const useTokenLookup = ({
       const isContract = isContractId(result.asset);
 
       if (isContract) {
-        const contractId = result.asset;
-        const tokenCode = result.code ?? result.tomlInfo?.code ?? contractId;
+        const record = formatSorobanSearchRecord(result, (code, contractId) =>
+          hasExistingTrustline(userBalances, code, contractId),
+        );
         const tokenIdentifier = getTokenIdentifier({
           type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
-          code: tokenCode,
+          code: record.tokenCode,
           issuer: {
-            key: contractId,
+            key: record.issuer,
           },
         });
-        const iconUrl =
-          icons[tokenIdentifier]?.imageUrl ?? result.tomlInfo?.image;
 
         return {
-          tokenCode,
-          domain: result.domain ?? "",
-          hasTrustline: hasExistingTrustline(
-            userBalances,
-            tokenCode,
-            contractId,
-          ),
-          iconUrl,
-          issuer: contractId,
-          isNative: false,
-          tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
-          decimals: result.decimals ?? result.tomlInfo?.decimals,
-          name: result.token_name ?? result.tomlInfo?.name,
+          ...record,
+          iconUrl: icons[tokenIdentifier]?.imageUrl ?? result.tomlInfo?.image,
         };
       }
 

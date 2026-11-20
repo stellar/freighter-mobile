@@ -32,6 +32,12 @@ import {
   GetTokenDetailsParams,
   DiscoverProtocol,
   PriceHistoryRange,
+  SwapBuildResponse,
+  SwapBuildResult,
+  SwapRoutePath,
+  SwapQuoteMode,
+  SwapQuotes,
+  SwapQuotesResponse,
   TokenDetailsResponse,
   TokenIdentifier,
   TokenPriceHistory,
@@ -472,10 +478,8 @@ interface TokenPricesResponse {
 export interface FetchTokenPricesParams {
   /** Array of token identifiers to fetch prices for */
   tokens: TokenIdentifier[];
-  /** Active network — the v2 endpoint is network-scoped */
+  /** Active network — the endpoint is network-scoped */
   network: NETWORKS;
-  /** Whether to hit the network-scoped v2 endpoint (remote-config gated) */
-  useV2: boolean;
   /**
    * Cancels the request when the caller no longer needs the answer (e.g. the
    * confirmation price snapshot's terminal-status deadline). Forwarded
@@ -489,7 +493,7 @@ export interface FetchTokenPricesParams {
  * endpoint expects. Only mainnet has a real price source — testnet assets have
  * no market and v2 returns $0, so (like the browser extension) we gate testnet
  * out and show no fiat there. Networks absent from this map (testnet, futurenet)
- * are skipped on both v1 and v2, so a rollback can't reintroduce testnet fiat.
+ * are skipped.
  */
 const PRICE_NETWORK_PARAMS: Partial<Record<NETWORKS, string>> = {
   [NETWORKS.PUBLIC]: NETWORKS.PUBLIC,
@@ -520,16 +524,15 @@ const toWireToken = (tokenId: TokenIdentifier, network: NETWORKS): string =>
 /**
  * Fetches the current USD prices and 24h percentage changes for the given tokens.
  *
- * When `useV2` is true, hits the network-scoped v2 endpoint, passing the active
- * network as a `network` query param; networks the endpoint doesn't serve (e.g.
- * Futurenet) are skipped and return null prices. When false, falls back to the
- * v1 endpoint. LP shares are always filtered out before the request; custom
- * (SEP-41 contract) tokens are filtered only on the legacy v1 path, since the
- * v2 backend prices them. Any requested token without a returned price is
- * filled with null.
+ * Hits the network-scoped freighter-backend-v2 endpoint, passing the active
+ * network as a `network` query param; networks the endpoint doesn't serve are
+ * skipped and return null prices. LP shares are filtered out before the
+ * request; custom (SEP-41 contract) tokens are sent, since the v2 backend
+ * prices them. Any requested token without a returned price is filled with
+ * null.
  *
- * @param params Tokens to price, the active network, the v2 flag, and an
- * optional `AbortSignal` to cancel the request
+ * @param params Tokens to price, the active network, and an optional
+ * `AbortSignal` to cancel the request
  * @returns Promise resolving to a map of token identifiers to their price information
  *
  * @example
@@ -541,7 +544,6 @@ const toWireToken = (tokenId: TokenIdentifier, network: NETWORKS): string =>
  *     "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
  *   ],
  *   network: NETWORKS.PUBLIC,
- *   useV2: true,
  *   signal: controller.signal,
  * });
  *
@@ -552,40 +554,29 @@ const toWireToken = (tokenId: TokenIdentifier, network: NETWORKS): string =>
 export const fetchTokenPrices = async ({
   tokens,
   network,
-  useV2,
   signal,
 }: FetchTokenPricesParams): Promise<TokenPricesMap> => {
-  // The old single exclusion predicate is SPLIT, not moved (token price
-  // graphs design §4.1, Phase 1 item 5):
-  // - LP shares filter out unconditionally on BOTH paths — they are never
-  //   priceable, and an LP id reaching the batch endpoint fails parsing.
-  // - Custom (SEP-41 contract) tokens filter out only on the legacy v1
-  //   rollback path, whose Node backend errors on them. The Go v2 backend
-  //   prices contract tokens, so v2 requests include them — without this, a
-  //   priced SEP-41 token would show a live chart under a "--" price.
+  // LP shares are never priceable, and an LP id reaching the batch endpoint
+  // fails parsing, so they are filtered out. Custom (SEP-41 contract) tokens
+  // are kept: the Go v2 backend prices them.
   const filteredTokens = tokens.filter((tokenId) => {
     // Contract-ness comes from `classifyToken`, not `getTokenType`: the latter
     // splits on the first colon and has no bare-contract-id case, so a bare
     // `C…` id or a symbol containing a colon would fall into its LP catch-all
-    // (dropped as unpriceable) or read as classic (sent to v1). No network is
-    // passed, so the native SAC stays a contract token here.
+    // and be dropped as unpriceable. No network is passed, so the native SAC
+    // stays a contract token here.
     const isContractToken = classifyToken(tokenId).kind === "soroban";
 
-    if (
-      !isContractToken &&
-      getTokenType(tokenId) === TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES
-    ) {
-      return false;
-    }
-
-    return useV2 || !isContractToken;
+    return (
+      isContractToken ||
+      getTokenType(tokenId) !== TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES
+    );
   });
 
   // Skip the request entirely — returning empty prices that the loop below
   // fills with nulls (→ "--" in the UI) — when there's nothing to ask for, or
   // when the active network isn't priceable (testnet/futurenet). Fiat is
-  // mainnet-only; gating here applies to both v1 and v2 so a rollback can't
-  // reintroduce testnet fiat, and avoids guaranteed-failing/zero-value calls.
+  // mainnet-only, and skipping avoids guaranteed-failing/zero-value calls.
   const priceNetwork = PRICE_NETWORK_PARAMS[network];
   const shouldSkipRequest = filteredTokens.length === 0 || !priceNetwork;
 
@@ -593,47 +584,28 @@ export const fetchTokenPrices = async ({
 
   if (!shouldSkipRequest) {
     try {
-      let data: TokenPricesResponse;
-      if (useV2) {
-        // The v2 endpoint is network-scoped via a `network` query param and keys
-        // the native asset as "native", so translate "XLM" -> "native" on the
-        // way out (v1, below, is neither network-scoped nor native-translated).
-        // `toWireToken`, not `isNativeAssetId`: XLM's own SAC arrives as
-        // `XLM:<contract id>` and would otherwise be priced as a Soroban
-        // contract — a different asset to the backend — leaving the balance
-        // on "--" beside a chart this PR now correctly resolves as native.
-        const v2Tokens = filteredTokens.map((tokenId) =>
-          toWireToken(tokenId, network),
-        );
-        ({ data } = await freighterBackendV2.post<TokenPricesResponse>(
-          "/token-prices",
-          { tokens: v2Tokens },
-          { params: { network: priceNetwork }, signal },
-        ));
-      } else if (signal) {
-        ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
-          "/token-prices",
-          { tokens: filteredTokens },
-          { signal },
-        ));
-      } else {
-        // No config object when there's no signal to carry — preserves the
-        // exact call shape for callers that don't pass one.
-        ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
-          "/token-prices",
-          { tokens: filteredTokens },
-        ));
-      }
+      // The endpoint keys the native asset as "native", so translate "XLM" ->
+      // "native" on the way out. `toWireToken`, not `isNativeAssetId`: XLM's
+      // own SAC arrives as `XLM:<contract id>` and would otherwise be priced
+      // as a Soroban contract — a different asset to the backend.
+      const v2Tokens = filteredTokens.map((tokenId) =>
+        toWireToken(tokenId, network),
+      );
+      const { data } = await freighterBackendV2.post<TokenPricesResponse>(
+        "/token-prices",
+        { tokens: v2Tokens },
+        { params: { network: priceNetwork }, signal },
+      );
 
-      // Defensive: if the endpoint returns an unexpected shape (e.g. v2
-      // diverges from `{ data: TokenPricesMap }`), fall back to an empty map so
-      // the null-fill loop below still produces a valid TokenPricesMap instead
-      // of throwing and silently wiping out all prices.
+      // Defensive: if the endpoint returns an unexpected shape (diverging
+      // from `{ data: TokenPricesMap }`), fall back to an empty map so the
+      // null-fill loop below still produces a valid TokenPricesMap instead of
+      // throwing and silently wiping out all prices.
       if (!data?.data) {
         logger.warn(
           "backendApi.fetchTokenPrices",
           "Unexpected token-prices response shape",
-          { useV2, topLevelKeys: data ? Object.keys(data) : [] },
+          { topLevelKeys: data ? Object.keys(data) : [] },
         );
       }
       pricesMap = data?.data ?? {};
@@ -642,7 +614,7 @@ export const fetchTokenPrices = async ({
       // it — "XLM", "native", and the SAC forms alike. The null-fill loop
       // below keys off the original (un-translated) `tokens`, so an id left
       // unaliased here shows "--" even though we hold its price.
-      if (useV2 && pricesMap[V2_NATIVE_PRICE_ID]) {
+      if (pricesMap[V2_NATIVE_PRICE_ID]) {
         const nativePrice = pricesMap[V2_NATIVE_PRICE_ID];
         const nativeOriginals = filteredTokens.filter(
           (tokenId) => toWireToken(tokenId, network) === V2_NATIVE_PRICE_ID,
@@ -1007,6 +979,91 @@ export const fetchTokenStats = async ({
   return data.data;
 };
 
+export interface FetchSwapQuotesParams {
+  network: NETWORKS;
+  /** The account swapping (the JWT identifies the wallet, not the account) */
+  account: string;
+  mode: SwapQuoteMode;
+  /** `XLM`, `CODE:ISSUER` or a `C…` contract ID */
+  fromAsset: string;
+  /** `XLM`, `CODE:ISSUER` or a `C…` contract ID */
+  toAsset: string;
+  /** Decimal string: sold for `send`, received for `receive` */
+  amount: string;
+}
+
+/** A 200 from a swap route whose body is not the envelope; an outage. */
+export class SwapQuotesResponseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SwapQuotesResponseError";
+  }
+}
+
+/**
+ * Quotes a swap from every backend source, best route first. A 200 with empty
+ * `routes` means no source can quote the pair; HTTP failures reject with the
+ * normalized `ApiError` so callers can branch on `status`.
+ */
+export const fetchSwapQuotes = async ({
+  network,
+  ...body
+}: FetchSwapQuotesParams): Promise<SwapQuotes> => {
+  const { data } = await freighterBackendV2.post<SwapQuotesResponse>(
+    "/swap/quotes",
+    body,
+    { params: { network } },
+  );
+
+  if (!Array.isArray(data?.data?.routes)) {
+    throw new SwapQuotesResponseError("Unexpected swap quotes response shape");
+  }
+
+  return data.data;
+};
+
+export interface BuildSwapTxParams {
+  network: NETWORKS;
+  account: string;
+  /** The route's `source`, e.g. `classic` or `lifi` */
+  source: string;
+  fromAsset: string;
+  toAsset: string;
+  /** Decimal string sold */
+  amount: string;
+  /** Decimal string: the quoted `toAmount` minus slippage */
+  minOut: string;
+  /** Percent, 0-10, plain decimal ("0.5") */
+  slippage: string;
+  /** Whole seconds, 1-86400 */
+  timeout: number;
+  /** Network fee in XLM, plain decimal */
+  fee: string;
+  /** Classic routes only: the quoted route's paths, which the build follows */
+  paths?: SwapRoutePath[];
+}
+
+/**
+ * Builds the unsigned transaction for a quoted route. HTTP failures reject
+ * with the normalized `ApiError`; a 409 means the quote moved.
+ */
+export const buildSwapTx = async ({
+  network,
+  ...body
+}: BuildSwapTxParams): Promise<SwapBuildResult> => {
+  const { data } = await freighterBackendV2.post<SwapBuildResponse>(
+    "/swap/tx",
+    body,
+    { params: { network } },
+  );
+
+  if (typeof data?.data?.xdr !== "string" || !data.data.xdr) {
+    throw new SwapQuotesResponseError("Unexpected swap tx response shape");
+  }
+
+  return data.data;
+};
+
 /**
  * Fetches detailed information about a specific token contract
  * @async
@@ -1038,6 +1095,7 @@ export const getTokenDetails = async ({
   network,
   shouldFetchBalance,
   signal,
+  throwOnFailure,
 }: GetTokenDetailsParams): Promise<TokenDetailsResponse | null> => {
   try {
     // TODO: Add verification for custom network.
@@ -1082,6 +1140,7 @@ export const getTokenDetails = async ({
       );
     }
 
+    if (throwOnFailure && !isRequestCanceled(error)) throw error;
     return null;
   }
 };
@@ -1268,6 +1327,7 @@ export const handleContractLookup = async (
   network: NETWORKS,
   publicKey?: string,
   signal?: AbortSignal,
+  throwOnFailure = false,
 ): Promise<FormattedSearchTokenRecord | null> => {
   const { networkPassphrase } = mapNetworkToNetworkDetails(network);
 
@@ -1291,6 +1351,7 @@ export const handleContractLookup = async (
     publicKey: publicKey ?? "",
     network,
     signal,
+    throwOnFailure,
   });
 
   if (!tokenDetails) {

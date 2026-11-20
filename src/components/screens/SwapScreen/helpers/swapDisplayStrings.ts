@@ -7,6 +7,7 @@ import {
   formatFiatAmount,
   formatFiatInputDisplay,
   formatTokenForDisplay,
+  hasDecimals,
 } from "helpers/formatAmount";
 
 /**
@@ -94,7 +95,7 @@ export const buildReceiveTexts = ({
   receiveBigText: string;
   receiveSmallText: string;
 } => {
-  // `destinationAmount` arrives from Horizon/the path-finder as a raw
+  // `destinationAmount` arrives from the swap quote as a raw
   // dot-notation string ("0.1228789"). Run it through
   // formatTokenForDisplay so the rendered amount uses the device
   // locale's decimal separator (e.g. "0,1228789" on EU-style locales).
@@ -150,9 +151,15 @@ export const buildSourceBalanceRight = ({
   availableLabel: string;
 }): string => {
   if (!sourceBalance) return "";
+  // spendableAmount is in whole tokens; formatBalanceAmount scales a Soroban
+  // balance's amount from raw units.
+  const rawSpendable =
+    spendableAmount && hasDecimals(sourceBalance)
+      ? spendableAmount.shiftedBy(sourceBalance.decimals)
+      : spendableAmount;
   return `${formatBalanceAmount(
     sourceBalance,
     sourceBalance.tokenCode ?? sourceTokenSymbol,
-    spendableAmount ?? undefined,
+    rawSpendable ?? undefined,
   )} ${availableLabel}`;
 };

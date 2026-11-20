@@ -20,7 +20,11 @@ import { DEFAULT_DECIMALS, TransactionContext } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
-import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
+import {
+  descriptorAsPathBalance,
+  swapQuoteKey,
+  useSwapStore,
+} from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { HeldBalanceItem, useBalancesList } from "hooks/useBalancesList";
@@ -73,7 +77,7 @@ export const useEarnSwap = ({
 }: UseEarnSwapParams) => {
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { swapFee, swapSlippage } = useSwapSettingsStore();
+  const { swapFee } = useSwapSettingsStore();
   const { isBuilding, transactionXDR, transactionHash, resetTransaction } =
     useTransactionBuilderStore();
   const publicKey = account?.publicKey ?? "";
@@ -90,6 +94,8 @@ export const useEarnSwap = ({
     pathResult,
     isLoadingPath,
     pathError,
+    pathErrorReason,
+    pathErrorQuoteKey,
     setSourceToken,
     setDestinationToken,
     setEntrySource,
@@ -293,6 +299,7 @@ export const useEarnSwap = ({
     spendableAmount,
     sourceTokenSymbol,
     pathError,
+    pathErrorReason,
     pathResult,
     destinationTokenDescriptor,
   });
@@ -309,11 +316,36 @@ export const useEarnSwap = ({
     [destinationTokenDescriptor],
   );
 
+  // As on main Swap: the quote counts only while it answers these exact
+  // inputs, and Review waits for one that does.
+  const currentQuoteKey = useMemo(
+    () =>
+      sourceBalance && destinationForPath && publicKey
+        ? swapQuoteKey({
+            sourceBalance,
+            destinationBalance: destinationForPath,
+            sourceAmount,
+            network,
+            publicKey,
+          })
+        : null,
+    [sourceBalance, destinationForPath, sourceAmount, network, publicKey],
+  );
+  const isQuoteCurrent =
+    !!pathResult && pathResult.quoteKey === currentQuoteKey;
+  // A failed quote stores its key too, so it settles; amountError stops the
+  // request, so it never settles and must not count as pending.
+  const isQuotePending =
+    !!currentQuoteKey &&
+    hasEnteredSourceAmount &&
+    !amountError &&
+    !isQuoteCurrent &&
+    pathErrorQuoteKey !== currentQuoteKey;
+
   useSwapPathFinding({
     sourceBalance,
     destinationTokenForPath: destinationForPath,
     sourceAmount,
-    swapSlippage,
     network,
     publicKey,
     amountError,
@@ -329,6 +361,8 @@ export const useEarnSwap = ({
     pathResult,
     pathError,
     amountError,
+    currentQuoteKey,
+    isQuotePending,
   });
 
   const {
@@ -344,8 +378,10 @@ export const useEarnSwap = ({
     sourceBalance,
     destinationTokenInput: destinationForPath,
     pathResult,
+    currentQuoteKey,
     account,
     network,
+    recommendedFee,
     // No `navigation`: this runs from a sheet, not a `SWAP_STACK` route.
     onProcessingClose: handleSwapClosed,
     onQuoteExpired,

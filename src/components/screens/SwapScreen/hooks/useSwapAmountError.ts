@@ -1,9 +1,13 @@
 import BigNumber from "bignumber.js";
+import { type SwapQuoteErrorReason } from "components/screens/SwapScreen/helpers/selectSwapRoute";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
-import { DEFAULT_DECIMALS } from "config/constants";
 import { SwapPathResult } from "ducks/swap";
 import { hasXLMForFees, isAmountSpendable } from "helpers/balances";
-import { formatBigNumberForDisplay } from "helpers/formatAmount";
+import {
+  formatBigNumberForDisplay,
+  getTokenDecimals,
+  hasDecimals,
+} from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useToast } from "providers/ToastProvider";
@@ -44,6 +48,7 @@ export const useSwapAmountError = ({
   spendableAmount,
   sourceTokenSymbol,
   pathError,
+  pathErrorReason,
   pathResult,
   destinationTokenDescriptor,
 }: {
@@ -56,6 +61,7 @@ export const useSwapAmountError = ({
   spendableAmount: BigNumber | null;
   sourceTokenSymbol: string;
   pathError: string | null;
+  pathErrorReason: SwapQuoteErrorReason | null;
   pathResult: SwapPathResult | null;
   destinationTokenDescriptor: DestinationTokenDescriptor | null;
 }): {
@@ -96,7 +102,12 @@ export const useSwapAmountError = ({
 
     if (
       !isAmountSpendable({
-        amount: sourceAmount,
+        // A Soroban balance is in the token's smallest unit.
+        amount: hasDecimals(sourceBalance)
+          ? new BigNumber(sourceAmount)
+              .shiftedBy(sourceBalance.decimals)
+              .toFixed()
+          : sourceAmount,
         balance: sourceBalance,
         subentryCount,
         transactionFee: swapFee,
@@ -106,7 +117,7 @@ export const useSwapAmountError = ({
       const errorMessage = t("swapScreen.errors.insufficientBalance", {
         amount: spendableAmount
           ? formatBigNumberForDisplay(spendableAmount, {
-              decimalPlaces: DEFAULT_DECIMALS,
+              decimalPlaces: getTokenDecimals(sourceBalance),
             })
           : "0",
         symbol: sourceTokenSymbol,
@@ -154,8 +165,11 @@ export const useSwapAmountError = ({
   useEffect(() => {
     const hasAmount = sourceAmount && Number(sourceAmount) > 0;
     const hasDestinationToken = !!destinationTokenDescriptor;
+    // The amount screen shows these two as a persistent "Quote unavailable"
+    // row with its own sheet, so a toast would say the same thing twice.
+    const shownInline = pathErrorReason !== null;
 
-    if (pathError && hasAmount && hasDestinationToken) {
+    if (pathError && !shownInline && hasAmount && hasDestinationToken) {
       setActiveError({
         message: pathError,
         toastId: SWAP_TOAST_IDS.SWAP_PATH_ERROR,
@@ -170,10 +184,12 @@ export const useSwapAmountError = ({
     }
   }, [
     pathError,
+    pathErrorReason,
     pathResult,
     sourceAmount,
     destinationTokenDescriptor,
     activeError?.toastId,
+    t,
   ]);
 
   return { amountError, setActiveError };

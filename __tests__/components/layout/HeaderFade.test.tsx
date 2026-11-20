@@ -61,6 +61,23 @@ describe("HeaderFade", () => {
     expect(bottom).toEqual({ offset: 1, opacity: 0, color: black });
   });
 
+  it("draws the dark fade on a light device when pinned to dark", () => {
+    jest.spyOn(RN, "useColorScheme").mockReturnValue("light");
+    const black = getThemeColors("dark").base[0];
+
+    renderWithProviders(<HeaderFade colorScheme="dark" />);
+
+    expect(styleOf("header-fade-solid")).toMatchObject({
+      backgroundColor: black,
+    });
+    expect(styleOf("header-fade-strip").height).toBeCloseTo(27, 1);
+    const [top, clear, bottom] = stops();
+    expect(top).toEqual({ offset: 0, opacity: 1, color: black });
+    expect(clear.offset).toBeCloseTo(0.6481, 3);
+    expect(clear.opacity).toBe(0);
+    expect(bottom).toEqual({ offset: 1, opacity: 0, color: black });
+  });
+
   it("fills its parent and lets touches through to the content under it", () => {
     renderWithProviders(<HeaderFade />);
 

@@ -53,7 +53,7 @@ jest.mock("ducks/balances", () => ({
   useBalancesStore: { getState: () => ({ balances: {} }) },
 }));
 jest.mock("ducks/remoteConfig", () => ({
-  useRemoteConfigStore: { getState: () => ({ use_token_prices_v2: true }) },
+  useRemoteConfigStore: { getState: () => ({}) },
 }));
 jest.mock("services/backend", () => ({
   fetchTokenPrices: jest.fn().mockResolvedValue({}),

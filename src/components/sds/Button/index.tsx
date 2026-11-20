@@ -1,5 +1,10 @@
-import { BUTTON_THEME, ButtonColors } from "components/sds/Button/theme";
+import {
+  BUTTON_THEME,
+  ButtonColors,
+  getButtonColors,
+} from "components/sds/Button/theme";
 import { Text, TextSize } from "components/sds/Typography";
+import { ColorScheme } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import { useBiometrics } from "hooks/useBiometrics";
@@ -233,6 +238,7 @@ const getSize = (
  * @param {boolean} [props.squared=false] - Uses squared corners when true, rounded when false
  * @param {boolean} [props.biometric=false] - Enables biometric authentication for the onPress action
  * @param {() => void} [props.onPress] - Handler for press events
+ * @param {ColorScheme} [props.colorScheme] - Draws the button in this scheme's colors whatever the device's is, for screens that look the same in both themes
  * @param {string} [props.testID] - Test ID for testing
  *
  * Variant shorthands (alternative to variant prop):
@@ -260,6 +266,7 @@ interface ButtonProps extends VariantProps, SizeProps {
   disabled?: boolean;
   squared?: boolean;
   biometric?: boolean;
+  colorScheme?: ColorScheme;
   onPress?: (...args: unknown[]) => void | Promise<void>;
   testID?: string;
 }
@@ -275,11 +282,16 @@ const ButtonBase = ({
   isFullWidth = false,
   disabled = false,
   squared = false,
+  colorScheme,
   onPress,
   testID,
   ...props
 }: Omit<ButtonProps, "biometric">) => {
-  const buttonColors = useButtonColors();
+  const deviceButtonColors = useButtonColors();
+  const buttonColors = useMemo(
+    () => (colorScheme ? getButtonColors(colorScheme) : deviceButtonColors),
+    [colorScheme, deviceButtonColors],
+  );
   const disabledState = isLoading || disabled;
   const resolvedVariant = getVariant(
     { variant, ...props },

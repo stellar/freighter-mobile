@@ -152,7 +152,6 @@ jest.mock("ducks/prices", () => ({
   usePricesStore: jest.fn((selector) => {
     const mockState = {
       pricesByNetwork: {},
-      sourceByNetwork: {},
       isLoading: mockIsPricesLoading,
       error: null,
       lastUpdated: null,

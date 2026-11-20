@@ -207,14 +207,12 @@ const fetchPricedBalances = async (
   );
 
   const { fetchPricesForBalances } = usePricesStore.getState();
-  const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
 
   // Fetch updated prices for the balances using the prices store
   const priceFetchPromise = fetchPricesForBalances({
     balances,
     publicKey: params.publicKey,
     network: params.network,
-    useV2,
   });
 
   // Wait a maximum of 3 seconds for prices to be fetched

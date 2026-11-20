@@ -3,16 +3,26 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
+import BottomSheet from "components/BottomSheet";
+import {
+  SwapDetailsBottomSheet,
+  SwapDetailsBottomSheetProps,
+} from "components/screens/SwapScreen/components/SwapDetailsBottomSheet";
+import { SwapSetupAnswerError } from "components/screens/SwapScreen/helpers/quoteErrors";
+import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
 import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { Token } from "config/types";
 import { useSwapStore } from "ducks/swap";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 // mockBalances isn't typed as Balance[], so the token shapes below are cast
 // to line up with this predicate's signature.
 import { isNativeToken } from "helpers/assetIdentity";
+import * as keyboardHelpers from "helpers/keyboard";
 import { renderWithProviders } from "helpers/testUtils";
 import { useBalancesList } from "hooks/useBalancesList";
 import React, { act } from "react";
@@ -51,6 +61,8 @@ type SheetRefSpy = {
    * Returns true when the sheet had an onChange handler.
    */
   fireDismiss: () => boolean;
+  /** The sheet's customContent element, so tests can call its callbacks. */
+  customContent?: React.ReactElement;
 };
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace, vars-on-top, no-var, no-underscore-dangle
@@ -67,8 +79,9 @@ jest.mock("components/BottomSheet", () => {
   const NoopSheet = (props: {
     modalRef?: React.RefObject<unknown>;
     bottomSheetModalProps?: { onChange?: (index: number) => void };
+    customContent?: React.ReactElement;
   }) => {
-    const { modalRef, bottomSheetModalProps } = props;
+    const { modalRef, bottomSheetModalProps, customContent } = props;
     ReactModule.useImperativeHandle(modalRef, () => {
       const spy: SheetRefSpy = {
         present: jest.fn(),
@@ -80,6 +93,7 @@ jest.mock("components/BottomSheet", () => {
           }
           return false;
         },
+        customContent,
       };
       // eslint-disable-next-line no-underscore-dangle
       globalThis.__mockSheetRefs.push(spy);
@@ -106,9 +120,11 @@ type SwapStoreState = {
   sourceAmount: string;
   sourceAmountDisplay: string;
   destinationAmount: string;
-  pathResult: null | { sourceAmount: string; destinationAmount: string };
+  pathResult: null | { destinationAmount: string; quoteKey: string };
   isLoadingPath: boolean;
   pathError: string | null;
+  pathErrorReason?: "unavailable" | "noRoute" | null;
+  pathErrorQuoteKey?: string | null;
   setSourceToken: jest.Mock;
   setDestinationToken: jest.Mock;
   setEntrySource: jest.Mock;
@@ -145,6 +161,8 @@ const makeDefaultSwapState = (): SwapStoreState => ({
 
 jest.mock("ducks/swap", () => ({
   useSwapStore: jest.fn(),
+  swapQuoteKey: jest.fn(() => "quote-key"),
+  swapPairKey: jest.fn(() => "pair-key"),
   // Pass-through adapter — tests can inspect the call by passing in a
   // descriptor that doesn't match any held balance and asserting that the
   // useSwapPathFinding mock receives an object with `tokenCode`/`id` from
@@ -207,18 +225,34 @@ jest.mock("hooks/useNetworkFees", () => ({
   }),
   clearNetworkFeesCache: jest.fn(),
 }));
+const defaultSwapTransaction = () => ({
+  isProcessing: false,
+  executeSwap: mockExecuteSwap,
+  setupSwapTransaction: mockSetupSwapTransaction,
+  handleProcessingScreenClose: jest.fn(),
+  sourceToken: "XLM",
+  destinationToken: "USDC",
+  transactionScanResult: {},
+  scannedTransactionXDR: undefined,
+  sourceAmount: "10",
+});
 jest.mock("components/screens/SwapScreen/hooks/useSwapTransaction", () => ({
-  useSwapTransaction: jest.fn(() => ({
-    isProcessing: false,
-    executeSwap: mockExecuteSwap,
-    setupSwapTransaction: mockSetupSwapTransaction,
-    handleProcessingScreenClose: jest.fn(),
-    sourceToken: "XLM",
-    destinationToken: "USDC",
-    transactionScanResult: {},
-    sourceAmount: "10",
-  })),
+  useSwapTransaction: jest.fn(() => defaultSwapTransaction()),
 }));
+// Records each useSwapFooter call (a plain function, so mock resets keep it).
+const mockFooterCalls: { transactionXDR?: string }[] = [];
+jest.mock("components/screens/SwapScreen/hooks/useSwapFooter", () => {
+  const actual = jest.requireActual(
+    "components/screens/SwapScreen/hooks/useSwapFooter",
+  );
+  return {
+    ...actual,
+    useSwapFooter: (args: { transactionXDR?: string }) => {
+      mockFooterCalls.push(args);
+      return actual.useSwapFooter(args);
+    },
+  };
+});
 jest.mock("hooks/useBalancesList");
 
 // Single-token scan used to stamp the seeded default destination with a real
@@ -286,7 +320,6 @@ type SwapTokenLookupReturn = {
   popularTokens: TrendingFixture[];
   trendingTokens: TrendingFixture[];
   searchResults: TrendingFixture[];
-  hadSorobanMatches: boolean;
   stellarExpertDown: boolean;
   status: string;
   isTrendingLoading: boolean;
@@ -300,7 +333,6 @@ const mockUseSwapTokenLookup = jest.fn<SwapTokenLookupReturn, []>(() => ({
   popularTokens: [],
   trendingTokens: [],
   searchResults: [],
-  hadSorobanMatches: false,
   stellarExpertDown: false,
   status: "idle",
   isTrendingLoading: false,
@@ -325,7 +357,6 @@ jest.mock("ducks/prices", () => ({
   usePricesStore: (selector?: (s: unknown) => unknown): unknown => {
     const state = {
       pricesByNetwork: {},
-      sourceByNetwork: {},
       fetchPricesForTokenIds: mockFetchPricesForTokenIds,
     };
     return selector ? selector(state) : state;
@@ -416,6 +447,46 @@ describe("SwapAmountScreen", () => {
     );
     expect(mockSetSourceToken).toHaveBeenCalledWith("SRC", "XLM");
     expect(mockSetDestinationToken).toHaveBeenCalledWith(null);
+  });
+
+  it("sets Max for a Soroban source at the token's own decimals", () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    const sorobanSource = {
+      id: `TKN:${contractId}`,
+      tokenCode: "TKN",
+      tokenType: "custom_token",
+      contractId,
+      symbol: "TKN",
+      name: "Token",
+      decimals: 18,
+      token: { code: "TKN", issuer: { key: contractId }, type: "custom_token" },
+      // Soroban balances hold the token's smallest unit.
+      total: new BigNumber("1234567891234567891"),
+      available: new BigNumber("1234567891234567891"),
+    };
+    (useBalancesList as jest.Mock).mockImplementation(() => ({
+      balanceItems: [...mockBalances, sorobanSource],
+      scanResults: {},
+      isLoading: false,
+      error: null,
+      noBalances: false,
+      isRefreshing: false,
+      isFunded: true,
+      handleRefresh: jest.fn(),
+    }));
+    setSwapStoreState({ sourceTokenId: sorobanSource.id });
+
+    const { getByTestId } = renderWithProviders(
+      <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+    );
+    act(() => {
+      fireEvent.press(getByTestId("percentage-100"));
+    });
+
+    expect(mockSetSourceAmount).toHaveBeenLastCalledWith(
+      "1.234567891234567891",
+    );
   });
 
   describe("default destination (USDC) seeding", () => {
@@ -819,6 +890,111 @@ describe("SwapAmountScreen", () => {
       expect(cta.props.accessibilityState?.disabled).toBe(true);
     });
 
+    it("blocks Review when XLM covers the inclusion fee but not a LI.FI quote's resource fee", () => {
+      // USDC source; swapFee "100". 100.1 XLM covers the 100 inclusion fee
+      // but not the 100.2 total once the 0.2 resource fee is in.
+      const xlmBalances = mockBalances.map((b) => {
+        if (!isNativeToken(b.token as Token)) return b;
+        return {
+          ...b,
+          total: new BigNumber("100.1"),
+          available: new BigNumber("0.1"),
+        };
+      });
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: xlmBalances,
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+      const lifiRoute = {
+        source: "lifi",
+        fromAmount: "1",
+        toAmount: "2",
+        paths: [{ share: "1", hops: [] }],
+        fees: [],
+        resourceFee: "0.2",
+      };
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: {
+          destinationAmount: "2",
+          quoteKey: "quote-key",
+          route: lifiRoute,
+        },
+        swapQuotes: { routes: [lifiRoute], unavailable: [] },
+      } as Partial<SwapStoreState>);
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      const cta = getByTestId("swap-continue-button");
+      expect(cta.props.accessibilityState?.disabled).toBe(true);
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "error",
+          title: expect.stringMatching(/at least 100\.2 XLM/),
+        }),
+      );
+      // Quoting keeps running, so a new resource fee can lift the block.
+      expect(mockUseSwapPathFinding).toHaveBeenLastCalledWith(
+        expect.objectContaining({ amountError: null }),
+      );
+    });
+
+    it("counts the minimum balance before deciding XLM covers a Soroban route's fees", () => {
+      // 101.1 XLM is above the 100.2 total fee, but the 1 XLM minimum
+      // balance (no subentries) leaves 100.1, short of it.
+      const xlmBalances = mockBalances.map((b) => {
+        if (!isNativeToken(b.token as Token)) return b;
+        return {
+          ...b,
+          total: new BigNumber("101.1"),
+          available: new BigNumber("1.1"),
+        };
+      });
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: xlmBalances,
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+      const lifiRoute = {
+        source: "lifi",
+        fromAmount: "1",
+        toAmount: "2",
+        paths: [{ share: "1", hops: [] }],
+        fees: [],
+        resourceFee: "0.2",
+      };
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: {
+          destinationAmount: "2",
+          quoteKey: "quote-key",
+          route: lifiRoute,
+        },
+        swapQuotes: { routes: [lifiRoute], unavailable: [] },
+      } as Partial<SwapStoreState>);
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(
+        getByTestId("swap-continue-button").props.accessibilityState?.disabled,
+      ).toBe(true);
+    });
+
     it("shows 'Review swap' with a spinner while path-finding is loading", () => {
       setSwapStoreState({ sourceAmount: "1", isLoadingPath: true });
 
@@ -834,7 +1010,7 @@ describe("SwapAmountScreen", () => {
     it("shows 'Review swap' (enabled) when path-finding succeeds", async () => {
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { sourceAmount: "1", destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
       });
 
       const { getByTestId } = renderWithProviders(
@@ -863,7 +1039,7 @@ describe("SwapAmountScreen", () => {
       );
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { sourceAmount: "1", destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
       });
       const { useRightHeaderButton } = jest.requireMock("hooks/useRightHeader");
 
@@ -910,7 +1086,7 @@ describe("SwapAmountScreen", () => {
         });
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { sourceAmount: "1", destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
       });
 
       const { getByTestId } = renderWithProviders(
@@ -935,21 +1111,27 @@ describe("SwapAmountScreen", () => {
     });
 
     it("unlocks the form when Review can't be built", async () => {
+      const errorSpy = jest.spyOn(logger, "error").mockImplementation();
       mockSetupSwapTransaction.mockRejectedValueOnce(new Error("build failed"));
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { sourceAmount: "1", destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
       });
 
       const { getByTestId } = renderWithProviders(
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
+      // Let the failed build settle here, not in the next test.
       await act(async () => {
         fireEvent.press(getByTestId("swap-continue-button"));
-        await Promise.resolve();
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 0);
+        });
       });
 
+      expect(mockSetupSwapTransaction).toHaveBeenCalled();
       expect(getByTestId("swap-amount-input").props.editable).not.toBe(false);
+      errorSpy.mockRestore();
     });
 
     it("dismisses the keyboard AND waits for keyboardDidHide before opening the Review sheet", async () => {
@@ -976,7 +1158,7 @@ describe("SwapAmountScreen", () => {
 
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { sourceAmount: "1", destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
       });
 
       const { getByTestId } = renderWithProviders(
@@ -1094,7 +1276,7 @@ describe("SwapAmountScreen", () => {
 
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { sourceAmount: "1", destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           tokenCode: "FTT",
@@ -1156,7 +1338,7 @@ describe("SwapAmountScreen", () => {
       }));
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { sourceAmount: "1", destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           tokenCode: "FTT",
@@ -1191,7 +1373,7 @@ describe("SwapAmountScreen", () => {
       // The pre-flight gate should NOT fire, so setupSwapTransaction is called.
       setSwapStoreState({
         sourceAmount: "1",
-        pathResult: { sourceAmount: "1", destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           tokenCode: "FTT",
@@ -1219,6 +1401,201 @@ describe("SwapAmountScreen", () => {
       expect(analytics.track).not.toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
         expect.anything(),
+      );
+    });
+
+    it("does not confirm from the security sheet before a transaction is built", () => {
+      // Scanned tokens, so the sheet's proceed action confirms rather than
+      // opening review.
+      setSwapStoreState({
+        sourceTokenId: "XLM",
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+        destinationToken: {
+          id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          tokenCode: "FTT",
+          issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          requiresTrustline: true,
+          securityLevel: "SAFE",
+        } as never,
+      });
+      mockBalancesListReturn({
+        "FTT-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
+          result_type: "Benign",
+        },
+      });
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      // The transaction security sheet is the first with a proceed action.
+      // eslint-disable-next-line no-underscore-dangle
+      const securitySheet = globalThis.__mockSheetRefs.find(
+        (sheet) =>
+          (sheet.customContent?.props as { onProceedAnyway?: () => void })
+            ?.onProceedAnyway,
+      );
+      const { onProceedAnyway } = securitySheet?.customContent?.props as {
+        onProceedAnyway: () => void;
+      };
+      act(() => {
+        onProceedAnyway();
+      });
+
+      expect(securitySheet).toBeDefined();
+      expect(mockExecuteSwap).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["does not report", new SwapSetupAnswerError("quote expired"), false],
+      ["reports", new Error("boom"), true],
+    ])("%s a setup failure to Sentry: %s", async (_, failure, reported) => {
+      const errorSpy = jest.spyOn(logger, "error").mockImplementation();
+      mockSetupSwapTransaction.mockRejectedValueOnce(failure);
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      const calls = errorSpy.mock.calls.filter(
+        ([tag]) => tag === "SwapAmountScreen",
+      );
+      errorSpy.mockRestore();
+      expect(calls.length > 0).toBe(reported);
+    });
+
+    it.each([
+      ["keeps Confirm disabled", "old-xdr", undefined],
+      ["enables Confirm", "new-xdr", "new-xdr"],
+    ])(
+      "%s until the scan for the stored transaction is in (scanned %s)",
+      (_, scannedXdr, footerXdr) => {
+        (useTransactionBuilderStore as unknown as jest.Mock).mockReturnValue({
+          isBuilding: false,
+          transactionXDR: "new-xdr",
+          resetTransaction: mockResetTransaction,
+        });
+        (useSwapTransaction as jest.Mock).mockReturnValue({
+          ...defaultSwapTransaction(),
+          scannedTransactionXDR: scannedXdr,
+        });
+
+        try {
+          renderWithProviders(
+            <SwapAmountScreen
+              navigation={makeNavigation()}
+              route={makeRoute()}
+            />,
+          );
+
+          expect(mockFooterCalls.at(-1)?.transactionXDR).toBe(footerXdr);
+        } finally {
+          (useTransactionBuilderStore as unknown as jest.Mock).mockReturnValue({
+            isBuilding: false,
+            resetTransaction: mockResetTransaction,
+          });
+          (useSwapTransaction as jest.Mock).mockReturnValue(
+            defaultSwapTransaction(),
+          );
+        }
+      },
+    );
+
+    it("opens no sheet when the build was superseded while it ran", async () => {
+      mockSetupSwapTransaction.mockResolvedValueOnce({ superseded: true });
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      expect(mockSetupSwapTransaction).toHaveBeenCalled();
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs.forEach((sheet) =>
+        expect(sheet.present).not.toHaveBeenCalled(),
+      );
+    });
+
+    it("counts a LI.FI quote's resource fee before deciding the reserve is covered", async () => {
+      // swapFee "100", subentries 0: spendable = total - 1 - fee.
+      // total 101.6 → 0.6 after the inclusion fee alone (covers 0.5), but
+      // 0.4 after the 0.2 resource fee too, which can't.
+      const xlmBalances = mockBalances.map((b) => {
+        if (!isNativeToken(b.token as Token)) return b;
+        return {
+          ...b,
+          total: new BigNumber("101.6"),
+          available: new BigNumber("1.6"),
+        };
+      });
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: xlmBalances,
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+      const lifiRoute = {
+        source: "lifi",
+        fromAmount: "1",
+        toAmount: "2",
+        paths: [{ share: "1", hops: [] }],
+        fees: [],
+        resourceFee: "0.2",
+      };
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: {
+          destinationAmount: "2",
+          quoteKey: "quote-key",
+          route: lifiRoute,
+        },
+        swapQuotes: { routes: [lifiRoute], unavailable: [] },
+        destinationToken: {
+          id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          tokenCode: "FTT",
+          issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          requiresTrustline: true,
+        },
+      } as Partial<SwapStoreState>);
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+        { source: "home" },
       );
     });
 
@@ -1258,7 +1635,7 @@ describe("SwapAmountScreen", () => {
         // sourceTokenId = "XLM" (NATIVE_TOKEN_CODE) — XLM is the source
         sourceTokenId: "XLM",
         sourceAmount: "0.39",
-        pathResult: { sourceAmount: "0.39", destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           tokenCode: "FTT",
@@ -1321,7 +1698,7 @@ describe("SwapAmountScreen", () => {
       setSwapStoreState({
         sourceTokenId: "XLM",
         sourceAmount: "0.89",
-        pathResult: { sourceAmount: "0.89", destinationAmount: "2" },
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           tokenCode: "FTT",
@@ -1368,7 +1745,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: trendingFixture,
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: false,
@@ -1404,7 +1780,6 @@ describe("SwapAmountScreen", () => {
           "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
         ],
         network: NETWORKS.PUBLIC,
-        useV2: true,
       });
     });
 
@@ -1486,7 +1861,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: trendingFixture,
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: true,
         status: "error",
         isTrendingLoading: false,
@@ -1506,7 +1880,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: [],
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: false,
@@ -1529,7 +1902,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: trendingFixture,
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: false,
@@ -1562,7 +1934,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: [],
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: true,
@@ -2071,7 +2442,6 @@ describe("SwapAmountScreen", () => {
         popularTokens: [],
         trendingTokens: trendingFixture,
         searchResults: [],
-        hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
         isTrendingLoading: false,
@@ -2096,6 +2466,683 @@ describe("SwapAmountScreen", () => {
           tokenIssuer: expect.any(String),
         }),
       );
+    });
+  });
+
+  describe("settings change rebuild", () => {
+    const fireSettingsChange = (
+      getAllByType: (type: unknown) => { props: Record<string, unknown> }[],
+    ) => {
+      const settingsSheet = getAllByType(BottomSheet).find(
+        (sheet) =>
+          (sheet.props.customContent as { props?: Record<string, unknown> })
+            ?.props?.onSettingsChange,
+      );
+      const { onSettingsChange } = (
+        settingsSheet?.props.customContent as {
+          props: { onSettingsChange: () => void };
+        }
+      ).props;
+      return act(async () => {
+        onSettingsChange();
+        await Promise.resolve();
+      });
+    };
+
+    it("rebuilds when the quote matches the current inputs", async () => {
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+      const { UNSAFE_getAllByType } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await fireSettingsChange(UNSAFE_getAllByType as never);
+
+      expect(mockSetupSwapTransaction).toHaveBeenCalled();
+    });
+
+    it("skips the rebuild while the matching quote is still pending", async () => {
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "older-key" },
+      });
+      const { UNSAFE_getAllByType } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await fireSettingsChange(UNSAFE_getAllByType as never);
+
+      expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("See details", () => {
+    const findDetailsSheet = () =>
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs.find(
+        (sheet) => sheet.customContent?.type === SwapDetailsBottomSheet,
+      );
+
+    const USDC_ID =
+      "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH";
+    const FTT_ID =
+      "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH";
+    const feeRoute = (resourceFee?: string) => ({
+      source: resourceFee ? "lifi" : "classic",
+      fromAmount: "1",
+      toAmount: "2",
+      paths: [
+        {
+          share: "1",
+          hops: [{ venue: "stellar-dex", from: USDC_ID, to: FTT_ID }],
+        },
+      ],
+      fees: [],
+      ...(resourceFee ? { resourceFee } : {}),
+    });
+    const renderWithRoute = (
+      route: ReturnType<typeof feeRoute>,
+      quoteKey = "quote-key",
+    ) => {
+      setSwapStoreState({
+        pathResult: { destinationAmount: "2", quoteKey, route },
+        swapQuotes: { routes: [route], unavailable: [] },
+      } as Partial<SwapStoreState>);
+      const rendered = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      const detailsSheet = rendered
+        .UNSAFE_getAllByType(BottomSheet)
+        .find(
+          (sheet) => sheet.props.customContent?.type === SwapDetailsBottomSheet,
+        );
+      return {
+        ...rendered,
+        detailsProps: detailsSheet?.props.customContent
+          .props as SwapDetailsBottomSheetProps,
+      };
+    };
+
+    // swapFee is mocked as "100" and XLM at $0.50.
+    it("shows the inclusion fee plus a LI.FI route's resource fee", () => {
+      const { getByTestId, detailsProps } = renderWithRoute(
+        feeRoute("0.0858459"),
+      );
+
+      expect(detailsProps.networkFee).toBe("100.0858459 XLM");
+      expect(detailsProps.showSorobanFeeNote).toBe(true);
+      expect(getByTestId("swap-see-details")).toHaveTextContent(
+        /^\$50\.04 network fee/,
+      );
+    });
+
+    it("shows the inclusion fee alone on a classic route", () => {
+      const { getByTestId, detailsProps } = renderWithRoute(feeRoute());
+
+      expect(detailsProps.networkFee).toBe("100.00 XLM");
+      expect(detailsProps.showSorobanFeeNote).toBe(false);
+      expect(getByTestId("swap-see-details")).toHaveTextContent(
+        /^\$50\.00 network fee/,
+      );
+    });
+
+    it("ignores a stale quote's resource fee", () => {
+      const { queryByTestId, detailsProps } = renderWithRoute(
+        feeRoute("0.0858459"),
+        "older-key",
+      );
+
+      expect(queryByTestId("swap-see-details")).toBeNull();
+      expect(detailsProps.networkFee).toBe("100.00 XLM");
+      expect(detailsProps.showSorobanFeeNote).toBe(false);
+    });
+
+    describe("Max on an XLM source", () => {
+      // XLM: 1000.5 total, 1 minimum balance; swapFee 100.
+      const pressMax = (
+        route: ReturnType<typeof feeRoute>,
+        quoteKey = "quote-key",
+      ) => {
+        setSwapStoreState({
+          sourceTokenId: "XLM",
+          sourceTokenSymbol: "XLM",
+          pathResult: { destinationAmount: "2", quoteKey, route },
+          swapQuotes: { routes: [route], unavailable: [] },
+        } as Partial<SwapStoreState>);
+        const { getByTestId } = renderWithProviders(
+          <SwapAmountScreen
+            navigation={makeNavigation()}
+            route={makeRoute()}
+          />,
+        );
+        act(() => {
+          fireEvent.press(getByTestId("percentage-100"));
+        });
+      };
+
+      it("holds back the inclusion fee plus a current LI.FI quote's resource fee", () => {
+        pressMax(feeRoute("0.0858459"));
+
+        expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.4141541");
+      });
+
+      it("holds back the inclusion fee alone on a classic route", () => {
+        pressMax(feeRoute());
+
+        expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.5000000");
+      });
+
+      it("ignores a stale quote's resource fee", () => {
+        pressMax(feeRoute("0.0858459"), "older-key");
+
+        expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.5000000");
+      });
+
+      // Max changes the amount, so the quote it lands on is a new one: size
+      // it with the pair's last resource fee so the first tap sticks.
+      const pressMaxWithoutQuote = (pairKey: string) => {
+        setSwapStoreState({
+          sourceTokenId: "XLM",
+          sourceTokenSymbol: "XLM",
+          pathResult: null,
+          swapQuotes: null,
+          lastResourceFee: { pairKey, fee: "0.0858459" },
+        } as Partial<SwapStoreState>);
+        const { getByTestId } = renderWithProviders(
+          <SwapAmountScreen
+            navigation={makeNavigation()}
+            route={makeRoute()}
+          />,
+        );
+        act(() => {
+          fireEvent.press(getByTestId("percentage-100"));
+        });
+      };
+
+      it("holds back the pair's last quoted resource fee when no quote is current", () => {
+        pressMaxWithoutQuote("pair-key");
+
+        expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.4141541");
+      });
+
+      it("ignores another pair's last resource fee", () => {
+        pressMaxWithoutQuote("other-pair");
+
+        expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.5000000");
+      });
+
+      describe("when the pair's first quote lands after Max", () => {
+        const renderWithoutQuote = (sourceAmount = "1") => {
+          setSwapStoreState({
+            sourceTokenId: "XLM",
+            sourceTokenSymbol: "XLM",
+            sourceAmount,
+            pathResult: null,
+            swapQuotes: null,
+            lastResourceFee: null,
+          } as Partial<SwapStoreState>);
+          return renderWithProviders(
+            <SwapAmountScreen
+              navigation={makeNavigation()}
+              route={makeRoute()}
+            />,
+          );
+        };
+        const quoteLands = (
+          rerender: (ui: React.ReactElement) => void,
+          sourceAmount: string,
+          resourceFee: string,
+        ) => {
+          const route = feeRoute(resourceFee);
+          setSwapStoreState({
+            sourceTokenId: "XLM",
+            sourceTokenSymbol: "XLM",
+            sourceAmount,
+            pathResult: {
+              destinationAmount: "2",
+              quoteKey: "quote-key",
+              route,
+            },
+            swapQuotes: { routes: [route], unavailable: [] },
+          } as Partial<SwapStoreState>);
+          act(() => {
+            rerender(
+              <SwapAmountScreen
+                navigation={makeNavigation()}
+                route={makeRoute()}
+              />,
+            );
+          });
+        };
+
+        it("re-applies Max to leave the quote's resource fee", () => {
+          jest.spyOn(analytics, "track").mockClear();
+          const { getByTestId, rerender } = renderWithoutQuote();
+          act(() => {
+            fireEvent.press(getByTestId("percentage-100"));
+          });
+          expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.5000000");
+
+          quoteLands(rerender, "899.5000000", "0.0858459");
+
+          expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.4141541");
+          // The re-apply isn't a tap.
+          expect(
+            (analytics.track as jest.Mock).mock.calls.filter(
+              ([event]) => event === AnalyticsEvent.SEND_PAYMENT_SET_MAX,
+            ),
+          ).toHaveLength(1);
+        });
+
+        it("leaves an amount typed after Max", () => {
+          const { getByTestId, rerender } = renderWithoutQuote();
+          act(() => {
+            fireEvent.press(getByTestId("percentage-100"));
+          });
+          quoteLands(rerender, "50", "0.0858459");
+
+          expect(mockSetSourceAmount).not.toHaveBeenCalledWith("899.4141541");
+        });
+
+        it("re-applies once per tap", () => {
+          const { getByTestId, rerender } = renderWithoutQuote();
+          act(() => {
+            fireEvent.press(getByTestId("percentage-100"));
+          });
+          quoteLands(rerender, "899.5000000", "0.0858459");
+          quoteLands(rerender, "899.4141541", "0.1");
+
+          expect(mockSetSourceAmount).toHaveBeenLastCalledWith("899.4141541");
+        });
+
+        it("leaves an amount the user typed", () => {
+          const { rerender } = renderWithoutQuote("899.5000000");
+          mockSetSourceAmount.mockClear();
+
+          quoteLands(rerender, "899.5000000", "0.0858459");
+
+          expect(mockSetSourceAmount).not.toHaveBeenCalledWith("899.4141541");
+        });
+      });
+    });
+
+    it("hides the fee line until there is a quote", () => {
+      setSwapStoreState({ pathResult: null });
+      const { queryByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(queryByTestId("swap-see-details")).toBeNull();
+    });
+
+    it("shows nothing from a quote for earlier inputs", () => {
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      setSwapStoreState({
+        pathResult: {
+          destinationAmount: "2",
+          quoteKey: "older-key",
+          conversionRate: "2",
+        },
+        swapQuotes: {
+          routes: [
+            {
+              source: "classic",
+              fromAmount: "1",
+              toAmount: "2",
+              paths: [
+                {
+                  share: "1",
+                  hops: [
+                    {
+                      venue: "stellar-dex",
+                      from: "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+                      to: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+                    },
+                  ],
+                },
+              ],
+              fees: [],
+            },
+          ],
+          unavailable: [],
+        },
+      } as Partial<SwapStoreState>);
+      const { queryByTestId, UNSAFE_getAllByType } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(queryByTestId("swap-see-details")).toBeNull();
+      // The latest render's props, after the rate hook's effect has run.
+      const detailsSheet = UNSAFE_getAllByType(BottomSheet).find(
+        (sheet) => sheet.props.customContent?.type === SwapDetailsBottomSheet,
+      );
+      const { routeView, rate } = detailsSheet?.props.customContent
+        .props as SwapDetailsBottomSheetProps;
+      expect(routeView).toBeNull();
+      expect(rate).toBe("");
+    });
+
+    it("opens Details with the quote's route", async () => {
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      setSwapStoreState({
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+        swapQuotes: {
+          routes: [
+            {
+              source: "lifi",
+              fromAmount: "1",
+              toAmount: "2",
+              paths: [
+                {
+                  share: "1",
+                  hops: [
+                    {
+                      venue: "Aquarius",
+                      from: "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+                      to: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+                      pool: "p1",
+                    },
+                  ],
+                },
+              ],
+              fees: [],
+            },
+          ],
+          unavailable: [],
+        },
+      } as Partial<SwapStoreState>);
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(getByTestId("swap-see-details")).toHaveTextContent(
+        /network fee.*See details/,
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-see-details"));
+        await Promise.resolve();
+      });
+
+      const sheet = findDetailsSheet();
+      expect(sheet?.present).toHaveBeenCalled();
+      const { routeView } = sheet?.customContent
+        ?.props as SwapDetailsBottomSheetProps;
+      expect(routeView?.providers.map((p) => p.name)).toEqual(["Aquarius"]);
+    });
+  });
+
+  describe("quote unavailable line", () => {
+    const NO_ROUTE = "No quote available";
+    const UNAVAILABLE = "Swaps are temporarily unavailable";
+    // A failed quote for the current inputs (swapQuoteKey is mocked).
+    const failed = (pathError: string) => ({
+      pathError,
+      pathErrorReason: (pathError === UNAVAILABLE
+        ? "unavailable"
+        : "noRoute") as "unavailable" | "noRoute",
+      pathErrorQuoteKey: "quote-key",
+    });
+    const renderScreen = () =>
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+    it("shows when no route was found", () => {
+      setSwapStoreState({ ...failed(NO_ROUTE) });
+      const { getByTestId } = renderScreen();
+
+      expect(getByTestId("swap-quote-unavailable")).toHaveTextContent(
+        "Quote unavailable",
+      );
+    });
+
+    it("shows when the source is unavailable", () => {
+      setSwapStoreState({ ...failed(UNAVAILABLE) });
+      const { getByTestId } = renderScreen();
+
+      expect(getByTestId("swap-quote-unavailable")).toBeTruthy();
+    });
+
+    it("shows by the stored reason, not the error text", () => {
+      // The text was translated in another language before a switch.
+      setSwapStoreState({
+        ...failed(NO_ROUTE),
+        pathError: "No se encontró una ruta",
+      });
+      const { getByTestId } = renderScreen();
+
+      expect(getByTestId("swap-quote-unavailable")).toBeTruthy();
+    });
+
+    it("is hidden while quoting", () => {
+      setSwapStoreState({ ...failed(NO_ROUTE), isLoadingPath: true });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden when there is a quote", () => {
+      setSwapStoreState({
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden when no amount is entered", () => {
+      setSwapStoreState({
+        ...failed(NO_ROUTE),
+        sourceAmount: "0",
+        sourceAmountDisplay: "0",
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden when no destination is chosen", () => {
+      setSwapStoreState({ ...failed(NO_ROUTE), destinationToken: null });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden for an unrelated quote failure", () => {
+      setSwapStoreState({
+        pathError: "Couldn't fetch swap path. Please try again.",
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("opens the explanation sheet when tapped", async () => {
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      setSwapStoreState({ ...failed(NO_ROUTE) });
+      const { getByTestId } = renderScreen();
+
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-quote-unavailable"));
+        await Promise.resolve();
+      });
+
+      // eslint-disable-next-line no-underscore-dangle
+      const sheet = globalThis.__mockSheetRefs.find(
+        (spy) =>
+          (spy.customContent?.props as { title?: string } | undefined)
+            ?.title === "Quote unavailable",
+      );
+      expect(sheet?.present).toHaveBeenCalledTimes(1);
+      const { texts } = sheet?.customContent?.props as {
+        texts: { value: string }[];
+      };
+      expect(texts[0].value).toBe(
+        "We couldn't get a quote for this swap right now. Try a different amount or token pair, or try again later.",
+      );
+    });
+    it("opens the explanation sheet only after the keyboard hides", async () => {
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      let hideKeyboard: () => void = () => {};
+      const waitSpy = jest
+        .spyOn(keyboardHelpers, "waitForKeyboardDismiss")
+        .mockImplementation(
+          () =>
+            new Promise<void>((resolve) => {
+              hideKeyboard = resolve;
+            }),
+        );
+      setSwapStoreState({ ...failed(NO_ROUTE) });
+      const { getByTestId } = renderScreen();
+
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-quote-unavailable"));
+        await Promise.resolve();
+      });
+      // eslint-disable-next-line no-underscore-dangle
+      const sheet = globalThis.__mockSheetRefs.find(
+        (spy) =>
+          (spy.customContent?.props as { title?: string } | undefined)
+            ?.title === "Quote unavailable",
+      );
+      expect(sheet?.present).not.toHaveBeenCalled();
+      // Capped, so the sheet still opens if the hide event never comes.
+      expect(waitSpy).toHaveBeenCalledWith(500);
+
+      await act(async () => {
+        hideKeyboard();
+        await Promise.resolve();
+      });
+      expect(sheet?.present).toHaveBeenCalledTimes(1);
+      waitSpy.mockRestore();
+    });
+
+    it("is hidden while the error is for earlier inputs", () => {
+      setSwapStoreState({
+        pathError: NO_ROUTE,
+        pathErrorQuoteKey: "older-key",
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("is hidden when the amount exceeds the balance", () => {
+      setSwapStoreState({
+        ...failed(NO_ROUTE),
+        sourceAmount: "999999999",
+        sourceAmountDisplay: "999999999",
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("swap-quote-unavailable")).toBeNull();
+    });
+
+    it("dismisses the sheet when a quote arrives", async () => {
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      setSwapStoreState(failed(NO_ROUTE));
+      const { getByTestId, rerender } = renderScreen();
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-quote-unavailable"));
+        await Promise.resolve();
+      });
+      // eslint-disable-next-line no-underscore-dangle
+      const sheet = globalThis.__mockSheetRefs.find(
+        (spy) =>
+          (spy.customContent?.props as { title?: string } | undefined)
+            ?.title === "Quote unavailable",
+      );
+
+      setSwapStoreState({
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+      rerender(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(sheet?.dismiss).toHaveBeenCalled();
+    });
+  });
+
+  describe("quote pending", () => {
+    // Shimmer hides itself from accessibility.
+    const HIDDEN = { includeHiddenElements: true };
+    const renderScreen = () =>
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+    it("shimmers the receive amount and spins the CTA before the first quote request fires, then shows the quote", () => {
+      // The debounce gap: an amount is entered, nothing requested or stored yet.
+      setSwapStoreState({ sourceAmount: "1", destinationAmount: "0" });
+      const { getByTestId, queryByTestId, rerender } = renderScreen();
+
+      expect(getByTestId("amount-card-amount-loading", HIDDEN)).toBeTruthy();
+      expect(getByTestId("swap-continue-button")).toHaveTextContent(
+        "Review swap",
+      );
+      expect(getByTestId("button-loading-indicator")).toBeTruthy();
+
+      setSwapStoreState({
+        sourceAmount: "1",
+        destinationAmount: "2",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+      rerender(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(queryByTestId("amount-card-amount-loading", HIDDEN)).toBeNull();
+      expect(queryByTestId("button-loading-indicator")).toBeNull();
+    });
+
+    it("shimmers while the stored quote is for older inputs", () => {
+      setSwapStoreState({
+        pathResult: { destinationAmount: "2", quoteKey: "older-key" },
+      });
+      const { getByTestId } = renderScreen();
+
+      expect(getByTestId("amount-card-amount-loading", HIDDEN)).toBeTruthy();
+    });
+
+    it("does not shimmer once the quote for these inputs failed", () => {
+      setSwapStoreState({
+        destinationAmount: "0",
+        pathError: "No path found between these tokens",
+        pathErrorQuoteKey: "quote-key",
+      });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("amount-card-amount-loading", HIDDEN)).toBeNull();
+      expect(queryByTestId("button-loading-indicator")).toBeNull();
+    });
+
+    it("does not shimmer when the amount exceeds the balance", () => {
+      setSwapStoreState({
+        sourceAmount: "999999999",
+        sourceAmountDisplay: "999999999",
+        destinationAmount: "0",
+      });
+      const { getByTestId, queryByTestId } = renderScreen();
+
+      expect(getByTestId("swap-continue-button")).toHaveTextContent(
+        "Insufficient balance",
+      );
+      expect(queryByTestId("amount-card-amount-loading", HIDDEN)).toBeNull();
+    });
+
+    it("does not shimmer with no amount entered", () => {
+      setSwapStoreState({ sourceAmount: "0", destinationAmount: "0" });
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("amount-card-amount-loading", HIDDEN)).toBeNull();
     });
   });
 });

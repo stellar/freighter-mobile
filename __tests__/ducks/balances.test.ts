@@ -35,7 +35,6 @@ jest.mock("ducks/prices", () => ({
     getState: jest.fn().mockReturnValue({
       fetchPricesForBalances: jest.fn(),
       pricesByNetwork: {},
-      sourceByNetwork: {},
       error: null,
       isLoading: false,
       lastUpdated: null,
@@ -73,7 +72,6 @@ describe("balances duck", () => {
         [NETWORKS.TESTNET]: prices,
         [NETWORKS.FUTURENET]: prices,
       },
-      sourceByNetwork: {},
       error: null,
       isLoading: false,
       lastUpdated: null,
@@ -605,7 +603,6 @@ describe("balances duck", () => {
       (usePricesStore.getState as jest.Mock).mockReturnValue({
         fetchPricesForBalances: jest.fn().mockResolvedValue(undefined),
         pricesByNetwork: {},
-        sourceByNetwork: {},
         error: null,
         isLoading: false,
         lastUpdated: null,

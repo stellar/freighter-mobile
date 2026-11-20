@@ -1,67 +1,97 @@
-/* eslint-disable @fnando/consistent-import/consistent-import */
-import { renderHook } from "@testing-library/react-native";
+import { renderHook } from "@testing-library/react-hooks";
 import BigNumber from "bignumber.js";
 import { useSwapCtaState } from "components/screens/SwapScreen/hooks/useSwapCtaState";
-import { SwapPathResult } from "ducks/swap";
+import { TokenTypeWithCustomToken } from "config/types";
 
-jest.mock("hooks/useAppTranslation", () => {
-  const stableTranslation = { t: (key: string) => key };
-  return {
-    __esModule: true,
-    default: () => stableTranslation,
-  };
-});
+jest.mock("hooks/useAppTranslation", () => () => ({ t: (k: string) => k }));
 
-type HookProps = Parameters<typeof useSwapCtaState>[0];
-
-const quoteFor = (sourceAmount: string): SwapPathResult => ({
-  sourceAmount,
-  destinationAmount: "50.0000000",
-  destinationAmountMin: "49.7500000",
-  path: [],
-  conversionRate: "0.5000000",
-});
-
-const baseProps: HookProps = {
+const props = (quoteKey: string, currentQuoteKey: string | null) => ({
   sourceBalance: { tokenCode: "XLM" } as never,
-  destinationTokenDescriptor: { tokenCode: "USDC" } as never,
-  sourceAmount: "100",
-  spendableAmount: new BigNumber("1000"),
+  destinationTokenDescriptor: {
+    id: "USDC:GA5Z",
+    tokenCode: "USDC",
+    issuer: "GA5Z",
+    decimals: 7,
+    tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+    requiresTrustline: false,
+  },
+  sourceAmount: "10",
+  spendableAmount: new BigNumber("100"),
   isLoadingPath: false,
   isBuilding: false,
-  pathResult: quoteFor("100"),
+  pathResult: {
+    sourceAmount: "10",
+    destinationAmount: "2",
+    route: {
+      source: "classic",
+      fromAmount: "10",
+      toAmount: "2",
+      paths: [],
+      fees: [],
+    },
+    conversionRate: "0.2",
+    quoteKey,
+  },
   pathError: null,
   amountError: null,
-};
+  currentQuoteKey,
+  isQuotePending: false,
+});
 
-const ctaKind = (props: Partial<HookProps>) =>
-  renderHook(() => useSwapCtaState({ ...baseProps, ...props })).result.current
-    .ctaState.kind;
+describe("useSwapCtaState — quote freshness", () => {
+  it("offers review when the quote answers the current inputs", () => {
+    const { result } = renderHook(() => useSwapCtaState(props("k1", "k1")));
 
-describe("useSwapCtaState", () => {
-  it("offers Review once the quote is for the amount entered", () => {
-    expect(ctaKind({})).toBe("review");
+    expect(result.current.ctaState.kind).toBe("review");
   });
 
-  it("treats the quote's own precision as the same amount", () => {
-    expect(ctaKind({ pathResult: quoteFor("100.0000000") })).toBe("review");
-  });
+  it("holds review (loading) while the quote answers older inputs", () => {
+    const { result } = renderHook(() => useSwapCtaState(props("k1", "k2")));
 
-  // Path-finding waits for typing to pause, so for a moment the quote is
-  // still the previous amount's.
-  it("keeps loading while the quote is still for the previous amount", () => {
-    expect(ctaKind({ sourceAmount: "1000", pathResult: quoteFor("100") })).toBe(
-      "loading",
-    );
+    expect(result.current.ctaState.kind).toBe("loading");
   });
+});
 
-  it("still asks for an amount when path-finding failed", () => {
-    expect(
-      ctaKind({
-        sourceAmount: "1000",
-        pathResult: quoteFor("100"),
-        pathError: "No path found",
+describe("useSwapCtaState — failed quote", () => {
+  it("keeps Review swap, disabled, when the quote failed (the Quote unavailable line explains)", () => {
+    const { result } = renderHook(() =>
+      useSwapCtaState({
+        ...props("k1", "k1"),
+        pathResult: null,
+        pathError: "swapScreen.errors.noPathFound",
       }),
-    ).toBe("enter");
+    );
+
+    expect(result.current.ctaState.kind).toBe("review");
+    expect(result.current.ctaLabel).toBe("swapScreen.cta.review");
+    expect(result.current.isCtaDisabled).toBe(true);
+  });
+});
+
+describe("useSwapCtaState — first quote pending", () => {
+  it("shows loading in the debounce gap, before any quote is stored", () => {
+    const { result } = renderHook(() =>
+      useSwapCtaState({
+        ...props("k1", "k1"),
+        pathResult: null,
+        isQuotePending: true,
+      }),
+    );
+
+    expect(result.current.ctaState.kind).toBe("loading");
+    expect(result.current.ctaLabel).toBe("swapScreen.cta.review");
+  });
+
+  it("keeps insufficient ahead of a pending quote", () => {
+    const { result } = renderHook(() =>
+      useSwapCtaState({
+        ...props("k1", "k1"),
+        spendableAmount: new BigNumber("5"),
+        pathResult: null,
+        isQuotePending: true,
+      }),
+    );
+
+    expect(result.current.ctaState.kind).toBe("insufficient");
   });
 });

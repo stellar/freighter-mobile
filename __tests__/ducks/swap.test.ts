@@ -1,28 +1,7 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers";
-import { NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useSwapStore, descriptorAsPathBalance } from "ducks/swap";
-
-// Horizon's strict-send paths call, which each test answers by hand.
-const mockStrictSendPathsCall = jest.fn();
-jest.mock("@stellar/stellar-sdk", () => {
-  const actual = jest.requireActual("@stellar/stellar-sdk");
-  return {
-    ...actual,
-    Horizon: {
-      ...actual.Horizon,
-      Server: jest.fn(() => ({
-        strictSendPaths: () => ({
-          limit: () => ({ call: () => mockStrictSendPathsCall() }),
-        }),
-      })),
-    },
-  };
-});
-jest.mock("services/transactionService", () => ({
-  getTokenForPayment: jest.fn(() => ({})),
-}));
 
 describe("useSwapStore — destinationToken migration", () => {
   beforeEach(() => {
@@ -154,6 +133,21 @@ describe("descriptorAsPathBalance", () => {
     });
   });
 
+  it("projects a contract-token descriptor with its contract ID and decimals", () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    const result = descriptorAsPathBalance({
+      id: `TKN:${contractId}`,
+      tokenCode: "TKN",
+      issuer: contractId,
+      decimals: 18,
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      requiresTrustline: false,
+    });
+
+    expect(result).toMatchObject({ contractId, decimals: 18 });
+  });
+
   it("throws when a non-native descriptor is missing issuer", () => {
     expect(() =>
       descriptorAsPathBalance({
@@ -165,90 +159,5 @@ describe("descriptorAsPathBalance", () => {
         requiresTrustline: true,
       }),
     ).toThrow(/missing issuer/);
-  });
-});
-
-describe("useSwapStore — findSwapPath", () => {
-  const quoteFor = (destinationAmount: string) => ({
-    records: [{ destination_amount: destinationAmount, path: [] }],
-  });
-
-  const deferred = () => {
-    let resolve: (value: unknown) => void = () => {};
-    let reject: (error: Error) => void = () => {};
-    const promise = new Promise((resolvePromise, rejectPromise) => {
-      resolve = resolvePromise;
-      reject = rejectPromise;
-    });
-    return { promise, resolve, reject };
-  };
-
-  const findFor = (sourceAmount: string) =>
-    useSwapStore.getState().findSwapPath({
-      sourceBalance: { token: { type: "native", code: "XLM" } } as never,
-      destinationBalance: { token: { code: "USDC" } } as never,
-      sourceAmount,
-      slippage: 1,
-      network: NETWORKS.TESTNET,
-      publicKey: "GTESTPUBLICKEY",
-    });
-
-  beforeEach(() => {
-    useSwapStore.getState().resetSwap();
-    mockStrictSendPathsCall.mockReset();
-  });
-
-  // Path-finding runs once typing pauses, so a slower quote for the amount
-  // typed before can answer after the quote for the current one.
-  it("keeps the latest request's quote when an earlier one answers last", async () => {
-    const forTen = deferred();
-    const forHundred = deferred();
-    mockStrictSendPathsCall
-      .mockReturnValueOnce(forTen.promise)
-      .mockReturnValueOnce(forHundred.promise);
-
-    const ten = findFor("10");
-    const hundred = findFor("100");
-    forHundred.resolve(quoteFor("50"));
-    await hundred;
-    forTen.resolve(quoteFor("5"));
-    await ten;
-
-    const { pathResult, isLoadingPath } = useSwapStore.getState();
-    expect(pathResult?.sourceAmount).toBe("100");
-    expect(isLoadingPath).toBe(false);
-  });
-
-  it("ignores an earlier request's failure", async () => {
-    const forTen = deferred();
-    const forHundred = deferred();
-    mockStrictSendPathsCall
-      .mockReturnValueOnce(forTen.promise)
-      .mockReturnValueOnce(forHundred.promise);
-
-    const ten = findFor("10");
-    const hundred = findFor("100");
-    forHundred.resolve(quoteFor("50"));
-    await hundred;
-    forTen.reject(new Error("Horizon timed out"));
-    await ten;
-
-    const { pathResult, pathError } = useSwapStore.getState();
-    expect(pathResult?.sourceAmount).toBe("100");
-    expect(pathError).toBeNull();
-  });
-
-  it("drops a quote that answers after the path was cleared", async () => {
-    const forTen = deferred();
-    mockStrictSendPathsCall.mockReturnValueOnce(forTen.promise);
-
-    const ten = findFor("10");
-    useSwapStore.getState().clearPath();
-    forTen.resolve(quoteFor("5"));
-    await ten;
-
-    const { pathResult, isLoadingPath } = useSwapStore.getState();
-    expect(pathResult).toBeNull();
-    expect(isLoadingPath).toBe(false);
   });
 });

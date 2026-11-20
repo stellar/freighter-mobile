@@ -380,8 +380,11 @@ export const parseDisplayNumber = (
       .replace(new RegExp(`\\${groupingSeparator}`, "g"), "")
       .replace(new RegExp(`\\${decimalSeparator}`), ".");
 
-    const result = parseFloat(normalized);
-    return result.toString();
+    // parseFloat drops digits past ~15 significant figures, which an
+    // 18-decimal token amount has; it stays the fallback for input
+    // BigNumber can't read, such as trailing garbage.
+    const exact = new BigNumber(normalized);
+    return exact.isNaN() ? parseFloat(normalized).toString() : exact.toString();
   } catch (error) {
     // Fallback: try to handle both comma and dot as decimal separators
     const normalized = input
@@ -840,6 +843,10 @@ export const hasDecimals = (
   "decimals" in balance &&
   typeof balance.decimals === "number" &&
   balance.decimals >= 0;
+
+/** A balance's decimals: its own for a Soroban token, 7 otherwise. */
+export const getTokenDecimals = (balance: Balance | PricedBalance): number =>
+  hasDecimals(balance) ? balance.decimals : DEFAULT_DECIMALS;
 
 /**
  * A balance's total in whole token units — the amount the user sees. Prices

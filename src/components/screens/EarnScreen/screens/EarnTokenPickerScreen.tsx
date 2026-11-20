@@ -447,7 +447,9 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     setIsBuildingSwapReview(true);
     try {
       const setup = await earnSwap.setupSwapTransaction();
-      if (!setup || hasLeftSwap()) {
+      // Superseded: the quote or the settings changed while it was built, so
+      // it answers inputs the sheet no longer shows.
+      if (!setup || "superseded" in setup || hasLeftSwap()) {
         return;
       }
       hasApprovedSwapRef.current = false;

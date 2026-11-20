@@ -27,7 +27,6 @@ const baseProps = (): HookProps => ({
   sourceBalance: makeBalance("USDC:GA5..."),
   destinationTokenForPath: makeBalance("AQUA:GBNZ..."),
   sourceAmount: "10",
-  swapSlippage: 2,
   network: NETWORKS.PUBLIC,
   publicKey: "GTEST...",
   amountError: null,
@@ -133,7 +132,6 @@ describe("useSwapPathFinding", () => {
       expect.objectContaining({
         sourceBalance: latestSource,
         sourceAmount: "30",
-        slippage: 2,
       }),
     );
   });

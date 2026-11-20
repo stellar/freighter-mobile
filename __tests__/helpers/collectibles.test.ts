@@ -595,6 +595,66 @@ describe("collectibles helpers", () => {
       });
     });
 
+    it("reads metadata embedded in a data URI without fetching", async () => {
+      (fetchMetadataJson as jest.Mock).mockClear();
+
+      const inlineMetadata = {
+        name: "Stroopies 0",
+        image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>",
+        attributes: [
+          { trait_type: "role", value: 3 },
+          { trait_type: "arms", value: 0 },
+        ],
+      };
+      const inlineCollections = mockBackendCollections.map(
+        ({ collection }) => ({
+          collection: {
+            ...collection,
+            collectibles: collection.collectibles.map((collectible) => ({
+              ...collectible,
+              token_uri: `data:application/json,${JSON.stringify(
+                inlineMetadata,
+              )}`,
+            })),
+          },
+        }),
+      );
+
+      const result = await transformBackendCollections(inlineCollections);
+
+      expect(fetchMetadataJson).not.toHaveBeenCalled();
+      expect(result[0].items[0]).toMatchObject({
+        name: "Stroopies 0",
+        image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>",
+        traits: [
+          { name: "role", value: 3 },
+          { name: "arms", value: 0 },
+        ],
+      });
+    });
+
+    it("falls back when a data URI cannot be parsed", async () => {
+      (fetchMetadataJson as jest.Mock).mockClear();
+
+      const brokenCollections = mockBackendCollections.map(
+        ({ collection }) => ({
+          collection: {
+            ...collection,
+            collectibles: collection.collectibles.map((collectible) => ({
+              ...collectible,
+              token_uri: "data:text/html,<p>hi</p>",
+            })),
+          },
+        }),
+      );
+
+      const result = await transformBackendCollections(brokenCollections);
+
+      expect(fetchMetadataJson).not.toHaveBeenCalled();
+      expect(result[0].items[0].name).toBe("Token #token1");
+      expect(result[0].items[0].image).toBe("");
+    });
+
     it("handles HTTP error responses", async () => {
       (fetchMetadataJson as jest.Mock).mockRejectedValue(
         new Error("fetchMetadataJson: request failed with 404 Not Found"),
