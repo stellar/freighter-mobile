@@ -3,11 +3,36 @@ import { fireEvent } from "@testing-library/react-native";
 import AddTokenScreen from "components/screens/AddTokenScreen/AddTokenScreen";
 import { recordTokenId } from "components/screens/SwapScreen/helpers";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
+import { NETWORKS } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES } from "config/routes";
 import { HookStatus, TokenTypeWithCustomToken } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import { renderWithProviders } from "helpers/testUtils";
 import { useTokenLookup } from "hooks/useTokenLookup";
 import React from "react";
+import { SecurityLevel } from "services/blockaid/constants";
+
+// The real sheets' refs are gorhom modals that expose nothing observable, so
+// each mocked sheet reports present() under its content component's name.
+const mockPresented: string[] = [];
+jest.mock("components/BottomSheet", () => ({
+  __esModule: true,
+  default: ({ modalRef, customContent }: any) => {
+    if (modalRef) {
+      // eslint-disable-next-line no-param-reassign
+      modalRef.current = {
+        present: () =>
+          mockPresented.push(
+            customContent?.type?.displayName ||
+              customContent?.type?.name ||
+              "unknown",
+          ),
+        dismiss: jest.fn(),
+      };
+    }
+    return null;
+  },
+}));
 
 jest.mock("hooks/useTokenLookup", () => ({ useTokenLookup: jest.fn() }));
 
@@ -268,15 +293,85 @@ describe("AddTokenScreen — Popular tokens", () => {
     expect(queryByText("No tokens found")).toBeNull();
   });
 
-  it("shows nothing below the field when the list is empty or stellar.expert is down", () => {
+  it("shows nothing below the field when the list is empty", () => {
     (useSwapTokenLookup as jest.Mock).mockReturnValue({
       popularTokens: [],
       isTrendingLoading: false,
-      stellarExpertDown: true,
+      stellarExpertDown: false,
     });
     const { queryByText, queryByTestId } = renderScreen();
 
     expect(queryByText("Popular tokens")).toBeNull();
     expect(queryByTestId("add-token-popular-spinner")).toBeNull();
+  });
+
+  it("hides a non-empty Popular list when stellar.expert is down", () => {
+    (useSwapTokenLookup as jest.Mock).mockReturnValue({
+      popularTokens: [makeRecord("AQUA")],
+      isTrendingLoading: false,
+      stellarExpertDown: true,
+    });
+    const { queryByText } = renderScreen();
+
+    expect(queryByText("Popular tokens")).toBeNull();
+  });
+
+  it.each([HookStatus.SUCCESS, HookStatus.LOADING])(
+    "hides Popular once a search is in flight or done, even with an empty field (%s)",
+    (status) => {
+      (useTokenLookup as jest.Mock).mockReturnValue({
+        searchResults: [],
+        verifiedTokens: [],
+        unverifiedTokens: [],
+        hasScanFailed: false,
+        status,
+        handleSearch: jest.fn(),
+        resetSearch: jest.fn(),
+      });
+      const { queryByText } = renderScreen();
+
+      expect(queryByText("Popular tokens")).toBeNull();
+    },
+  );
+
+  describe("security verdict on Add", () => {
+    const unscanned = {
+      ...makeRecord("AQUA"),
+      isUnableToScan: true,
+      securityLevel: SecurityLevel.UNABLE_TO_SCAN,
+    };
+
+    const pressAdd = (network: NETWORKS) => {
+      (useAuthenticationStore as unknown as jest.Mock).mockReturnValue({
+        network,
+      });
+      (useSwapTokenLookup as jest.Mock).mockReturnValue({
+        popularTokens: [unscanned],
+        isTrendingLoading: false,
+        stellarExpertDown: false,
+      });
+      mockPresented.length = 0;
+      const { getByTestId } = renderScreen();
+
+      fireEvent.press(getByTestId("add-token-button"));
+    };
+
+    afterEach(() => {
+      (useAuthenticationStore as unknown as jest.Mock).mockReturnValue({
+        network: "PUBLIC",
+      });
+    });
+
+    it("goes straight to the add sheet off mainnet", () => {
+      pressAdd(NETWORKS.TESTNET);
+
+      expect(mockPresented).toEqual(["AddTokenBottomSheetContent"]);
+    });
+
+    it("still presents the security sheet on mainnet", () => {
+      pressAdd(NETWORKS.PUBLIC);
+
+      expect(mockPresented).toEqual(["SecurityDetailBottomSheet"]);
+    });
   });
 });

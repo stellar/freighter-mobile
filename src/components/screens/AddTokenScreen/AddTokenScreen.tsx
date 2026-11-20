@@ -48,6 +48,7 @@ import {
   getSearchTokenRecordId,
   shouldOfferUnhide,
 } from "helpers/hiddenTokens";
+import { isMainnet } from "helpers/networks";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
@@ -126,9 +127,8 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     balanceItems,
   });
 
-  // Only `popularTokens` is used; search stays with `useTokenLookup`, which
-  // also scans for malicious tokens. Off mainnet, trending Soroban tokens are
-  // kept because this screen can add them.
+  // Only `popularTokens` is used; search stays with `useTokenLookup`. Off
+  // mainnet, trending Soroban tokens are kept because this screen can add them.
   const { popularTokens, isTrendingLoading, stellarExpertDown } =
     useSwapTokenLookup({
       network,
@@ -136,6 +136,22 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
       publicKey: account?.publicKey,
       sorobanOffMainnet: true,
     });
+
+  // Blockaid is mainnet-only, so off mainnet the verdict must match the search
+  // rows' (SAFE), not the lookup's "unable to scan".
+  const popularRows = useMemo(
+    () =>
+      isMainnet(network)
+        ? popularTokens
+        : popularTokens.map((token) => ({
+            ...token,
+            isSuspicious: false,
+            isMalicious: false,
+            isUnableToScan: false,
+            securityLevel: SecurityLevel.SAFE,
+          })),
+    [network, popularTokens],
+  );
 
   const isTokenMalicious = scannedToken.isMalicious;
   const isTokenSuspicious = scannedToken.isSuspicious;
@@ -666,7 +682,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
                 {t("swapScreen.popularTokensSection")}
               </Text>
             </View>
-            {popularTokens.map((token) => (
+            {popularRows.map((token) => (
               <TokenItem
                 key={`${token.tokenCode}:${token.issuer}`}
                 token={token}
