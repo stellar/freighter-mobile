@@ -19,6 +19,10 @@ import {
   TIMING,
   ANALYTICS_CONFIG,
 } from "services/analytics/constants";
+import {
+  getFundedAccountCount,
+  loadPublicFundedStates,
+} from "services/analytics/fundingRecords";
 import type {
   AnalyticsEventName,
   AnalyticsProps,
@@ -34,16 +38,48 @@ let experimentClient: ReturnType<
 > | null = null;
 
 /**
+ * Cross-platform account identifier: lowercase-hex SHA-256 of the full
+ * G-address string. Memoized; never emits a raw/truncated key. Must match the
+ * extension's value for the same address.
+ */
+const accountIdHashCache = new Map<string, string>();
+export const getAccountIdHash = (publicKey: string): string => {
+  const cached = accountIdHashCache.get(publicKey);
+  if (cached) return cached;
+  try {
+    const digest = xdr.encodeBytes(hash(Buffer.from(publicKey, "utf8")), "hex");
+    accountIdHashCache.set(publicKey, digest);
+    return digest;
+  } catch {
+    return "";
+  }
+};
+
+interface IdentifyTraits {
+  wallet_count: number;
+  has_imported_account: boolean;
+  funded_account_count?: number;
+}
+
+/**
  * Durable, low-cardinality wallet traits derived from the auth store's
  * account list. Sent via Amplitude's Identify API (not per-event context) so
  * they persist on the user profile. Mobile has no hardware wallets, so
  * (unlike the extension) there is no `has_hardware_wallet` trait here.
+ *
+ * `funded_account_count` is the number of own accounts whose PUBLIC funding
+ * record has `funded: true`. It is left out when the count is not known yet
+ * (null), so a partial count is never sent.
  */
 export const deriveIdentifyTraits = (
   allAccounts: { importedFromSecretKey?: boolean }[],
-): { wallet_count: number; has_imported_account: boolean } => ({
+  fundedAccountCount: number | null = null,
+): IdentifyTraits => ({
   wallet_count: allAccounts.length,
   has_imported_account: allAccounts.some((a) => a.importedFromSecretKey),
+  ...(fundedAccountCount !== null && {
+    funded_account_count: fundedAccountCount,
+  }),
 });
 
 // Fingerprint of the last traits successfully sent via Identify, used to
@@ -60,13 +96,33 @@ let lastIdentifiedTraits: string | null = null;
  * Mirrors the extension's consent-gating fix.
  */
 export const syncIdentifyTraits = (
-  allAccounts: { importedFromSecretKey?: boolean }[],
+  allAccounts: { publicKey: string; importedFromSecretKey?: boolean }[],
 ): void => {
-  const traits = deriveIdentifyTraits(allAccounts);
+  if (!AMPLITUDE_API_KEY || !hasInitialised) return;
+
+  // The funding records live in AsyncStorage. Their PUBLIC `funded` values are
+  // cached in memory, so this function stays synchronous. When a record is not
+  // in the cache yet, send the other traits now, load the records, and sync
+  // again. The reload runs at most one time for each new account.
+  const accountIdHashes = allAccounts
+    .map((a) => getAccountIdHash(a.publicKey))
+    .filter(Boolean);
+  const fundedAccountCount = getFundedAccountCount(accountIdHashes);
+
+  if (fundedAccountCount === null) {
+    loadPublicFundedStates(accountIdHashes)
+      .then((loaded) => {
+        if (loaded) {
+          syncIdentifyTraits(useAuthenticationStore.getState().allAccounts);
+        }
+      })
+      .catch(() => undefined);
+  }
+
+  const traits = deriveIdentifyTraits(allAccounts, fundedAccountCount);
   const fingerprint = JSON.stringify(traits);
 
   if (fingerprint === lastIdentifiedTraits) return;
-  if (!AMPLITUDE_API_KEY || !hasInitialised) return;
   // Consent (isEnabled) is persisted to AsyncStorage and hydrates
   // asynchronously. Before hydration the store holds its default, which is
   // `true` on Android (see ANALYTICS_CONFIG.DEFAULT_ENABLED) - so reading
@@ -84,6 +140,9 @@ export const syncIdentifyTraits = (
     identify.set(ANALYTICS_CONFIG.BUNDLE_ID_KEY, getBundleId());
     identify.set("wallet_count", traits.wallet_count);
     identify.set("has_imported_account", traits.has_imported_account);
+    if (traits.funded_account_count !== undefined) {
+      identify.set("funded_account_count", traits.funded_account_count);
+    }
 
     amplitude.identify(identify);
 
@@ -191,6 +250,19 @@ export const initAnalytics = (): void => {
 export const isInitialized = (): boolean => hasInitialised;
 
 /**
+ * Whether `track` can send an event now: analytics is initialized, the API
+ * key is set, persisted consent has hydrated, and the user allows analytics.
+ *
+ * `track` does not report whether it sent an event, so a caller that must
+ * know (the `account.funded` detection) reads this before it calls `track`.
+ */
+export const canSendAnalytics = (): boolean =>
+  Boolean(AMPLITUDE_API_KEY) &&
+  hasInitialised &&
+  useAnalyticsStore.persist.hasHydrated() &&
+  useAnalyticsStore.getState().isEnabled;
+
+/**
  * RFC surface value for this client, used to distinguish mobile from
  * extension events in shared analytics dashboards.
  */
@@ -263,24 +335,6 @@ export const setAnalyticsUserId = (userId: string | null): void => {
 // -----------------------------------------------------------------------------
 // CORE TRACKING
 // -----------------------------------------------------------------------------
-
-/**
- * Cross-platform account identifier: lowercase-hex SHA-256 of the full
- * G-address string. Memoized; never emits a raw/truncated key. Must match the
- * extension's value for the same address.
- */
-const accountIdHashCache = new Map<string, string>();
-export const getAccountIdHash = (publicKey: string): string => {
-  const cached = accountIdHashCache.get(publicKey);
-  if (cached) return cached;
-  try {
-    const digest = xdr.encodeBytes(hash(Buffer.from(publicKey, "utf8")), "hex");
-    accountIdHashCache.set(publicKey, digest);
-    return digest;
-  } catch {
-    return "";
-  }
-};
 
 /**
  * Schema generation marker for the cross-platform property model. Bumped to
@@ -434,6 +488,10 @@ const getThrottledDispatcher = memoize((_throttleKey: string) =>
  * the extension, which does not throttle at all.
  */
 const UNTHROTTLED_EVENTS: ReadonlySet<AnalyticsEventName> = new Set([
+  // The detection dedupes it at its source (one event per transition). The
+  // throttle would dispatch it 500ms later, and buildCommonContext would then
+  // read the active account at that time, which can be a different account.
+  AnalyticsEvent.ACCOUNT_FUNDED,
   AnalyticsEvent.TOKEN_CHART_LOADED,
   AnalyticsEvent.TOKEN_CHART_VIEWED,
   AnalyticsEvent.TOKEN_CHART_RANGE_CHANGED,
