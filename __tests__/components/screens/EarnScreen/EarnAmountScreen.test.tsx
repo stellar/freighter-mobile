@@ -13,6 +13,7 @@ import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { useEarnStore } from "ducks/earn";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { renderWithProviders } from "helpers/testUtils";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
@@ -1230,6 +1231,66 @@ describe("EarnAmountScreen", () => {
       }
 
       expect(mockSimulate).not.toHaveBeenCalled();
+    });
+  });
+
+  // A SEP-41 balance carries `decimals` and keeps its amounts in the token's
+  // smallest unit, so its spendable amount is converted before it meets the
+  // typed amount, as on Send. 10000000 with 6 decimals is 10 tokens.
+  describe("a SEP-41 deposit balance", () => {
+    const SEP41_BALANCE = {
+      id: `USDC:${USDC_ASSET_ID}`,
+      contractId: USDC_ASSET_ID,
+      decimals: 6,
+      token: { code: "USDC", issuer: { key: USDC_ASSET_ID } },
+      total: new BigNumber("10000000"),
+      available: new BigNumber("10000000"),
+      currentPrice: new BigNumber("1"),
+    } as never;
+
+    beforeEach(() => {
+      mockGetBalanceByContractId.mockReturnValue(SEP41_BALANCE);
+      setSpendable({ deposit: "10000000", xlm: "10" });
+    });
+
+    it("counts an amount above the balance as too high", () => {
+      setTokenAmount("50");
+
+      const { getByTestId } = renderScreen();
+
+      expect(getByTestId("earn-amount-cta")).toHaveTextContent(
+        "swapScreen.cta.insufficientBalance",
+      );
+    });
+
+    it("lets an amount within the balance through", () => {
+      setTokenAmount("5");
+
+      const { getByTestId } = renderScreen();
+
+      expect(getByTestId("earn-amount-cta")).toHaveTextContent(
+        "earnAmount.review",
+      );
+    });
+
+    it("offers the whole balance on Max, in whole tokens", () => {
+      const mockSetTokenAmount = jest.fn();
+      setTokenAmount("0", { setTokenAmount: mockSetTokenAmount });
+
+      const { getByTestId } = renderScreen();
+      fireEvent.press(getByTestId("percentage-100"));
+
+      expect(mockSetTokenAmount).toHaveBeenCalledWith("10");
+    });
+
+    it("shows the available balance in whole tokens", () => {
+      setTokenAmount("5");
+
+      const { getByText } = renderScreen();
+
+      expect(
+        getByText(`${formatTokenForDisplay("10", "USDC")} common.available`),
+      ).toBeTruthy();
     });
   });
 

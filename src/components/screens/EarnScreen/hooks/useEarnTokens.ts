@@ -1,4 +1,3 @@
-import BigNumber from "bignumber.js";
 import { parseCanonicalAsset } from "components/screens/EarnScreen/helpers/earnSwapDestination";
 import { getBlendPoolId } from "config/blend";
 import { BlendCatalogPool, BlendEarnAssetOption } from "config/blendTypes";
@@ -13,6 +12,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useEarnStore } from "ducks/earn";
 import { getBalanceByContractId } from "helpers/balances";
+import { getBalanceInWholeUnits } from "helpers/formatAmount";
 import { getNativeContractDetails } from "helpers/soroban";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -24,7 +24,7 @@ export interface EarnTokenOption {
   assetId: string;
   code: string;
   decimals: number;
-  /** Raw total in display units, "0" when the account holds none. */
+  /** Total in whole tokens, "0" when the account holds none. */
   total: string;
   /**
    * Headline rate as a decimal fraction (0.1694 = 16.94%), or null when the
@@ -110,7 +110,7 @@ export const buildEarnTokenRows = ({
     }
 
     const balance = findBalance(option.assetId, balances, networkDetails);
-    const total = balance?.total ? new BigNumber(balance.total) : null;
+    const total = balance?.total ? getBalanceInWholeUnits(balance) : null;
 
     // `symbol` is null for native XLM on the live catalog, so it cannot be the
     // only source of the display code — taking it alone renders the row with no

@@ -69,6 +69,27 @@ describe("buildEarnTokenRows", () => {
     expect(supported).toHaveLength(0);
   });
 
+  it("shows a SEP-41 balance in whole tokens, not its raw integer", () => {
+    // A SEP-41 balance carries `decimals` and keeps its total in the token's
+    // smallest unit; 100000000 with 7 decimals is 10 tokens.
+    const balance = {
+      total: new BigNumber("100000000"),
+      decimals: 7,
+      contractId: USDC_SAC,
+      token: { code: "USDC", issuer: { key: USDC_SAC } },
+    } as never;
+
+    const { held } = buildEarnTokenRows({
+      options: [option()],
+      poolId: POOL_ID,
+      balances: {} as never,
+      networkDetails,
+      findBalance: () => balance,
+    });
+
+    expect(held[0].total).toBe("10");
+  });
+
   it("leaves `balance` undefined for a zero-balance (supported) row", () => {
     const { supported } = buildEarnTokenRows({
       options: [option()],

@@ -62,10 +62,10 @@ import {
   getBalanceByContractId,
 } from "helpers/balances";
 import {
-  formatBalanceAmount,
   formatBigNumberForDisplay,
   formatFiatInputDisplay,
   formatTokenForDisplay,
+  hasDecimals,
 } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -209,16 +209,23 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   // resource fee here. That fee is only known once simulation returns, and
   // is checked post-simulation instead (see `handleCtaPress`'s
   // `getXlmFeeShortfall` call), rather than guessed at and reserved upfront.
+  // In whole tokens, the unit the user types in: a SEP-41 balance keeps its
+  // amounts in the token's smallest unit, so it's converted, as on Send.
   const availableBalance = useMemo(() => {
     if (!depositBalance) {
       return "0";
     }
 
-    return calculateSpendableAmount({
+    const spendable = calculateSpendableAmount({
       balance: depositBalance,
       subentryCount: account?.subentryCount ?? 0,
       transactionFee,
-    }).toFixed();
+    });
+    return (
+      hasDecimals(depositBalance)
+        ? spendable.shiftedBy(-depositBalance.decimals)
+        : spendable
+    ).toFixed();
   }, [depositBalance, account?.subentryCount, transactionFee]);
 
   const availableBalanceBn = useMemo(
@@ -890,7 +897,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   }
 
   const availableBalanceText = depositBalance
-    ? `${formatBalanceAmount(depositBalance, tokenCode, availableBalanceBn)} ${t(
+    ? `${formatTokenForDisplay(availableBalanceBn, tokenCode)} ${t(
         "common.available",
       )}`
     : null;
