@@ -2,15 +2,18 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { act, fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
+import InformationBottomSheet from "components/InformationBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid/SecurityDetailBottomSheet";
 import { EarnSwapBottomSheet } from "components/screens/EarnScreen/components/EarnSwapBottomSheet";
 import { EarnSwapFromBottomSheet } from "components/screens/EarnScreen/components/EarnSwapFromBottomSheet";
 import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
 import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
 import EarnTokenPickerScreen from "components/screens/EarnScreen/screens/EarnTokenPickerScreen";
+import { SwapDetailsBottomSheet } from "components/screens/SwapScreen/components";
+import { NETWORKS } from "config/constants";
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { usePreferencesStore } from "ducks/preferences";
-import { useSwapStore } from "ducks/swap";
+import { descriptorAsPathBalance, swapPairKey, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTokenIconsStore } from "ducks/tokenIcons";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -1303,6 +1306,101 @@ describe("EarnTokenPickerScreen", () => {
         openEarnSwap();
 
         expect(receiveFiatText()).toBe("--");
+      });
+    });
+
+    // A route's Soroban resource fee comes out of what can be swapped, as on
+    // main Swap. Before the quote for these inputs, the pair's last one does.
+    it("leaves the route's network fee out of the spendable XLM", () => {
+      openEarnSwap();
+      const { destinationToken } = useSwapStore.getState();
+      const sourceBalance =
+        mockUseBalancesList.mock.results[0]?.value?.balanceItems[0];
+      const pairKey = swapPairKey({
+        sourceBalance,
+        destinationBalance: descriptorAsPathBalance(destinationToken!),
+        network: NETWORKS.TESTNET,
+        publicKey: "GTESTPUBLICKEY",
+      });
+      act(() => {
+        useSwapStore.setState({
+          lastResourceFee: { pairKey: pairKey ?? "", fee: "1" },
+        });
+      });
+
+      const { availableBalanceText } = (
+        findByContent(EarnSwapBottomSheet)?.props
+          .customContent as React.ReactElement<{
+          availableBalanceText: string | null;
+        }>
+      ).props;
+
+      // The 98.49754 above, less the 1 XLM resource fee.
+      expect(availableBalanceText).toBe(
+        `${formatTokenForDisplay("97.49754", "XLM")} common.available`,
+      );
+    });
+
+    describe("its quote, as on main Swap", () => {
+      afterEach(() => {
+        mockEarnSwapOverrides = {};
+      });
+
+      const swapSheetProps = () =>
+        (
+          findByContent(EarnSwapBottomSheet)?.props
+            .customContent as React.ReactElement<{
+            isReceiveLoading?: boolean;
+            networkFee?: string | null;
+            onSeeDetails?: () => void;
+            showQuoteUnavailable?: boolean;
+            onQuoteUnavailablePress?: () => void;
+          }>
+        ).props;
+
+      it("shimmers the receive amount while the quote is on its way", () => {
+        mockEarnSwapOverrides = { isQuotePending: true };
+        openEarnSwap();
+
+        expect(swapSheetProps().isReceiveLoading).toBe(true);
+      });
+
+      it("opens the details over the swap sheet", async () => {
+        mockEarnSwapOverrides = {
+          isQuoteCurrent: true,
+          networkFeeText: "0.00246 XLM",
+          networkFeeFiatText: undefined,
+        };
+        openEarnSwap();
+
+        expect(swapSheetProps().networkFee).toBe("0.00246 XLM");
+        await act(async () => {
+          swapSheetProps().onSeeDetails?.();
+          await new Promise<void>((resolve) => {
+            setTimeout(resolve, 0);
+          });
+        });
+
+        expect(
+          findByContent(SwapDetailsBottomSheet)?.ref.present,
+        ).toHaveBeenCalled();
+      });
+
+      it("explains a quote that is unavailable", async () => {
+        mockEarnSwapOverrides = { showQuoteUnavailable: true };
+        openEarnSwap();
+
+        expect(swapSheetProps().showQuoteUnavailable).toBe(true);
+        await act(async () => {
+          swapSheetProps().onQuoteUnavailablePress?.();
+          await new Promise<void>((resolve) => {
+            setTimeout(resolve, 0);
+          });
+        });
+
+        expect(
+          findByContent(InformationBottomSheet)?.ref.present,
+        ).toHaveBeenCalled();
       });
     });
 

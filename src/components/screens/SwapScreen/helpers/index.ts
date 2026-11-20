@@ -20,6 +20,8 @@ export {
 export * from "./swapDisplayStrings";
 export {
   getSwapSpendableAmount,
+  isSwapQuotePending,
+  shouldShowSwapQuoteUnavailable,
   shouldShowXlmReservePreflight,
 } from "./swapPreflight";
 export {

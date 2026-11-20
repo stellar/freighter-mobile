@@ -5,6 +5,10 @@ import {
   PercentageButtons,
   PercentageOption,
 } from "components/PercentageButtons";
+import {
+  SwapQuoteUnavailableLine,
+  SwapSeeDetailsLine,
+} from "components/screens/SwapScreen/components";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -42,6 +46,16 @@ export interface EarnSwapBottomSheetProps {
   /** Fiat counterpart of the quote, already formatted: $0.00 before there
    *  is a quote, "--" without a price. Without it the line is hidden. */
   destinationSecondaryText?: string;
+  /** The quote for the current amount is on its way: the receive amount
+   *  shimmers, as on main Swap. */
+  isReceiveLoading?: boolean;
+  /** The quote's network fee, already formatted; shows the "See details"
+   *  line under the cards. Null hides it, e.g. before there is a quote. */
+  networkFee?: string | null;
+  onSeeDetails?: () => void;
+  /** Shows the "Quote unavailable" line under the cards. */
+  showQuoteUnavailable?: boolean;
+  onQuoteUnavailablePress?: () => void;
 
   onPercentagePress: (percentage: number) => void;
   onSettingsPress: () => void;
@@ -98,6 +112,11 @@ export const EarnSwapBottomSheet: React.FC<EarnSwapBottomSheetProps> = ({
   ctaLabel,
   isReviewLoading,
   isBuildingReview,
+  isReceiveLoading,
+  networkFee,
+  onSeeDetails,
+  showQuoteUnavailable,
+  onQuoteUnavailablePress,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -128,49 +147,70 @@ export const EarnSwapBottomSheet: React.FC<EarnSwapBottomSheetProps> = ({
         <BottomSheetCloseButton onPress={onClose} testID="earn-swap-close" />
       </View>
 
-      <View className="gap-[12px]">
-        <AmountCard
-          mode="editable"
-          testID="earn-swap-sell-card"
-          label={t("swapScreen.youSell")}
-          selectedToken={sourceBalance}
-          pickerLabel={sourceLabel ?? t("swapScreen.selectToken")}
-          onPickerPress={onSourcePickerPress}
-          disabled={isBuildingReview}
-          pickerTestID="earn-swap-sell-pill"
-          inputTestID="earn-swap-amount-input"
-          focusTriggerTestID="earn-swap-amount-focus-trigger"
-          autoFocus
-          availableBalanceText={availableBalanceText}
-          converter={converter}
-          hasUsdPrice={hasUsdPrice}
-          secondaryAmountText={sourceSecondaryText}
-        />
+      {/* The cards and, under them as on main Swap, the quote's lines. */}
+      <View className="gap-[16px]">
+        <View className="gap-[12px]">
+          <AmountCard
+            mode="editable"
+            testID="earn-swap-sell-card"
+            label={t("swapScreen.youSell")}
+            selectedToken={sourceBalance}
+            pickerLabel={sourceLabel ?? t("swapScreen.selectToken")}
+            onPickerPress={onSourcePickerPress}
+            disabled={isBuildingReview}
+            pickerTestID="earn-swap-sell-pill"
+            inputTestID="earn-swap-amount-input"
+            focusTriggerTestID="earn-swap-amount-focus-trigger"
+            autoFocus
+            availableBalanceText={availableBalanceText}
+            converter={converter}
+            hasUsdPrice={hasUsdPrice}
+            secondaryAmountText={sourceSecondaryText}
+          />
 
-        <AmountCard
-          mode="readonly"
-          testID="earn-swap-receive-card"
-          label={t("swapScreen.youReceive")}
-          selectedToken={destinationToken}
-          pickerLabel={destinationLabel}
-          // Fixed to the pool asset -- see the component doc.
-          isLocked
-          onPickerPress={() => {}}
-          pickerTestID="earn-swap-receive-pill"
-          primaryAmount={destinationAmount}
-          secondaryAmount={destinationSecondaryText}
-        />
+          <AmountCard
+            mode="readonly"
+            testID="earn-swap-receive-card"
+            label={t("swapScreen.youReceive")}
+            selectedToken={destinationToken}
+            pickerLabel={destinationLabel}
+            // Fixed to the pool asset -- see the component doc.
+            isLocked
+            onPickerPress={() => {}}
+            pickerTestID="earn-swap-receive-pill"
+            primaryAmount={destinationAmount}
+            secondaryAmount={destinationSecondaryText}
+            isAmountLoading={isReceiveLoading}
+          />
 
-        {/* Static divider overlapping both cards' edges. `pointerEvents`
+          {/* Static divider overlapping both cards' edges. `pointerEvents`
             "none" so it never steals a tap from the card beneath it. */}
-        <View
-          pointerEvents="none"
-          className="absolute inset-x-0 top-1/2 -mt-[20px] items-center"
-        >
-          <View className="size-[40px] items-center justify-center rounded-full bg-base-0">
-            <Icon.ChevronDown size={16} color={themeColors.text.primary} />
+          <View
+            pointerEvents="none"
+            className="absolute inset-x-0 top-1/2 -mt-[20px] items-center"
+          >
+            <View className="size-[40px] items-center justify-center rounded-full bg-base-0">
+              <Icon.ChevronDown size={16} color={themeColors.text.primary} />
+            </View>
           </View>
         </View>
+
+        {networkFee && onSeeDetails ? (
+          <SwapSeeDetailsLine
+            networkFee={networkFee}
+            onPress={onSeeDetails}
+            disabled={isBuildingReview}
+            testID="earn-swap-see-details"
+          />
+        ) : null}
+
+        {showQuoteUnavailable && onQuoteUnavailablePress ? (
+          <SwapQuoteUnavailableLine
+            onPress={onQuoteUnavailablePress}
+            disabled={isBuildingReview}
+            testID="earn-swap-quote-unavailable"
+          />
+        ) : null}
       </View>
 
       {hasAmount ? (

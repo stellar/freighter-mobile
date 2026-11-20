@@ -7,6 +7,7 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
+import InformationBottomSheet from "components/InformationBottomSheet";
 import Spinner from "components/Spinner";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
@@ -44,6 +45,7 @@ import { useOpenBlendApp } from "components/screens/EarnScreen/hooks/useOpenBlen
 // itself re-exported from that barrel, so going through it would close an
 // import cycle.
 import { EarnIntroScreen } from "components/screens/EarnScreen/screens/EarnIntroScreen";
+import { SwapDetailsBottomSheet } from "components/screens/SwapScreen/components";
 import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
 import {
   buildSellSecondaryText,
@@ -190,6 +192,9 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   const swapProcessingBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const swapSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const swapSecurityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const swapDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const swapQuoteUnavailableBottomSheetModalRef =
+    useRef<BottomSheetModal>(null);
 
   const refreshBalances = useEarnBalancesRefresh({
     publicKey: account?.publicKey ?? "",
@@ -517,7 +522,9 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // A transaction already built for Review is rebuilt with the new settings,
   // so Confirm signs what Review shows.
   const handleSwapSettingsChange = useCallback(() => {
-    if (!earnSwap.transactionXDR) {
+    // As on main Swap: Review stays disabled until the matching quote
+    // lands, so there is nothing to rebuild yet.
+    if (!earnSwap.isQuoteCurrent || !earnSwap.transactionXDR) {
       return;
     }
     earnSwap.setupSwapTransaction().catch((settingsError) => {
@@ -528,6 +535,26 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       );
     });
   }, [earnSwap]);
+
+  // "See details" and "Quote unavailable" open over the swap sheet, as on
+  // main Swap, once the keyboard is down.
+  const handleSwapSeeDetails = useCallback(() => {
+    Keyboard.dismiss();
+    waitForKeyboardDismiss().then(() => {
+      swapDetailsBottomSheetModalRef.current?.present();
+    });
+  }, []);
+  const handleSwapQuoteUnavailablePress = useCallback(() => {
+    waitForKeyboardDismiss(500).then(() => {
+      swapQuoteUnavailableBottomSheetModalRef.current?.present();
+    });
+  }, []);
+  // The explanation goes once the quote it explains does.
+  useEffect(() => {
+    if (!earnSwap.showQuoteUnavailable) {
+      swapQuoteUnavailableBottomSheetModalRef.current?.dismiss();
+    }
+  }, [earnSwap.showQuoteUnavailable]);
 
   // Cross-stack navigation (Buy / Receive live outside EarnStack) needs the
   // root-level param list — the screen's own `navigation` prop is typed to
@@ -1125,6 +1152,15 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
                 earnSwap.ctaState.kind === "loading" || isBuildingSwapReview
               }
               isBuildingReview={isBuildingSwapReview}
+              isReceiveLoading={earnSwap.isQuotePending}
+              networkFee={
+                earnSwap.isQuoteCurrent
+                  ? (earnSwap.networkFeeFiatText ?? earnSwap.networkFeeText)
+                  : null
+              }
+              onSeeDetails={handleSwapSeeDetails}
+              showQuoteUnavailable={earnSwap.showQuoteUnavailable}
+              onQuoteUnavailablePress={handleSwapQuoteUnavailablePress}
             />
           ) : null
         }
@@ -1211,6 +1247,35 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
             onSelect={handleSwapSourceSelected}
             onBack={() => swapFromBottomSheetModalRef.current?.dismiss()}
             onClose={handleCloseSwap}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={swapDetailsBottomSheetModalRef}
+        scrollable
+        customContent={
+          <SwapDetailsBottomSheet
+            networkFee={earnSwap.networkFeeText}
+            networkFeeFiat={earnSwap.networkFeeFiatText}
+            showSorobanFeeNote={!!earnSwap.resourceFee}
+            rate={earnSwap.isQuoteCurrent ? earnSwap.stableConversionRate : ""}
+            routeView={earnSwap.isQuoteCurrent ? earnSwap.swapRouteView : null}
+            onClose={() => swapDetailsBottomSheetModalRef.current?.dismiss()}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={swapQuoteUnavailableBottomSheetModalRef}
+        customContent={
+          <InformationBottomSheet
+            title={t("swapScreen.quoteUnavailable.title")}
+            texts={[
+              { key: "body", value: t("swapScreen.quoteUnavailable.body") },
+            ]}
+            onClose={() =>
+              swapQuoteUnavailableBottomSheetModalRef.current?.dismiss()
+            }
+            closeTestID="earn-swap-quote-unavailable-close"
           />
         }
       />

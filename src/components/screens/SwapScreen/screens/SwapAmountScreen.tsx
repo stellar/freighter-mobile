@@ -12,7 +12,9 @@ import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   SwapDetailsBottomSheet,
+  SwapQuoteUnavailableLine,
   SwapReviewBottomSheet,
+  SwapSeeDetailsLine,
   TrendingListItem,
   TrendingTokenDetailBottomSheet,
   XlmReserveBottomSheet,
@@ -22,9 +24,12 @@ import {
   buildReceiveTexts,
   buildSellSecondaryText,
   buildSourceBalanceRight,
+  buildSwapNetworkFeeTexts,
   computeDestinationFiat,
+  getSwapSpendableAmount,
+  isSwapQuotePending,
   recordTokenId,
-  selectSwapRoute,
+  shouldShowSwapQuoteUnavailable,
   shouldShowXlmReservePreflight,
   SwapSetupAnswerError,
 } from "components/screens/SwapScreen/helpers";
@@ -35,10 +40,12 @@ import {
   useSwapBalances,
   useSwapCtaState,
   useSwapDirectionToggle,
+  useSwapFeeShortfall,
   useSwapFooter,
   useSwapForXlmReserve,
   useSwapNavigation,
   useSwapPathFinding,
+  useSwapQuoteFees,
   useSwapRouteView,
   useSwapSecurityAssessments,
   useSwapTransactionSettings,
@@ -53,12 +60,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
-import {
-  BASE_RESERVE,
-  DEFAULT_DECIMALS,
-  NATIVE_TOKEN_CODE,
-  TransactionContext,
-} from "config/constants";
+import { DEFAULT_DECIMALS, TransactionContext } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { FormattedSearchTokenRecord } from "config/types";
@@ -67,22 +69,12 @@ import { useDebugStore } from "ducks/debug";
 import {
   descriptorAsPathBalance,
   SwapEntrySource,
-  swapPairKey,
-  swapQuoteKey,
   useSwapStore,
 } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { isNativeAssetId } from "helpers/assetIdentity";
-import { calculateSpendableAmount } from "helpers/balances";
-import {
-  formatFiatAmount,
-  formatTokenForDisplay,
-  getTokenDecimals,
-  hasDecimals,
-} from "helpers/formatAmount";
+import { formatFiatAmount, getTokenDecimals } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
-import { computeTotalFeeXlm } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem, useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -176,12 +168,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceAmount,
     destinationAmount,
     pathResult,
-    swapQuotes,
     isLoadingPath,
     pathError,
     pathErrorReason,
     pathErrorQuoteKey,
-    lastResourceFee,
     setSourceToken,
     setDestinationToken,
     setEntrySource,
@@ -212,89 +202,39 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     return undefined;
   }, [destinationBalance, destinationTokenDescriptor]);
 
-  const currentQuoteKey = useMemo(
+  const {
+    currentQuoteKey,
+    isQuoteCurrent,
+    resourceFee,
+    totalFee,
+    spendableFee,
+  } = useSwapQuoteFees({
+    sourceBalance,
+    destinationBalance: destinationForPath,
+    sourceAmount,
+    network,
+    publicKey: account?.publicKey,
+    swapFee,
+  });
+
+  const spendableAmount = useMemo(
     () =>
-      sourceBalance && destinationForPath && account?.publicKey
-        ? swapQuoteKey({
+      sourceBalance && account
+        ? getSwapSpendableAmount({
             sourceBalance,
-            destinationBalance: destinationForPath,
-            sourceAmount,
-            network,
-            publicKey: account.publicKey,
+            subentryCount: account.subentryCount || 0,
+            transactionFee: spendableFee,
+            destinationRequiresTrustline:
+              !!destinationTokenDescriptor?.requiresTrustline,
           })
         : null,
     [
       sourceBalance,
-      destinationForPath,
-      sourceAmount,
-      network,
-      account?.publicKey,
+      account,
+      spendableFee,
+      destinationTokenDescriptor?.requiresTrustline,
     ],
   );
-
-  // The store keeps the last quote until the debounced re-quote replaces it.
-  const isQuoteCurrent =
-    !!pathResult && pathResult.quoteKey === currentQuoteKey;
-  const resourceFee =
-    isQuoteCurrent && swapQuotes
-      ? selectSwapRoute(swapQuotes)?.resourceFee
-      : undefined;
-  const totalFee = computeTotalFeeXlm(swapFee, resourceFee ?? null, swapFee);
-  // Max changes the amount, so the quote it lands on is a new one: without a
-  // current quote, size spendable with the pair's last resource fee so the
-  // first tap stays within the fee that quote will carry.
-  const pairKey =
-    sourceBalance && destinationForPath && account?.publicKey
-      ? swapPairKey({
-          sourceBalance,
-          destinationBalance: destinationForPath,
-          network,
-          publicKey: account.publicKey,
-        })
-      : null;
-  const lastPairFee =
-    pairKey && lastResourceFee?.pairKey === pairKey
-      ? lastResourceFee.fee
-      : null;
-  const spendableFee = computeTotalFeeXlm(
-    swapFee,
-    (isQuoteCurrent ? resourceFee : lastPairFee) ?? null,
-    swapFee,
-  );
-
-  const spendableAmount = useMemo(() => {
-    if (!sourceBalance || !account) return null;
-
-    const rawSpendable = calculateSpendableAmount({
-      balance: sourceBalance,
-      subentryCount: account.subentryCount || 0,
-      transactionFee: spendableFee,
-    });
-    // A Soroban balance is in the token's smallest unit.
-    const baseSpendable = hasDecimals(sourceBalance)
-      ? rawSpendable.shiftedBy(-sourceBalance.decimals)
-      : rawSpendable;
-
-    // Swapping XLM → a new token locks BASE_RESERVE (0.5 XLM) for the new
-    // trustline, so that XLM isn't actually spendable. Reserve it up-front
-    // (so the percentage buttons + insufficient-balance check exclude it).
-    // Only when there's at least 0.5 XLM spendable to begin with — below
-    // that, leave the value untouched and let the XlmReserveBottomSheet
-    // pre-flight surface the shortfall as usual.
-    const swappingXlmToNewToken =
-      isNativeAssetId(sourceBalance.id) &&
-      !!destinationTokenDescriptor?.requiresTrustline;
-    if (swappingXlmToNewToken && baseSpendable.gte(BASE_RESERVE)) {
-      return baseSpendable.minus(BASE_RESERVE);
-    }
-
-    return baseSpendable;
-  }, [
-    sourceBalance,
-    account,
-    spendableFee,
-    destinationTokenDescriptor?.requiresTrustline,
-  ]);
 
   // Token/fiat amount input is driven by the system keyboard via TextInput.
   // We mirror the converter's tokenAmount back into the swap store so that
@@ -472,42 +412,23 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     trendingListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [sourceTokenId, destinationTokenDescriptor?.id, trendingListRef]);
 
-  // The amount error stays on the inclusion fee alone: it pauses
-  // path-finding, and the resource fee comes from the quote, so gating it
-  // on the total would hold a stale fee until the user edits the amount.
-  // As on the extension: only a non-XLM source pays the fee from a separate
-  // XLM balance (an XLM source's spendable already nets it out), and only
-  // what sits above the minimum balance can pay it.
-  const xlmBalance = balanceItems.find((b) => isNativeAssetId(b.id));
-  const lacksXlmForTotalFee =
-    !!resourceFee &&
-    !!sourceBalance &&
-    !isNativeAssetId(sourceBalance.id) &&
-    (!xlmBalance ||
-      calculateSpendableAmount({
-        balance: xlmBalance,
-        subentryCount: account?.subentryCount || 0,
-        transactionFee: "0",
-      }).lt(totalFee));
-  useEffect(() => {
-    if (!lacksXlmForTotalFee || transactionHash) return;
-    setActiveError({
-      message: t("swapScreen.errors.insufficientXlmForFees", {
-        fee: totalFee,
-      }),
-      toastId: SWAP_TOAST_IDS.INSUFFICIENT_XLM_FOR_FEES,
-      duration: 3000,
-    });
-  }, [lacksXlmForTotalFee, transactionHash, totalFee, setActiveError, t]);
+  const lacksXlmForTotalFee = useSwapFeeShortfall({
+    resourceFee,
+    totalFee,
+    sourceBalance,
+    balanceItems,
+    subentryCount: account?.subentryCount,
+    transactionHash,
+    setActiveError,
+  });
 
-  // A failed quote stores its key too, so it settles; amountError stops the
-  // request, so it never settles and must not count as pending.
-  const isQuotePending =
-    !!currentQuoteKey &&
-    new BigNumber(sourceAmount || "0").gt(0) &&
-    !amountError &&
-    !isQuoteCurrent &&
-    pathErrorQuoteKey !== currentQuoteKey;
+  const isQuotePending = isSwapQuotePending({
+    currentQuoteKey,
+    sourceAmount,
+    amountError,
+    isQuoteCurrent,
+    pathErrorQuoteKey,
+  });
 
   const {
     ctaState,
@@ -528,14 +449,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   });
   const isCtaDisabled = isCtaStateDisabled || lacksXlmForTotalFee;
 
-  const showQuoteUnavailable =
-    !isLoadingPath &&
-    !!currentQuoteKey &&
-    pathErrorQuoteKey === currentQuoteKey &&
-    ctaState.kind !== "insufficient" &&
-    !amountError &&
-    new BigNumber(sourceAmount || "0").gt(0) &&
-    pathErrorReason !== null;
+  const showQuoteUnavailable = shouldShowSwapQuoteUnavailable({
+    isLoadingPath,
+    currentQuoteKey,
+    pathErrorQuoteKey,
+    isInsufficient: ctaState.kind === "insufficient",
+    amountError,
+    sourceAmount,
+    hasPathErrorReason: pathErrorReason !== null,
+  });
 
   useEffect(() => {
     if (!showQuoteUnavailable) quoteUnavailableSheetRef.current?.dismiss();
@@ -1062,16 +984,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     spendableAmount,
     availableLabel: t("common.available"),
   });
-  const networkFeeText = formatTokenForDisplay(totalFee, NATIVE_TOKEN_CODE);
-  const xlmPrice = balanceItems.find((b) =>
-    isNativeAssetId(b.id),
-  )?.currentPrice;
-  const networkFeeFiat = xlmPrice?.times(totalFee);
-  // A fee under a cent would read "$0.00", so it shows in XLM instead.
-  const networkFeeFiatText =
-    networkFeeFiat?.isFinite() && networkFeeFiat.gte(0.01)
-      ? formatFiatAmount(networkFeeFiat)
-      : undefined;
+  const { networkFeeText, networkFeeFiatText } = buildSwapNetworkFeeTexts({
+    totalFee,
+    balanceItems,
+  });
   const openSwapDetails = async () => {
     await waitForKeyboardDismiss();
     swapDetailsBottomSheetModalRef.current?.present();
@@ -1156,45 +1072,24 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       />
 
       {isQuoteCurrent && destinationTokenDescriptor && (
-        <TouchableOpacity
-          className="flex-row items-center justify-center gap-[6px] mt-[16px]"
+        <SwapSeeDetailsLine
+          className="mt-[16px]"
+          networkFee={networkFeeFiatText ?? networkFeeText}
           onPress={() => {
             openSwapDetails();
           }}
-          hitSlop={8}
-          testID="swap-see-details"
-        >
-          <Text sm secondary>
-            {t("swapScreen.details.networkFeeLine", {
-              fee: networkFeeFiatText ?? networkFeeText,
-            })}
-          </Text>
-          <Text sm secondary>
-            ·
-          </Text>
-          <Text sm secondary>
-            {t("swapScreen.details.seeDetails")}
-          </Text>
-          <Icon.InfoCircle size={14} color={themeColors.text.secondary} />
-        </TouchableOpacity>
+        />
       )}
 
       {showQuoteUnavailable && (
-        <TouchableOpacity
-          className="flex-row items-center justify-center gap-[6px] mt-[16px]"
+        <SwapQuoteUnavailableLine
+          className="mt-[16px]"
           onPress={() => {
             waitForKeyboardDismiss(500).then(() =>
               quoteUnavailableSheetRef.current?.present(),
             );
           }}
-          hitSlop={8}
-          testID="swap-quote-unavailable"
-        >
-          <Text sm secondary>
-            {t("swapScreen.quoteUnavailable.title")}
-          </Text>
-          <Icon.InfoCircle size={14} color={themeColors.text.secondary} />
-        </TouchableOpacity>
+        />
       )}
 
       <View className="items-center mt-[24px]">

@@ -5,14 +5,21 @@ import {
 } from "components/screens/EarnScreen/helpers";
 import { EarnTokenOption } from "components/screens/EarnScreen/hooks/useEarnTokens";
 import {
+  buildSwapNetworkFeeTexts,
   getSwapSpendableAmount,
   isClassicTokenType,
+  isSwapQuotePending,
+  shouldShowSwapQuoteUnavailable,
 } from "components/screens/SwapScreen/helpers";
 import {
+  useStableConversionRate,
   useSwapAmountError,
   useSwapBalances,
   useSwapCtaState,
+  useSwapFeeShortfall,
   useSwapPathFinding,
+  useSwapQuoteFees,
+  useSwapRouteView,
   useSwapSecurityAssessments,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
@@ -20,11 +27,7 @@ import { DEFAULT_DECIMALS, TransactionContext } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
-import {
-  descriptorAsPathBalance,
-  swapQuoteKey,
-  useSwapStore,
-} from "ducks/swap";
+import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { HeldBalanceItem, useBalancesList } from "hooks/useBalancesList";
@@ -32,7 +35,7 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { scanToken } from "services/blockaid/api";
 import {
   assessTokenSecurity,
@@ -265,29 +268,59 @@ export const useEarnSwap = ({
     reset();
   }, [onProcessingClose, reset]);
 
+  // The destination is never held here (the whole sheet exists because the
+  // account has none of it), so this is always the descriptor shim rather
+  // than a real balance row -- the same one `SwapAmountScreen` feeds
+  // path-finding for its own non-held destinations.
+  const destinationForPath: HeldBalanceItem | undefined = useMemo(
+    () =>
+      destinationTokenDescriptor
+        ? descriptorAsPathBalance(destinationTokenDescriptor)
+        : undefined,
+    [destinationTokenDescriptor],
+  );
+
+  // As on main Swap: the quote counts only while it answers these exact
+  // inputs, and the fees include a Soroban route's resource fee.
+  const {
+    currentQuoteKey,
+    isQuoteCurrent,
+    resourceFee,
+    totalFee,
+    spendableFee,
+  } = useSwapQuoteFees({
+    sourceBalance,
+    destinationBalance: destinationForPath,
+    sourceAmount,
+    network,
+    publicKey,
+    swapFee,
+  });
+
   const spendableAmount = useMemo(() => {
     if (!sourceBalance || !account) {
       return null;
     }
-    // As on main Swap, Max and the balance check leave out the 0.5 XLM a
-    // new trustline locks. The "not enough" sheet only offers a swap into a
+    // As on main Swap, Max and the balance check leave out the network fee,
+    // a Soroban route's resource fee included, and the 0.5 XLM a new
+    // trustline locks. The "not enough" sheet only offers a swap into a
     // new token when the account has more XLM headroom than that
     // (`hasSwappableBalance`).
     return getSwapSpendableAmount({
       sourceBalance,
       subentryCount: account.subentryCount || 0,
-      swapFee,
+      transactionFee: spendableFee,
       destinationRequiresTrustline:
         !!destinationTokenDescriptor?.requiresTrustline,
     });
   }, [
     sourceBalance,
     account,
-    swapFee,
+    spendableFee,
     destinationTokenDescriptor?.requiresTrustline,
   ]);
 
-  const { amountError } = useSwapAmountError({
+  const { amountError, setActiveError } = useSwapAmountError({
     sourceBalance,
     sourceAmount,
     balanceItems,
@@ -304,43 +337,24 @@ export const useEarnSwap = ({
     destinationTokenDescriptor,
   });
 
-  // The destination is never held here (the whole sheet exists because the
-  // account has none of it), so this is always the descriptor shim rather
-  // than a real balance row -- the same one `SwapAmountScreen` feeds
-  // path-finding for its own non-held destinations.
-  const destinationForPath: HeldBalanceItem | undefined = useMemo(
-    () =>
-      destinationTokenDescriptor
-        ? descriptorAsPathBalance(destinationTokenDescriptor)
-        : undefined,
-    [destinationTokenDescriptor],
-  );
+  // A non-XLM source pays a Soroban route's whole fee from the account's XLM.
+  const lacksXlmForTotalFee = useSwapFeeShortfall({
+    resourceFee,
+    totalFee,
+    sourceBalance,
+    balanceItems,
+    subentryCount: account?.subentryCount,
+    transactionHash,
+    setActiveError,
+  });
 
-  // As on main Swap: the quote counts only while it answers these exact
-  // inputs, and Review waits for one that does.
-  const currentQuoteKey = useMemo(
-    () =>
-      sourceBalance && destinationForPath && publicKey
-        ? swapQuoteKey({
-            sourceBalance,
-            destinationBalance: destinationForPath,
-            sourceAmount,
-            network,
-            publicKey,
-          })
-        : null,
-    [sourceBalance, destinationForPath, sourceAmount, network, publicKey],
-  );
-  const isQuoteCurrent =
-    !!pathResult && pathResult.quoteKey === currentQuoteKey;
-  // A failed quote stores its key too, so it settles; amountError stops the
-  // request, so it never settles and must not count as pending.
-  const isQuotePending =
-    !!currentQuoteKey &&
-    hasEnteredSourceAmount &&
-    !amountError &&
-    !isQuoteCurrent &&
-    pathErrorQuoteKey !== currentQuoteKey;
+  const isQuotePending = isSwapQuotePending({
+    currentQuoteKey,
+    sourceAmount,
+    amountError,
+    isQuoteCurrent,
+    pathErrorQuoteKey,
+  });
 
   useSwapPathFinding({
     sourceBalance,
@@ -351,7 +365,11 @@ export const useEarnSwap = ({
     amountError,
   });
 
-  const { ctaState, ctaLabel, isCtaDisabled } = useSwapCtaState({
+  const {
+    ctaState,
+    ctaLabel,
+    isCtaDisabled: isCtaStateDisabled,
+  } = useSwapCtaState({
     sourceBalance,
     destinationTokenDescriptor,
     sourceAmount,
@@ -363,6 +381,29 @@ export const useEarnSwap = ({
     amountError,
     currentQuoteKey,
     isQuotePending,
+  });
+  const isCtaDisabled = isCtaStateDisabled || lacksXlmForTotalFee;
+
+  const showQuoteUnavailable = shouldShowSwapQuoteUnavailable({
+    isLoadingPath,
+    currentQuoteKey,
+    pathErrorQuoteKey,
+    isInsufficient: ctaState.kind === "insufficient",
+    amountError,
+    sourceAmount,
+    hasPathErrorReason: pathErrorReason !== null,
+  });
+
+  // "See details": the fee, the route and the rate, as on main Swap.
+  const { networkFeeText, networkFeeFiatText } = buildSwapNetworkFeeTexts({
+    totalFee,
+    balanceItems,
+  });
+  const swapRouteView = useSwapRouteView(balanceItems, network);
+  const { stableConversionRate } = useStableConversionRate({
+    pathResult: isQuoteCurrent ? pathResult : null,
+    sourceTokenSymbol,
+    destinationTokenSymbol: destinationTokenDescriptor?.tokenCode ?? "",
   });
 
   const {
@@ -407,22 +448,47 @@ export const useEarnSwap = ({
     sourceTokenId,
   });
 
+  // As on main Swap: Max taps before the pair's first quote can't know its
+  // resource fee. When that quote leaves the Max amount over spendable, Max
+  // is applied again, once per tap, so a fee that moves with the amount
+  // can't keep re-sizing it.
+  const maxPendingRef = useRef<string | null>(null);
   const handlePercentagePress = useCallback(
-    (percentage: number) => {
+    (percentage: number, isTap = true) => {
       if (!spendableAmount) {
         return;
       }
+      maxPendingRef.current = null;
       // Swap is classic-only, and classic assets carry 7 decimals.
-      setTokenAmount(
-        getPercentageAmount({
-          maxAmount: spendableAmount.toFixed(),
-          pct: percentage,
-          decimals: DEFAULT_DECIMALS,
-        }),
-      );
+      const amount = getPercentageAmount({
+        maxAmount: spendableAmount.toFixed(),
+        pct: percentage,
+        decimals: DEFAULT_DECIMALS,
+      });
+      setTokenAmount(amount);
+      if (percentage === 100 && isTap) {
+        maxPendingRef.current = amount;
+      }
     },
     [spendableAmount, setTokenAmount],
   );
+
+  useEffect(() => {
+    const pending = maxPendingRef.current;
+    // Only the quote for the Max amount itself settles it.
+    if (
+      pending === null ||
+      !isQuoteCurrent ||
+      !spendableAmount ||
+      !new BigNumber(pending).eq(sourceAmount || "0")
+    ) {
+      return;
+    }
+    maxPendingRef.current = null;
+    if (spendableAmount.lt(pending)) {
+      handlePercentagePress(100, false);
+    }
+  }, [isQuoteCurrent, spendableAmount, sourceAmount, handlePercentagePress]);
 
   const selectSource = useCallback(
     (balance: HeldBalanceItem) => {
@@ -445,6 +511,15 @@ export const useEarnSwap = ({
     amountError,
     pathResult,
     isLoadingPath,
+    // The quote and its fees, for the sheet's receive card and its lines.
+    isQuoteCurrent,
+    isQuotePending,
+    showQuoteUnavailable,
+    resourceFee,
+    networkFeeText,
+    networkFeeFiatText,
+    swapRouteView,
+    stableConversionRate,
     ctaState,
     ctaLabel,
     isCtaDisabled,

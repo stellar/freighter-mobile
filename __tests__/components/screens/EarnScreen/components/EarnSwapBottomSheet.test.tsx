@@ -99,4 +99,73 @@ describe("EarnSwapBottomSheet", () => {
     expect(onSourcePickerPress).toHaveBeenCalledTimes(1);
     expect(onSettingsPress).toHaveBeenCalledTimes(1);
   });
+
+  // As on main Swap, under the cards.
+  describe("the quote", () => {
+    it("shimmers the receive amount while it is on its way", () => {
+      const { getByTestId } = renderSheet({ isReceiveLoading: true });
+
+      // The shimmer hides itself from accessibility.
+      expect(
+        getByTestId("amount-card-amount-loading", {
+          includeHiddenElements: true,
+        }),
+      ).toBeTruthy();
+    });
+
+    it("shows its network fee and opens the details", () => {
+      const onSeeDetails = jest.fn();
+      const { getByTestId } = renderSheet({
+        networkFee: "$0.02",
+        onSeeDetails,
+      });
+
+      fireEvent.press(getByTestId("earn-swap-see-details"));
+
+      expect(getByTestId("earn-swap-see-details")).toHaveTextContent(
+        /swapScreen.details.networkFeeLine/,
+      );
+      expect(onSeeDetails).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows no details before there is a quote", () => {
+      const { queryByTestId } = renderSheet({
+        networkFee: null,
+        onSeeDetails: jest.fn(),
+      });
+
+      expect(queryByTestId("earn-swap-see-details")).toBeNull();
+    });
+
+    it("says when it is unavailable, and explains why", () => {
+      const onQuoteUnavailablePress = jest.fn();
+      const { getByTestId } = renderSheet({
+        showQuoteUnavailable: true,
+        onQuoteUnavailablePress,
+      });
+
+      fireEvent.press(getByTestId("earn-swap-quote-unavailable"));
+
+      expect(onQuoteUnavailablePress).toHaveBeenCalledTimes(1);
+    });
+
+    // Either line opens a sheet over this one.
+    it("keeps its lines shut while Review is being built", () => {
+      const onSeeDetails = jest.fn();
+      const onQuoteUnavailablePress = jest.fn();
+      const { getByTestId } = renderSheet({
+        isBuildingReview: true,
+        networkFee: "$0.02",
+        onSeeDetails,
+        showQuoteUnavailable: true,
+        onQuoteUnavailablePress,
+      });
+
+      fireEvent.press(getByTestId("earn-swap-see-details"));
+      fireEvent.press(getByTestId("earn-swap-quote-unavailable"));
+
+      expect(onSeeDetails).not.toHaveBeenCalled();
+      expect(onQuoteUnavailablePress).not.toHaveBeenCalled();
+    });
+  });
 });
