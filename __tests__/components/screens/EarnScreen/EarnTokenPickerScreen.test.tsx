@@ -187,6 +187,22 @@ jest.mock("components/screens/EarnScreen/hooks/useEarnSwap", () => {
   };
 });
 
+// Records each useSwapFooter call (a plain function, so mock resets keep it),
+// as main Swap's test does.
+const mockFooterCalls: { transactionXDR?: string | null }[] = [];
+jest.mock("components/screens/SwapScreen/hooks/useSwapFooter", () => {
+  const actual = jest.requireActual(
+    "components/screens/SwapScreen/hooks/useSwapFooter",
+  );
+  return {
+    ...actual,
+    useSwapFooter: (args: { transactionXDR?: string | null }) => {
+      mockFooterCalls.push(args);
+      return actual.useSwapFooter(args);
+    },
+  };
+});
+
 // Blockaid's token scan, which off mainnet always fails as the real one does.
 const mockScanToken = jest.fn<Promise<unknown>, unknown[]>(() =>
   Promise.reject(new Error("Network not supported")),
@@ -861,11 +877,68 @@ describe("EarnTokenPickerScreen", () => {
       expect(review?.ref.present).toHaveBeenCalledTimes(1);
     });
 
+    // As on main Swap: a rebuild, such as a Save from Review's settings,
+    // stores its transaction before its scan lands, and until then the
+    // verdict shown is the previous transaction's.
+    it.each([
+      ["keeps Confirm disabled", "old-xdr", undefined],
+      ["enables Confirm", "new-xdr", "new-xdr"],
+    ])(
+      "%s until the scan for the stored transaction is in (scanned %s)",
+      (_, scannedXdr, footerXdr) => {
+        mockEarnSwapOverrides = {
+          transactionXDR: "new-xdr",
+          scannedTransactionXDR: scannedXdr,
+        };
+
+        renderScreen();
+
+        expect(mockFooterCalls.at(-1)?.transactionXDR).toBe(footerXdr);
+      },
+    );
+
+    it.each([
+      [
+        "the stored transaction's scan is pending",
+        { scannedTransactionXDR: "old-xdr" },
+      ],
+      ["the transaction is being built", { isBuilding: true }],
+    ])("doesn't sign from the sheet while %s", async (_, pending) => {
+      const executeSwap = jest.fn();
+      const { security } = await pressReview(
+        { validation: { result_type: "Malicious" } },
+        {
+          isUnableToScan: false,
+          isMalicious: true,
+          executeSwap,
+          transactionXDR: "new-xdr",
+          scannedTransactionXDR: "new-xdr",
+          ...pending,
+        },
+      );
+
+      act(() => {
+        (
+          security?.props.customContent as React.ReactElement<{
+            onProceedAnyway: () => void;
+          }>
+        ).props.onProceedAnyway();
+      });
+
+      expect(executeSwap).not.toHaveBeenCalled();
+    });
+
     it("signs from the sheet on a malicious verdict, as Review's Confirm anyway does", async () => {
       const executeSwap = jest.fn();
       const { security } = await pressReview(
         { validation: { result_type: "Malicious" } },
-        { isUnableToScan: false, isMalicious: true, executeSwap },
+        {
+          isUnableToScan: false,
+          isMalicious: true,
+          executeSwap,
+          transactionXDR: "new-xdr",
+          scannedTransactionXDR: "new-xdr",
+        },
       );
 
       act(() => {
@@ -1042,6 +1115,8 @@ describe("EarnTokenPickerScreen", () => {
           isUnableToScan: false,
           isMalicious: true,
           executeSwap: jest.fn(),
+          transactionXDR: "new-xdr",
+          scannedTransactionXDR: "new-xdr",
           reset,
         },
       );

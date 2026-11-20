@@ -750,6 +750,15 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     swapSecurityWarningBottomSheetModalRef.current?.dismiss();
   }, []);
 
+  // As on main Swap: a rebuild, such as a Save from Review's settings, stores
+  // its XDR before its scan lands; until then the shown verdict is the
+  // previous transaction's, so confirming waits.
+  const confirmableSwapXDR =
+    earnSwap.transactionXDR &&
+    earnSwap.scannedTransactionXDR === earnSwap.transactionXDR
+      ? earnSwap.transactionXDR
+      : undefined;
+
   // Continue on unable-to-scan opens Review, where Confirm still signs; on a
   // Malicious or Suspicious verdict it confirms, as Review's own "Confirm
   // anyway" does. The same as main Swap.
@@ -759,11 +768,19 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       swapReviewBottomSheetModalRef.current?.present();
       return;
     }
+    if (earnSwap.isBuilding || !confirmableSwapXDR) {
+      return;
+    }
     // Confirm closes every swap sheet bottom-up, this one last. Closing it
     // first would bring Review back, and gorhom ignores Review's own dismiss
     // while that happens, leaving Review under the processing sheet.
     handleConfirmSwap();
-  }, [earnSwap.isUnableToScan, handleConfirmSwap]);
+  }, [
+    earnSwap.isUnableToScan,
+    earnSwap.isBuilding,
+    confirmableSwapXDR,
+    handleConfirmSwap,
+  ]);
 
   // The review sheet's footer (settings / Cancel / Confirm) is NOT part of
   // `SwapReviewBottomSheet` -- it is a separate component the sheet takes as
@@ -775,7 +792,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     isBuilding: earnSwap.isBuilding,
     isMalicious: earnSwap.isMalicious,
     isSuspicious: earnSwap.isSuspicious,
-    transactionXDR: earnSwap.transactionXDR,
+    transactionXDR: confirmableSwapXDR,
     onSettingsPress: handleSwapSettingsPress,
   });
 

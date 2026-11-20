@@ -427,6 +427,7 @@ export const useEarnSwap = ({
     setupSwapTransaction,
     handleProcessingScreenClose,
     transactionScanResult,
+    scannedTransactionXDR,
     sourceToken,
     destinationToken,
   } = useSwapTransaction({
@@ -560,5 +561,7 @@ export const useEarnSwap = ({
     swapSecuritySeverity,
     isBuilding,
     transactionXDR,
+    // The transaction the current verdict is for.
+    scannedTransactionXDR,
   };
 };
