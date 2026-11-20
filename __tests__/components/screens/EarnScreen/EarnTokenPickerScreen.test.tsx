@@ -14,6 +14,7 @@ import { NETWORKS } from "config/constants";
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { usePreferencesStore } from "ducks/preferences";
 import { usePricesStore } from "ducks/prices";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { descriptorAsPathBalance, swapPairKey, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTokenIconsStore } from "ducks/tokenIcons";
@@ -123,9 +124,11 @@ jest.mock("ducks/auth", () => ({
   },
 }));
 
+// Empty unless a test adds a balance, and emptied again after it.
+const mockPricedBalances: Record<string, unknown> = {};
 jest.mock("ducks/balances", () => ({
   useBalancesStore: () => ({
-    pricedBalances: {},
+    pricedBalances: mockPricedBalances,
     fetchAccountBalances: mockFetchAccountBalances,
   }),
 }));
@@ -560,6 +563,49 @@ describe("EarnTokenPickerScreen", () => {
       expect(mockTrack).toHaveBeenCalledWith("earn.funding_action_selected", {
         asset_code: "EURC",
         action: "swap",
+      });
+    });
+
+    // Swap follows the `swap_enabled` flag, as Home's Swap button does.
+    describe("with XLM to swap from", () => {
+      beforeEach(() => {
+        mockPricedBalances.native = {
+          token: { type: "native", code: "XLM" },
+          total: new BigNumber("100"),
+          available: new BigNumber("100"),
+          minimumBalance: new BigNumber("1"),
+        };
+      });
+
+      afterEach(() => {
+        delete mockPricedBalances.native;
+        useRemoteConfigStore.setState({ swap_enabled: true });
+      });
+
+      it("offers Swap while swap_enabled is on", () => {
+        useRemoteConfigStore.setState({ swap_enabled: true });
+        mockUseEarnTokens.supported = [makeOption("EURC")];
+        const { getByTestId } = renderScreen();
+
+        fireEvent.press(getByTestId("earn-token-option-EURC"));
+
+        expect(mockTrack).toHaveBeenCalledWith(
+          "earn.balance_insufficient_shown",
+          { asset_code: "EURC", variant: "swap-or-transfer" },
+        );
+      });
+
+      it("hides Swap while swap_enabled is off", () => {
+        useRemoteConfigStore.setState({ swap_enabled: false });
+        mockUseEarnTokens.supported = [makeOption("EURC")];
+        const { getByTestId } = renderScreen();
+
+        fireEvent.press(getByTestId("earn-token-option-EURC"));
+
+        expect(mockTrack).toHaveBeenCalledWith(
+          "earn.balance_insufficient_shown",
+          { asset_code: "EURC", variant: "transfer-only" },
+        );
       });
     });
   });

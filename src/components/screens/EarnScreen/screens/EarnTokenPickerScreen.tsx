@@ -143,6 +143,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   const { network } = useAuthenticationStore();
   const { pricedBalances } = useBalancesStore();
   const isOnrampEnabled = useRemoteConfigStore((state) => state.onramp_enabled);
+  const isSwapEnabled = useRemoteConfigStore((state) => state.swap_enabled);
   const hasSeenEarnIntro = usePreferencesStore(
     (state) => state.hasSeenEarnIntro,
   );
@@ -585,21 +586,25 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
       // first, in the same transaction: a second operation for the fee, and
       // another base reserve of XLM.
       const requiresTrustline = !option.isNative && !option.balance;
-      const isSwappable = hasSwappableBalance({
-        balances: pricedBalances,
-        targetIdentifier,
-        subentryCount: account?.subentryCount ?? 0,
-        transactionFee: new BigNumber(recommendedFee || MIN_TRANSACTION_FEE)
-          .times(requiresTrustline ? 2 : 1)
-          .toFixed(),
-        requiresTrustline,
-      });
+      // Swap follows the `swap_enabled` flag, as Home's Swap button does.
+      const isSwappable =
+        isSwapEnabled &&
+        hasSwappableBalance({
+          balances: pricedBalances,
+          targetIdentifier,
+          subentryCount: account?.subentryCount ?? 0,
+          transactionFee: new BigNumber(recommendedFee || MIN_TRANSACTION_FEE)
+            .times(requiresTrustline ? 2 : 1)
+            .toFixed(),
+          requiresTrustline,
+        });
 
       return getNotEnoughVariant({ isOnrampable, isSwappable });
     },
     [
       networkDetails,
       isOnrampEnabled,
+      isSwapEnabled,
       pricedBalances,
       account?.subentryCount,
       recommendedFee,
