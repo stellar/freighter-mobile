@@ -102,7 +102,8 @@ export const useSimulateEarnDeposit = () => {
         return { preparedXdr, scanResult: freshScanResult };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        logger.error("useSimulateEarnDeposit", "Simulation failed", err);
+        // As in Swap: buildBlendDepositTransaction has already logged the
+        // failure, and logging it again would send it to Sentry twice.
         // No transaction, so no verdict.
         setScanResult(undefined);
         setError(message);

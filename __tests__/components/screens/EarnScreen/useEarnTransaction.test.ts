@@ -2,6 +2,7 @@
 import { renderHook, act } from "@testing-library/react-native";
 import { useEarnTransaction } from "components/screens/EarnScreen/hooks/useEarnTransaction";
 import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import type { ActiveAccount } from "ducks/auth";
 import type { SubmitTransactionOutcome } from "ducks/transactionBuilder";
 
@@ -173,6 +174,37 @@ describe("useEarnTransaction", () => {
     expect(mockSubmitTransaction).not.toHaveBeenCalled();
     expect(result.current.status).toBe("error");
     expect(result.current.error).toBe("Failed to sign transaction: bad seed");
+  });
+
+  // The builder store logs a failed signature or submit itself, at the right
+  // level (a network rejection is a warn breadcrumb); a second log here
+  // would send each failure to Sentry again, as an error.
+  it.each([
+    ["signature", () => mockSignTransaction.mockReturnValue(null)],
+    [
+      "submit",
+      () => {
+        mockSignTransaction.mockReturnValue("signed-xdr");
+        mockSubmitTransaction.mockResolvedValue(
+          submitOutcome({
+            error: "op_underfunded",
+            resultCodes: { operations: ["op_underfunded"] },
+          }),
+        );
+      },
+    ],
+  ])("leaves logging a failed %s to the builder store", async (_, fail) => {
+    fail();
+    const errorSpy = jest.spyOn(logger, "error").mockImplementation(() => {});
+
+    const { result } = renderHook(() => useEarnTransaction(baseParams));
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(result.current.status).toBe("error");
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
   });
 
   it("sets status to error, sourcing the message and result codes from the submit outcome, when submitTransaction resolves without a hash", async () => {

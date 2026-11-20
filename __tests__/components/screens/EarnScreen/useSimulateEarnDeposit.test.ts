@@ -2,6 +2,7 @@
 import { renderHook, act } from "@testing-library/react-native";
 import { useSimulateEarnDeposit } from "components/screens/EarnScreen/hooks/useSimulateEarnDeposit";
 import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 
 const mockBuildBlendDepositTransaction = jest.fn();
 const mockScanTransaction = jest.fn();
@@ -117,6 +118,22 @@ describe("useSimulateEarnDeposit", () => {
     expect(outcome).toBeNull();
     expect(result.current.error).toBe("Supply cap exceeded for this reserve");
     expect(mockScanTransaction).not.toHaveBeenCalled();
+  });
+
+  // The builder store logs the build failure itself; a second log here would
+  // send each failure to Sentry twice.
+  it("leaves logging a failed build to the builder store", async () => {
+    mockBuildBlendDepositTransaction.mockResolvedValue(null);
+    mockGetBuilderState.mockReturnValue({ error: "Supply cap exceeded" });
+    const errorSpy = jest.spyOn(logger, "error").mockImplementation(() => {});
+
+    const { result } = renderHook(() => useSimulateEarnDeposit());
+    await act(async () => {
+      await result.current.simulate(baseParams);
+    });
+
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
   });
 
   it("falls back to a generic message when the build fails with no stored error", async () => {

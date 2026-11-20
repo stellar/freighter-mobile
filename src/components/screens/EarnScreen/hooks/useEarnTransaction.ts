@@ -1,5 +1,4 @@
 import { NETWORKS } from "config/constants";
-import { logger } from "config/logger";
 import { ActiveAccount } from "ducks/auth";
 import { useEarnStore } from "ducks/earn";
 import {
@@ -224,9 +223,11 @@ export const useEarnTransaction = ({
       }
 
       const message = err instanceof Error ? err.message : String(err);
-      // The raw failure goes to Sentry; the amount screen shows the user a
-      // plain error toast instead.
-      logger.error("useEarnTransaction", "Deposit submission failed", err);
+      // As in Swap: the transaction builder store logs signing and submit
+      // failures at the right level (a network rejection with result codes
+      // is a warn breadcrumb, anything else an error). Logging again here
+      // would send each one to Sentry twice. The amount screen shows the
+      // user a plain error toast.
       setError(message);
       setStatus("error");
     }
