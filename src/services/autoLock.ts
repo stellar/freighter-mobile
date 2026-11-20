@@ -1,9 +1,12 @@
 import {
   AUTO_LOCK_TIMER,
   DEFAULT_AUTO_LOCK_TIMER,
+  HASH_KEY_EXPIRATION_MS,
+  HASH_KEY_REFRESH_THROTTLE_MS,
   SENSITIVE_STORAGE_KEYS,
 } from "config/constants";
-import { getHashKey } from "services/storage/helpers";
+import { HashKey } from "config/types";
+import { getHashKey, getHashKeyGeneration } from "services/storage/helpers";
 import { secureDataStorage } from "services/storage/storageFactory";
 
 /**
@@ -89,6 +92,152 @@ const getBackgroundedAt = async (): Promise<number | null> => {
 };
 
 /**
+ * Checks if a hash key is expired.
+ *
+ * Clock-rollback backstop: a key whose generatedAt is in the future means the
+ * device clock was moved backward below the key's creation time — a rolled-back
+ * clock would otherwise keep `now <= expiresAt` true indefinitely and prevent
+ * the hard-expiry from ever forcing a full re-auth. Treat that as expired
+ * (mirrors getBackgroundedAt's future-timestamp guard for the soft timer).
+ * generatedAt is optional so keys persisted before this field fall back to the
+ * plain expiry check.
+ */
+const isHashKeyExpired = (hashKey: HashKey): boolean => {
+  const now = Date.now();
+  if (hashKey.generatedAt !== undefined && hashKey.generatedAt > now) {
+    return true;
+  }
+  return now > hashKey.expiresAt;
+};
+
+// Last time a re-anchor write was attempted (module-level, process-lifetime).
+// The generatedAt throttle below only advances when the write SUCCEEDS; if
+// the keychain write fails persistently, generatedAt never moves and every
+// 5s auth tick would retry (and log) forever. Throttling attempts bounds
+// that failure mode to one attempt per throttle window. In-memory on
+// purpose: a process restart retrying immediately is fine.
+let lastRefreshAttemptAt = 0;
+
+/**
+ * Resets the module-level attempt throttle (tests only — module state would
+ * otherwise leak across cases in the same file).
+ */
+const resetHashKeyRefreshAttemptThrottle = (): void => {
+  lastRefreshAttemptAt = 0;
+};
+
+/**
+ * Re-anchors the hash-key hard-expiry on use (#924): pushes expiresAt out to
+ * a full HASH_KEY_EXPIRATION_MS from now, so the backstop bounds *inactivity*
+ * rather than time since the last credential entry.
+ *
+ * Guards (defense in depth — the getAuthStatus call site is also gated):
+ * - An expired or rolled-back key is never refreshed; only signIn's
+ *   credential-verified path may re-stamp those.
+ * - The write is throttled: a key anchored within HASH_KEY_REFRESH_THROTTLE_MS
+ *   is left alone, so the 5s foreground auth tick doesn't hammer the keychain.
+ *   A legacy key without generatedAt can't prove it was recently anchored, so
+ *   it refreshes immediately (gaining generatedAt, after which the throttle
+ *   applies).
+ * - Refresh *attempts* are throttled too (lastRefreshAttemptAt): the
+ *   generatedAt throttle only advances on a successful write, so a
+ *   persistently failing keychain would otherwise be retried (and logged)
+ *   on every 5s auth tick.
+ *
+ * Takes the caller-validated HashKey snapshot to run the guards and throttle
+ * (every caller has just loaded it for the expiry checks) and the hash-key
+ * generation the caller captured BEFORE that load, then re-reads the stored
+ * key and the temporary store once at write time for the TOCTOU check below —
+ * the re-anchor requires the exact validated key, a live session, and no
+ * wipe or credential-verified write having begun since the caller's load.
+ */
+const refreshHashKeyExpiration = async (
+  hashKey: HashKey,
+  hashKeyGenerationAtLoad: number,
+): Promise<void> => {
+  if (isHashKeyExpired(hashKey)) {
+    return;
+  }
+
+  const now = Date.now();
+  if (
+    hashKey.generatedAt !== undefined &&
+    now - hashKey.generatedAt < HASH_KEY_REFRESH_THROTTLE_MS
+  ) {
+    return;
+  }
+
+  // A backward clock change strands the attempt marker in the future, and
+  // the check below would then suppress every re-anchor until wall time
+  // caught back up — for a >71h rollback, long enough to hard-expire even
+  // the fresh key the forced re-auth just minted, despite continued use.
+  // Mirror this module's other future-timestamp guards: a future marker is
+  // invalid, reset it.
+  if (lastRefreshAttemptAt > now) {
+    lastRefreshAttemptAt = 0;
+  }
+  if (now - lastRefreshAttemptAt < HASH_KEY_REFRESH_THROTTLE_MS) {
+    return;
+  }
+  // Set before the write so a throwing write still counts as an attempt.
+  lastRefreshAttemptAt = now;
+
+  // TOCTOU guard: the caller validated this key several awaits ago; a logout
+  // or corruption wipe (clearTemporaryData) may have removed or replaced it —
+  // or removed just the temporary store — since. Re-stamp only the exact key
+  // that was validated, and only while a session still exists on disk: never
+  // resurrect a wiped key, never clobber a concurrent credential-verified
+  // re-stamp, and never push out the deadline of an orphan key (no temp
+  // store), which must hard-expire and get cleaned up instead. Checking the
+  // store here rather than only at the call site keeps the orphan invariant
+  // with the helper for any future caller.
+  const [currentHashKey, temporaryStore] = await Promise.all([
+    getHashKey(),
+    secureDataStorage.getItem(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
+  ]);
+  if (
+    !currentHashKey ||
+    !temporaryStore ||
+    currentHashKey.hashKey !== hashKey.hashKey ||
+    currentHashKey.salt !== hashKey.salt ||
+    currentHashKey.expiresAt !== hashKey.expiresAt ||
+    currentHashKey.generatedAt !== hashKey.generatedAt
+  ) {
+    return;
+  }
+
+  // The re-read above only proves the key survived up to the point those
+  // reads resolved. A clearTemporaryData wipe or a credential-verified
+  // setHashKey that began anywhere after the caller loaded the key — even
+  // before this helper was entered — can still have its removes/write land
+  // after the write below, and a stale re-read would not show it. Both bump
+  // the generation synchronously at entry, so comparing against the value the
+  // caller captured before its load (no await between here and the write)
+  // refuses every such interleaving. A mutation that starts after the write
+  // is dispatched is outside this check and relies on native ordering: the
+  // iOS keychain bridge is a serial queue, but Android runs set in a mutex'd
+  // coroutine and reset synchronously, so a remove can land before a write
+  // dispatched earlier. That residual is accepted and shared with signIn's
+  // fast-path read-modify-write.
+  if (getHashKeyGeneration() !== hashKeyGenerationAtLoad) {
+    return;
+  }
+
+  await secureDataStorage.setItem(
+    SENSITIVE_STORAGE_KEYS.HASH_KEY,
+    JSON.stringify({
+      // Spread the re-read key, not the caller's snapshot: the comparison
+      // above proves they are identical today, but if HashKey ever gains a
+      // field the explicit check stops covering it and spreading the stale
+      // snapshot would silently revert it.
+      ...currentHashKey,
+      expiresAt: now + HASH_KEY_EXPIRATION_MS,
+      generatedAt: now,
+    } satisfies HashKey),
+  );
+};
+
+/**
  * Whether an unlockable session is persisted on device (a hash key and a
  * temporary store both exist). Lets the background handler decide whether to
  * record/lock from disk state rather than the zustand auth status, which may
@@ -110,5 +259,8 @@ export {
   recordBackgroundedAt,
   getBackgroundedAt,
   clearBackgroundedAt,
+  isHashKeyExpired,
+  refreshHashKeyExpiration,
+  resetHashKeyRefreshAttemptThrottle,
   hasPersistedSession,
 };
