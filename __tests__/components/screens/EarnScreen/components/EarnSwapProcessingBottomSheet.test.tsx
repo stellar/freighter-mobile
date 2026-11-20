@@ -5,6 +5,7 @@ import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { BackHandler } from "react-native";
 
 jest.mock("services/stellar", () => ({
   getTransactionDetails: jest.fn(() => new Promise(() => {})),
@@ -12,7 +13,7 @@ jest.mock("services/stellar", () => ({
 
 const { track } = jest.requireMock("services/analytics/core");
 
-const renderSheet = () =>
+const renderSheet = (onClose: jest.Mock = jest.fn()) =>
   renderWithProviders(
     <EarnSwapProcessingBottomSheet
       sourceAmount="10"
@@ -25,7 +26,7 @@ const renderSheet = () =>
           key: "GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
         },
       }}
-      onClose={jest.fn()}
+      onClose={onClose}
     />,
   );
 
@@ -69,5 +70,35 @@ describe("EarnSwapProcessingBottomSheet screen views", () => {
       step: "success",
       source: "earn",
     });
+  });
+});
+
+// Left to navigation, Android's Back took the user out of Earn with this sheet
+// still on screen, where nothing could close it any more.
+describe("EarnSwapProcessingBottomSheet and Android's Back", () => {
+  it("closes the sheet as its X does, while the swap is in progress", () => {
+    const addListener = jest.spyOn(BackHandler, "addEventListener");
+    const onClose = jest.fn();
+    act(() => {
+      useTransactionBuilderStore.setState({
+        transactionHash: null,
+        error: null,
+      });
+    });
+
+    renderSheet(onClose);
+    const backPress = addListener.mock.calls.find(
+      ([eventName]) => eventName === "hardwareBackPress",
+    );
+    let handled: boolean | null | undefined;
+    act(() => {
+      handled = backPress?.[1]();
+    });
+
+    expect(handled).toBe(true);
+    expect(onClose).toHaveBeenCalledWith(
+      expect.objectContaining({ succeeded: false }),
+    );
+    addListener.mockRestore();
   });
 });

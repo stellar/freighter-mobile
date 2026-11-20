@@ -16,6 +16,7 @@ import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
+import useBackHandler from "hooks/useBackHandler";
 import useColors from "hooks/useColors";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
@@ -142,6 +143,14 @@ export const EarnSwapProcessingBottomSheet: React.FC<
       destinationAmount: settled.destinationAmount,
     });
   };
+
+  // Android's Back closes this sheet as its X does. Left to navigation, it
+  // took the user out of Earn with the sheet still on screen, where nothing
+  // could close it any more.
+  useBackHandler(() => {
+    handleClose();
+    return true;
+  });
 
   const statusTitle = {
     [SwapStatus.SWAPPING]: t("earnSwapProcessing.inProgress"),
