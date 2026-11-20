@@ -7,7 +7,6 @@ import { syncSentryEnablement } from "config/sentryConfig";
 import { DEFAULT_COLOR_SCHEME } from "config/theme";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
-import { useBalancesStore } from "ducks/balances";
 import { useNetworkStore } from "ducks/networkInfo";
 import { isE2ETest } from "helpers/isEnv";
 import { throttle, memoize } from "lodash";
@@ -327,18 +326,6 @@ export const buildCommonContext = (): Record<string, unknown> => {
       context.account_type = activeEntry.importedFromSecretKey
         ? "imported_secret_key"
         : "freighter";
-    }
-
-    // Balances are keyed by public key AND network, so both must match the
-    // active account+network for isFunded to describe the current snapshot.
-    // The same G-address stays active across a selectNetwork() switch; until
-    // the async refetch lands, fetchedPublicKey still matches but isFunded
-    // belongs to the old network. Require the network to match too so this
-    // fails closed (omits account_funded) on a network switch.
-    const { isFunded, fetchedPublicKey, fetchedNetwork } =
-      useBalancesStore.getState();
-    if (fetchedPublicKey === activePublicKey && fetchedNetwork === network) {
-      context.account_funded = isFunded;
     }
   }
 
