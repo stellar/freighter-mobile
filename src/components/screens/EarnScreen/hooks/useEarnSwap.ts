@@ -250,7 +250,13 @@ export const useEarnSwap = ({
   });
 
   const converter = useTokenFiatConverter({ selectedBalance: sourceBalance });
-  const { tokenAmount, tokenAmountDisplay, setTokenAmount } = converter;
+  const {
+    tokenAmount,
+    tokenAmountDisplay,
+    setTokenAmount,
+    showFiatAmount,
+    updateFiatDisplay,
+  } = converter;
 
   // The store's `sourceAmount` stays the single source of truth for
   // path-finding, exactly as `SwapAmountScreen` does it.
@@ -476,17 +482,48 @@ export const useEarnSwap = ({
       }
       maxPendingRef.current = null;
       // Swap is classic-only, and classic assets carry 7 decimals.
-      const amount = getPercentageAmount({
+      let amount = getPercentageAmount({
         maxAmount: spendableAmount.toFixed(),
         pct: percentage,
         decimals: DEFAULT_DECIMALS,
       });
+
+      // As on main Swap: in fiat mode the card's main line is the fiat
+      // amount, so it's set too. It goes through the token price and back,
+      // so the fiat shown never stands for more than the spendable amount.
+      const tokenPrice = sourceBalance?.currentPrice;
+      if (showFiatAmount && tokenPrice && !tokenPrice.isZero()) {
+        let fiatAmount = new BigNumber(amount).multipliedBy(tokenPrice);
+        let convertedBack = new BigNumber(fiatAmount.toFixed(2)).dividedBy(
+          tokenPrice,
+        );
+        if (convertedBack.gt(spendableAmount)) {
+          // Rounding to cents can tip it over; a cent less can't.
+          fiatAmount = fiatAmount.minus(0.01);
+          convertedBack = new BigNumber(fiatAmount.toFixed(2)).dividedBy(
+            tokenPrice,
+          );
+        }
+        const finalToken = BigNumber.minimum(
+          convertedBack,
+          spendableAmount,
+        ).decimalPlaces(DEFAULT_DECIMALS, BigNumber.ROUND_DOWN);
+        amount = finalToken.toFixed();
+        updateFiatDisplay(finalToken.multipliedBy(tokenPrice).toFixed(2));
+      }
+
       setTokenAmount(amount);
       if (percentage === 100 && isTap) {
         maxPendingRef.current = amount;
       }
     },
-    [spendableAmount, setTokenAmount],
+    [
+      spendableAmount,
+      sourceBalance,
+      showFiatAmount,
+      setTokenAmount,
+      updateFiatDisplay,
+    ],
   );
 
   useEffect(() => {

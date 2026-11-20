@@ -1362,6 +1362,54 @@ describe("EarnTokenPickerScreen", () => {
       expect(sourceSecondaryText).toBe("$0.00");
     });
 
+    // In fiat mode the card's main line is the fiat amount, which setting the
+    // token amount alone leaves as it was.
+    it("fills in the fiat amount on Max in fiat mode, as on main Swap", () => {
+      mockUseBalancesList.mockReturnValue({
+        balanceItems: [
+          {
+            id: "native",
+            tokenType: "native",
+            token: { type: "native", code: "XLM" },
+            tokenCode: "XLM",
+            total: new BigNumber("100"),
+            available: new BigNumber("100"),
+            minimumBalance: new BigNumber("1"),
+            currentPrice: new BigNumber("0.5"),
+          },
+        ],
+        hiddenBalanceItems: [],
+        scanResults: {},
+      });
+      openEarnSwap();
+      const sheetProps = () =>
+        (
+          findByContent(EarnSwapBottomSheet)?.props
+            .customContent as React.ReactElement<{
+            converter: {
+              tokenAmount: string;
+              fiatAmountDisplay: string;
+              setShowFiatAmount: (show: boolean) => void;
+            };
+            onPercentagePress: (percentage: number) => void;
+          }>
+        ).props;
+
+      act(() => {
+        sheetProps().converter.setShowFiatAmount(true);
+      });
+      act(() => {
+        sheetProps().onPercentagePress(100);
+      });
+
+      // The spendable 98.49754 XLM is $49.24877; $49.25 would be 98.5 XLM,
+      // more than spendable, so the fiat drops a cent, as on main Swap, and
+      // the token amount is what that buys.
+      const { converter } = sheetProps();
+      expect(converter.fiatAmountDisplay).toBe("49.24");
+      expect(converter.tokenAmount).toBe("98.48");
+    });
+
     // The receive card keeps its fiat line from the start, as on main Swap,
     // so the card doesn't grow when the first quote arrives.
     describe("the receive card's fiat line before there is a quote", () => {
