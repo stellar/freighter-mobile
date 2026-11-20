@@ -17,8 +17,8 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
+import { toConnectedDapp } from "helpers/dappMetadata";
 import { pxValue } from "helpers/dimensions";
-import { findMatchedProtocol } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useToast } from "providers/ToastProvider";
@@ -56,27 +56,17 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
     [activeSessions],
   );
 
-  /* eslint-disable @typescript-eslint/no-unsafe-member-access */
   const connectedDapps = useMemo<ConnectedDapp[]>(
     () =>
-      Object.values(activeSessions).map((session) => {
-        const matchedProtocol = findMatchedProtocol({
-          protocols,
-          searchUrl: session.peer.metadata.url,
-        });
-        return {
-          topic: session.topic,
-          name: matchedProtocol?.name ?? session.peer.metadata.name,
-          favicon: matchedProtocol?.iconUrl ?? session.peer.metadata.icons[0],
-        };
-      }),
+      Object.values(activeSessions).map((session) =>
+        toConnectedDapp(session, protocols),
+      ),
     // activeSessions is intentionally proxied via activeSessionsKey (only
     // additions/removals should recompute); protocols must be listed so the
     // canonical name/icon appear once the protocols store loads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeSessionsKey, protocols],
   );
-  /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 
   const handleClose = useCallback(() => {
     bottomSheetRef.current?.dismiss();
