@@ -118,6 +118,8 @@ class ThemePreferenceModule(private val reactContext: ReactApplicationContext) :
   // the theme underneath, then fades the frozen frame out once the new theme
   // has rendered. Only touched on the UI thread.
   private var transitionOverlay: ImageView? = null
+  // Snapshots finish asynchronously; only the newest request may attach.
+  private var latestTransitionRequest = 0
 
   @ReactMethod
   fun beginThemeTransition(promise: Promise) {
@@ -128,13 +130,20 @@ class ThemePreferenceModule(private val reactContext: ReactApplicationContext) :
     }
     UiThreadUtil.runOnUiThread {
       removeTransitionOverlay()
+      latestTransitionRequest += 1
+      val request = latestTransitionRequest
       val decor = activity.window.decorView as? ViewGroup
       if (decor == null || decor.width == 0 || decor.height == 0) {
         promise.resolve(false)
         return@runOnUiThread
       }
       val bitmap = Bitmap.createBitmap(decor.width, decor.height, Bitmap.Config.ARGB_8888)
-      val attach = {
+      val attach = attach@{
+        if (request != latestTransitionRequest) {
+          promise.resolve(false)
+          return@attach
+        }
+        removeTransitionOverlay()
         val overlay = ImageView(activity).apply {
           setImageBitmap(bitmap)
           scaleType = ImageView.ScaleType.FIT_XY
@@ -157,12 +166,17 @@ class ThemePreferenceModule(private val reactContext: ReactApplicationContext) :
         }
       }
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        PixelCopy.request(
-            activity.window,
-            bitmap,
-            { result -> if (result == PixelCopy.SUCCESS) attach() else drawFallback() },
-            Handler(Looper.getMainLooper()),
-        )
+        try {
+          PixelCopy.request(
+              activity.window,
+              bitmap,
+              { result -> if (result == PixelCopy.SUCCESS) attach() else drawFallback() },
+              Handler(Looper.getMainLooper()),
+          )
+        } catch (e: IllegalArgumentException) {
+          // The window has no surface (e.g. the app just went to the background).
+          promise.resolve(false)
+        }
       } else {
         drawFallback()
       }

@@ -121,7 +121,9 @@ export const applyThemePreferenceWithFade = async (
     // Change without the fade.
   }
   if (!isStillWanted()) {
-    themePreferenceModule.endThemeTransition?.(0);
+    if (isFrozen) {
+      themePreferenceModule.endThemeTransition?.(0);
+    }
     return;
   }
   if (!isFrozen) {
