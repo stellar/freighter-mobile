@@ -3428,6 +3428,8 @@ PODS:
     - React-Core
   - Sentry/HybridSDK (8.56.2)
   - SocketRocket (0.7.1)
+  - ThemePreference (1.0.0):
+    - React-Core
   - VisionCamera (4.7.2):
     - VisionCamera/Core (= 4.7.2)
     - VisionCamera/React (= 4.7.2)
@@ -3551,6 +3553,7 @@ DEPENDENCIES:
   - RNWorklets (from `../node_modules/react-native-worklets`)
   - SecureClipboard (from `./`)
   - SocketRocket (~> 0.7.1)
+  - ThemePreference (from `./`)
   - VisionCamera (from `../node_modules/react-native-vision-camera`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
@@ -3796,6 +3799,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-worklets"
   SecureClipboard:
     :path: "./"
+  ThemePreference:
+    :path: "./"
   VisionCamera:
     :path: "../node_modules/react-native-vision-camera"
   Yoga:
@@ -3927,9 +3932,10 @@ SPEC CHECKSUMS:
   SecureClipboard: ec92bdef9aba3e86b33c1b0c1f0d334fcc171f39
   Sentry: b53951377b78e21a734f5dc8318e333dbfc682d7
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
+  ThemePreference: 5a3daf415519f1af84b17123e9e6408969e070c1
   VisionCamera: 891edb31806dd3a239c8a9d6090d6ec78e11ee80
   Yoga: a3ed390a19db0459bd6839823a6ac6d9c6db198d
 
-PODFILE CHECKSUM: eeafe7d8e3f8cdbe49f1627b554e841c40aa0e82
+PODFILE CHECKSUM: 5cfe085ea662ffad74275ce4e6dcf1c248ba7967
 
 COCOAPODS: 1.15.2

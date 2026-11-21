@@ -22,6 +22,17 @@ jest.mock("hooks/useAnalyticsPermissions", () => ({
   useAnalyticsPermissions: jest.fn(),
 }));
 
+const mockSelectThemePreference = jest.fn(() => Promise.resolve(true));
+jest.mock("services/themePreference", () => ({
+  selectThemePreference: (...args: unknown[]) =>
+    mockSelectThemePreference(...(args as [])),
+}));
+
+const mockOpenInAppBrowser = jest.fn(() => Promise.resolve());
+jest.mock("hooks/useInAppBrowser", () => ({
+  useInAppBrowser: () => ({ open: mockOpenInAppBrowser }),
+}));
+
 const mockUseAnalyticsPermissions =
   useAnalyticsPermissions as jest.MockedFunction<
     typeof useAnalyticsPermissions
@@ -148,6 +159,55 @@ describe("PreferencesScreen", () => {
     await userEvent.press(toggle);
 
     expect(mockHandleAnalyticsToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the theme picker with Auto(System) selected by default", () => {
+    const { getByTestId } = renderPreferencesScreen();
+
+    expect(
+      getByTestId("theme-option-system").props.accessibilityState.checked,
+    ).toBe(true);
+    expect(
+      getByTestId("theme-option-light").props.accessibilityState.checked,
+    ).toBe(false);
+    expect(
+      getByTestId("theme-option-dark").props.accessibilityState.checked,
+    ).toBe(false);
+  });
+
+  it("selects a theme when its option is pressed", async () => {
+    const { getByTestId } = renderPreferencesScreen();
+
+    await userEvent.press(getByTestId("theme-option-dark"));
+
+    expect(mockSelectThemePreference).toHaveBeenCalledWith("dark");
+  });
+
+  it("confirms a saved theme change with a toast", async () => {
+    const { getByTestId, findByText } = renderPreferencesScreen();
+
+    await userEvent.press(getByTestId("theme-option-dark"));
+
+    expect(await findByText("Theme preference updated")).toBeTruthy();
+  });
+
+  it("shows no toast when the choice didn't change", async () => {
+    mockSelectThemePreference.mockResolvedValueOnce(false);
+    const { getByTestId, queryByText } = renderPreferencesScreen();
+
+    await userEvent.press(getByTestId("theme-option-system"));
+
+    expect(queryByText("Theme preference updated")).toBeNull();
+  });
+
+  it("opens the privacy policy from the data sharing row", async () => {
+    const { getByTestId } = renderPreferencesScreen();
+
+    await userEvent.press(getByTestId("privacy-policy-link"));
+
+    expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
+      "https://varialwallet.com/privacy",
+    );
   });
 
   it("shows loading spinner when permission is being checked", () => {

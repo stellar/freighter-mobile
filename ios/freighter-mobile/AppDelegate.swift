@@ -72,7 +72,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   /// sequence, and the shield must not follow it into being blank.
   ///
   /// PrivacyShieldLogo carries its own dark variant and systemBackground
-  /// follows the scheme, so the shield tracks the device like everything else.
+  /// follows the scheme, so the shield tracks the app's theme like everything else.
   private static func makePrivacyShieldViewController() -> UIViewController {
     let controller = UIViewController()
     controller.view.backgroundColor = .systemBackground
@@ -112,6 +112,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
     // A window is only shown once it belongs to a scene.
     let overlay = UIWindow(windowScene: windowScene)
+    // Appearance.setColorScheme only restyles windows that existed when it
+    // ran, so a fresh shield must copy the app's theme override itself.
+    overlay.overrideUserInterfaceStyle = window?.overrideUserInterfaceStyle ?? .unspecified
     overlay.windowLevel = .alert + 1
     overlay.rootViewController = Self.makePrivacyShieldViewController()
     overlay.isHidden = false

@@ -35,6 +35,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     // colour both the splash and the app paint, so any such gap is invisible
     // in either scheme.
     window.backgroundColor = .systemBackground
+    // Pin the Preferences theme before the splash overlay is drawn. The key is
+    // the one the ThemePreference module writes. The OS launch screen before
+    // this point always follows the device; iOS gives apps no hook there.
+    switch UserDefaults.standard.string(forKey: "themePreference") {
+    case "light": window.overrideUserInterfaceStyle = .light
+    case "dark": window.overrideUserInterfaceStyle = .dark
+    default: window.overrideUserInterfaceStyle = .unspecified
+    }
     self.window = window
     appDelegate.window = window
 

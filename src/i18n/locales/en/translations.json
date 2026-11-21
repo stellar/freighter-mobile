@@ -90,9 +90,15 @@
     "deleteAccountConfirmMessage": "Make sure you have your recovery phrase in a safe place. You will not be able to recover your wallet without it."
   },
   "preferences": {
-    "usageDataSharing": {
-      "title": "Usage data sharing",
-      "description": "Help us improve Varial by sharing usage, device, and activity data, including your public keys, IP address, and a persistent ID that links your wallet across extension and mobile, with our analytics and crash-reporting providers. You can turn this off at any time. See our Privacy Policy for details."
+    "display": {
+      "title": "Display",
+      "system": "Auto(System)",
+      "light": "Light",
+      "dark": "Dark",
+      "updated": "Theme preference updated"
+    },
+    "security": {
+      "title": "Security"
     },
     "permissionModal": {
       "enable": {
@@ -110,11 +116,16 @@
     },
     "hideDust": {
       "title": "Hide small payments",
-      "description": "Hide received payments smaller than 0.1 XLM"
+      "belowThreshold": "Hide payments below 0.1 XLM."
     },
-    "memoValidation": {
-      "title": "Verification with stellar.expert",
-      "description": "Validate addresses that require a memo"
+    "verifyAddresses": {
+      "title": "Verify addresses",
+      "description": "Check memo requirements with stellar.expert."
+    },
+    "usageDataSharing": {
+      "title": "Usage data sharing",
+      "description": "Help us improve Varial by sharing usage, device, and activity data, including your public keys, IP address, and a persistent ID that links your wallet across extension and mobile, with our analytics and crash-reporting providers. You can turn this off at any time. See our Privacy Policy for details.",
+      "learnMore": "Learn more about data sharing"
     }
   },
   "shareFeedbackScreen": {
@@ -609,7 +620,6 @@
     "alreadyInWallet": "This collectible is already in your wallet",
     "showHidden": "Show hidden"
   },
-
   "collectibles": {
     "errors": {
       "collectionNotFound": "Collection not found for the given address.",
