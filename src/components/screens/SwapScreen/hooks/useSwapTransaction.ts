@@ -279,6 +279,7 @@ export const useSwapTransaction = ({
           from_asset_code: sourceBalance.tokenCode,
           to_asset_code: destinationTokenInput.tokenCode,
           result_code: "quote_moved",
+          ...swapSourceProps(useSwapStore.getState().entrySource),
         });
         requote();
         throw new SwapSetupAnswerError(t("swapScreen.errors.quoteExpired"));

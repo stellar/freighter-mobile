@@ -88,11 +88,12 @@ export const useTrendingTokenDetail = ({
         tokenCode: record.tokenCode,
         tokenIssuer: record.issuer ?? "",
         position,
+        ...swapSourceProps(entrySource),
       });
       Keyboard.dismiss();
       setSelectedTrendingRecord(record);
     },
-    [],
+    [entrySource],
   );
 
   const clearSelectedTrendingRecord = useCallback(() => {
@@ -116,6 +117,7 @@ export const useTrendingTokenDetail = ({
       analytics.track(AnalyticsEvent.SWAP_TRENDING_SWAP_TO_PRESSED, {
         tokenCode: record.tokenCode,
         tokenIssuer: record.issuer ?? "",
+        ...swapSourceProps(entrySource),
       });
       const heldMatch = balanceItems.find(
         (b) =>

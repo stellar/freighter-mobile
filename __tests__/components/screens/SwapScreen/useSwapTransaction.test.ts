@@ -1178,6 +1178,37 @@ describe("useSwapTransaction", () => {
         expect.objectContaining({ source: "earn" }),
       );
     });
+
+    it("tags the swap.quote_expired sent when the quote moves during the Review build", async () => {
+      // The build answers 409: the quote moved before Review opened.
+      mockBuildSwapTransaction.mockRejectedValue({
+        message: "status 409",
+        status: 409,
+        isNetworkError: false,
+      });
+      const { findSwapPath: realFindSwapPath } = useSwapStore.getState();
+      act(() => {
+        useSwapStore.setState({ findSwapPath: jest.fn() });
+      });
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+      try {
+        await act(async () => {
+          await expect(
+            result.current.setupSwapTransaction(),
+          ).rejects.toBeInstanceOf(SwapSetupAnswerError);
+        });
+      } finally {
+        act(() => {
+          useSwapStore.setState({ findSwapPath: realFindSwapPath });
+        });
+      }
+
+      expect(mockTrack).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_QUOTE_EXPIRED,
+        expect.objectContaining({ result_code: "quote_moved", source: "earn" }),
+      );
+    });
   });
 
   describe("SWAP_QUOTE_EXPIRED analytics", () => {
