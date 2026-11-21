@@ -1,3 +1,4 @@
+import { Asset, Networks } from "@stellar/stellar-sdk";
 import {
   buildEarnSwapDestination,
   getEarnOptionToken,
@@ -21,8 +22,12 @@ const makeOption = (over: Partial<EarnTokenOption> = {}): EarnTokenOption => ({
 });
 
 describe("buildEarnSwapDestination", () => {
+  // makeOption's assetId is mainnet USDC's SAC.
+  const build = (option: EarnTokenOption) =>
+    buildEarnSwapDestination(option, Networks.PUBLIC);
+
   it("splits the catalog's canonical id into code and issuer", () => {
-    const result = buildEarnSwapDestination(makeOption());
+    const result = build(makeOption());
 
     expect(result).toEqual({
       id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
@@ -35,7 +40,7 @@ describe("buildEarnSwapDestination", () => {
   });
 
   it("describes native XLM without an issuer or a trustline", () => {
-    const result = buildEarnSwapDestination(
+    const result = build(
       makeOption({ code: "XLM", isNative: true, canonicalId: null }),
     );
 
@@ -50,9 +55,13 @@ describe("buildEarnSwapDestination", () => {
 
   it("classifies codes longer than 4 characters as alphanum12", () => {
     expect(
-      buildEarnSwapDestination(
+      build(
         makeOption({
           code: "LONGCODE",
+          assetId: new Asset(
+            "LONGCODE",
+            "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          ).contractId(Networks.PUBLIC),
           canonicalId:
             "LONGCODE:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
         }),
@@ -62,10 +71,51 @@ describe("buildEarnSwapDestination", () => {
 
   it("reports no trustline requirement when the account already holds some", () => {
     expect(
-      buildEarnSwapDestination(
-        makeOption({ balance: { total: "0.0000001" } as never }),
-      ),
+      build(makeOption({ balance: { total: "0.0000001" } as never })),
     ).toMatchObject({ requiresTrustline: false });
+  });
+
+  // The swap must buy the token the pool takes. The catalog's canonical id is
+  // backend data, so it counts only when it derives the pool's SAC address.
+  describe("when the canonical id isn't the pool's asset", () => {
+    it("returns null for another issuer's token with the same code", () => {
+      expect(
+        build(
+          makeOption({
+            canonicalId:
+              "USDC:GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+          }),
+        ),
+      ).toBeNull();
+    });
+
+    it("returns null for another code from the same issuer", () => {
+      expect(
+        build(
+          makeOption({
+            canonicalId:
+              "EURC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          }),
+        ),
+      ).toBeNull();
+    });
+
+    it("returns null on another network, whose SAC addresses differ", () => {
+      expect(
+        buildEarnSwapDestination(makeOption(), Networks.TESTNET),
+      ).toBeNull();
+    });
+
+    it("returns null for a code too long to be an asset", () => {
+      expect(
+        build(
+          makeOption({
+            canonicalId:
+              "THIRTEENCHARS:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          }),
+        ),
+      ).toBeNull();
+    });
   });
 
   // A SAC address is a hash: it cannot be decomposed back into code + issuer,
@@ -73,9 +123,7 @@ describe("buildEarnSwapDestination", () => {
   // caller must treat null as "no swap path" -- falling back to `assetId`
   // would build a descriptor the path finder silently fails on.
   it("returns null for a non-native reserve with no canonical id", () => {
-    expect(
-      buildEarnSwapDestination(makeOption({ canonicalId: null })),
-    ).toBeNull();
+    expect(build(makeOption({ canonicalId: null }))).toBeNull();
   });
 
   it.each([
@@ -90,7 +138,7 @@ describe("buildEarnSwapDestination", () => {
   ])(
     "returns null for a malformed canonical id (%s)",
     (_label, canonicalId) => {
-      expect(buildEarnSwapDestination(makeOption({ canonicalId }))).toBeNull();
+      expect(build(makeOption({ canonicalId }))).toBeNull();
     },
   );
 });

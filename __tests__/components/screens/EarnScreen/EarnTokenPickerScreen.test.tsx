@@ -1,5 +1,6 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Asset, Networks } from "@stellar/stellar-sdk";
 import { act, fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import InformationBottomSheet from "components/InformationBottomSheet";
@@ -242,8 +243,16 @@ const renderScreen = () =>
     <EarnTokenPickerScreen navigation={makeNavigation()} route={makeRoute()} />,
   );
 
+// The Earn swap buys a reserve only through the classic asset whose SAC is
+// the reserve's address, and these tests run on testnet, so EURC (the
+// reserve the swap tests buy) carries its real testnet SAC.
+const EURC_ISSUER = "GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2";
+const EURC_TESTNET_SAC = new Asset("EURC", EURC_ISSUER).contractId(
+  Networks.TESTNET,
+);
+
 const makeOption = (code: string, total = "0") => ({
-  assetId: `C${code}FAKESACADDRESS`,
+  assetId: code === "EURC" ? EURC_TESTNET_SAC : `C${code}FAKESACADDRESS`,
   code,
   decimals: 7,
   total,
@@ -1470,7 +1479,7 @@ describe("EarnTokenPickerScreen", () => {
       it("reads $0.00 for a token with a price", () => {
         mockUseEarnTokens.pool = {
           name: "Fixed",
-          reserves: [{ assetId: "CEURCFAKESACADDRESS", priceUsd: 1.08 }],
+          reserves: [{ assetId: EURC_TESTNET_SAC, priceUsd: 1.08 }],
         };
         openEarnSwap();
 
@@ -1522,7 +1531,7 @@ describe("EarnTokenPickerScreen", () => {
         });
         mockUseEarnTokens.pool = {
           name: "Fixed",
-          reserves: [{ assetId: "CEURCFAKESACADDRESS", priceUsd: 1.08 }],
+          reserves: [{ assetId: EURC_TESTNET_SAC, priceUsd: 1.08 }],
         };
         openEarnSwap();
       };

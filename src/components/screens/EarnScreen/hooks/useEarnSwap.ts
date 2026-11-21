@@ -24,7 +24,11 @@ import {
   useSwapTokenPrices,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
-import { DEFAULT_DECIMALS, TransactionContext } from "config/constants";
+import {
+  DEFAULT_DECIMALS,
+  mapNetworkToNetworkDetails,
+  TransactionContext,
+} from "config/constants";
 import {
   FormattedSearchTokenRecord,
   TokenTypeWithCustomToken,
@@ -117,9 +121,10 @@ export const useEarnSwap = ({
   // Rebuilt from the catalog's canonical "CODE:ISSUER" because Earn addresses
   // reserves by SAC contract id and swapping is classic-only. Null means the
   // reserve has no classic form, i.e. there is no swap path to offer at all.
+  const { networkPassphrase } = mapNetworkToNetworkDetails(network);
   const destination = useMemo(
-    () => (option ? buildEarnSwapDestination(option) : null),
-    [option],
+    () => (option ? buildEarnSwapDestination(option, networkPassphrase) : null),
+    [option, networkPassphrase],
   );
 
   // Start the swap at the network's recommended fee, as main Swap does,

@@ -3,6 +3,7 @@ import { EarnTokenOption } from "components/screens/EarnScreen/hooks/useEarnToke
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { Balance, Token, TokenTypeWithCustomToken } from "config/types";
+import { getTokenSacAddress } from "helpers/soroban";
 
 /**
  * Classic asset codes are alphanum4 up to 4 characters, alphanum12 beyond.
@@ -75,12 +76,16 @@ export const getEarnOptionToken = (
  *
  * Returns null when the reserve cannot be expressed classically: native XLM
  * is handled explicitly, but a non-native reserve with no `canonicalId` has
- * no issuer to swap toward. Callers must treat null as "no swap path" rather
- * than falling back to `assetId`, which would build a descriptor the path
- * finder silently fails on.
+ * no issuer to swap toward. It is also null when `canonicalId` names some
+ * other asset than the pool's: a SAC address is derived from its asset, so
+ * the code and issuer are the pool's token only when they derive `assetId`.
+ * Callers must treat null as "no swap path" rather than falling back to
+ * `assetId`, which would build a descriptor the path finder silently fails
+ * on.
  */
 export const buildEarnSwapDestination = (
   option: EarnTokenOption,
+  networkPassphrase: string,
 ): DestinationTokenDescriptor | null => {
   if (option.isNative) {
     return {
@@ -95,12 +100,23 @@ export const buildEarnSwapDestination = (
   }
 
   // The catalog's name is backend data: only a real account key may become
-  // the issuer of the asset the swap buys.
+  // the issuer of the asset the swap buys, and only the asset the pool takes.
   const classic = parseCanonicalAsset(option.canonicalId);
   if (!classic) {
     return null;
   }
   const { code: tokenCode, issuer } = classic;
+
+  let sacAddress: string;
+  try {
+    sacAddress = getTokenSacAddress(tokenCode, issuer, networkPassphrase);
+  } catch {
+    // Not a valid classic asset code (e.g. longer than 12 characters).
+    return null;
+  }
+  if (sacAddress !== option.assetId) {
+    return null;
+  }
 
   return {
     id: `${tokenCode}:${issuer}`,
