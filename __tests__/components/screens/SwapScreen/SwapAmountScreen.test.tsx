@@ -1028,6 +1028,112 @@ describe("SwapAmountScreen", () => {
       expect(mockSetupSwapTransaction).toHaveBeenCalled();
     });
 
+    // Review shows the swap as it is when it opens.
+    it("locks the form while Review is being built", async () => {
+      let finishSetup: () => void = () => {};
+      mockSetupSwapTransaction.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishSetup = resolve;
+          }),
+      );
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+      const { useRightHeaderButton } = jest.requireMock("hooks/useRightHeader");
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      expect(getByTestId("swap-amount-input").props.editable).toBe(false);
+      expect(
+        getByTestId("swap-direction-toggle").props.accessibilityState?.disabled,
+      ).toBe(true);
+      expect(
+        getByTestId("percentage-50").props.accessibilityState?.disabled,
+      ).toBe(true);
+      // The header gear: a right header button without onPress is disabled.
+      expect(useRightHeaderButton).toHaveBeenLastCalledWith(
+        expect.objectContaining({ onPress: undefined }),
+      );
+
+      await act(async () => {
+        finishSetup();
+        await Promise.resolve();
+      });
+    });
+
+    it("locks the form from the tap, before the keyboard has gone", async () => {
+      const RN = jest.requireActual("react-native");
+      const dismissSpy = jest.spyOn(RN.Keyboard, "dismiss");
+      const isVisibleSpy = jest
+        .spyOn(RN.Keyboard, "isVisible")
+        .mockReturnValue(true);
+      let hideCallback: (() => void) | null = null;
+      const addListenerSpy = jest
+        .spyOn(RN.Keyboard, "addListener")
+        .mockImplementation((...args: unknown[]) => {
+          if (args[0] === "keyboardDidHide") {
+            hideCallback = args[1] as () => void;
+          }
+          return { remove: jest.fn() } as any;
+        });
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      // The keyboard is still hiding, and nothing has been built yet.
+      expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
+      expect(getByTestId("swap-amount-input").props.editable).toBe(false);
+
+      await act(async () => {
+        hideCallback?.();
+        await Promise.resolve();
+      });
+      dismissSpy.mockRestore();
+      isVisibleSpy.mockRestore();
+      addListenerSpy.mockRestore();
+    });
+
+    it("unlocks the form when Review can't be built", async () => {
+      const errorSpy = jest.spyOn(logger, "error").mockImplementation();
+      mockSetupSwapTransaction.mockRejectedValueOnce(new Error("build failed"));
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      // Let the failed build settle here, not in the next test.
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 0);
+        });
+      });
+
+      expect(mockSetupSwapTransaction).toHaveBeenCalled();
+      expect(getByTestId("swap-amount-input").props.editable).not.toBe(false);
+      errorSpy.mockRestore();
+    });
+
     it("dismisses the keyboard AND waits for keyboardDidHide before opening the Review sheet", async () => {
       // Regression: the system keyboard previously stayed up when the user
       // tapped "Review swap", squishing the bottom sheet content. Now we
@@ -1104,6 +1210,31 @@ describe("SwapAmountScreen", () => {
     });
   });
 
+  // Every swap event says where the swap was opened from. Home's Swap tile
+  // names no source, so it is Home's.
+  describe("the swap's entry source", () => {
+    it("is Home when the route names no source", () => {
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockSetEntrySource).toHaveBeenLastCalledWith("home");
+    });
+
+    it("is the token's details when it opened the swap", () => {
+      const route = {
+        ...makeRoute(),
+        params: { tokenId: "SRC", tokenSymbol: "XLM", source: "token_details" },
+      } as unknown as Props["route"];
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={route} />,
+      );
+
+      expect(mockSetEntrySource).toHaveBeenLastCalledWith("token_details");
+    });
+  });
+
   describe("Pre-flight XLM reserve check", () => {
     beforeEach(() => {
       // Reset sheet refs so each test starts with a clean array.
@@ -1169,9 +1300,11 @@ describe("SwapAmountScreen", () => {
 
       // Gate must have fired: swap transaction must NOT have been initiated.
       expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
-      // The analytics event must fire when the gate trips.
+      // The analytics event must fire when the gate trips, tagged as opened
+      // from Home: the route names no other source.
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+        { source: "home" },
       );
       // The XLM reserve sheet's present() must have been called.
       // eslint-disable-next-line no-underscore-dangle
@@ -1179,6 +1312,59 @@ describe("SwapAmountScreen", () => {
         (spy) => spy.present.mock.calls.length > 0,
       );
       expect(presentedSheets.length).toBeGreaterThan(0);
+      // Nothing is being built, so the form isn't locked.
+      expect(getByTestId("swap-amount-input").props.editable).not.toBe(false);
+    });
+
+    // Every swap event says where the swap was opened from.
+    it("tags the reserve event with the swap's entry source", async () => {
+      const lowXlmBalances = mockBalances.map((b) => {
+        if (!isNativeToken(b.token as Token)) return b;
+        return {
+          ...b,
+          total: new BigNumber("100.1"),
+          available: new BigNumber("0.1"),
+        };
+      });
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: lowXlmBalances,
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2", quoteKey: "quote-key" },
+        destinationToken: {
+          id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          tokenCode: "FTT",
+          issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          requiresTrustline: true,
+        },
+      });
+      const route = {
+        ...makeRoute(),
+        params: { tokenId: "SRC", tokenSymbol: "XLM", source: "token_details" },
+      } as unknown as Props["route"];
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={route} />,
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+        { source: "token_details" },
+      );
     });
 
     it("opens Review sheet when destinationToken.requiresTrustline but XLM spendable >= 0.5", async () => {
@@ -1214,6 +1400,7 @@ describe("SwapAmountScreen", () => {
       // Analytics reserve event must NOT fire on the happy path.
       expect(analytics.track).not.toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+        expect.anything(),
       );
     });
 
@@ -1408,6 +1595,7 @@ describe("SwapAmountScreen", () => {
       expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+        { source: "home" },
       );
     });
 
@@ -1472,6 +1660,7 @@ describe("SwapAmountScreen", () => {
       // Analytics must fire for the XLM-as-source gate trip.
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+        { source: "home" },
       );
       // The XLM reserve sheet's present() must have been called.
       // eslint-disable-next-line no-underscore-dangle
@@ -1903,7 +2092,7 @@ describe("SwapAmountScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_PICKER_OPENED,
-        { side: "to", source: "dropdown" },
+        { side: "to", trigger: "dropdown", source: "home" },
       );
     });
   });
@@ -2054,7 +2243,7 @@ describe("SwapAmountScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_PICKER_OPENED,
-        { side: "to", source: "cta" },
+        { side: "to", trigger: "cta", source: "home" },
       );
     });
 
@@ -2070,7 +2259,7 @@ describe("SwapAmountScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_PICKER_OPENED,
-        { side: "to", source: "dropdown" },
+        { side: "to", trigger: "dropdown", source: "home" },
       );
     });
 
@@ -2091,12 +2280,12 @@ describe("SwapAmountScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_PICKER_OPENED,
-        { side: "from", source: "dropdown" },
+        { side: "from", trigger: "dropdown", source: "home" },
       );
       // Negative assertion: the source picker MUST tag side:from, never side:to.
       expect(analytics.track).not.toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_PICKER_OPENED,
-        { side: "to", source: "dropdown" },
+        { side: "to", trigger: "dropdown", source: "home" },
       );
     });
 
@@ -2129,6 +2318,31 @@ describe("SwapAmountScreen", () => {
           previousDestinationTokenIssuer:
             "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
         }),
+      );
+    });
+
+    it("tags SWAP_DIRECTION_TOGGLED with the swap's entry source", () => {
+      setSwapStoreState({
+        entrySource: "token_details",
+        sourceTokenId: "XLM",
+        sourceTokenSymbol: "XLM",
+        destinationToken: {
+          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          tokenCode: "USDC",
+          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          requiresTrustline: false,
+        },
+      } as Partial<SwapStoreState>);
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      fireEvent.press(getByTestId("swap-direction-toggle"));
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_DIRECTION_TOGGLED,
+        expect.objectContaining({ source: "token_details" }),
       );
     });
 

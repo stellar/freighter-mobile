@@ -33,9 +33,13 @@ import React, { useCallback, useRef } from "react";
 export const useSwapTransactionSettings = ({
   recommendedFee,
   operationCount,
+  isHeaderButtonDisabled = false,
 }: {
   recommendedFee: string;
   operationCount: number;
+  /** Turns off the header gear, e.g. while Review is being built. Review's
+   *  own gear calls `openSettings` and isn't affected. */
+  isHeaderButtonDisabled?: boolean;
 }): {
   transactionSettingsBottomSheetModalRef: React.RefObject<BottomSheetModal | null>;
   openSettings: () => void;
@@ -77,7 +81,8 @@ export const useSwapTransactionSettings = ({
 
   useRightHeaderButton({
     icon: Icon.Settings04,
-    onPress: openSettings,
+    // A right header button without onPress is disabled.
+    onPress: isHeaderButtonDisabled ? undefined : openSettings,
   });
 
   return {

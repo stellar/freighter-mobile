@@ -104,7 +104,7 @@ export interface SwapSuccessEvent {
   destAmount?: string;
   allowedSlippage?: string;
   isSwap: true;
-  /** Entry-point tag (e.g. "token_details"); omitted from the payload when absent */
+  /** Entry-point tag ("token_details" or "earn"); omitted from the payload when absent */
   source?: string;
   volume?: SwapVolume;
 }
@@ -118,6 +118,8 @@ export interface TransactionErrorEvent {
   destToken?: string;
   sourceAmount?: string;
   destAmount?: string;
+  /** A swap's entry-point tag, as on `SwapSuccessEvent`. */
+  source?: string;
   /** Absent for collectible-send failures (unpriced, out of scope) and any pre-submit failure. */
   volume?: FailureVolume;
 }
@@ -126,4 +128,21 @@ export interface QRScanEvent {
   context: QRCodeSource;
   timeToScan?: number;
   error?: string;
+}
+
+// Earn deposit (Blend). No amount/fiat fields by design (product decision,
+// non-negotiable) -- only identifiers, matching payment.completed /
+// swap.completed's shape.
+export interface EarnDepositSuccessEvent {
+  assetCode: string;
+  poolId?: string;
+  apy?: number | null;
+  /** Whether a swap finished earlier in this Earn session. */
+  viaSwap: boolean;
+}
+
+export interface EarnDepositErrorEvent {
+  assetCode: string;
+  poolId?: string;
+  errorCode?: string;
 }

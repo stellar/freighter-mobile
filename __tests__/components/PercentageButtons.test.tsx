@@ -40,4 +40,26 @@ describe("PercentageButtons", () => {
 
     expect(getByTestId("amount-shortcuts")).toBeTruthy();
   });
+
+  it("shows only the shortcuts it is given, in order", () => {
+    const onPress = jest.fn();
+    const { getByTestId, queryByTestId } = renderWithProviders(
+      <PercentageButtons onPress={onPress} percentages={[25, 50, 100]} />,
+    );
+
+    expect(queryByTestId("percentage-75")).toBeNull();
+    fireEvent.press(getByTestId("percentage-100"));
+    expect(onPress).toHaveBeenCalledWith(100);
+  });
+
+  it("ignores presses while disabled", () => {
+    const onPress = jest.fn();
+    const { getByTestId } = renderWithProviders(
+      <PercentageButtons onPress={onPress} disabled />,
+    );
+
+    fireEvent.press(getByTestId("percentage-50"));
+
+    expect(onPress).not.toHaveBeenCalled();
+  });
 });

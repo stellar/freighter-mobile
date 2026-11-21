@@ -2260,6 +2260,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             // Clear all recent protocols data
             useRecentProtocolsStore.getState().clearRecentProtocols();
 
+            // The next wallet on this device sees the Earn intro again, as
+            // in the extension, where resetting the wallet erases it.
+            usePreferencesStore.setState({ hasSeenEarnIntro: false });
+
             await clearTemporaryData();
             await clearNonSensitiveData();
             await dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST);

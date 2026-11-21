@@ -10,6 +10,7 @@ import {
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useCoinbaseOnramp } from "hooks/useCoinbaseOnramp";
+import { useToast } from "providers/ToastProvider";
 import React, { useCallback } from "react";
 import { TouchableOpacity, View } from "react-native";
 
@@ -23,15 +24,25 @@ const AddFundsScreen: React.FC<AddFundsScreenProps> = ({
   route,
 }) => {
   const { t } = useAppTranslation();
-  const { isUnfunded } = route.params;
+  const { isUnfunded, token } = route.params;
+  // The caller's token when it has one (Earn's Buy), XLM for an unfunded
+  // account, otherwise Coinbase's own choice.
+  const onrampToken = token ?? (isUnfunded ? "XLM" : undefined);
   const { openCoinbaseUrl, isLoading } = useCoinbaseOnramp({
-    ...(isUnfunded ? { token: "XLM" } : {}),
+    ...(onrampToken ? { token: onrampToken } : {}),
   });
   const { onramp_enabled: onRampEnabled } = useRemoteConfigStore();
+  const { showToast } = useToast();
 
   const onCoinbasePress = useCallback(() => {
-    openCoinbaseUrl();
-  }, [openCoinbaseUrl]);
+    openCoinbaseUrl().catch(() => {
+      // The hook has logged it; without a toast the button looks broken.
+      showToast({
+        variant: "error",
+        title: t("addFundsScreen.buyWithCoinbase.error"),
+      });
+    });
+  }, [openCoinbaseUrl, showToast, t]);
 
   return (
     <BaseLayout insets={{ top: false }}>

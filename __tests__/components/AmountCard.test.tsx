@@ -314,6 +314,81 @@ describe("AmountCard", () => {
     });
   });
 
+  // While the screen builds the transaction for Review.
+  describe("disabled", () => {
+    it("ignores typing, the picker chip and the $↔token toggle", () => {
+      const onPickerPress = jest.fn();
+      const setShowFiatAmount = jest.fn();
+      const { getByTestId } = renderWithProviders(
+        <AmountCard
+          mode="editable"
+          label="Sending"
+          selectedToken={mockBalance}
+          onPickerPress={onPickerPress}
+          pickerTestID="picker"
+          inputTestID="amount-input"
+          fiatToggleTestID="toggle"
+          converter={makeConverter({ setShowFiatAmount })}
+          hasUsdPrice
+          secondaryAmountText="$0.00"
+          disabled
+        />,
+      );
+
+      fireEvent.press(getByTestId("picker"));
+      fireEvent.press(getByTestId("toggle"));
+
+      expect(getByTestId("amount-input").props.editable).toBe(false);
+      expect(onPickerPress).not.toHaveBeenCalled();
+      expect(setShowFiatAmount).not.toHaveBeenCalled();
+    });
+
+    it("doesn't focus the field from the rest of the card", () => {
+      const inputRef = React.createRef<TextInput>();
+      const { getByTestId } = renderWithProviders(
+        <AmountCard
+          mode="editable"
+          label="Sending"
+          selectedToken={mockBalance}
+          onPickerPress={jest.fn()}
+          inputRef={inputRef}
+          focusTriggerTestID="focus-trigger"
+          converter={makeConverter()}
+          hasUsdPrice
+          disabled
+        />,
+      );
+      const focusSpy = jest.fn();
+      Object.defineProperty(inputRef, "current", {
+        value: { focus: focusSpy, isFocused: () => false },
+        writable: true,
+      });
+
+      fireEvent(getByTestId("focus-trigger"), "pressIn");
+
+      expect(focusSpy).not.toHaveBeenCalled();
+    });
+
+    it("ignores a read-only card's picker chip", () => {
+      const onPickerPress = jest.fn();
+      const { getByTestId } = renderWithProviders(
+        <AmountCard
+          mode="readonly"
+          label="You receive"
+          selectedToken={mockBalance}
+          onPickerPress={onPickerPress}
+          pickerTestID="picker"
+          primaryAmount="1.234"
+          disabled
+        />,
+      );
+
+      fireEvent.press(getByTestId("picker"));
+
+      expect(onPickerPress).not.toHaveBeenCalled();
+    });
+  });
+
   describe("readonly mode", () => {
     it("renders the primary amount as a Display + the secondary amount", () => {
       const { getByText } = renderWithProviders(

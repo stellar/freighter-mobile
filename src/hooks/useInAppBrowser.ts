@@ -5,6 +5,17 @@ import { Linking, useColorScheme } from "react-native";
 import { InAppBrowser } from "react-native-inappbrowser-reborn";
 
 /**
+ * iOS's in-app browser keeps a flag for the browser it presented and clears
+ * it only when that browser reports closing. A browser that goes away without
+ * reporting it (a JS reload in development tears it down, for one) leaves the
+ * flag set, and every later open fails with this error although nothing is on
+ * screen: the user is tapping the app's own UI.
+ */
+const isStaleBrowserSession = (error: unknown) =>
+  error instanceof Error &&
+  error.message.includes("InAppBrowser is already being presented");
+
+/**
  * Custom hook for opening URLs in an in-app browser with app theme colors
  * Falls back to system browser if InAppBrowser is not available
  */
@@ -82,9 +93,22 @@ const useInAppBrowser = () => {
       try {
         await InAppBrowser.open(url, themeOptions);
       } catch (error) {
-        // Fallback to system browser if InAppBrowser fails
-        Linking.openURL(url);
-        throw error;
+        if (!isStaleBrowserSession(error)) {
+          // Fallback to system browser if InAppBrowser fails
+          Linking.openURL(url);
+          throw error;
+        }
+
+        // Clear the stale flag and open in the app again, rather than send
+        // every link to Safari until the app restarts. `closeAuth` only
+        // resets the module's state; it dismisses nothing.
+        InAppBrowser.closeAuth();
+        try {
+          await InAppBrowser.open(url, themeOptions);
+        } catch (retryError) {
+          Linking.openURL(url);
+          throw retryError;
+        }
       }
     },
     [isAvailable, getThemeOptions],

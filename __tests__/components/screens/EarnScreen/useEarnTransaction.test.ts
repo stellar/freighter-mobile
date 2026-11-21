@@ -1,0 +1,459 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
+import { renderHook, act } from "@testing-library/react-native";
+import { useEarnTransaction } from "components/screens/EarnScreen/hooks/useEarnTransaction";
+import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
+import type { ActiveAccount } from "ducks/auth";
+import type { SubmitTransactionOutcome } from "ducks/transactionBuilder";
+
+const mockSignTransaction = jest.fn();
+const mockSubmitTransaction = jest.fn();
+const mockGetBuilderState = jest.fn();
+const mockIsWalletUnlocked = jest.fn();
+const mockGetEarnState = jest.fn();
+const mockTrackEarnDepositSuccess = jest.fn();
+const mockTrackEarnDepositFail = jest.fn();
+
+jest.mock("ducks/transactionBuilder", () => ({
+  useTransactionBuilderStore: Object.assign(
+    () => ({
+      signTransaction: mockSignTransaction,
+      submitTransaction: mockSubmitTransaction,
+    }),
+    {
+      getState: () => mockGetBuilderState(),
+    },
+  ),
+}));
+
+jest.mock("ducks/earn", () => ({
+  // The hook reads pool/selectedAssetCode/selectedAssetApy via
+  // `useEarnStore.getState()` (for the earn.deposit_completed/.failed
+  // analytics payload), matching how the real zustand store exposes a static
+  // `getState`.
+  useEarnStore: {
+    getState: () => mockGetEarnState(),
+  },
+}));
+
+jest.mock("hooks/useGetActiveAccount", () => ({
+  isWalletUnlocked: () => mockIsWalletUnlocked(),
+}));
+
+const mockTrackInternalSignedTransaction = jest.fn();
+const mockTrackInternalSignedTransactionError = jest.fn();
+jest.mock("services/analytics", () => ({
+  analytics: {
+    trackEarnDepositSuccess: (...args: unknown[]) =>
+      mockTrackEarnDepositSuccess(...args),
+    trackEarnDepositFail: (...args: unknown[]) =>
+      mockTrackEarnDepositFail(...args),
+    trackInternalSignedTransaction: (...args: unknown[]) =>
+      mockTrackInternalSignedTransaction(...args),
+    trackInternalSignedTransactionError: (...args: unknown[]) =>
+      mockTrackInternalSignedTransactionError(...args),
+  },
+}));
+
+const account: ActiveAccount = {
+  publicKey: "GA...",
+  privateKey: "SA...",
+  accountName: "Account 1",
+  id: "1",
+  subentryCount: 0,
+};
+
+const baseParams: Parameters<typeof useEarnTransaction>[0] = {
+  account,
+  network: NETWORKS.TESTNET,
+};
+
+const submitOutcome = (
+  overrides: Partial<SubmitTransactionOutcome>,
+): SubmitTransactionOutcome => ({
+  hash: null,
+  resultXdr: null,
+  error: null,
+  resultCodes: null,
+  httpStatus: null,
+  isProtocolAnswer: false,
+  ...overrides,
+});
+
+describe("useEarnTransaction", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockIsWalletUnlocked.mockReturnValue(true);
+    mockGetBuilderState.mockReturnValue({ error: "Store error message" });
+    mockGetEarnState.mockReturnValue({
+      pool: { id: "pool-1" },
+      selectedAssetCode: "USDC",
+      selectedAssetApy: 0.05,
+      didSwapInFlow: false,
+    });
+  });
+
+  it("starts idle", () => {
+    const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+    expect(result.current.status).toBe("idle");
+    expect(result.current.transactionHash).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it("returns to idle WITHOUT signing or submitting when the wallet is locked", async () => {
+    mockIsWalletUnlocked.mockReturnValue(false);
+
+    const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(mockSignTransaction).not.toHaveBeenCalled();
+    expect(mockSubmitTransaction).not.toHaveBeenCalled();
+    expect(result.current.status).toBe("idle");
+    expect(result.current.error).toBeNull();
+  });
+
+  it("does NOT reject when submit() is called fire-and-forget and the wallet is locked", async () => {
+    mockIsWalletUnlocked.mockReturnValue(false);
+
+    const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+    let didReject = false;
+    await act(async () => {
+      await result.current.submit().catch(() => {
+        didReject = true;
+      });
+    });
+
+    expect(didReject).toBe(false);
+  });
+
+  it("sets status to success and records the hash on a clean submit", async () => {
+    mockSignTransaction.mockReturnValue("signed-xdr");
+    mockSubmitTransaction.mockResolvedValue(submitOutcome({ hash: "tx-hash" }));
+
+    const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(mockSignTransaction).toHaveBeenCalledWith({
+      secretKey: account.privateKey,
+      network: NETWORKS.TESTNET,
+    });
+    expect(result.current.status).toBe("success");
+    expect(result.current.transactionHash).toBe("tx-hash");
+    expect(result.current.error).toBeNull();
+
+    // earn.deposit_completed carries only identifiers -- no amount/fiat value.
+    expect(mockTrackEarnDepositSuccess).toHaveBeenCalledWith({
+      assetCode: "USDC",
+      poolId: "pool-1",
+      apy: 0.05,
+      viaSwap: false,
+    });
+    expect(mockTrackEarnDepositFail).not.toHaveBeenCalled();
+  });
+
+  it("sets status to error, sourcing the message from the store, when signTransaction returns null", async () => {
+    mockSignTransaction.mockReturnValue(null);
+    mockGetBuilderState.mockReturnValue({
+      error: "Failed to sign transaction: bad seed",
+    });
+
+    const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(mockSubmitTransaction).not.toHaveBeenCalled();
+    expect(result.current.status).toBe("error");
+    expect(result.current.error).toBe("Failed to sign transaction: bad seed");
+  });
+
+  // The builder store logs a failed signature or submit itself, at the right
+  // level (a network rejection is a warn breadcrumb); a second log here
+  // would send each failure to Sentry again, as an error.
+  it.each([
+    ["signature", () => mockSignTransaction.mockReturnValue(null)],
+    [
+      "submit",
+      () => {
+        mockSignTransaction.mockReturnValue("signed-xdr");
+        mockSubmitTransaction.mockResolvedValue(
+          submitOutcome({
+            error: "op_underfunded",
+            resultCodes: { operations: ["op_underfunded"] },
+          }),
+        );
+      },
+    ],
+  ])("leaves logging a failed %s to the builder store", async (_, fail) => {
+    fail();
+    const errorSpy = jest.spyOn(logger, "error").mockImplementation(() => {});
+
+    const { result } = renderHook(() => useEarnTransaction(baseParams));
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(result.current.status).toBe("error");
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it("sets status to error, sourcing the message and result codes from the submit outcome, when submitTransaction resolves without a hash", async () => {
+    mockSignTransaction.mockReturnValue("signed-xdr");
+    mockSubmitTransaction.mockResolvedValue(
+      submitOutcome({
+        error: "op_underfunded",
+        resultCodes: { operations: ["op_underfunded"] },
+      }),
+    );
+    // The store holds a different, stale failure: the hook must read this
+    // attempt's own outcome, never the store, which a mid-submit Close resets.
+    mockGetBuilderState.mockReturnValue({
+      error: "stale store error",
+      submitErrorResultCodes: { operations: ["op_stale"] },
+    });
+
+    const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(result.current.status).toBe("error");
+    expect(result.current.error).toBe("op_underfunded");
+    expect(result.current.transactionHash).toBeNull();
+
+    // earn.deposit_failed carries the token and the pool plus reason_code --
+    // sourced from this attempt's own submit outcome, never the free-text
+    // error message, and no amount/fiat value. No APY either, as in the
+    // extension.
+    expect(mockTrackEarnDepositFail).toHaveBeenCalledWith({
+      assetCode: "USDC",
+      poolId: "pool-1",
+      errorCode: "op_underfunded",
+    });
+    expect(mockTrackEarnDepositSuccess).not.toHaveBeenCalled();
+  });
+
+  it("does NOT reject when submitTransaction rejects (e.g. the debug forced-failure override, which throws directly)", async () => {
+    mockSignTransaction.mockReturnValue("signed-xdr");
+    mockSubmitTransaction.mockRejectedValue(new Error("DEBUG submit failure"));
+
+    const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+    let didReject = false;
+    await act(async () => {
+      await result.current.submit().catch(() => {
+        didReject = true;
+      });
+    });
+
+    expect(didReject).toBe(false);
+    expect(result.current.status).toBe("error");
+    expect(result.current.error).toBe("DEBUG submit failure");
+  });
+
+  it("reset() returns status to idle and clears error", async () => {
+    mockSignTransaction.mockReturnValue(null);
+
+    const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(result.current.status).toBe("error");
+
+    act(() => {
+      result.current.reset();
+    });
+
+    expect(result.current.status).toBe("idle");
+    expect(result.current.error).toBeNull();
+  });
+
+  it("is a no-op when there is no active account", async () => {
+    const { result } = renderHook(() =>
+      useEarnTransaction({ account: null, network: NETWORKS.TESTNET }),
+    );
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(mockSignTransaction).not.toHaveBeenCalled();
+    expect(result.current.status).toBe("idle");
+  });
+
+  // An abandoned submit resolving later must never write `status`, in
+  // EITHER the success or failure branch. `abandon()` is what
+  // `handleCloseEarnProcessingWhileSubmitting` calls before navigating Home
+  // mid-submit.
+  // The signing events Send and Swap report, so the signing funnel covers
+  // deposits too.
+  describe("signing events", () => {
+    it("reports a signature", async () => {
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(
+        submitOutcome({ hash: "tx-hash" }),
+      );
+      const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.submit();
+      });
+
+      expect(mockTrackInternalSignedTransaction).toHaveBeenCalledTimes(1);
+      expect(mockTrackInternalSignedTransactionError).not.toHaveBeenCalled();
+    });
+
+    it("reports a failed signature with the store's reason", async () => {
+      mockSignTransaction.mockReturnValue(null);
+      const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.submit();
+      });
+
+      expect(mockTrackInternalSignedTransactionError).toHaveBeenCalledWith(
+        "Store error message",
+      );
+      expect(mockTrackInternalSignedTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("abandonment guard", () => {
+    it("does NOT write status when a submit resolves successfully AFTER being abandoned", async () => {
+      mockGetEarnState.mockReturnValue({
+        pool: { id: "pool-1" },
+        selectedAssetCode: "USDC",
+        selectedAssetApy: 0.05,
+        didSwapInFlow: true,
+      });
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      let resolveSubmit: (outcome: SubmitTransactionOutcome) => void = () => {};
+      mockSubmitTransaction.mockImplementation(
+        () =>
+          new Promise<SubmitTransactionOutcome>((resolve) => {
+            resolveSubmit = resolve;
+          }),
+      );
+
+      const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+      let submitPromise: Promise<void> = Promise.resolve();
+      act(() => {
+        submitPromise = result.current.submit();
+      });
+
+      // The submit is now suspended awaiting `submitTransaction` — this is
+      // the abandonment window. Abandon it exactly like
+      // `handleCloseEarnProcessingWhileSubmitting` does when the user
+      // closes mid-submit, BEFORE the network call resolves. Leaving Earn
+      // then resets the earn duck.
+      expect(result.current.status).toBe("submitting");
+      act(() => {
+        result.current.abandon();
+      });
+      mockGetEarnState.mockReturnValue({
+        pool: null,
+        selectedAssetCode: "",
+        selectedAssetApy: null,
+        didSwapInFlow: false,
+      });
+
+      await act(async () => {
+        resolveSubmit(submitOutcome({ hash: "tx-hash" }));
+        await submitPromise;
+      });
+
+      // The abandoned submit must not silently flip status to "success".
+      expect(result.current.status).toBe("submitting");
+      expect(result.current.transactionHash).toBeNull();
+      // The deposit still went through, so it is still reported, with what
+      // was picked when it started: leaving Earn has reset the earn duck.
+      expect(mockTrackEarnDepositSuccess).toHaveBeenCalledWith({
+        assetCode: "USDC",
+        poolId: "pool-1",
+        apy: 0.05,
+        viaSwap: true,
+      });
+    });
+
+    it("does NOT write status when a submit rejects AFTER being abandoned", async () => {
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      let rejectSubmit: (error: Error) => void = () => {};
+      mockSubmitTransaction.mockImplementation(
+        () =>
+          new Promise<SubmitTransactionOutcome>((_resolve, reject) => {
+            rejectSubmit = reject;
+          }),
+      );
+
+      const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+      let submitPromise: Promise<void> = Promise.resolve();
+      act(() => {
+        submitPromise = result.current.submit();
+      });
+
+      act(() => {
+        result.current.abandon();
+      });
+
+      await act(async () => {
+        rejectSubmit(new Error("late failure after abandonment"));
+        await submitPromise;
+      });
+
+      expect(result.current.status).toBe("submitting");
+      expect(result.current.error).toBeNull();
+      // The failure is still reported.
+      expect(mockTrackEarnDepositFail).toHaveBeenCalledWith(
+        expect.objectContaining({ assetCode: "USDC", poolId: "pool-1" }),
+      );
+    });
+
+    it("reset() is a no-op while status is submitting (hardening against the same bug class)", async () => {
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      let resolveSubmit: (outcome: SubmitTransactionOutcome) => void = () => {};
+      mockSubmitTransaction.mockImplementation(
+        () =>
+          new Promise<SubmitTransactionOutcome>((resolve) => {
+            resolveSubmit = resolve;
+          }),
+      );
+
+      const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+      let submitPromise: Promise<void> = Promise.resolve();
+      act(() => {
+        submitPromise = result.current.submit();
+      });
+
+      expect(result.current.status).toBe("submitting");
+
+      act(() => {
+        result.current.reset();
+      });
+
+      // reset() must not have dropped status back to "idle" mid-submit.
+      expect(result.current.status).toBe("submitting");
+
+      // Let the submit settle so it doesn't leak into other tests.
+      await act(async () => {
+        resolveSubmit(submitOutcome({ hash: "tx-hash" }));
+        await submitPromise;
+      });
+    });
+  });
+});

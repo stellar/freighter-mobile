@@ -202,12 +202,20 @@ jest.mock("ducks/walletKit", () => ({
   WALLET_KIT_PROJECT_ID: "test-project-id",
 }));
 
+let mockRemoteConfig: Record<string, unknown> = {};
+const defaultMockRemoteConfig = () => ({
+  swapEnabled: true,
+  isLoading: false,
+  error: null,
+  isInitialized: true,
+  earn_deposit: true,
+});
+
 jest.mock("ducks/remoteConfig", () => ({
-  useRemoteConfigStore: jest.fn(() => ({
-    swapEnabled: true,
-    isLoading: false,
-    error: null,
-  })),
+  useRemoteConfigStore: jest.fn(
+    (selector?: (state: Record<string, unknown>) => unknown) =>
+      selector ? selector(mockRemoteConfig) : mockRemoteConfig,
+  ),
 }));
 
 const mockCopyToClipboard = jest.fn();
@@ -345,6 +353,7 @@ describe("HomeScreen", () => {
     mockCollectiblesError = null;
     mockIsCollectiblesLoading = false;
     mockBottomInset = 0;
+    mockRemoteConfig = defaultMockRemoteConfig();
   });
 
   const buildProps = () => ({
@@ -624,6 +633,30 @@ describe("HomeScreen", () => {
     expect(getByText("Send")).toBeTruthy();
     // Copy moved into the manage-accounts sheet
     expect(queryByTestId("icon-button-copy")).toBeNull();
+  });
+
+  describe("Earn button", () => {
+    it("shows once the flags have loaded with earn_deposit on", () => {
+      const { getByTestId } = renderHomeScreen();
+
+      expect(getByTestId("icon-button-earn")).toBeTruthy();
+    });
+
+    it("stays hidden until the flags have loaded", () => {
+      mockRemoteConfig = { ...defaultMockRemoteConfig(), isInitialized: false };
+
+      const { queryByTestId } = renderHomeScreen();
+
+      expect(queryByTestId("icon-button-earn")).toBeNull();
+    });
+
+    it("hides when earn_deposit is off", () => {
+      mockRemoteConfig = { ...defaultMockRemoteConfig(), earn_deposit: false };
+
+      const { queryByTestId } = renderHomeScreen();
+
+      expect(queryByTestId("icon-button-earn")).toBeNull();
+    });
   });
 
   it("calls all fetch functions when refresh is triggered", async () => {

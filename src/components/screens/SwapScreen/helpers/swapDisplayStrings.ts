@@ -2,6 +2,7 @@ import BigNumber from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance, Token } from "config/types";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import {
   formatBalanceAmount,
   formatFiatAmount,
@@ -162,4 +163,29 @@ export const buildSourceBalanceRight = ({
     sourceBalance.tokenCode ?? sourceTokenSymbol,
     rawSpendable ?? undefined,
   )} ${availableLabel}`;
+};
+
+/**
+ * The swap's network fee for its "See details" line and sheet: in XLM, and in
+ * fiat at the account's XLM price. A fee under a cent would read "$0.00", so
+ * the fiat is left out and the line shows the XLM.
+ */
+export const buildSwapNetworkFeeTexts = ({
+  totalFee,
+  balanceItems,
+}: {
+  totalFee: string;
+  balanceItems: (PricedBalance & { id: string })[];
+}): { networkFeeText: string; networkFeeFiatText: string | undefined } => {
+  const xlmPrice = balanceItems.find((b) =>
+    isNativeAssetId(b.id),
+  )?.currentPrice;
+  const networkFeeFiat = xlmPrice?.times(totalFee);
+  return {
+    networkFeeText: formatTokenForDisplay(totalFee, NATIVE_TOKEN_CODE),
+    networkFeeFiatText:
+      networkFeeFiat?.isFinite() && networkFeeFiat.gte(0.01)
+        ? formatFiatAmount(networkFeeFiat)
+        : undefined,
+  };
 };
