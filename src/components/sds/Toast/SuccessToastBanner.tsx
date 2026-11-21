@@ -5,11 +5,7 @@ import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
 
-/**
- * The filled, centered success toast from Figma ("USDT0 is added to your
- * wallet", node 1596:235623). Pass as a toast's `content`; the standard
- * Notification body has a border, shadow and left-aligned default-color text.
- */
+/** Filled, centered success toast body. Pass as a toast's `content`. */
 export const SuccessToastBanner: React.FC<{ title: string }> = ({ title }) => {
   const { themeColors } = useColors();
 

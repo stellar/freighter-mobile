@@ -131,7 +131,12 @@ export const applyThemePreferenceWithFade = async (
     return;
   }
 
-  const changed = waitForColorSchemeChange();
+  // Something else may already have switched the scheme; don't wait for an
+  // event that has already fired.
+  const changed =
+    Appearance.getColorScheme() === target
+      ? Promise.resolve()
+      : waitForColorSchemeChange();
   applyThemePreference(preference);
   await changed;
   // The change event triggers the re-render; give it two frames to reach the

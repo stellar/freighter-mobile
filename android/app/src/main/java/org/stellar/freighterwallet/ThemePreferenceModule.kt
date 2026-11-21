@@ -13,6 +13,7 @@ import android.view.PixelCopy
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatDelegate
+import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -56,7 +57,8 @@ object ThemePreferenceStore {
   /**
    * Android 12+ draws the launch window itself, before the app runs, using the
    * per-app night mode the system stores. Setting it here makes the next
-   * launch's system splash match the pinned theme.
+   * launch's system splash match the pinned theme. It also changes the running
+   * app's configuration at once, which the app follows while unpinned.
    */
   fun syncSystemSplash(context: Context, value: String) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
@@ -92,7 +94,28 @@ object ThemePreferenceStore {
 }
 
 class ThemePreferenceModule(private val reactContext: ReactApplicationContext) :
-    ReactContextBaseJavaModule(reactContext) {
+    ReactContextBaseJavaModule(reactContext), LifecycleEventListener {
+
+  // A pinned choice's launch-window sync waits for the background: done at once
+  // it switches the app before the JS fade has frozen the screen. Unpinning
+  // syncs at once, since "system" follows the per-app mode it sets.
+  @Volatile private var pendingSplashSync: String? = null
+
+  init {
+    reactContext.addLifecycleEventListener(this)
+  }
+
+  override fun onHostResume() {}
+
+  override fun onHostPause() {
+    val value = pendingSplashSync ?: return
+    pendingSplashSync = null
+    ThemePreferenceStore.syncSystemSplash(reactContext, value)
+  }
+
+  override fun onHostDestroy() {
+    onHostPause()
+  }
 
   override fun getName(): String = "ThemePreference"
 
@@ -105,7 +128,12 @@ class ThemePreferenceModule(private val reactContext: ReactApplicationContext) :
       promise.reject("E_THEME_PREFERENCE_WRITE", "Failed to save theme preference")
       return
     }
-    ThemePreferenceStore.syncSystemSplash(reactContext, value)
+    if (value == "system") {
+      pendingSplashSync = null
+      ThemePreferenceStore.syncSystemSplash(reactContext, value)
+    } else {
+      pendingSplashSync = value
+    }
     promise.resolve(value)
   }
 
