@@ -14,9 +14,9 @@ interface PreferencesState {
   setIsBiometricsEnabled: (isBiometricsEnabled: boolean) => void;
   /**
    * Whether the user has already seen the Earn intro sheet. Global (not
-   * per-account) and once-per-install by design — the `persist` middleware
-   * below gives us that for free, so it is never reset from anywhere else in
-   * the app.
+   * per-account): it persists through the `persist` middleware below, and
+   * only the auth store's wallet wipe (`logout`'s wipe path) resets it, so
+   * the next wallet on the device sees the intro again.
    */
   hasSeenEarnIntro: boolean;
   setHasSeenEarnIntro: (hasSeenEarnIntro: boolean) => void;
