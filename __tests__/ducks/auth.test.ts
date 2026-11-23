@@ -1630,6 +1630,15 @@ describe("auth duck", () => {
           result.current.setNavigationRef(mockNavigationRef);
         });
 
+        (
+          Keychain.getAllGenericPasswordServices as jest.Mock
+        ).mockResolvedValueOnce([
+          "stellarwallet_key-1",
+          "stellarwallet_index",
+          "freighter_secure_storage_hashKey",
+        ]);
+        (Keychain.resetGenericPassword as jest.Mock).mockClear();
+
         // Call logout with wipe all data flag
         await act(async () => {
           result.current.logout(true);
@@ -1646,6 +1655,18 @@ describe("auth duck", () => {
         expect(dataStorage.remove).toHaveBeenCalledWith(
           STORAGE_KEYS.COLLECTIBLES_LIST,
         );
+
+        // The keystore entries and their index go too, and nothing outside
+        // the keystore service
+        expect(Keychain.resetGenericPassword).toHaveBeenCalledWith({
+          service: "stellarwallet_key-1",
+        });
+        expect(Keychain.resetGenericPassword).toHaveBeenCalledWith({
+          service: "stellarwallet_index",
+        });
+        expect(Keychain.resetGenericPassword).not.toHaveBeenCalledWith({
+          service: "freighter_secure_storage_hashKey",
+        });
 
         // Auto-lock is reset to the default so the next wallet doesn't inherit
         // the wiped wallet's timer

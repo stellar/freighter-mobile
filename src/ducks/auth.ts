@@ -3495,7 +3495,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
    * account data and relevant sensitive info, sets the auth status to
    * `AUTH_STATUS.LOCKED`, and navigates to the lock screen.
    * When `shouldWipeAllData` is true or there are no existing accounts, it performs
-   * a full logout and clears all user data.
+   * a full logout and clears all user data, including every keystore entry in
+   * the keychain.
    *
    * @param {boolean} [shouldWipeAllData=false] - If true, performs a full logout and
    * clears all user data; if false, keeps existing account data and locks the app.
@@ -3607,6 +3608,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
               await clearNonSensitiveData();
               await clearLinkStatus();
               await dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST);
+
+              // The keystores go too, indexed or not: iOS keeps keychain
+              // items across reinstalls. After the account list is gone, so
+              // an interrupted wipe never leaves accounts without keystores,
+              // and before the resets below, so a failure there can't skip it.
+              await removeAllKeystoreEntries();
 
               // Reset auto-lock so the next wallet on this device doesn't
               // inherit the previous user's timer. The awaited secure-mirror
