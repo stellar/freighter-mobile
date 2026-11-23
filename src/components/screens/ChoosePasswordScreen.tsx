@@ -29,9 +29,9 @@ type ChoosePasswordScreenProps = NativeStackScreenProps<
  * (getSetPasswordScreenOptions), and Next keeps the password in memory and
  * opens the recovery phrase. Importing, it slides in with a back arrow to
  * Import Wallet, and the button says "Import wallet" throughout. The user
- * also acknowledges that an imported phrase can't be recovered, and the
- * button stays disabled until they have; then it finishes the setup with the
- * phrase Import Wallet kept in memory.
+ * also acknowledges that an imported phrase or secret key can't be recovered,
+ * and the button stays disabled until they have; then it finishes the setup
+ * with the phrase or key Import Wallet kept in memory.
  *
  * Design: create ?node-id=370-8343, import ?node-id=2091-40291 (light);
  * colors from 760-36962 and 2091-41902 (dark).
@@ -43,6 +43,9 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
   const isImporting = route.params?.isImporting ?? false;
   const { t } = useAppTranslation();
   const setStoredPassword = useLoginDataStore((state) => state.setPassword);
+  const isImportingSecretKey = useLoginDataStore(
+    (state) => isImporting && !!state.secretKey,
+  );
   const isFinishing = useAuthenticationStore((state) => state.isLoading);
   const finishWalletSetup = useFinishWalletSetup();
   const passwordRef = useRef<TextInput>(null);
@@ -103,9 +106,10 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
       return;
     }
 
-    // Import Wallet keeps the phrase in memory before opening this screen.
-    // Without it there is nothing to import, so ask for it again.
-    if (!useLoginDataStore.getState().mnemonicPhrase) {
+    // Import Wallet keeps the phrase or key in memory before opening this
+    // screen. Without either there is nothing to import, so ask again.
+    const { mnemonicPhrase, secretKey } = useLoginDataStore.getState();
+    if (!mnemonicPhrase && !secretKey) {
       navigation.goBack();
       return;
     }
@@ -180,7 +184,11 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
               testID="import-acknowledgement-checkbox"
               checked={hasAcknowledged}
               onChange={handleAcknowledgeChange}
-              label={t("choosePasswordScreen.importAcknowledgement")}
+              label={
+                isImportingSecretKey
+                  ? t("choosePasswordScreen.importSecretKeyAcknowledgement")
+                  : t("choosePasswordScreen.importAcknowledgement")
+              }
             />
           </View>
         )}

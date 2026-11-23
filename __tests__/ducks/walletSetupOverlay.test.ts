@@ -1,4 +1,5 @@
 import {
+  SETTING_UP_MIN_MS,
   runWithWalletSetupOverlay,
   useWalletSetupOverlayStore,
 } from "ducks/walletSetupOverlay";
@@ -112,6 +113,14 @@ describe("walletSetupOverlay", () => {
   });
 
   describe("runWithWalletSetupOverlay", () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    /** Lets setup's outcome land, then the minimum time pass. */
+    const passMinimum = async () => {
+      await jest.advanceTimersByTimeAsync(SETTING_UP_MIN_MS);
+    };
+
     it("shows the screen while setup runs and turns ready when it resolves true", async () => {
       let finish: (value: boolean) => void = () => {};
       const setup = () =>
@@ -124,26 +133,64 @@ describe("walletSetupOverlay", () => {
       expect(store().flow).toBe("create");
 
       finish(true);
+      await passMinimum();
+
+      await expect(result).resolves.toBe(true);
+      expect(store().phase).toBe("ready");
+    });
+
+    // A secret-key import finishes almost at once; the title would flash.
+    it("keeps the setting-up title for the minimum time when setup is quick", async () => {
+      const result = runWithWalletSetupOverlay("import", () =>
+        Promise.resolve(true),
+      );
+
+      await jest.advanceTimersByTimeAsync(SETTING_UP_MIN_MS - 1);
+      expect(store().phase).toBe("settingUp");
+
+      await jest.advanceTimersByTimeAsync(1);
+      await expect(result).resolves.toBe(true);
+      expect(store().phase).toBe("ready");
+    });
+
+    it("adds no time when setup outlasts the minimum", async () => {
+      let finish: (value: boolean) => void = () => {};
+      const result = runWithWalletSetupOverlay(
+        "import",
+        () =>
+          new Promise<boolean>((resolve) => {
+            finish = resolve;
+          }),
+      );
+
+      await jest.advanceTimersByTimeAsync(SETTING_UP_MIN_MS * 4);
+      finish(true);
 
       await expect(result).resolves.toBe(true);
       expect(store().phase).toBe("ready");
     });
 
     it("fails the screen when setup resolves false", async () => {
-      await expect(
-        runWithWalletSetupOverlay("import", () => Promise.resolve(false)),
-      ).resolves.toBe(false);
+      const result = runWithWalletSetupOverlay("import", () =>
+        Promise.resolve(false),
+      );
+      await passMinimum();
 
+      await expect(result).resolves.toBe(false);
       expect(store().phase).toBe("leaving");
     });
 
     it("fails the screen and rethrows when setup throws", async () => {
       const error = new Error("setup broke");
 
-      await expect(
-        runWithWalletSetupOverlay("create", () => Promise.reject(error)),
-      ).rejects.toBe(error);
+      const result = runWithWalletSetupOverlay("create", () =>
+        Promise.reject(error),
+      );
+      // Caught here so the rejection isn't reported before it's awaited.
+      const settled = result.catch((thrown: unknown) => thrown);
+      await passMinimum();
 
+      await expect(settled).resolves.toBe(error);
       expect(store().phase).toBe("leaving");
     });
   });

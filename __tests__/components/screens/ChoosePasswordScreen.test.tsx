@@ -94,7 +94,11 @@ const withKeyboardUp = () => {
 describe("ChoosePasswordScreen (Set Password)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useLoginDataStore.setState({ password: null, mnemonicPhrase: null });
+    useLoginDataStore.setState({
+      password: null,
+      mnemonicPhrase: null,
+      secretKey: null,
+    });
   });
   afterEach(() => jest.restoreAllMocks());
 
@@ -341,6 +345,39 @@ describe("ChoosePasswordScreen (Set Password)", () => {
 
       expect(className).toContain("grow");
       expect(className).not.toContain("flex-1");
+    });
+
+    it("names the phrase in the acknowledgement", () => {
+      const { getByText } = renderScreen(true);
+
+      expect(
+        getByText(
+          "I understand imported recovery phrase can't be recovered and must be stored securely.",
+        ),
+      ).toBeTruthy();
+    });
+
+    it("names the secret key in the acknowledgement and imports it", async () => {
+      useLoginDataStore.setState({
+        mnemonicPhrase: null,
+        secretKey: "SBUV3MRWKNS6AYKZ6E6MOUVF2OYMON3MIUASWL3JLY5E3ISDJFELYBRZ",
+      });
+      const screen = renderScreen(true);
+
+      expect(
+        screen.getByText(
+          "I understand an imported secret key can't be recovered and must be stored securely.",
+        ),
+      ).toBeTruthy();
+
+      fillPasswords(screen);
+      fireEvent.press(screen.getByTestId("import-acknowledgement-checkbox"));
+      await pressContinue(screen);
+
+      expect(mockGoBack).not.toHaveBeenCalled();
+      expect(mockFinishWalletSetup).toHaveBeenCalledWith(
+        BiometricsSource.IMPORT_WALLET,
+      );
     });
 
     it("goes back to Import Wallet if the phrase is gone", async () => {
