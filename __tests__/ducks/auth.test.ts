@@ -2892,6 +2892,7 @@ describe("auth duck", () => {
         storeKey: jest.Mock;
         loadKey: jest.Mock;
         loadAllKeyIds: jest.Mock;
+        removeKey: jest.Mock;
       };
     }>("helpers/keyManager/keyManager");
 
@@ -5697,6 +5698,54 @@ describe("auth duck", () => {
           return hook;
         };
 
+        const importedAccount = (id: string, index: number): Account => ({
+          id,
+          sourceId: importedSourceId,
+          name: `Imported ${index}`,
+          publicKey: publicKeyAt(importedPhrase, index),
+        });
+
+        // The imported phrase's source record, as an earlier import left it.
+        const holdImportedSource = () => {
+          dataStorageMemory[STORAGE_KEYS.SECRET_SOURCES] = JSON.stringify({
+            ...JSON.parse(dataStorageMemory[STORAGE_KEYS.SECRET_SOURCES]),
+            [importedSourceId]: {
+              id: importedSourceId,
+              type: SecretSourceType.PHRASE,
+              label: "Seed Phrase 2",
+              createdAt: 2,
+            },
+          });
+        };
+
+        // Makes the key manager list what it stored, and fails the nth
+        // account-list write.
+        const failAccountListWrite = (nth: number) => {
+          const keyIds = [mockAccountId];
+          let stored = 0;
+          sharedKeyManager.storeKey.mockImplementation(() => {
+            stored += 1;
+            keyIds.push(`imported-${stored}`);
+            return Promise.resolve({ id: `imported-${stored}` });
+          });
+          sharedKeyManager.loadAllKeyIds.mockImplementation(() =>
+            Promise.resolve([...keyIds]),
+          );
+          let listWrites = 0;
+          (dataStorage.setItem as jest.Mock).mockImplementation(
+            (key: STORAGE_KEYS, value: string) => {
+              if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+                listWrites += 1;
+                if (listWrites === nth) {
+                  return Promise.reject(new Error("write failed"));
+                }
+              }
+              dataStorageMemory[key] = value;
+              return Promise.resolve();
+            },
+          );
+        };
+
         afterEach(() => {
           clearPendingRecoveryPhrase();
         });
@@ -5757,16 +5806,13 @@ describe("auth duck", () => {
           expect(linkWalletSources).toHaveBeenCalledTimes(1);
         });
 
-        it("refuses a phrase the wallet already holds before looking anything up", async () => {
-          const { result } = mockImportSession();
-          dataStorageMemory[STORAGE_KEYS.SECRET_SOURCES] = JSON.stringify({
-            [importedSourceId]: {
-              id: importedSourceId,
-              type: SecretSourceType.PHRASE,
-              label: "Seed Phrase 1",
-              createdAt: 1,
-            },
-          });
+        it("refuses a phrase the wallet already holds with all its accounts", async () => {
+          const { result } = mockImportSession([
+            phraseAccount(0),
+            importedAccount("imported-a", 0),
+            importedAccount("imported-b", 3),
+          ]);
+          holdImportedSource();
           const id = holdPendingRecoveryPhrase(importedPhrase);
 
           await act(async () => {
@@ -5778,8 +5824,73 @@ describe("auth duck", () => {
           expect(result.current.error).toBe(
             "authStore.error.recoveryPhraseAlreadyHeld",
           );
-          expect(isAccountFunded).not.toHaveBeenCalled();
+          // Whether anything is missing is only known after the lookups.
+          expect(isAccountFunded).toHaveBeenCalledTimes(49);
           expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(storedAccounts()).toHaveLength(3);
+        });
+
+        it("adds only the account funded since, when a held phrase is imported again", async () => {
+          const { result } = mockImportSession([
+            phraseAccount(0),
+            importedAccount("imported-a", 0),
+            importedAccount("imported-b", 3),
+          ]);
+          holdImportedSource();
+          mockFunded([3, 5]);
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          await act(async () => {
+            await result.current.importRecoveryPhrase(mockPassword, id);
+          });
+
+          expect(storedPublicKeys()).toEqual([publicKeyAt(importedPhrase, 5)]);
+          expect(storedAccounts()).toHaveLength(4);
+          expect(storedSources()).toHaveLength(2);
+        });
+
+        it("stores the accounts of a source an interrupted import left empty", async () => {
+          const { result } = mockImportSession();
+          holdImportedSource();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          await act(async () => {
+            await result.current.importRecoveryPhrase(mockPassword, id);
+          });
+
+          expect(storedPublicKeys()).toEqual([
+            publicKeyAt(importedPhrase, 0),
+            publicKeyAt(importedPhrase, 3),
+          ]);
+          expect(storedSources()).toHaveLength(2);
+          expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
+            "imported-1",
+          );
+        });
+
+        it("refuses a resumed import when a missing address is held under another source", async () => {
+          const { result } = mockImportSession([
+            phraseAccount(0),
+            importedAccount("imported-a", 0),
+            {
+              id: "imported-key",
+              sourceId: "key:imported",
+              name: "Account 3",
+              publicKey: publicKeyAt(importedPhrase, 3),
+              importedFromSecretKey: true,
+            },
+          ]);
+          holdImportedSource();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow("authStore.error.accountAlreadyExists");
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(storedAccounts()).toHaveLength(3);
         });
 
         it("refuses, and adds nothing, when one of the phrase's addresses is already in the wallet", async () => {
@@ -5864,7 +5975,51 @@ describe("auth duck", () => {
           expect(getPendingRecoveryPhrase(id)).toBe(importedPhrase);
         });
 
-        it("keeps the source, and puts the previous account back, when a later account fails to store", async () => {
+        it("removes the keystore of an account that was never listed", async () => {
+          const { result } = mockImportSession();
+          failAccountListWrite(1);
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow();
+          });
+
+          expect(sharedKeyManager.removeKey.mock.calls).toEqual([
+            ["imported-1"],
+          ]);
+          expect(storedSources()).toHaveLength(1);
+        });
+
+        it("removes only the unlisted keystore when a later account's list write fails", async () => {
+          const { result } = mockImportSession();
+          failAccountListWrite(2);
+          const refreshAccounts = jest.fn().mockResolvedValue(undefined);
+          act(() => {
+            useAuthenticationStore.setState({
+              getAllAccounts: refreshAccounts,
+            });
+          });
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow();
+          });
+
+          expect(sharedKeyManager.removeKey.mock.calls).toEqual([
+            ["imported-2"],
+          ]);
+          expect(
+            storedAccounts().map(({ id: accountId }) => accountId),
+          ).toEqual(["account-0", "imported-1"]);
+          // The account that did land shows up without a reload.
+          expect(refreshAccounts).toHaveBeenCalled();
+        });
+
+        it("keeps what was stored when a later account fails, and a retry stores the rest", async () => {
           const { result } = mockImportSession();
           const id = holdPendingRecoveryPhrase(importedPhrase);
           sharedKeyManager.storeKey
@@ -5877,7 +6032,6 @@ describe("auth duck", () => {
             ).rejects.toThrow();
           });
 
-          // A retry is refused as held rather than storing index 0 twice.
           expect(storedSources()).toEqual([
             expect.objectContaining({ id: mockPhraseSourceId }),
             expect.objectContaining({ id: importedSourceId }),
@@ -5888,6 +6042,30 @@ describe("auth duck", () => {
           expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
             "account-0",
           );
+
+          // The same hold, tried again: index 0 is there, index 3 is added.
+          sharedKeyManager.storeKey.mockResolvedValue({ id: "imported-retry" });
+          await act(async () => {
+            await result.current.importRecoveryPhrase(mockPassword, id);
+          });
+
+          expect(
+            storedAccounts().map(({ id: accountId, publicKey }) => [
+              accountId,
+              publicKey,
+            ]),
+          ).toEqual([
+            ["account-0", publicKeyAt(mockMnemonicPhrase, 0)],
+            ["imported-1", publicKeyAt(importedPhrase, 0)],
+            ["imported-retry", publicKeyAt(importedPhrase, 3)],
+          ]);
+          expect(storedSources()).toHaveLength(2);
+          expect(storedIndices()?.[importedSourceId]).toEqual([0, 3]);
+          // A resumed import lands on the first account it added.
+          expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
+            "imported-retry",
+          );
+          expect(getPendingRecoveryPhrase(id)).toBeNull();
         });
 
         it("stores one set of accounts when the same import runs twice at once", async () => {
