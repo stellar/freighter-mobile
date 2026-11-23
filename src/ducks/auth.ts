@@ -3030,13 +3030,48 @@ interface RecoveryPhraseImportPlan {
 }
 
 /**
+ * What a phrase import still has to store: whether the phrase's source is
+ * registered, and which planned indices have no account under it yet. An
+ * import that stopped part-way leaves some of them missing, and so does an
+ * account funded since the phrase was imported.
+ *
+ * @param {RecoveryPhraseImportPlan} plan - The phrase's source, wallet and planned indices
+ * @returns {Promise<{ isSourceHeld: boolean; missing: number[]; allAccounts: Account[] }>} The source's state, the indices to store and the account list they were checked against
+ */
+const getMissingImportIndices = async ({
+  sourceId,
+  wallet,
+  indices,
+}: Pick<RecoveryPhraseImportPlan, "sourceId" | "wallet" | "indices">): Promise<{
+  isSourceHeld: boolean;
+  missing: number[];
+  allAccounts: Account[];
+}> => {
+  const [sources, allAccounts] = await Promise.all([
+    getSecretSources(),
+    getAllAccounts(),
+  ]);
+  const listed = new Set(
+    allAccounts
+      .filter((account) => account.sourceId === sourceId)
+      .map(({ publicKey }) => publicKey),
+  );
+
+  return {
+    isSourceHeld: Boolean(sources[sourceId]),
+    missing: indices.filter((index) => !listed.has(wallet.getPublicKey(index))),
+    allAccounts,
+  };
+};
+
+/**
  * The read-only half of a phrase import, run before the account-mutation
- * lock: checks the held phrase and the password, refuses a phrase already
- * held, and looks up which of the phrase's first 50 indices are funded,
- * failing if any lookup does. Up to
- * 50 mainnet lookups at 5s each would hold the lock for as long as they take,
- * so they run outside it, and `storeImportedRecoveryPhrase` checks again
- * under it.
+ * lock: checks the held phrase and the password, looks up which of the
+ * phrase's first 50 indices are funded, failing if any lookup does, and
+ * refuses a phrase the wallet already holds with all of those accounts. Up
+ * to 50 mainnet lookups at 5s each would hold the lock for as long as they
+ * take, so they run outside it, and `storeImportedRecoveryPhrase` checks
+ * again under it.
  *
  * @param {string} password - The user's password, verified against the active keystore
  * @param {AuthStatus} authStatus - Current auth status, gating the session read
@@ -3067,10 +3102,6 @@ const prepareRecoveryPhraseImport = async (
   }
 
   const sourceId = await getPhraseSourceId(mnemonicPhrase);
-  // Checked before discovery to skip the lookups for a held phrase.
-  if ((await getSecretSources())[sourceId]) {
-    throw new Error(t("authStore.error.recoveryPhraseAlreadyHeld"));
-  }
 
   const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
   const { funded: fundedIndices, failedCount } = await discoverFundedIndices(
@@ -3078,25 +3109,42 @@ const prepareRecoveryPhraseImport = async (
     1,
     PHRASE_IMPORT_DISCOVERY_DEPTH - 1,
   );
-  // A held phrase is refused on retry, so importing with gaps would leave
-  // the missed accounts out for good. Fail before anything is written.
+  // Importing with gaps would look complete while accounts are missing.
+  // Fail before anything is written.
   if (failedCount > 0) {
     throw new Error(t("authStore.error.accountDiscoveryFailed"));
   }
 
-  return { mnemonicPhrase, sourceId, wallet, indices: [0, ...fundedIndices] };
+  const plan = {
+    mnemonicPhrase,
+    sourceId,
+    wallet,
+    indices: [0, ...fundedIndices],
+  };
+
+  // A held phrase is only refused once the lookups show nothing is missing:
+  // an import that stopped part-way has to be able to finish on a retry.
+  const { isSourceHeld, missing } = await getMissingImportIndices(plan);
+  if (isSourceHeld && missing.length === 0) {
+    throw new Error(t("authStore.error.recoveryPhraseAlreadyHeld"));
+  }
+
+  return plan;
 };
 
 /**
  * The write half of a phrase import, run under the account-mutation lock:
- * stores the phrase as a new source with an account at each planned index,
- * the first of which becomes active. Nothing already in the wallet changes.
- * Every refusal comes before the first write.
+ * registers the phrase as a source and stores an account at each planned
+ * index the wallet doesn't list under it yet, the first of which becomes
+ * active. Nothing already in the wallet changes. Every refusal comes before
+ * the first write.
  *
  * The source is registered first, so a failure after some accounts are
- * stored leaves them under a labeled group and a retry is refused as held.
- * If no account was listed, the source and its indices are removed again so
- * a retry starts clean, and the previous account is made active again.
+ * stored leaves them under a labeled group, and a retry stores the rest. If
+ * no account was listed, the source and its indices are removed again. On
+ * any failure the keystores this run wrote for accounts that were never
+ * listed are removed, and the previous account is made active again. None
+ * of that runs if the app is killed mid-import; a retry still finishes it.
  *
  * @param {RecoveryPhraseImportPlan} plan - What `prepareRecoveryPhraseImport` found
  * @param {string} password - The user's password, already verified
@@ -3115,30 +3163,36 @@ const storeImportedRecoveryPhrase = async (
   }
 
   // Checked again: an import or add that finished while the lookups ran may
-  // have stored this phrase or one of its accounts since.
-  if ((await getSecretSources())[sourceId]) {
+  // have stored this phrase or some of its accounts since.
+  const { isSourceHeld, missing, allAccounts } = await getMissingImportIndices({
+    sourceId,
+    wallet,
+    indices,
+  });
+  if (isSourceHeld && missing.length === 0) {
     throw new Error(t("authStore.error.recoveryPhraseAlreadyHeld"));
   }
 
-  // Collisions are refused, never merged: if any address this phrase would
-  // add is already in the wallet (say, imported earlier as a secret key),
-  // nothing is added.
-  const allAccounts = await getAllAccounts();
+  // Collisions are refused, never merged: if any address this import would
+  // add is already in the wallet under another source (say, imported earlier
+  // as a secret key), nothing is added.
   const held = new Set(allAccounts.map(({ publicKey }) => publicKey));
-  if (indices.some((index) => held.has(wallet.getPublicKey(index)))) {
+  if (missing.some((index) => held.has(wallet.getPublicKey(index)))) {
     throw new Error(t("authStore.error.accountAlreadyExists"));
   }
 
-  const previousActiveId = await dataStorage.getItem(
-    STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
-  );
+  const [previousActiveId, previousKeyIds] = await Promise.all([
+    dataStorage.getItem(STORAGE_KEYS.ACTIVE_ACCOUNT_ID),
+    keyManager.loadAllKeyIds(),
+  ]);
 
   try {
+    // Idempotent: a source an earlier import registered keeps its label.
     await addSecretSource({ id: sourceId, type: SecretSourceType.PHRASE });
 
     // Sequential: each one reads and appends the account list, and the key
     // manager's id index is a read-modify-write too.
-    await indices.reduce(async (previous, index) => {
+    await missing.reduce(async (previous, index) => {
       await previous;
       await storeAccount({
         mnemonicPhrase,
@@ -3151,22 +3205,36 @@ const storeImportedRecoveryPhrase = async (
           privateKey: wallet.getSecret(index),
         },
         shouldRefreshHashKey: false,
-        // The phrase's first account is the one to land on.
-        shouldSetActiveAccount: index === 0,
+        // The first account added is the one to land on: the phrase's first
+        // account, or on a retry the first one that was missing.
+        shouldSetActiveAccount: index === missing[0],
       });
     }, Promise.resolve());
   } catch (error) {
     try {
-      const listedAny = (await getAllAccounts()).some(
+      const accountsNow = await getAllAccounts();
+      const listedAny = accountsNow.some(
         (account) => account.sourceId === sourceId,
       );
       if (!listedAny) {
         await removeSecretSource(sourceId);
-        await indices.reduce(async (previous, index) => {
+        await missing.reduce(async (previous, index) => {
           await previous;
           await releaseDerivationIndex({ sourceId, index });
         }, Promise.resolve());
       }
+
+      // A keystore is written before its account is listed, so the account
+      // that failed may have left one nothing points to.
+      const keptKeyIds = new Set([
+        ...previousKeyIds,
+        ...accountsNow.map(({ id }) => id),
+      ]);
+      const unlistedKeyIds = (await keyManager.loadAllKeyIds()).filter(
+        (id) => !keptKeyIds.has(id),
+      );
+      await Promise.all(unlistedKeyIds.map((id) => keyManager.removeKey(id)));
+
       if (previousActiveId) {
         await dataStorage.setItem(
           STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
@@ -4484,6 +4552,13 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         "Failed to import recovery phrase",
         error,
       );
+      // Accounts stored before the failure are in the wallet; show them.
+      // A failed refresh must not replace the import's own error.
+      try {
+        await get().getAllAccounts();
+      } catch {
+        // The list is read again on the next load.
+      }
       set({
         error: getUserFacingError(
           error,
