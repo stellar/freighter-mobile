@@ -1,5 +1,5 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
-import { TokenChartSource } from "config/analyticsConfig";
+import { SwapSelectionSource, TokenChartSource } from "config/analyticsConfig";
 import {
   BiometricsSource,
   NETWORKS,
@@ -178,6 +178,8 @@ export type RootStackParamList = {
     tokenSymbol: string;
     record?: FormattedSearchTokenRecord;
     source?: TokenChartSource;
+    /** Which picker section the row came from; tags the Swap To pick. */
+    swapSelectionSource?: SwapSelectionSource;
   };
   [ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN]: {
     collectionAddress: string;

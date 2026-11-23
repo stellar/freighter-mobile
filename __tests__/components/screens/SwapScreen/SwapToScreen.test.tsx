@@ -1041,6 +1041,7 @@ describe("SwapToScreen", () => {
           tokenSymbol: "AQUA",
           record: mockPopularRecord,
           source: "swap_picker",
+          swapSelectionSource: "popular",
         },
       );
     });
@@ -1068,6 +1069,7 @@ describe("SwapToScreen", () => {
           tokenId: mockHeldBalance.id,
           tokenSymbol: "USDC",
           source: "swap_picker",
+          swapSelectionSource: "balances",
         },
       );
       (useBalancesList as jest.Mock).mockReturnValue({ balanceItems: [] });

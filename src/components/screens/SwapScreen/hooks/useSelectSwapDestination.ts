@@ -16,15 +16,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "services/analytics";
 
 interface UseSelectSwapDestinationParams {
-  /** Undefined when the screen was not opened from the swap amount screen; `select` is then a no-op. Keeps the hook unconditional in the screen. */
+  /** Undefined when Swap To is not offered, or for a held token picked by id; with neither, `select` is a no-op. Keeps the hook unconditional in the screen. */
   record: FormattedSearchTokenRecord | undefined;
+  /** A held balance id to pick when there is no record (the picker's held rows). */
+  heldTokenId?: string;
+  /** Tags swap.destination_selected; TRENDING also tracks the Swap To press. */
+  selectionSource?: SwapSelectionSource;
   /** Called after the store is updated; the screen pops back here. */
   onSelected: () => void;
 }
 
-/** Makes a search record the swap destination, reading decimals first for a Soroban token. */
+/** Makes a search record or a held balance the swap destination, reading decimals first for a Soroban token. */
 export const useSelectSwapDestination = ({
   record,
+  heldTokenId,
+  selectionSource = SwapSelectionSource.TRENDING,
   onSelected,
 }: UseSelectSwapDestinationParams): {
   select: () => void;
@@ -52,22 +58,22 @@ export const useSelectSwapDestination = ({
   }, []);
 
   const select = useCallback(() => {
-    if (!record) return;
-    analytics.track(AnalyticsEvent.SWAP_TRENDING_SWAP_TO_PRESSED, {
-      tokenCode: record.tokenCode,
-      tokenIssuer: record.issuer ?? "",
-    });
-    const heldMatch = balanceItems.find(
-      (b) =>
-        b.id === `${record.tokenCode}:${record.issuer}` ||
-        ("contractId" in b && b.contractId === record.issuer),
-    );
+    const heldById = record
+      ? undefined
+      : balanceItems.find((b) => b.id === heldTokenId);
+    if (!record && !heldById) return;
+    if (record && selectionSource === SwapSelectionSource.TRENDING) {
+      analytics.track(AnalyticsEvent.SWAP_TRENDING_SWAP_TO_PRESSED, {
+        tokenCode: record.tokenCode,
+        tokenIssuer: record.issuer ?? "",
+      });
+    }
     const apply = (descriptor: DestinationTokenDescriptor) => {
       analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
-        asset_code: record.tokenCode,
+        asset_code: record?.tokenCode ?? descriptor.tokenCode,
         asset_issuer: descriptor.issuer ?? "",
         requires_trustline: descriptor.requiresTrustline,
-        source: SwapSelectionSource.TRENDING,
+        source: selectionSource,
       });
       const { sourceTokenId, setSourceToken, setDestinationToken } =
         useSwapStore.getState();
@@ -79,6 +85,16 @@ export const useSelectSwapDestination = ({
       setDestinationToken(descriptor);
       onSelected();
     };
+    if (heldById) {
+      apply(descriptorFromBalance(heldById));
+      return;
+    }
+    if (!record) return;
+    const heldMatch = balanceItems.find(
+      (b) =>
+        b.id === `${record.tokenCode}:${record.issuer}` ||
+        ("contractId" in b && b.contractId === record.issuer),
+    );
     if (heldMatch) {
       apply(descriptorFromBalance(heldMatch));
       return;
@@ -117,7 +133,17 @@ export const useSelectSwapDestination = ({
         });
       },
     );
-  }, [record, balanceItems, onSelected, publicKey, network, showToast, t]);
+  }, [
+    record,
+    heldTokenId,
+    selectionSource,
+    balanceItems,
+    onSelected,
+    publicKey,
+    network,
+    showToast,
+    t,
+  ]);
 
   return { select, isPending };
 };

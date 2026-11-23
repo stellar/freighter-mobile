@@ -227,6 +227,50 @@ describe("useSelectSwapDestination", () => {
     expect(onSelected).toHaveBeenCalledTimes(1);
   });
 
+  it("picks a held balance by id when there is no record, tagged with the given source", () => {
+    const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+    useBalancesList.mockReturnValue({
+      balanceItems: [
+        {
+          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          tokenCode: "USDC",
+          tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+        },
+      ],
+    });
+    const { result } = renderHook(() =>
+      useSelectSwapDestination({
+        record: undefined,
+        heldTokenId:
+          "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        selectionSource: SwapSelectionSource.BALANCES,
+        onSelected,
+      }),
+    );
+
+    act(() => result.current.select());
+
+    expect(mockGetTokenDetails).not.toHaveBeenCalled();
+    expect(useSwapStore.getState().destinationToken).toEqual(
+      expect.objectContaining({
+        id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        requiresTrustline: false,
+      }),
+    );
+    expect(analytics.track).not.toHaveBeenCalledWith(
+      AnalyticsEvent.SWAP_TRENDING_SWAP_TO_PRESSED,
+      expect.anything(),
+    );
+    expect(analytics.track).toHaveBeenCalledWith(
+      AnalyticsEvent.SWAP_DESTINATION_SELECTED,
+      expect.objectContaining({
+        asset_code: "USDC",
+        source: SwapSelectionSource.BALANCES,
+      }),
+    );
+    expect(onSelected).toHaveBeenCalledTimes(1);
+  });
+
   it("does nothing without a record", () => {
     const { result } = renderHook(() =>
       useSelectSwapDestination({ record: undefined, onSelected }),

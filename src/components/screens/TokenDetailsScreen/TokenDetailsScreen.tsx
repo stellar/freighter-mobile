@@ -1,6 +1,7 @@
 /* eslint-disable react/no-unstable-nested-components */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { NavigatorScreenParams } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
@@ -26,13 +27,18 @@ import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent, TokenChartSource } from "config/analyticsConfig";
+import {
+  AnalyticsEvent,
+  SwapSelectionSource,
+  TokenChartSource,
+} from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   SWAP_ROUTES,
   SEND_PAYMENT_ROUTES,
+  SwapStackParamList,
 } from "config/routes";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -96,6 +102,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const source = route.params.source ?? TokenChartSource.BALANCES;
   const isFromBalances = source === TokenChartSource.BALANCES;
   const isFromSwapAmount = source === TokenChartSource.SWAP_AMOUNT;
+  const isFromSwapPicker = source === TokenChartSource.SWAP_PICKER;
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
@@ -410,11 +417,36 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     scanResult,
   ]);
 
-  const swapToRecord = isFromSwapAmount ? record : undefined;
+  // Swap To is offered from the swap amount screen and the picker. A picker
+  // held row carries no record; the balance is picked by id instead.
+  const swapToRecord =
+    isFromSwapAmount || isFromSwapPicker ? record : undefined;
+  const swapToHeldId = isFromSwapPicker && !record ? tokenId : undefined;
+  const isSwapToOffered = !!swapToRecord || !!swapToHeldId;
   const { select: selectSwapDestination, isPending: isSelectingSwapTo } =
     useSelectSwapDestination({
       record: swapToRecord,
-      onSelected: () => navigation.goBack(),
+      heldTokenId: swapToHeldId,
+      selectionSource: isFromSwapPicker
+        ? (route.params.swapSelectionSource ?? SwapSelectionSource.POPULAR)
+        : SwapSelectionSource.TRENDING,
+      onSelected: () => {
+        if (!isFromSwapPicker) {
+          navigation.goBack();
+          return;
+        }
+        // Back past the picker to the amount screen. It is already on the
+        // swap stack, so `merge` keeps its params instead of re-sending them.
+        navigation.navigate(
+          ROOT_NAVIGATOR_ROUTES.SWAP_STACK,
+          {
+            screen: SWAP_ROUTES.SWAP_AMOUNT_SCREEN,
+            merge: true,
+            pop: true,
+          } as NavigatorScreenParams<SwapStackParamList>,
+          { pop: true },
+        );
+      },
     });
   // Unable-to-scan is not flagged: the banner alone signals caution.
   const isFlagged = isMalicious || isSuspicious;
@@ -528,11 +560,11 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           />
         )}
       </View>
-      {isFromSwapAmount
-        ? swapToRecord && (
+      {isFromSwapAmount || isFromSwapPicker
+        ? isSwapToOffered && (
             <View className="mt-7">
               <SwapToFooter
-                tokenCode={swapToRecord.tokenCode}
+                tokenCode={swapToRecord?.tokenCode ?? tokenSymbol}
                 isFlagged={isFlagged}
                 isMalicious={isMalicious}
                 isPending={isSelectingSwapTo}
@@ -580,7 +612,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             }
             severity={securitySeverity}
             securityContext={SecurityContext.TOKEN}
-            {...(swapToRecord && {
+            {...(isSwapToOffered && {
               onCancel: () =>
                 securityWarningBottomSheetModalRef.current?.dismiss(),
               onProceedAnyway: () => {
@@ -590,7 +622,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
               proceedAnywayText: isUnableToScan
                 ? t("common.continue")
                 : t("swapScreen.trendingDetail.swapToAnyway", {
-                    tokenCode: swapToRecord.tokenCode,
+                    tokenCode: swapToRecord?.tokenCode ?? tokenSymbol,
                   }),
             })}
           />

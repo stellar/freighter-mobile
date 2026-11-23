@@ -241,6 +241,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   const openTokenDetails = (
     record: FormattedSearchTokenRecord,
     source: TokenChartSource,
+    swapSelectionSource: SwapSelectionSource,
   ) => {
     pickIdRef.current += 1;
     pendingPickRef.current = null;
@@ -251,11 +252,15 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       tokenSymbol: record.tokenCode,
       record,
       source,
+      swapSelectionSource,
     });
   };
 
   // A held row has no search record; the screen resolves it from balances.
-  const openHeldTokenDetails = (balance: HeldBalanceItem) => {
+  const openHeldTokenDetails = (
+    balance: HeldBalanceItem,
+    swapSelectionSource: SwapSelectionSource,
+  ) => {
     pickIdRef.current += 1;
     pendingPickRef.current = null;
     (
@@ -264,13 +269,17 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       tokenId: balance.id,
       tokenSymbol: balance.tokenCode ?? "",
       source: TokenChartSource.SWAP_PICKER,
+      swapSelectionSource,
     });
   };
 
   // Details are offered from the destination picker only, as on the extension.
-  const heldViewDetails = (balance: HeldBalanceItem) =>
+  const heldViewDetails = (
+    balance: HeldBalanceItem,
+    swapSelectionSource: SwapSelectionSource,
+  ) =>
     canViewDetails && selectionType === SWAP_SELECTION_TYPES.DESTINATION
-      ? () => openHeldTokenDetails(balance)
+      ? () => openHeldTokenDetails(balance, swapSelectionSource)
       : undefined;
 
   const handleRecordPress = (
@@ -430,7 +439,10 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                     balance={item}
                     network={network}
                     testID={`token-option-${item.tokenCode}`}
-                    onViewDetails={heldViewDetails(item)}
+                    onViewDetails={heldViewDetails(
+                      item,
+                      SwapSelectionSource.BALANCES,
+                    )}
                     onPress={() =>
                       handleHeldPress(item, SwapSelectionSource.BALANCES)
                     }
@@ -461,7 +473,12 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                       balance={heldMatch}
                       network={network}
                       testID={`token-option-${heldMatch.tokenCode}`}
-                      onViewDetails={heldViewDetails(heldMatch)}
+                      onViewDetails={heldViewDetails(
+                        heldMatch,
+                        isSearchActive
+                          ? SwapSelectionSource.SEARCH
+                          : SwapSelectionSource.POPULAR,
+                      )}
                       onPress={() =>
                         handleHeldPress(
                           heldMatch,
@@ -490,7 +507,13 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                   onViewDetails={
                     canViewDetails
                       ? () =>
-                          openTokenDetails(record, TokenChartSource.SWAP_PICKER)
+                          openTokenDetails(
+                            record,
+                            TokenChartSource.SWAP_PICKER,
+                            isSearchActive
+                              ? SwapSelectionSource.SEARCH
+                              : SwapSelectionSource.POPULAR,
+                          )
                       : undefined
                   }
                   onPress={() =>

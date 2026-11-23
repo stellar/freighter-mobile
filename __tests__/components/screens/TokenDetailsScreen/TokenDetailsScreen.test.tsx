@@ -9,7 +9,11 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import { TokenChartSource } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
-import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import {
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+  SWAP_ROUTES,
+} from "config/routes";
 import { FormattedSearchTokenRecord } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePriceHistoryStore } from "ducks/priceHistory";
@@ -163,9 +167,11 @@ type TokenDetailsScreenProps = NativeStackScreenProps<
 
 const mockGoBack = jest.fn();
 const mockSetOptions = jest.fn();
+const mockNavigate = jest.fn();
 
 const mockNavigation = {
   goBack: mockGoBack,
+  navigate: mockNavigate,
   setOptions: mockSetOptions,
 } as unknown as TokenDetailsScreenProps["navigation"];
 
@@ -561,7 +567,9 @@ describe("TokenDetailsScreen", () => {
       expect(actions[0].title).toBe("Copy address");
     });
 
-    it("renders no Swap, Send or Swap To footer when opened from the picker", () => {
+    it("renders Swap To and no Swap or Send; pressing it sets the destination and returns to the amount screen", () => {
+      useSwapStore.getState().resetSwap();
+      mockNavigate.mockClear();
       const screen = renderWithProviders(
         <TokenDetailsScreen
           navigation={mockNavigation}
@@ -571,7 +579,17 @@ describe("TokenDetailsScreen", () => {
 
       expect(screen.queryByText("tokenDetailsScreen.swap")).toBeNull();
       expect(screen.queryByTestId("token-details-send-button")).toBeNull();
-      expect(screen.queryByTestId("token-details-swap-to-button")).toBeNull();
+      fireEvent.press(screen.getByTestId("token-details-swap-to-button"));
+
+      expect(useSwapStore.getState().destinationToken?.id).toBe(shxId);
+      // Pops this screen and the picker in one go, keeping the amount
+      // screen's own params.
+      expect(mockNavigate).toHaveBeenCalledWith(
+        ROOT_NAVIGATOR_ROUTES.SWAP_STACK,
+        { screen: SWAP_ROUTES.SWAP_AMOUNT_SCREEN, merge: true, pop: true },
+        { pop: true },
+      );
+      expect(mockGoBack).not.toHaveBeenCalled();
     });
 
     it("shows the Blockaid banner from the record when it is flagged", () => {
@@ -631,7 +649,7 @@ describe("TokenDetailsScreen", () => {
       });
     });
 
-    it("renders the held variant (balance rows, history list) but a copy-only menu and no footer", () => {
+    it("renders the held variant (balance rows, history list) with a copy-only menu and a Swap To footer", () => {
       useRemoteConfigStore.setState({ swap_enabled: true });
       const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
       useBalancesList.mockReturnValue({
@@ -676,6 +694,17 @@ describe("TokenDetailsScreen", () => {
       ]);
       expect(screen.queryByText("tokenDetailsScreen.swap")).toBeNull();
       expect(screen.queryByTestId("token-details-send-button")).toBeNull();
+
+      // Swap To for a held token picks the balance itself: no record.
+      useSwapStore.getState().resetSwap();
+      mockNavigate.mockClear();
+      fireEvent.press(screen.getByTestId("token-details-swap-to-button"));
+      expect(useSwapStore.getState().destinationToken?.id).toBe(usdcId);
+      expect(mockNavigate).toHaveBeenCalledWith(
+        ROOT_NAVIGATOR_ROUTES.SWAP_STACK,
+        { screen: SWAP_ROUTES.SWAP_AMOUNT_SCREEN, merge: true, pop: true },
+        { pop: true },
+      );
     });
   });
 
