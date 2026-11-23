@@ -153,6 +153,7 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "hiddenTokens.unhidden": `${params?.tokenCode} unhidden`,
       "manageTokenRightContent.copyAddress": "Copy address",
       "common.remove": "Remove",
+      "swapScreen.viewOnStellarExpert": "View on stellar.expert",
     };
     return translations[key] || key;
   },
@@ -327,7 +328,7 @@ describe("TokenDetailsScreen", () => {
     const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
     const titles = actions.map((a: { title: string }) => a.title);
 
-    expect(titles).toEqual(["Copy address"]);
+    expect(titles).toEqual(["Copy address", "View on stellar.expert"]);
   });
 
   it("offers no Remove for LP shares, which can't be removed", () => {
@@ -416,7 +417,11 @@ describe("TokenDetailsScreen", () => {
         <TokenDetailsScreen navigation={mockNavigation} route={kaleRoute} />,
       );
 
-      expect(menuTitles()).toEqual(["Copy address", "Hide KALE"]);
+      expect(menuTitles()).toEqual([
+        "Copy address",
+        "Hide KALE",
+        "View on stellar.expert",
+      ]);
     });
 
     it("keeps Remove for a contract token the user added by hand", () => {
@@ -426,7 +431,12 @@ describe("TokenDetailsScreen", () => {
         <TokenDetailsScreen navigation={mockNavigation} route={kaleRoute} />,
       );
 
-      expect(menuTitles()).toEqual(["Copy address", "Hide KALE", "Remove"]);
+      expect(menuTitles()).toEqual([
+        "Copy address",
+        "Hide KALE",
+        "Remove",
+        "View on stellar.expert",
+      ]);
     });
   });
 
@@ -457,7 +467,12 @@ describe("TokenDetailsScreen", () => {
       const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
       const titles = actions.map((a: { title: string }) => a.title);
 
-      expect(titles).toEqual(["Copy address", "Hide USDC", "Remove"]);
+      expect(titles).toEqual([
+        "Copy address",
+        "Hide USDC",
+        "Remove",
+        "View on stellar.expert",
+      ]);
       expect(
         actions.find((a: { title: string }) => a.title === "Remove")
           .destructive,
@@ -555,7 +570,7 @@ describe("TokenDetailsScreen", () => {
       });
     });
 
-    it("offers only Copy address in the header menu when not opened from Home", () => {
+    it("offers Copy address and stellar.expert, but no Hide or Remove, for a token the account does not hold", () => {
       const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
 
       renderWithProviders(
@@ -566,8 +581,10 @@ describe("TokenDetailsScreen", () => {
       );
 
       const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
-      expect(actions).toHaveLength(1);
-      expect(actions[0].title).toBe("Copy address");
+      expect(actions.map((a: { title: string }) => a.title)).toEqual([
+        "Copy address",
+        "View on stellar.expert",
+      ]);
     });
 
     it("renders Swap To and no Swap or Send; pressing it sets the destination and returns to the amount screen", () => {
@@ -652,7 +669,7 @@ describe("TokenDetailsScreen", () => {
       });
     });
 
-    it("renders the held variant (balance rows, history list) with a copy-only menu and a Swap To footer", () => {
+    it("renders the held variant (balance rows, history list) with the full held menu and a Swap To footer", () => {
       useRemoteConfigStore.setState({ swap_enabled: true });
       const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
       useBalancesList.mockReturnValue({
@@ -692,8 +709,12 @@ describe("TokenDetailsScreen", () => {
       expect(screen.getByTestId("token-balance-details")).toBeTruthy();
       expect(screen.getByTestId("history-list")).toBeTruthy();
       const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+      // Hide and Remove follow the held balance, not the entry point.
       expect(actions.map((a: { title: string }) => a.title)).toEqual([
         "Copy address",
+        "Hide USDC",
+        "Remove",
+        "View on stellar.expert",
       ]);
       expect(screen.queryByText("tokenDetailsScreen.swap")).toBeNull();
       expect(screen.queryByTestId("token-details-send-button")).toBeNull();

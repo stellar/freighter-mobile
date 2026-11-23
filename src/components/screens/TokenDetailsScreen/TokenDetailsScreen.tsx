@@ -33,9 +33,11 @@ import {
   TokenChartSource,
 } from "config/analyticsConfig";
 import {
+  NATIVE_TOKEN_CODE,
   SWAP_SELECTION_TYPES,
   mapNetworkToNetworkDetails,
 } from "config/constants";
+import { logger } from "config/logger";
 import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
@@ -54,10 +56,12 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { getTokenType, getIssuerFromIdentifier } from "helpers/balances";
 import { isContractId } from "helpers/soroban";
+import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useManageToken } from "hooks/useManageToken";
 import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
@@ -82,11 +86,13 @@ const headerMenuIcons = Platform.select({
     copyAddress: "doc.on.doc",
     hideToken: "eye.slash",
     removeToken: "minus.circle",
+    viewOnExplorer: "link",
   },
   android: {
     copyAddress: "baseline_format_paint",
     hideToken: "visibility_off",
     removeToken: "outline_circle",
+    viewOnExplorer: "public",
   },
 });
 
@@ -127,6 +133,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     useTransactionSettingsStore();
   const hideToken = useBalancesStore((state) => state.hideToken);
   const { showToast } = useToast();
+  const { open: openInAppBrowser } = useInAppBrowser();
   const securityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
@@ -286,6 +293,21 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     hideTokenCode,
   ]);
 
+  // stellar.expert's page for the token, as the swap picker rows link it.
+  const stellarExpertUrl = useMemo(() => {
+    const base = getStellarExpertUrl(network);
+    if (isNativeAssetId(tokenId)) {
+      return `${base}/asset/${NATIVE_TOKEN_CODE}`;
+    }
+    const [code, issuer = ""] = tokenId.split(":");
+    return isContractId(issuer)
+      ? `${base}/contract/${issuer}`
+      : `${base}/asset/${code}-${issuer}`;
+  }, [network, tokenId]);
+
+  // Hide and Remove follow the held balance, whatever opened the screen
+  // (design 2026-11-23); Home also offers them before balances load.
+  const canOfferBalanceActions = isFromBalances || isHeld;
   const headerMenuActions = useMemo(
     () => [
       {
@@ -297,7 +319,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             "manageTokenRightContent.tokenAddressCopied",
           ),
       },
-      ...(isFromBalances && canOfferHide
+      ...(canOfferBalanceActions && canOfferHide
         ? [
             {
               title: t("tokenDetailsScreen.hideToken", {
@@ -313,7 +335,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             },
           ]
         : []),
-      ...(isFromBalances && canOfferRemove
+      ...(canOfferBalanceActions && canOfferRemove
         ? [
             {
               title: t("common.remove"),
@@ -323,16 +345,31 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             },
           ]
         : []),
+      {
+        title: t("swapScreen.viewOnStellarExpert"),
+        systemIcon: headerMenuIcons!.viewOnExplorer,
+        onPress: () => {
+          openInAppBrowser(stellarExpertUrl).catch((err) => {
+            logger.error(
+              "TokenDetailsScreen",
+              "Failed to open stellar expert URL:",
+              err,
+            );
+          });
+        },
+      },
     ],
     [
       t,
       copyTokenAddress,
       tokenId,
-      isFromBalances,
+      canOfferBalanceActions,
       canOfferHide,
       hideTokenCode,
       handleHideToken,
       canOfferRemove,
+      openInAppBrowser,
+      stellarExpertUrl,
     ],
   );
 
