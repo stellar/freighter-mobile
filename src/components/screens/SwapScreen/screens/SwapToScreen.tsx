@@ -253,6 +253,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       record,
       source,
       swapSelectionSource,
+      swapSelectionType: selectionType,
     });
   };
 
@@ -270,15 +271,15 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       tokenSymbol: balance.tokenCode ?? "",
       source: TokenChartSource.SWAP_PICKER,
       swapSelectionSource,
+      swapSelectionType: selectionType,
     });
   };
 
-  // Details are offered from the destination picker only, as on the extension.
   const heldViewDetails = (
     balance: HeldBalanceItem,
     swapSelectionSource: SwapSelectionSource,
   ) =>
-    canViewDetails && selectionType === SWAP_SELECTION_TYPES.DESTINATION
+    canViewDetails
       ? () => openHeldTokenDetails(balance, swapSelectionSource)
       : undefined;
 

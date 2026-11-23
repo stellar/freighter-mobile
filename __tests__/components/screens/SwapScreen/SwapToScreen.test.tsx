@@ -1042,6 +1042,7 @@ describe("SwapToScreen", () => {
           record: mockPopularRecord,
           source: "swap_picker",
           swapSelectionSource: "popular",
+          swapSelectionType: "destination",
         },
       );
     });
@@ -1070,6 +1071,37 @@ describe("SwapToScreen", () => {
           tokenSymbol: "USDC",
           source: "swap_picker",
           swapSelectionSource: "balances",
+          swapSelectionType: "destination",
+        },
+      );
+      (useBalancesList as jest.Mock).mockReturnValue({ balanceItems: [] });
+    });
+
+    it("View details on a held row of the SOURCE picker pushes TokenDetailsScreen tagged source", () => {
+      mockPriceHistoryEnabled.mockReturnValue(true);
+      (useBalancesList as jest.Mock).mockReturnValue({
+        balanceItems: [mockHeldBalance],
+      });
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [mockHeldBalance],
+      });
+      const { getByTestId } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.SOURCE)} />,
+      );
+
+      fireEvent.press(getByTestId("token-option-USDC-view-details"));
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+        {
+          tokenId: mockHeldBalance.id,
+          tokenSymbol: "USDC",
+          source: "swap_picker",
+          swapSelectionSource: "balances",
+          swapSelectionType: "source",
         },
       );
       (useBalancesList as jest.Mock).mockReturnValue({ balanceItems: [] });

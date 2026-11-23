@@ -745,6 +745,7 @@
       "body": "Não está nas listas de tokens confiáveis. Tenha cuidado ao adicionar ou transacionar."
     },
     "trendingDetail": {
+      "swapFrom": "Trocar de {{tokenCode}}",
       "swapTo": "Trocar para {{tokenCode}}",
       "swapToAnyway": "Trocar para {{tokenCode}} mesmo assim"
     },

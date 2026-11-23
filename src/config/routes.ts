@@ -180,6 +180,8 @@ export type RootStackParamList = {
     source?: TokenChartSource;
     /** Which picker section the row came from; tags the Swap To pick. */
     swapSelectionSource?: SwapSelectionSource;
+    /** Which swap side the picker fills; "source" shows Swap from instead of Swap To. */
+    swapSelectionType?: SWAP_SELECTION_TYPES;
   };
   [ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN]: {
     collectionAddress: string;

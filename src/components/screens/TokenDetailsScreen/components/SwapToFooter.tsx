@@ -6,6 +6,8 @@ import { View } from "react-native";
 
 interface SwapToFooterProps {
   tokenCode: string;
+  /** "from" labels the button Swap from, for the source picker. Defaults to "to". */
+  side?: "to" | "from";
   isFlagged: boolean;
   isMalicious: boolean;
   isPending: boolean;
@@ -13,9 +15,10 @@ interface SwapToFooterProps {
   onCancel: () => void;
 }
 
-/** The token details footer when the screen was opened from the swap amount screen. */
+/** The token details footer when the screen was opened from the swap amount screen or a swap picker. */
 export const SwapToFooter: React.FC<SwapToFooterProps> = ({
   tokenCode,
+  side = "to",
   isFlagged,
   isMalicious,
   isPending,
@@ -32,7 +35,9 @@ export const SwapToFooter: React.FC<SwapToFooterProps> = ({
         isLoading={isPending}
         testID="token-details-swap-to-button"
       >
-        {t("swapScreen.trendingDetail.swapTo", { tokenCode })}
+        {side === "from"
+          ? t("swapScreen.trendingDetail.swapFrom", { tokenCode })
+          : t("swapScreen.trendingDetail.swapTo", { tokenCode })}
       </Button>
     );
   }

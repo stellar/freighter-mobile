@@ -8,13 +8,16 @@ import {
 import { BaseLayout } from "components/layout/BaseLayout";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import { TokenChartSource } from "config/analyticsConfig";
-import { NETWORKS } from "config/constants";
+import { NETWORKS, SWAP_SELECTION_TYPES } from "config/constants";
 import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   SWAP_ROUTES,
 } from "config/routes";
-import { FormattedSearchTokenRecord } from "config/types";
+import {
+  FormattedSearchTokenRecord,
+  TokenTypeWithCustomToken,
+} from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePriceHistoryStore } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
@@ -700,6 +703,67 @@ describe("TokenDetailsScreen", () => {
       mockNavigate.mockClear();
       fireEvent.press(screen.getByTestId("token-details-swap-to-button"));
       expect(useSwapStore.getState().destinationToken?.id).toBe(usdcId);
+      expect(mockNavigate).toHaveBeenCalledWith(
+        ROOT_NAVIGATOR_ROUTES.SWAP_STACK,
+        { screen: SWAP_ROUTES.SWAP_AMOUNT_SCREEN, merge: true, pop: true },
+        { pop: true },
+      );
+    });
+
+    it("from the SOURCE picker: Swap from sets the source token and returns to the amount screen", () => {
+      const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+      useBalancesList.mockReturnValue({
+        balanceItems: [
+          {
+            id: usdcId,
+            tokenCode: "USDC",
+            tokenType: "credit_alphanum4",
+            total: { isGreaterThan: () => true },
+          },
+        ],
+        hiddenBalanceItems: [],
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        localOnlyTokenIds: [],
+        handleRefresh: jest.fn(),
+      });
+      useSwapStore.getState().resetSwap();
+      useSwapStore.getState().setDestinationToken({
+        id: usdcId,
+        tokenCode: "USDC",
+        tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+        decimals: 7,
+        requiresTrustline: false,
+      } as any);
+      mockNavigate.mockClear();
+      const route = {
+        ...mockRoute,
+        params: {
+          tokenId: usdcId,
+          tokenSymbol: "USDC",
+          source: TokenChartSource.SWAP_PICKER,
+          swapSelectionSource: "balances",
+          swapSelectionType: SWAP_SELECTION_TYPES.SOURCE,
+        },
+      } as unknown as TokenDetailsScreenProps["route"];
+
+      const screen = renderWithProviders(
+        <TokenDetailsScreen navigation={mockNavigation} route={route} />,
+      );
+
+      const button = screen.getByTestId("token-details-swap-to-button");
+      expect(
+        screen.getByText("swapScreen.trendingDetail.swapFrom"),
+      ).toBeTruthy();
+      fireEvent.press(button);
+
+      expect(useSwapStore.getState().sourceTokenId).toBe(usdcId);
+      // The same token was the destination: cleared, as the row press does.
+      expect(useSwapStore.getState().destinationToken).toBeNull();
       expect(mockNavigate).toHaveBeenCalledWith(
         ROOT_NAVIGATOR_ROUTES.SWAP_STACK,
         { screen: SWAP_ROUTES.SWAP_AMOUNT_SCREEN, merge: true, pop: true },
