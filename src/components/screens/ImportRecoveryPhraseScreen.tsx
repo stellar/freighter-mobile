@@ -62,6 +62,7 @@ const ImportRecoveryPhraseScreen: React.FC<ImportRecoveryPhraseScreenProps> = ({
     () => () => {
       if (heldPhraseIdRef.current) {
         clearPendingRecoveryPhrase(heldPhraseIdRef.current);
+        heldPhraseIdRef.current = null;
       }
     },
     [],
@@ -91,6 +92,10 @@ const ImportRecoveryPhraseScreen: React.FC<ImportRecoveryPhraseScreenProps> = ({
     // The keyboard goes first, so the password step comes in with it down.
     waitForKeyboardDismiss().then(() => {
       isSubmittingRef.current = false;
+      // The screen may have gone away during the wait, which dropped the
+      // hold: the password step would open with an id that resolves nothing.
+      if (heldPhraseIdRef.current !== pendingPhraseId) return;
+
       navigation.navigate(MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN, {
         kind: "importPhrase",
         pendingPhraseId,
