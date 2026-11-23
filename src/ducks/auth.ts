@@ -1605,7 +1605,10 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
   // Only make network calls for accounts we don't have locally. Bounded:
   // this runs under the account-mutation lock, and a stalled lookup would
   // hold off a wipe. A lookup that times out reads as unfunded, as a failed
-  // one does.
+  // one does. That is deliberate: failing here would wipe the wallet the
+  // user just recovered. An account missed this way can be added later by
+  // importing the same phrase from Add wallet, which fails on a failed
+  // lookup (see `prepareRecoveryPhraseImport`).
   const promises = accountsToVerify.map((keyPair) =>
     withFundedLookupTimeout(getAccount(keyPair.publicKey, NETWORKS.PUBLIC)),
   );
@@ -3121,7 +3124,8 @@ const prepareRecoveryPhraseImport = async (
     PHRASE_IMPORT_DISCOVERY_DEPTH - 1,
   );
   // Importing with gaps would look complete while accounts are missing.
-  // Fail before anything is written.
+  // Fail before anything is written: unlike onboarding recovery, which
+  // reads a failed lookup as unfunded, failing here only costs a retry.
   if (failedCount > 0) {
     throw new Error(t("authStore.error.accountDiscoveryFailed"));
   }
