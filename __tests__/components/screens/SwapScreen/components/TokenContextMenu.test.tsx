@@ -99,43 +99,6 @@ describe("TokenContextMenu — widened prop shape", () => {
   });
 });
 
-describe("TokenContextMenu — View details", () => {
-  const token: TokenReference = {
-    tokenCode: "USDC",
-    issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-    tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-  };
-  const lastActions = () =>
-    mockContextMenuProps.mock.calls.at(-1)![0].actions as {
-      title: string;
-      systemIcon: string;
-      onPress: () => void;
-    }[];
-
-  beforeEach(() => mockContextMenuProps.mockClear());
-
-  it("offers View details first when a handler is given, and not otherwise", () => {
-    const onViewDetails = jest.fn();
-    render(
-      <TokenContextMenu
-        token={token}
-        network={NETWORKS.PUBLIC}
-        onViewDetails={onViewDetails}
-      />,
-    );
-    const actions = lastActions();
-    expect(actions[0].title).toBe("common.viewDetails");
-    expect(actions[0].systemIcon).toBe("chart.xyaxis.line");
-    actions[0].onPress();
-    expect(onViewDetails).toHaveBeenCalledTimes(1);
-
-    render(<TokenContextMenu token={token} network={NETWORKS.PUBLIC} />);
-    expect(lastActions().map((a) => a.title)).not.toContain(
-      "common.viewDetails",
-    );
-  });
-});
-
 describe("getContractAddress — branch coverage", () => {
   it("returns contractId for Soroban references (branch 1)", () => {
     const balance: TokenReference = {

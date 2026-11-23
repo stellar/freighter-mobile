@@ -18,14 +18,11 @@ import { Platform, TouchableOpacity } from "react-native";
 interface TokenContextMenuProps {
   token: TokenReference;
   network: NETWORKS;
-  /** Adds View details as the first action when given. */
-  onViewDetails?: () => void;
 }
 
 const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
   token,
   network,
-  onViewDetails,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -64,27 +61,16 @@ const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
 
   const icons = Platform.select({
     ios: {
-      viewDetails: "chart.xyaxis.line",
       copyAddress: "doc.on.doc",
       viewOnExplorer: "link",
     },
     android: {
-      viewDetails: "show_chart",
       copyAddress: "copy",
       viewOnExplorer: "public",
     },
   });
 
   const actions: MenuItem[] = [
-    ...(onViewDetails
-      ? [
-          {
-            title: t("common.viewDetails"),
-            systemIcon: icons!.viewDetails,
-            onPress: onViewDetails,
-          },
-        ]
-      : []),
     {
       title: t("swapScreen.copyContractAddress"),
       systemIcon: icons!.copyAddress,

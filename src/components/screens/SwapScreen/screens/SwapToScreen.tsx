@@ -254,6 +254,25 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     });
   };
 
+  // A held row has no search record; the screen resolves it from balances.
+  const openHeldTokenDetails = (balance: HeldBalanceItem) => {
+    pickIdRef.current += 1;
+    pendingPickRef.current = null;
+    (
+      navigation as unknown as NativeStackNavigationProp<RootStackParamList>
+    ).navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
+      tokenId: balance.id,
+      tokenSymbol: balance.tokenCode ?? "",
+      source: TokenChartSource.SWAP_PICKER,
+    });
+  };
+
+  // Details are offered from the destination picker only, as on the extension.
+  const heldViewDetails = (balance: HeldBalanceItem) =>
+    canViewDetails && selectionType === SWAP_SELECTION_TYPES.DESTINATION
+      ? () => openHeldTokenDetails(balance)
+      : undefined;
+
   const handleRecordPress = (
     record: FormattedSearchTokenRecord,
     source: SwapSelectionSource.POPULAR | SwapSelectionSource.SEARCH,
@@ -411,6 +430,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                     balance={item}
                     network={network}
                     testID={`token-option-${item.tokenCode}`}
+                    onViewDetails={heldViewDetails(item)}
                     onPress={() =>
                       handleHeldPress(item, SwapSelectionSource.BALANCES)
                     }
@@ -441,6 +461,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                       balance={heldMatch}
                       network={network}
                       testID={`token-option-${heldMatch.tokenCode}`}
+                      onViewDetails={heldViewDetails(heldMatch)}
                       onPress={() =>
                         handleHeldPress(
                           heldMatch,

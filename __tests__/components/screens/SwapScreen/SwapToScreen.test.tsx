@@ -1,6 +1,6 @@
 /* eslint-disable @fnando/consistent-import/consistent-import, global-require, @typescript-eslint/no-var-requires */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { fireEvent, within } from "@testing-library/react-native";
+import { fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import { recordTokenId } from "components/screens/SwapScreen/helpers";
 import * as useSwapTokenLookupModule from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
@@ -465,12 +465,7 @@ describe("SwapToScreen", () => {
         <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
       );
       fireEvent.press(getByText("TKN"));
-      fireEvent(
-        within(getByTestId("token-option-TKN")).getByTestId(
-          "menu-action-View details",
-        ),
-        "touchEnd",
-      );
+      fireEvent.press(getByTestId("token-option-TKN-view-details"));
       resolveDetails({ name: "Token", symbol: "TKN", decimals: 7 });
       await flush();
 
@@ -1037,7 +1032,7 @@ describe("SwapToScreen", () => {
         <SwapToScreen {...mockNavProps} />,
       );
 
-      fireEvent(getByTestId("menu-action-View details"), "touchEnd");
+      fireEvent.press(getByTestId("token-option-AQUA-view-details"));
 
       expect(mockNavigate).toHaveBeenCalledWith(
         ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
@@ -1050,13 +1045,42 @@ describe("SwapToScreen", () => {
       );
     });
 
-    it("offers no View details when price history is disabled", () => {
-      mockPriceHistoryEnabled.mockReturnValue(false);
-      const { queryByTestId } = renderWithProviders(
+    it("View details on a Your tokens row pushes TokenDetailsScreen by balance id, with no record", () => {
+      mockPriceHistoryEnabled.mockReturnValue(true);
+      (useBalancesList as jest.Mock).mockReturnValue({
+        balanceItems: [mockHeldBalance],
+      });
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [mockHeldBalance],
+      });
+      const { getByTestId } = renderWithProviders(
         <SwapToScreen {...mockNavProps} />,
       );
 
-      expect(queryByTestId("menu-action-View details")).toBeNull();
+      fireEvent.press(getByTestId("token-option-USDC-view-details"));
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+        {
+          tokenId: mockHeldBalance.id,
+          tokenSymbol: "USDC",
+          source: "swap_picker",
+        },
+      );
+      (useBalancesList as jest.Mock).mockReturnValue({ balanceItems: [] });
+    });
+
+    it("offers no View details when price history is disabled, and the row keeps its menu", () => {
+      mockPriceHistoryEnabled.mockReturnValue(false);
+      const { queryByTestId, getByTestId } = renderWithProviders(
+        <SwapToScreen {...mockNavProps} />,
+      );
+
+      expect(queryByTestId("token-option-AQUA-view-details")).toBeNull();
+      expect(getByTestId("mock-context-menu")).toBeTruthy();
     });
   });
 

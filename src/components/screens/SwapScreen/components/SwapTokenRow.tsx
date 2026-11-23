@@ -7,6 +7,7 @@ import {
   TOKEN_ROW_VERTICAL_PADDING,
 } from "components/TokenRowStyle";
 import { TokenContextMenu } from "components/screens/SwapScreen/components/TokenContextMenu";
+import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NETWORKS, POSITIVE_PRICE_CHANGE_THRESHOLD } from "config/constants";
 import {
@@ -23,6 +24,7 @@ import {
   formatPercentageAmount,
 } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
+import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -60,6 +62,9 @@ const SHARED_TEXT_COLUMN_STYLE = { marginLeft: pxValue(TOKEN_ROW_GAP) };
 /** The 16pt between the text and the right column, as in Home's rows. */
 const SHARED_LEFT_BLOCK_STYLE = { marginRight: pxValue(TOKEN_ROW_GAP) };
 
+/** The info button is 16pt; widen its target without moving the row. */
+const INFO_HIT_SLOP = { top: 12, bottom: 12, left: 8, right: 12 };
+
 export interface SwapTokenRowProps {
   variant: SwapTokenRowVariant;
   /** For "held" rows: full PricedBalance. */
@@ -82,7 +87,10 @@ export interface SwapTokenRowProps {
    * Defaults to "default". Only "held" rows take it.
    */
   rowStyle?: "default" | "shared";
-  /** For "non-held" rows: adds View details to the row's menu. */
+  /**
+   * Adds the info button at the row's end (Swap to, 4827:102907), which opens
+   * the token's details. On a "non-held" row it stands in for the menu.
+   */
   onViewDetails?: () => void;
 }
 
@@ -92,7 +100,8 @@ export interface SwapTokenRowProps {
  * Three right-hand-slot variants:
  * - held: fiat value + 24h % (same layout as BalanceRow on the Home screen);
  *   with `rowStyle="shared"` the whole row takes Home's new token row style
- * - non-held: ellipsis context menu (TokenContextMenu)
+ * - non-held: ellipsis context menu (TokenContextMenu), or the info button
+ *   when `onViewDetails` is given
  * - trending: price + 24h %; % chip hidden when 24h data is unavailable
  */
 const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
@@ -107,6 +116,7 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
   onViewDetails,
 }) => {
   const { themeColors } = useColors();
+  const { t } = useAppTranslation();
   const isShared = variant === "held" && rowStyle === "shared";
 
   // Derive display values from the appropriate data source
@@ -159,13 +169,37 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
         }
       : undefined;
 
+  // 12pt past the row content, like the discover rows' menu.
+  const infoButton = onViewDetails ? (
+    <TouchableOpacity
+      testID={testID ? `${testID}-view-details` : undefined}
+      accessibilityRole="button"
+      accessibilityLabel={t("common.viewDetails")}
+      hitSlop={INFO_HIT_SLOP}
+      onPress={onViewDetails}
+      className="ml-3"
+    >
+      <Icon.InfoCircle size={16} color={themeColors.foreground.secondary} />
+    </TouchableOpacity>
+  ) : null;
+
+  const withInfoButton = (column: React.ReactNode) =>
+    infoButton ? (
+      <View className="flex-row items-center">
+        {column}
+        {infoButton}
+      </View>
+    ) : (
+      column
+    );
+
   const renderRightSlot = () => {
     if (variant === "held" && balance) {
       if (isShared) {
-        return <DefaultRightContent balance={balance} />;
+        return withInfoButton(<DefaultRightContent balance={balance} />);
       }
 
-      return (
+      return withInfoButton(
         <View className="flex-col items-end">
           {balance.fiatTotal ? (
             <>
@@ -191,17 +225,13 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
               --
             </Text>
           )}
-        </View>
+        </View>,
       );
     }
 
     if (variant === "non-held" && tokenRef) {
       return (
-        <TokenContextMenu
-          token={tokenRef}
-          network={network}
-          onViewDetails={onViewDetails}
-        />
+        infoButton ?? <TokenContextMenu token={tokenRef} network={network} />
       );
     }
 

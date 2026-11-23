@@ -125,6 +125,58 @@ describe("SwapTokenRow", () => {
     expect(getByText("aqua.network")).toBeTruthy();
   });
 
+  it("renders the info button instead of the menu on a non-held row given onViewDetails", () => {
+    mockMenuProps.mockClear();
+    const onViewDetails = jest.fn();
+    const onPress = jest.fn();
+    render(
+      <SwapTokenRow
+        variant="non-held"
+        record={mockSearchRecord}
+        network={NETWORKS.PUBLIC}
+        onPress={onPress}
+        onViewDetails={onViewDetails}
+        testID="token-option-AQUA"
+      />,
+    );
+    expect(mockMenuProps).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByTestId("token-option-AQUA-view-details"));
+    expect(onViewDetails).toHaveBeenCalledTimes(1);
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  it("renders the info button after a held row's fiat column given onViewDetails", () => {
+    const onViewDetails = jest.fn();
+    const onPress = jest.fn();
+    render(
+      <SwapTokenRow
+        variant="held"
+        balance={mockHeldBalance}
+        network={NETWORKS.PUBLIC}
+        onPress={onPress}
+        onViewDetails={onViewDetails}
+        testID="token-option-USDC"
+      />,
+    );
+    expect(screen.getByText("$100.00")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("token-option-USDC-view-details"));
+    expect(onViewDetails).toHaveBeenCalledTimes(1);
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  it("renders no info button without onViewDetails", () => {
+    render(
+      <SwapTokenRow
+        variant="held"
+        balance={mockHeldBalance}
+        network={NETWORKS.PUBLIC}
+        onPress={jest.fn()}
+        testID="token-option-USDC"
+      />,
+    );
+    expect(screen.queryByTestId("token-option-USDC-view-details")).toBeNull();
+  });
+
   describe("non-held / trending subtitle fallback chain (domain → name → tokenCode)", () => {
     it("falls back to record.name when domain is empty", () => {
       const { getByText, queryByText } = render(
