@@ -15,6 +15,11 @@ jest.mock("ducks/auth", () => ({
     mockClearPendingRecoveryPhrase(id),
 }));
 
+const mockWaitForKeyboardDismiss = jest.fn();
+jest.mock("helpers/keyboard", () => ({
+  waitForKeyboardDismiss: () => mockWaitForKeyboardDismiss(),
+}));
+
 const VALID_PHRASE = `${"abandon ".repeat(11)}about`;
 const mockNavigate = jest.fn();
 
@@ -48,6 +53,7 @@ describe("ImportRecoveryPhraseScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockHoldPendingRecoveryPhrase.mockReturnValue("pending-phrase-7");
+    mockWaitForKeyboardDismiss.mockReturnValue(Promise.resolve());
   });
 
   it("asks for the phrase with Paste inside the field", () => {
@@ -112,6 +118,26 @@ describe("ImportRecoveryPhraseScreen", () => {
     expect(mockClearPendingRecoveryPhrase).toHaveBeenCalledWith(
       "pending-phrase-7",
     );
+  });
+
+  it("doesn't open the password step when the screen went away during the keyboard wait", async () => {
+    let finishKeyboardDismiss: () => void = () => {};
+    mockWaitForKeyboardDismiss.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finishKeyboardDismiss = resolve;
+      }),
+    );
+    const screen = renderScreen();
+    await typeAndSubmit(screen, VALID_PHRASE);
+
+    screen.unmount();
+    finishKeyboardDismiss();
+    await act(async () => {});
+
+    expect(mockClearPendingRecoveryPhrase).toHaveBeenCalledWith(
+      "pending-phrase-7",
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("drops nothing on leaving when no phrase was held", () => {
