@@ -104,6 +104,26 @@ type TokenDetailsScreenProps = NativeStackScreenProps<
 /**
  * Token Details Screen component showing transaction history for a specific token
  */
+/**
+ * A hidden or removed token can no longer be swapped: clear it from whichever
+ * side of the in-progress swap holds it. Clearing the source resets its
+ * amount (see the swap store).
+ */
+const dropFromSwap = (tokenId: string) => {
+  const {
+    sourceTokenId,
+    destinationToken,
+    setSourceToken,
+    setDestinationToken,
+  } = useSwapStore.getState();
+  if (sourceTokenId === tokenId) {
+    setSourceToken("", "");
+  }
+  if (destinationToken?.id === tokenId) {
+    setDestinationToken(null);
+  }
+};
+
 const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   route,
   navigation,
@@ -164,6 +184,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const {
     scanResults,
     balanceItems,
+    hiddenBalanceItems,
     localOnlyTokenIds,
     handleRefresh: refreshBalances,
   } = useBalancesList({
@@ -200,6 +221,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       // Refresh balances so Home reflects the removal immediately instead of
       // waiting for the next focused poll.
       refreshBalances();
+      dropFromSwap(tokenId);
       navigation.goBack();
     },
   });
@@ -237,7 +259,9 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
   // XLM pays every transaction fee, so it is never hidden: Send and Swap
   // would stop seeing it and report insufficient XLM for fees.
-  const canOfferHide = !isNativeAssetId(tokenId);
+  const canOfferHide =
+    !isNativeAssetId(tokenId) &&
+    !hiddenBalanceItems.some((item) => item.id === tokenId);
   // Neither XLM nor LP shares can ever be removed here, so Remove isn't
   // offered for them rather than opening a sheet that only says so.
   const tokenType = getTokenType(tokenId);
@@ -255,8 +279,8 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
   /**
    * Hides the token, then returns to the previous screen and confirms with a
-   * toast. This screen only opens from a visible token on Home, so it never
-   * shows a hidden one; unhiding happens from Add token.
+   * toast. An already hidden token offers no Hide (Add token can open one);
+   * unhiding happens from Add token.
    */
   const handleHideToken = useCallback(async () => {
     const publicKey = account?.publicKey;
@@ -267,6 +291,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
     try {
       await hideToken({ publicKey, network, tokenId });
+      dropFromSwap(tokenId);
 
       navigation.goBack();
 
@@ -299,14 +324,17 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     if (isNativeAssetId(tokenId)) {
       return `${base}/asset/${NATIVE_TOKEN_CODE}`;
     }
+    if (isContractId(tokenId)) {
+      return `${base}/contract/${tokenId}`;
+    }
     const [code, issuer = ""] = tokenId.split(":");
     return isContractId(issuer)
       ? `${base}/contract/${issuer}`
       : `${base}/asset/${code}-${issuer}`;
   }, [network, tokenId]);
 
-  // Hide and Remove follow the held balance, whatever opened the screen
-  // (design 2026-11-23); Home also offers them before balances load.
+  // Hide and Remove follow the held balance, whatever opened the screen;
+  // Home also offers them before balances load.
   const canOfferBalanceActions = isFromBalances || isHeld;
   const headerMenuActions = useMemo(
     () => [

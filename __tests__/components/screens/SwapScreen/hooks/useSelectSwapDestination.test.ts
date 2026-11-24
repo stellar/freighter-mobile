@@ -271,6 +271,28 @@ describe("useSelectSwapDestination", () => {
     expect(onSelected).toHaveBeenCalledTimes(1);
   });
 
+  it("reports a held token it cannot find instead of doing nothing", () => {
+    const { result } = renderHook(() =>
+      useSelectSwapDestination({
+        record: undefined,
+        heldTokenId:
+          "GONE:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        selectionSource: SwapSelectionSource.BALANCES,
+        onSelected,
+      }),
+    );
+
+    act(() => result.current.select());
+
+    expect(onSelected).not.toHaveBeenCalled();
+    expect(mockShowToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: "error",
+        title: "swapScreen.errors.tokenDetailsUnavailable",
+      }),
+    );
+  });
+
   it("does nothing without a record", () => {
     const { result } = renderHook(() =>
       useSelectSwapDestination({ record: undefined, onSelected }),

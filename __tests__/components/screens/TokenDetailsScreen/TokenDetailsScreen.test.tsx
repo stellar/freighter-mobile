@@ -95,6 +95,11 @@ jest.mock("components/screens/SwapScreen/helpers", () => {
   return { ...actual, withTokenDecimals: jest.fn(actual.withTokenDecimals) };
 });
 
+const mockOpenInAppBrowser = jest.fn().mockResolvedValue(undefined);
+jest.mock("hooks/useInAppBrowser", () => ({
+  useInAppBrowser: () => ({ open: mockOpenInAppBrowser }),
+}));
+
 jest.mock("hooks/useGetActiveAccount", () => ({
   __esModule: true,
   default: () => ({
@@ -479,6 +484,111 @@ describe("TokenDetailsScreen", () => {
       ).toBe(true);
     });
 
+    it("drops a hidden token from the swap it was selected in", async () => {
+      const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
+      const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+      const heldList = {
+        balanceItems: [
+          {
+            id: usdcId,
+            tokenCode: "USDC",
+            tokenType: "credit_alphanum4",
+            total: { isGreaterThan: () => true },
+          },
+        ],
+        hiddenBalanceItems: [],
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        localOnlyTokenIds: [],
+        handleRefresh: jest.fn(),
+      };
+      useBalancesList.mockReturnValue(heldList);
+      useSwapStore.getState().resetSwap();
+      useSwapStore.getState().setSourceToken(usdcId, "USDC");
+      useSwapStore.getState().setSourceAmount("12");
+
+      renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={
+            {
+              ...usdcRoute,
+              params: {
+                ...usdcRoute.params,
+                source: TokenChartSource.SWAP_PICKER,
+                swapSelectionType: SWAP_SELECTION_TYPES.SOURCE,
+              },
+            } as unknown as TokenDetailsScreenProps["route"]
+          }
+        />,
+      );
+      const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+      await act(async () => {
+        await actions
+          .find((a: { title: string }) => a.title === "Hide USDC")
+          .onPress();
+      });
+
+      expect(useSwapStore.getState().sourceTokenId).toBe("");
+      expect(useSwapStore.getState().sourceAmount).toBe("0");
+      // Back to the file's default (no balances) for the tests after this one.
+      useBalancesList.mockReset();
+      useBalancesList.mockReturnValue({
+        ...heldList,
+        balanceItems: [],
+        noBalances: true,
+        isFunded: false,
+      });
+      useSwapStore.getState().resetSwap();
+    });
+
+    it("offers no Hide for a token that is already hidden", () => {
+      const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
+      const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+      const usdc = {
+        id: usdcId,
+        tokenCode: "USDC",
+        tokenType: "credit_alphanum4",
+        total: { isGreaterThan: () => true },
+      };
+      useBalancesList.mockReturnValueOnce({
+        balanceItems: [usdc],
+        hiddenBalanceItems: [usdc],
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        localOnlyTokenIds: [],
+        handleRefresh: jest.fn(),
+      });
+
+      renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={
+            {
+              ...usdcRoute,
+              params: {
+                ...usdcRoute.params,
+                source: TokenChartSource.ADD_TOKEN,
+              },
+            } as unknown as TokenDetailsScreenProps["route"]
+          }
+        />,
+      );
+
+      const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+      expect(actions.map((a: { title: string }) => a.title)).not.toContain(
+        "Hide USDC",
+      );
+    });
+
     it("hides the token, goes back and confirms with a toast", async () => {
       const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
 
@@ -568,6 +678,33 @@ describe("TokenDetailsScreen", () => {
       expect(section.mock.calls.at(-1)[0]).toMatchObject({
         source: TokenChartSource.SWAP_PICKER,
       });
+    });
+
+    it("links a bare contract id to its stellar.expert contract page", () => {
+      const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
+      const contractId =
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      mockOpenInAppBrowser.mockClear();
+
+      renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={
+            {
+              ...mockRoute,
+              params: { tokenId: contractId, tokenSymbol: contractId },
+            } as unknown as TokenDetailsScreenProps["route"]
+          }
+        />,
+      );
+      const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+      actions
+        .find((a: { title: string }) => a.title === "View on stellar.expert")
+        .onPress();
+
+      expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
+        expect.stringMatching(new RegExp(`/contract/${contractId}$`)),
+      );
     });
 
     it("offers Copy address and stellar.expert, but no Hide or Remove, for a token the account does not hold", () => {

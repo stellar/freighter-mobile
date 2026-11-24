@@ -61,7 +61,18 @@ export const useSelectSwapDestination = ({
     const heldById = record
       ? undefined
       : balanceItems.find((b) => b.id === heldTokenId);
-    if (!record && !heldById) return;
+    if (!record && !heldById) {
+      // A held id that no longer resolves (balances refreshing, or the token
+      // just left) would otherwise make the button do nothing.
+      if (heldTokenId) {
+        showToast({
+          variant: "error",
+          title: t("swapScreen.errors.tokenDetailsUnavailable"),
+          toastId: "swap-token-details-unavailable",
+        });
+      }
+      return;
+    }
     if (record && selectionSource === SwapSelectionSource.TRENDING) {
       analytics.track(AnalyticsEvent.SWAP_TRENDING_SWAP_TO_PRESSED, {
         tokenCode: record.tokenCode,
