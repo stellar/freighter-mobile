@@ -86,7 +86,7 @@ export const calculateMinimumReceived = ({
   allowedSlippage,
   minimumReceived,
 }: CalculateMinimumReceivedParams): string => {
-  if (minimumReceived) return minimumReceived;
+  if (minimumReceived) return formatTokenForDisplay(minimumReceived);
 
   const destinationAmountBN = new BigNumber(destinationAmount);
   const slippageMultiplier = BigNumber(1).minus(

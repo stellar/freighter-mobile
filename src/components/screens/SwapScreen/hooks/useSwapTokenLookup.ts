@@ -2,11 +2,11 @@
 import FastImage, { type Priority } from "@d11/react-native-fast-image";
 import { canonicalId } from "components/screens/SwapScreen/helpers/canonicalId";
 import { computeTrendingIntersection } from "components/screens/SwapScreen/helpers/computeTrendingIntersection";
-import { formatClassicRecord } from "components/screens/SwapScreen/helpers/formatClassicRecord";
+import { formatSearchRecord } from "components/screens/SwapScreen/helpers/formatSearchRecord";
 import { mergeBlockaidScans } from "components/screens/SwapScreen/helpers/mergeBlockaidScans";
 import {
-  isClassicTokenType,
-  isSorobanRecord,
+  isSwappableRecord,
+  isSwappableTokenType,
 } from "components/screens/SwapScreen/helpers/recordPredicates";
 import {
   DEFAULT_DEBOUNCE_DELAY,
@@ -25,15 +25,18 @@ import { useStellarExpertTopTokensStore } from "ducks/stellarExpertTopTokens";
 import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatTokenIdentifier, getTokenType } from "helpers/balances";
+import { hasDecimals } from "helpers/formatAmount";
 import { isMainnet } from "helpers/networks";
+import { isContractId } from "helpers/soroban";
 import { splitVerifiedTokens } from "helpers/splitVerifiedTokens";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { handleContractLookup } from "services/backend";
 import { searchToken } from "services/stellarExpert";
 
 export interface SwapTokenLookupResult {
   /**
-   * Held classic tokens, always populated regardless of search state.
+   * Held tokens (classic and Soroban), always populated regardless of search state.
    * The picker hides this list during active search and reads
    * `heldSearchMatches` instead, but the value here is unconditional.
    */
@@ -58,13 +61,6 @@ export interface SwapTokenLookupResult {
   verifiedSearchMatches: FormattedSearchTokenRecord[];
   /** Active: unverified non-held matches from stellar.expert (deduped against held + verified). Idle: []. */
   unverifiedSearchMatches: FormattedSearchTokenRecord[];
-  /**
-   * True when the pre-filter result set contained Soroban contract tokens
-   * that matched the term AND the filtered (classic-only) list ended up
-   * empty. Lets the picker swap its empty-state copy for a Soroban-specific
-   * notice when this is the reason nothing showed up.
-   */
-  hadSorobanMatches: boolean;
   /** True when the latest stellar.expert call failed (network/timeout/5xx). */
   stellarExpertDown: boolean;
   /** Hook lifecycle status — IDLE / LOADING / SUCCESS / ERROR. Reflects the latest fetch. */
@@ -98,6 +94,8 @@ export interface UseSwapTokenLookupProps {
    * "Swap from" picker so typing in the search box stays instant.
    */
   holdsOnly?: boolean;
+  /** The active account, for the contract-ID lookup. */
+  publicKey?: string;
 }
 
 /** Partial-match: does `text` contain `term` (case-insensitive)? */
@@ -140,6 +138,7 @@ export const useSwapTokenLookup = ({
   network,
   balanceItems,
   holdsOnly = false,
+  publicKey,
 }: UseSwapTokenLookupProps): SwapTokenLookupResult => {
   const latestRequestRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -163,7 +162,6 @@ export const useSwapTokenLookup = ({
     verified: FormattedSearchTokenRecord[];
     unverified: FormattedSearchTokenRecord[];
   }>({ held: [], verified: [], unverified: [] });
-  const [hadSorobanMatches, setHadSorobanMatches] = useState<boolean>(false);
   const [stellarExpertDown, setStellarExpertDown] = useState<boolean>(false);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
   const [isTrendingLoading, setIsTrendingLoading] = useState<boolean>(false);
@@ -283,14 +281,17 @@ export const useSwapTokenLookup = ({
       ),
     [hiddenTokenIds],
   );
-  const withoutHidden = useCallback(
+  // Off mainnet, LI.FI can't quote a Soroban token, so only held ones list.
+  const visibleRecords = useCallback(
     (tokens: FormattedSearchTokenRecord[]) =>
-      hiddenIdsSet.size === 0
-        ? tokens
-        : tokens.filter(
-            (t) => !hiddenIdsSet.has(canonicalId(t.tokenCode, t.issuer)),
-          ),
-    [hiddenIdsSet],
+      tokens.filter(
+        (t) =>
+          !hiddenIdsSet.has(canonicalId(t.tokenCode, t.issuer)) &&
+          (isMainnet(network) ||
+            t.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN ||
+            hasExistingTrustline(t.tokenCode, t.issuer)),
+      ),
+    [hiddenIdsSet, network, hasExistingTrustline],
   );
 
   // -- Idle surface ---------------------------------------------------------
@@ -443,7 +444,6 @@ export const useSwapTokenLookup = ({
   // Runs whenever `searchTerm` changes to a non-empty value. Builds three
   // deduped buckets — held / verified / unverified — sharing a single `seen`
   // set so a held token can never duplicate into Verified or Unverified.
-  // Classic-only on all three.
   const performSearch = useCallback(
     async (term: string) => {
       const requestId = ++latestRequestRef.current;
@@ -456,19 +456,20 @@ export const useSwapTokenLookup = ({
         if (latestRequestRef.current === requestId) {
           setStatus(HookStatus.IDLE);
           setSearchPartition({ held: [], verified: [], unverified: [] });
-          setHadSorobanMatches(false);
         }
         return;
       }
 
       setStatus(HookStatus.LOADING);
-      setHadSorobanMatches(false);
 
-      // 1) Held matches — partial match against tokenCode or displayName.
+      // 1) Held matches — partial match against tokenCode or displayName,
+      //    or a held Soroban token's exact contract ID.
       const heldMatches: FormattedSearchTokenRecord[] = balanceItemsRef.current
         .filter(
           (b) =>
-            matchesTerm(b.tokenCode, term) || matchesTerm(b.displayName, term),
+            matchesTerm(b.tokenCode, term) ||
+            matchesTerm(b.displayName, term) ||
+            ("contractId" in b && b.contractId === term),
         )
         .map((b) => {
           const { tokenCode, issuer } = formatTokenIdentifier(b.id);
@@ -482,9 +483,10 @@ export const useSwapTokenLookup = ({
             tokenType: resolvedIssuer
               ? getTokenType(`${tokenCode}:${resolvedIssuer}`)
               : TokenTypeWithCustomToken.NATIVE,
+            ...(hasDecimals(b) && { decimals: b.decimals }),
           };
         })
-        .filter((t) => isClassicTokenType(t.tokenType));
+        .filter((t) => isSwappableTokenType(t.tokenType));
 
       // holdsOnly short-circuit: the "Swap from" picker only chooses among
       // tokens the user already holds, so there's no point hitting
@@ -497,55 +499,63 @@ export const useSwapTokenLookup = ({
           verified: [],
           unverified: [],
         });
-        setHadSorobanMatches(false);
         setStatus(HookStatus.SUCCESS);
         return;
       }
 
-      // 2) Cross-network search via stellar.expert.
-      const response = await searchToken(term, network, signal);
-      if (signal.aborted || latestRequestRef.current !== requestId) return;
-
-      if (!response) {
-        // stellar.expert down — fall back to held-only results.
-        setStellarExpertDown(true);
-        const enhancedHeld = await enhanceWithSecurityInfo(heldMatches, signal);
-        if (signal.aborted || latestRequestRef.current !== requestId) return;
-        setSearchPartition({
-          held: enhancedHeld,
-          verified: [],
-          unverified: [],
+      // 2) A pasted contract ID is looked up through freighter-backend;
+      //    anything else is searched on stellar.expert.
+      let formatted: FormattedSearchTokenRecord[];
+      if (isContractId(term)) {
+        let lookupFailed = false;
+        const found = await handleContractLookup(
+          term,
+          network,
+          publicKey,
+          signal,
+          true,
+        ).catch(() => {
+          lookupFailed = true;
+          return null;
         });
-        setHadSorobanMatches(false);
-        setStatus(HookStatus.SUCCESS);
-        return;
+        if (signal.aborted || latestRequestRef.current !== requestId) return;
+        setStellarExpertDown(lookupFailed);
+        formatted = found
+          ? [
+              {
+                ...found,
+                hasTrustline:
+                  found.isNative ||
+                  hasExistingTrustline(found.tokenCode, found.issuer),
+              },
+            ]
+          : [];
+      } else {
+        const response = await searchToken(term, network, signal);
+        if (signal.aborted || latestRequestRef.current !== requestId) return;
+
+        if (!response) {
+          // stellar.expert down — fall back to held-only results.
+          setStellarExpertDown(true);
+          const enhancedHeld = await enhanceWithSecurityInfo(
+            heldMatches,
+            signal,
+          );
+          if (signal.aborted || latestRequestRef.current !== requestId) return;
+          setSearchPartition({
+            held: enhancedHeld,
+            verified: [],
+            unverified: [],
+          });
+          setStatus(HookStatus.SUCCESS);
+          return;
+        }
+
+        setStellarExpertDown(false);
+        formatted = (response._embedded?.records ?? [])
+          .filter(isSwappableRecord)
+          .map((r) => formatSearchRecord(r, hasExistingTrustline));
       }
-
-      setStellarExpertDown(false);
-      const rawRecords = response._embedded?.records ?? [];
-
-      // Track whether the pre-filter set had any Soroban records before we
-      // drop them. The flag is only meaningful when the filtered list is
-      // empty (see hadSorobanMatches doc).
-      const preFilterHadSoroban = rawRecords.some((r) => isSorobanRecord(r));
-
-      const classicRecords = rawRecords.filter((r) => {
-        if (isSorobanRecord(r)) return false;
-        const [tokenCode, issuer] = r.asset.split("-");
-        if (!issuer && !isNativeAssetId(r.asset)) return false;
-        const tokenType = getTokenType(
-          issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
-        );
-        return isClassicTokenType(tokenType);
-      });
-
-      const formatted = classicRecords.map((r) => {
-        const [tokenCode, issuer] = r.asset.split("-");
-        return formatClassicRecord(
-          r,
-          hasExistingTrustline(tokenCode, issuer ?? ""),
-        );
-      });
 
       // 3) Verified vs unverified split. If the verified-tokens lookup
       //    rejects (no cache + network/API down), fall back to treating
@@ -606,14 +616,19 @@ export const useSwapTokenLookup = ({
         verified: enhancedVerified,
         unverified: enhancedUnverified,
       });
-      setHadSorobanMatches(enhanced.length === 0 && preFilterHadSoroban);
       setStatus(HookStatus.SUCCESS);
     },
     // balanceItems is read via balanceItemsRef (so callers can pass `[]`
     // inline without thrashing the callback identity). hasExistingTrustline
     // is the held-set fingerprint; enhanceWithSecurityInfo carries the
     // network + Blockaid debug-override fingerprint.
-    [enhanceWithSecurityInfo, hasExistingTrustline, network, holdsOnly],
+    [
+      enhanceWithSecurityInfo,
+      hasExistingTrustline,
+      network,
+      holdsOnly,
+      publicKey,
+    ],
   );
 
   // Debounce wiring: a user keystroke updates `searchTerm` immediately so the
@@ -652,11 +667,9 @@ export const useSwapTokenLookup = ({
     if (term.length > 0) {
       setStatus(HookStatus.LOADING);
       setSearchPartition({ held: [], verified: [], unverified: [] });
-      setHadSorobanMatches(false);
     } else {
       setStatus(HookStatus.IDLE);
       setSearchPartition({ held: [], verified: [], unverified: [] });
-      setHadSorobanMatches(false);
     }
   }, []);
 
@@ -664,7 +677,6 @@ export const useSwapTokenLookup = ({
     abortControllerRef.current?.abort();
     setSearchTerm("");
     setSearchPartition({ held: [], verified: [], unverified: [] });
-    setHadSorobanMatches(false);
     setStatus(HookStatus.IDLE);
   }, []);
 
@@ -733,17 +745,15 @@ export const useSwapTokenLookup = ({
   ]);
 
   // Idle outputs
-  // Filter held balances down to classic-only (native + alphanum4/12).
-  // Liquidity pool shares and Soroban custom tokens are not swappable and
-  // should never surface in the Swap-To picker's "Your tokens" section.
-  // getTokenType expects either NATIVE_TOKEN_CODE ("XLM") or a "CODE:ISSUER"
-  // string. Balance.id can carry the raw "native" spelling for XLM, so
-  // normalize first via the shared predicate — otherwise the catch-all
-  // classifies it as LIQUIDITY_POOL_SHARES and filters it out.
+  // Liquidity pool shares are not swappable and never surface in "Your
+  // tokens". getTokenType expects either NATIVE_TOKEN_CODE ("XLM") or a
+  // "CODE:ISSUER" string. Balance.id can carry the raw "native" spelling for
+  // XLM, so normalize first via the shared predicate — otherwise the
+  // catch-all classifies it as LIQUIDITY_POOL_SHARES and filters it out.
   const yourTokens = useMemo(
     () =>
       balanceItems.filter((b) =>
-        isClassicTokenType(
+        isSwappableTokenType(
           getTokenType(isNativeAssetId(b.id) ? NATIVE_TOKEN_CODE : b.id),
         ),
       ),
@@ -752,8 +762,8 @@ export const useSwapTokenLookup = ({
   // Filtered here rather than in the fetch pipeline, so unhiding a token
   // brings it back straight away without refetching.
   const visibleTrendingTokens = useMemo(
-    () => withoutHidden(trendingTokens),
-    [withoutHidden, trendingTokens],
+    () => visibleRecords(trendingTokens),
+    [visibleRecords, trendingTokens],
   );
   // popularTokens is the same verified intersection as trendingTokens,
   // additionally EXCLUDING held tokens for the picker.
@@ -765,12 +775,12 @@ export const useSwapTokenLookup = ({
     [visibleTrendingTokens, hasExistingTrustline],
   );
   const verifiedSearchMatches = useMemo(
-    () => withoutHidden(searchPartition.verified),
-    [withoutHidden, searchPartition.verified],
+    () => visibleRecords(searchPartition.verified),
+    [visibleRecords, searchPartition.verified],
   );
   const unverifiedSearchMatches = useMemo(
-    () => withoutHidden(searchPartition.unverified),
-    [withoutHidden, searchPartition.unverified],
+    () => visibleRecords(searchPartition.unverified),
+    [visibleRecords, searchPartition.unverified],
   );
 
   return {
@@ -780,7 +790,6 @@ export const useSwapTokenLookup = ({
     heldSearchMatches: searchTerm ? searchPartition.held : [],
     verifiedSearchMatches: searchTerm ? verifiedSearchMatches : [],
     unverifiedSearchMatches: searchTerm ? unverifiedSearchMatches : [],
-    hadSorobanMatches: searchTerm ? hadSorobanMatches : false,
     stellarExpertDown,
     status,
     isTrendingLoading,

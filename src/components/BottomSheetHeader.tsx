@@ -28,6 +28,9 @@ export interface BottomSheetHeaderProps {
   closeDisabled?: boolean;
   closeTestID?: string;
   titleTestID?: string;
+  /** Shows a back arrow on the left. Centered layout only. */
+  onBack?: () => void;
+  backTestID?: string;
 }
 
 /**
@@ -43,6 +46,8 @@ export const BottomSheetHeader: React.FC<BottomSheetHeaderProps> = ({
   closeDisabled,
   closeTestID,
   titleTestID,
+  onBack,
+  backTestID,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -99,6 +104,22 @@ export const BottomSheetHeader: React.FC<BottomSheetHeaderProps> = ({
   if (resolvedLayout === "centered") {
     return (
       <View className="w-full flex-row items-center justify-center">
+        {onBack && (
+          <View className="absolute left-0">
+            <TouchableOpacity
+              onPress={onBack}
+              hitSlop={CLOSE_HIT_SLOP}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.back")}
+              testID={backTestID}
+            >
+              <Icon.ArrowLeft
+                size={CLOSE_ICON_SIZE}
+                color={themeColors.text.primary}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
         <View className="flex-1 px-[32px]">{titleText}</View>
         {closeButton && <View className="absolute right-0">{closeButton}</View>}
       </View>
