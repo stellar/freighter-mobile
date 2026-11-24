@@ -923,6 +923,125 @@ describe("TokenDetailsScreen", () => {
       );
     });
 
+    it("shows the unable-to-scan banner for a held token opened with an unable-to-scan record", () => {
+      const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+      useBalancesList.mockReturnValue({
+        balanceItems: [
+          {
+            id: usdcId,
+            tokenCode: "USDC",
+            tokenType: "credit_alphanum4",
+            total: { isGreaterThan: () => true },
+          },
+        ],
+        hiddenBalanceItems: [],
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        localOnlyTokenIds: [],
+        handleRefresh: jest.fn(),
+      });
+      const route = {
+        ...mockRoute,
+        params: {
+          tokenId: usdcId,
+          tokenSymbol: "USDC",
+          source: TokenChartSource.ADD_TOKEN,
+          record: {
+            tokenCode: "USDC",
+            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            domain: "centre.io",
+            isNative: false,
+            hasTrustline: true,
+            securityLevel: SecurityLevel.UNABLE_TO_SCAN,
+          } as FormattedSearchTokenRecord,
+        },
+      } as unknown as TokenDetailsScreenProps["route"];
+
+      const screen = renderWithProviders(
+        <TokenDetailsScreen navigation={mockNavigation} route={route} />,
+      );
+
+      expect(screen.getByTestId("token-balance-header")).toBeTruthy();
+      expect(
+        screen.getByText("securityWarning.proceedWithCaution"),
+      ).toBeTruthy();
+      const sheet = screen
+        .UNSAFE_getAllByType(BottomSheet)
+        .map(
+          (s) =>
+            s.props
+              .customContent as React.ReactElement<SecurityDetailBottomSheetProps>,
+        )
+        .find((content) => content?.type === SecurityDetailBottomSheet)!;
+      expect(sheet.props.severity).toBe(SecurityLevel.UNABLE_TO_SCAN);
+      expect(sheet.props.warnings?.map((w) => w.id)).toEqual([
+        "unable-to-scan-trending-token",
+      ]);
+    });
+
+    it("keeps a held token its balances scan flags as malicious, whatever the record says", () => {
+      const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+      useBalancesList.mockReturnValue({
+        balanceItems: [
+          {
+            id: usdcId,
+            tokenCode: "USDC",
+            tokenType: "credit_alphanum4",
+            total: { isGreaterThan: () => true },
+          },
+        ],
+        hiddenBalanceItems: [],
+        scanResults: {
+          [usdcId.replace(":", "-")]: { result_type: "Malicious" },
+        },
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        localOnlyTokenIds: [],
+        handleRefresh: jest.fn(),
+      });
+      const route = {
+        ...mockRoute,
+        params: {
+          tokenId: usdcId,
+          tokenSymbol: "USDC",
+          source: TokenChartSource.SWAP_PICKER,
+          record: {
+            tokenCode: "USDC",
+            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            domain: "centre.io",
+            isNative: false,
+            hasTrustline: true,
+            securityLevel: SecurityLevel.UNABLE_TO_SCAN,
+          } as FormattedSearchTokenRecord,
+        },
+      } as unknown as TokenDetailsScreenProps["route"];
+
+      const screen = renderWithProviders(
+        <TokenDetailsScreen navigation={mockNavigation} route={route} />,
+      );
+
+      const sheet = screen
+        .UNSAFE_getAllByType(BottomSheet)
+        .map(
+          (s) =>
+            s.props
+              .customContent as React.ReactElement<SecurityDetailBottomSheetProps>,
+        )
+        .find((content) => content?.type === SecurityDetailBottomSheet)!;
+      expect(sheet.props.severity).toBe(SecurityLevel.MALICIOUS);
+      expect(sheet.props.warnings?.map((w) => w.id)).not.toContain(
+        "unable-to-scan-trending-token",
+      );
+      expect(sheet.props.proceedAnywayText).not.toBe("common.continue");
+    });
+
     it("from the SOURCE picker: Swap from sets the source token and returns to the amount screen", () => {
       const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
       useBalancesList.mockReturnValue({

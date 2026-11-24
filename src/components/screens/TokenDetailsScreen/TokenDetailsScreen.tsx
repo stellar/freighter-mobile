@@ -463,23 +463,28 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const isSuspicious = isNoBalanceVariant
     ? recordLevel === SecurityLevel.SUSPICIOUS || !!record?.isSuspicious
     : heldSecurity.isSuspicious;
+  // A held token takes unable-to-scan only from the record of the row that
+  // opened it (Home passes none); its balances scan still wins when flagged.
   const isUnableToScan =
-    isNoBalanceVariant &&
-    (recordLevel === SecurityLevel.UNABLE_TO_SCAN || !!record?.isUnableToScan);
+    (recordLevel === SecurityLevel.UNABLE_TO_SCAN ||
+      !!record?.isUnableToScan) &&
+    (isNoBalanceVariant || !(isMalicious || isSuspicious));
 
   const securityWarnings = useMemo((): SecurityWarning[] => {
+    // Blockaid returns no feature-level warnings for an unable-to-scan
+    // token; synthesize a row so the reasons list isn't blank.
+    if (isUnableToScan) {
+      return [
+        {
+          id: "unable-to-scan-trending-token",
+          description: t("blockaid.unableToScan.token"),
+          severity: "warning",
+        },
+      ];
+    }
+
     if (isNoBalanceVariant) {
-      // Blockaid returns no feature-level warnings for an unable-to-scan
-      // token; synthesize a row so the reasons list isn't blank.
-      return isUnableToScan
-        ? [
-            {
-              id: "unable-to-scan-trending-token",
-              description: t("blockaid.unableToScan.token"),
-              severity: "warning",
-            },
-          ]
-        : (record?.securityWarnings ?? []);
+      return record?.securityWarnings ?? [];
     }
 
     if (isMalicious || isSuspicious) {
