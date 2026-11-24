@@ -594,13 +594,10 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     securityBannerText = t("securityWarning.proceedWithCaution");
   }
 
-  // EVERYTHING above the transactions lives in the list header, so
-  // the screen scrolls as one column like the extension's does.
-  // As siblings of the list these sat in a fixed flex row: the
-  // chart ate ~250px of viewport, the list scrolled inside what was
-  // left, and on a token with no transactions nothing scrolled at
-  // all. Order matches the extension: name, price and delta, then
-  // the chart, then the holdings it describes.
+  // Everything above the transactions lives in the list header so the
+  // screen scrolls as one column, as the extension's does, even with no
+  // transactions. Order matches the extension: name, price and delta,
+  // then the chart, then the holdings it describes.
   const renderAboveList = () => (
     <View className="mb-6 max-xs:mb-0 gap-8 max-xs:gap-4">
       {isNoBalanceVariant ? (
@@ -618,10 +615,8 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           tokenName={actualTokenDetails?.name}
         />
       )}
-      {/* Above the chart, deliberately: the chart block is ~250px
-          tall, and a flagged token's warning sat directly under the
-          header before this feature existed. Only shown when
-          flagged, so the ordinary layout is unchanged. */}
+      {/* Above the ~250px chart, so the warning stays directly under
+          the header. */}
       {securityBannerText && (
         <Banner
           variant={isSuspicious || !isMalicious ? "warning" : "error"}
