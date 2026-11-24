@@ -697,6 +697,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
             className="flex-1"
             showsVerticalScrollIndicator={false}
             alwaysBounceVertical={false}
+            keyboardShouldPersistTaps="handled"
           >
             <View
               className="mt-4 mb-6 flex-row items-center gap-2"
@@ -723,6 +724,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
             className="flex-1"
             showsVerticalScrollIndicator={false}
             alwaysBounceVertical={false}
+            keyboardShouldPersistTaps="handled"
           >
             {searchResults.length > 0 ? (
               <>
