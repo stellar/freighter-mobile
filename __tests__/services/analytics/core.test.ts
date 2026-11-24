@@ -281,6 +281,17 @@ describe("deriveIdentifyTraits", () => {
       has_imported_account: false,
     });
   });
+
+  it("adds funded_account_count only when the count is known", () => {
+    expect(deriveIdentifyTraits([], 0)).toEqual({
+      wallet_count: 0,
+      has_imported_account: false,
+      funded_account_count: 0,
+    });
+    expect(deriveIdentifyTraits([], null)).not.toHaveProperty(
+      "funded_account_count",
+    );
+  });
 });
 
 describe("trackAppOpened (one-time connectivity snapshot)", () => {
@@ -827,6 +838,148 @@ describe("syncIdentifyTraits (consent gating)", () => {
     identify!.mockClear();
     mod!.syncIdentifyTraits(accounts);
     expect(identify!).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("syncIdentifyTraits (funded_account_count)", () => {
+  const G1 = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
+  const G2 = "GBBBB";
+  const accounts = [
+    { publicKey: G1, importedFromSecretKey: false },
+    { publicKey: G2, importedFromSecretKey: false },
+  ];
+
+  const load = () => {
+    let mod: typeof import("services/analytics/core");
+    let analyticsStore: { getState: jest.Mock };
+    let authStore: { getState: jest.Mock };
+    let amplitudeMock: { identify: jest.Mock; Identify: jest.Mock };
+    let storage: { setItem: (key: string, value: string) => Promise<void> };
+
+    jest.isolateModules(() => {
+      mod = jest.requireActual<typeof import("services/analytics/core")>(
+        "../../../src/services/analytics/core",
+      );
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      analyticsStore = require("ducks/analytics").useAnalyticsStore;
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      authStore = require("ducks/auth").useAuthenticationStore;
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      amplitudeMock = require("@amplitude/analytics-react-native");
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      storage = require("services/storage/storageFactory").dataStorage;
+    });
+
+    // The Amplitude mock is shared with the other suites in this file.
+    amplitudeMock!.identify.mockClear();
+    amplitudeMock!.Identify.mockClear();
+
+    return {
+      mod: mod!,
+      analyticsStore: analyticsStore!,
+      authStore: authStore!,
+      amplitudeMock: amplitudeMock!,
+      storage: storage!,
+    };
+  };
+
+  /** The value of `funded_account_count` in each Identify sent so far. */
+  const sentCounts = (Identify: jest.Mock) =>
+    Identify.mock.results.map(({ value }) => {
+      const call = (value.set as jest.Mock).mock.calls.find(
+        ([key]) => key === "funded_account_count",
+      );
+      return call ? call[1] : undefined;
+    });
+
+  const flush = () =>
+    new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
+  afterEach(() => {
+    // The analytics-store mock is shared with the suites below.
+    jest
+      .requireMock<{
+        useAnalyticsStore: { getState: jest.Mock };
+      }>("ducks/analytics")
+      .useAnalyticsStore.getState.mockReturnValue({ isEnabled: true });
+  });
+
+  it("loads the records, sends the count, and sends no new Identify while it does not change (VT-25)", async () => {
+    const { mod, analyticsStore, authStore, amplitudeMock, storage } = load();
+    const hashG1 = mod.getAccountIdHash(G1);
+    await storage.setItem(
+      `accountFundingRecord_PUBLIC:${hashG1}`,
+      JSON.stringify({ funded: true, status: "funded" }),
+    );
+
+    analyticsStore.getState.mockReturnValue({ isEnabled: true });
+    authStore.getState.mockReturnValue({
+      network: "PUBLIC",
+      account: null,
+      allAccounts: accounts,
+    });
+    mod.initAnalytics();
+    await flush();
+
+    // The first sync had no records in memory, so it left the count out. The
+    // reload then sent the count.
+    expect(sentCounts(amplitudeMock.Identify)).toEqual([undefined, 1]);
+
+    amplitudeMock.identify.mockClear();
+    mod.syncIdentifyTraits(accounts);
+    expect(amplitudeMock.identify).not.toHaveBeenCalled();
+  });
+
+  it("sends no Identify while analytics is disabled, then sends the current count (VT-26)", async () => {
+    const { mod, analyticsStore, authStore, amplitudeMock } = load();
+    // AsyncStorage is shared with the test above, so use other accounts.
+    const otherAccounts = [{ publicKey: "GCCCC" }, { publicKey: "GDDDD" }];
+
+    analyticsStore.getState.mockReturnValue({ isEnabled: false });
+    authStore.getState.mockReturnValue({
+      network: "PUBLIC",
+      account: null,
+      allAccounts: otherAccounts,
+    });
+    mod.initAnalytics();
+    mod.syncIdentifyTraits(otherAccounts);
+    await flush();
+    expect(amplitudeMock.identify).not.toHaveBeenCalled();
+
+    analyticsStore.getState.mockReturnValue({ isEnabled: true });
+    mod.syncIdentifyTraits(otherAccounts);
+    await flush();
+    expect(sentCounts(amplitudeMock.Identify).at(-1)).toBe(0);
+  });
+});
+
+describe("canSendAnalytics", () => {
+  it("is false while analytics is disabled, and true when it is enabled", () => {
+    let mod: typeof import("services/analytics/core");
+    let analyticsStore: { getState: jest.Mock };
+
+    jest.isolateModules(() => {
+      mod = jest.requireActual<typeof import("services/analytics/core")>(
+        "../../../src/services/analytics/core",
+      );
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      analyticsStore = require("ducks/analytics").useAnalyticsStore;
+    });
+
+    // Not initialized yet.
+    analyticsStore!.getState.mockReturnValue({ isEnabled: true });
+    expect(mod!.canSendAnalytics()).toBe(false);
+
+    mod!.initAnalytics();
+    expect(mod!.canSendAnalytics()).toBe(true);
+
+    analyticsStore!.getState.mockReturnValue({ isEnabled: false });
+    expect(mod!.canSendAnalytics()).toBe(false);
+
+    // The analytics-store mock is shared with the suites below.
+    analyticsStore!.getState.mockReturnValue({ isEnabled: true });
   });
 });
 

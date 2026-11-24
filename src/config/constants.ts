@@ -412,6 +412,8 @@ export enum STORAGE_KEYS {
   VERIFIED_TOKENS_PREFIX = "verifiedTokens_",
   STELLAR_EXPERT_TOP_TOKENS_PREFIX = "stellarExpertTopTokens_",
   BLOCKAID_TOKEN_SCANS_PREFIX = "blockaidTokenScans_",
+  // One funding record per network and account: `${prefix}${network}:${account_id_hash}`
+  ACCOUNT_FUNDING_RECORD_PREFIX = "accountFundingRecord_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   HAS_SEEN_DISCOVER_WELCOME = "hasSeenDiscoverWelcome",
   REBRAND_ANNOUNCEMENT_STATUS = "rebrandAnnouncementStatus",
