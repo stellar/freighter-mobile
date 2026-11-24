@@ -17,7 +17,8 @@ export enum TransactionType {
  * USD volume telemetry for a settled terminal event's source leg — the raw
  * materials `services/analytics/transactions.ts` flattens into the final
  * Amplitude properties (`amount_usd*`), shared across `payment.completed`,
- * `payment.failed`, `swap.completed`, and `swap.failed`. Optional on the
+ * `payment.failed`, `swap.completed`, `swap.failed`,
+ * `earn.deposit_completed`, and `earn.deposit_failed`. Optional on the
  * carrying event interfaces: a pre-submit failure never reaches a call site
  * that has this data, so its terminal event emits without volume properties.
  */
@@ -130,19 +131,22 @@ export interface QRScanEvent {
   error?: string;
 }
 
-// Earn deposit (Blend). No amount/fiat fields by design (product decision,
-// non-negotiable) -- only identifiers, matching payment.completed /
-// swap.completed's shape.
+// Earn deposit (Blend). A deposit that reached the network carries its USD
+// volume, as a payment does on payment.completed / payment.failed.
 export interface EarnDepositSuccessEvent {
   assetCode: string;
   poolId?: string;
   apy?: number | null;
   /** Whether a swap finished earlier in this Earn session. */
   viaSwap: boolean;
+  /** Absent when the deposited balance couldn't be found. */
+  volume?: PaymentVolume;
 }
 
 export interface EarnDepositErrorEvent {
   assetCode: string;
   poolId?: string;
   errorCode?: string;
+  /** Absent for a failure before submission, and when the deposited balance couldn't be found. */
+  volume?: FailureVolume;
 }

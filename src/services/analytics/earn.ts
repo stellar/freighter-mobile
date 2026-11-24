@@ -5,8 +5,9 @@ import { track } from "services/analytics/core";
 /**
  * Earn (Blend deposit) funnel events. Names and properties match the
  * extension's (`popup/metrics/earn.ts`), so both platforms land in the same
- * Amplitude funnel. Like the deposit events in `transactions.ts`, none carries
- * an amount or a fiat value.
+ * Amplitude funnel. None of these steps carries an amount or a fiat value;
+ * the deposit's outcome events in `transactions.ts` carry its USD volume, as
+ * a payment's do.
  */
 
 /** How the user chose to get a token they don't hold enough of. */

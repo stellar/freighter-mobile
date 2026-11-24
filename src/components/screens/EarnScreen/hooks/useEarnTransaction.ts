@@ -1,15 +1,89 @@
-import { NETWORKS } from "config/constants";
+import BigNumber from "bignumber.js";
+import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
+import { PricedBalance } from "config/types";
 import { ActiveAccount } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { useEarnStore } from "ducks/earn";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { formatTokenIdentifier, getTokenIdentifier } from "helpers/balances";
+import { startConfirmationPriceSnapshot } from "helpers/confirmationPriceSnapshot";
 import {
-  SubmitResultCodes,
-  useTransactionBuilderStore,
-} from "ducks/transactionBuilder";
+  canonicalIdFromIdentity,
+  classifyAssetIdentity,
+  deriveLegUsd,
+  getFailureCategory,
+  pickReasonCode,
+} from "helpers/usdVolume";
 import { isWalletUnlocked } from "hooks/useGetActiveAccount";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "services/analytics";
+import { PaymentVolume } from "services/analytics/types";
 
 export type EarnTransactionStatus = "idle" | "submitting" | "success" | "error";
+
+/** What Confirm deposits, as Review showed it. */
+export interface EarnDepositSubmission {
+  /** The amount the staged deposit was built with. */
+  amount: string;
+  /**
+   * The balance being deposited. Its price is the one Review showed, which
+   * the deposit's USD value falls back to.
+   */
+  balance: PricedBalance | undefined;
+}
+
+/**
+ * Starts measuring a deposit's USD volume the way Send measures a payment's:
+ * one price fetch, begun once signing has succeeded and right before the
+ * submit, falling back to the price Review showed. `resolve()` freezes the
+ * volume for the outcome event; `cancel()` drops the fetch of a deposit that
+ * never reached the network. Null when the deposited balance is missing.
+ */
+const startDepositVolume = (
+  { amount, balance }: EarnDepositSubmission,
+  network: NETWORKS,
+) => {
+  if (!balance) {
+    return null;
+  }
+
+  const { tokenCode, issuer } = formatTokenIdentifier(
+    getTokenIdentifier(balance),
+  );
+  // The balance is the held token the reserve's contract wraps, so a deposit
+  // is reported under the identity a payment of that token would have.
+  const identity = classifyAssetIdentity(
+    tokenCode,
+    issuer || undefined,
+    mapNetworkToNetworkDetails(network),
+    Object.values(useBalancesStore.getState().balances),
+  );
+  const canonicalId = canonicalIdFromIdentity(identity);
+  const snapshotHandle = startConfirmationPriceSnapshot({
+    canonicalIds: [canonicalId],
+    network,
+    cachedDisplayPrices: {
+      [canonicalId]: { currentPrice: balance.currentPrice ?? null },
+    },
+  });
+
+  return {
+    resolve: (): PaymentVolume => {
+      const snapshot = snapshotHandle.resolve();
+      return {
+        identity,
+        amount: new BigNumber(amount || 0).toNumber(),
+        sourceLeg: deriveLegUsd(
+          amount,
+          snapshot.pricesById?.[canonicalId]?.currentPrice,
+        ),
+        priceSource: snapshot.source,
+        priceFreshness: snapshot.freshness,
+      };
+    },
+    cancel: () => snapshotHandle.cancel(),
+  };
+};
 
 interface UseEarnTransactionParams {
   account: ActiveAccount | null;
@@ -31,8 +105,11 @@ interface UseEarnTransactionResult {
    * `EarnAmountScreen` renders its inline `EarnProcessingScreen` whenever
    * `status` is "submitting" or "success", so calling `submit()` both flips
    * that flag and kicks off the sign/submit work in a single call.
+   *
+   * `submission` is what Review showed: the outcome events report its
+   * amount and USD value as the deposit's volume.
    */
-  submit: () => Promise<void>;
+  submit: (submission: EarnDepositSubmission) => Promise<void>;
   /**
    * Returns `status` to "idle". This is not part of the brief's literal
    * `{ submit, status, transactionHash, error }` shape, but is needed to
@@ -117,121 +194,144 @@ export const useEarnTransaction = ({
     [],
   );
 
-  const submit = useCallback(async () => {
-    if (!account) {
-      return;
-    }
-
-    nextRequestIdRef.current += 1;
-    const requestId = nextRequestIdRef.current;
-    activeRequestIdRef.current = requestId;
-
-    // The outcome is reported even when the user closes before it settles,
-    // and leaving Earn resets the earn duck, so read what the deposit is
-    // about now. No amount/fiat value on either event by design (product
-    // decision, non-negotiable) -- only the identifiers.
-    const { pool, selectedAssetCode, selectedAssetApy, didSwapInFlow } =
-      useEarnStore.getState();
-    const depositIdentifiers = {
-      assetCode: selectedAssetCode,
-      poolId: pool?.id,
-    };
-
-    setStatus("submitting");
-    setError(null);
-    setTransactionHash(null);
-
-    try {
-      // Abort cleanly if an auto-lock engaged after Review was confirmed.
-      // Return (don't throw): being locked isn't a deposit failure, so skip
-      // the catch's error path — a hard-coded throw would
-      // also surface as a non-localized error message. Verbatim guard from
-      // `useSwapTransaction.executeSwap`. No await has happened yet at this
-      // point, so there is no abandonment window to check for here.
-      if (!isWalletUnlocked()) {
-        setStatus("idle");
+  const submit = useCallback(
+    async (submission: EarnDepositSubmission) => {
+      if (!account) {
         return;
       }
 
-      const signedXDR = signTransaction({
-        secretKey: account.privateKey,
-        network,
-      });
+      nextRequestIdRef.current += 1;
+      const requestId = nextRequestIdRef.current;
+      activeRequestIdRef.current = requestId;
 
-      if (!signedXDR) {
-        // Read the real reason off the store rather than inventing one.
-        const { error: signingError } = useTransactionBuilderStore.getState();
-        // The signing action failed after the user approved at Review: a
-        // fault, not a decision. Reported as Send and Swap report it.
-        analytics.trackInternalSignedTransactionError(signingError);
-        throw new Error(signingError || "Failed to sign transaction");
+      // The outcome is reported even when the user closes before it settles,
+      // and leaving Earn resets the earn duck, so read what the deposit is
+      // about now.
+      const { pool, selectedAssetCode, selectedAssetApy, didSwapInFlow } =
+        useEarnStore.getState();
+      const depositIdentifiers = {
+        assetCode: selectedAssetCode,
+        poolId: pool?.id,
+      };
+
+      setStatus("submitting");
+      setError(null);
+      setTransactionHash(null);
+
+      // Declared outside the try so the catch can drop the price fetch of a
+      // deposit that never reached the network.
+      let depositVolume: ReturnType<typeof startDepositVolume> = null;
+      try {
+        // Abort cleanly if an auto-lock engaged after Review was confirmed.
+        // Return (don't throw): being locked isn't a deposit failure, so skip
+        // the catch's error path — a hard-coded throw would
+        // also surface as a non-localized error message. Verbatim guard from
+        // `useSwapTransaction.executeSwap`. No await has happened yet at this
+        // point, so there is no abandonment window to check for here.
+        if (!isWalletUnlocked()) {
+          setStatus("idle");
+          return;
+        }
+
+        const signedXDR = signTransaction({
+          secretKey: account.privateKey,
+          network,
+        });
+
+        if (!signedXDR) {
+          // Read the real reason off the store rather than inventing one.
+          const { error: signingError } = useTransactionBuilderStore.getState();
+          // The signing action failed after the user approved at Review: a
+          // fault, not a decision. Reported as Send and Swap report it.
+          analytics.trackInternalSignedTransactionError(signingError);
+          throw new Error(signingError || "Failed to sign transaction");
+        }
+
+        // A signature exists, so the signing action succeeded.
+        analytics.trackInternalSignedTransaction();
+
+        depositVolume = startDepositVolume(submission, network);
+
+        // submitTransaction throws only for the debug forced-failure override;
+        // otherwise it resolves with this attempt's own outcome. Read the
+        // reason and result codes off that outcome, never off the store: a
+        // mid-submit Close resets the store, so it may not hold this attempt's
+        // result.
+        const submitOutcome = await submitTransaction({ network });
+        const volume = depositVolume?.resolve();
+        const { hash } = submitOutcome;
+
+        if (!hash) {
+          // The first result code that explains the failure, as on
+          // payment.failed.
+          const reasonCode = pickReasonCode(submitOutcome.resultCodes);
+          analytics.trackEarnDepositFail({
+            ...depositIdentifiers,
+            errorCode: reasonCode,
+            volume: volume && {
+              ...volume,
+              reasonCode,
+              failureCategory: getFailureCategory(
+                submitOutcome.isProtocolAnswer,
+                submitOutcome.httpStatus,
+                reasonCode,
+              ),
+            },
+          });
+
+          // The `await` above is the abandonment window (see below).
+          if (activeRequestIdRef.current !== requestId) {
+            return;
+          }
+
+          // As in Swap: the transaction builder store logs a failed submit at
+          // the right level, so it isn't logged again here.
+          setError(submitOutcome.error || "Failed to submit transaction");
+          setStatus("error");
+          return;
+        }
+
+        // Only the success carries the APY, as in the extension.
+        analytics.trackEarnDepositSuccess({
+          ...depositIdentifiers,
+          apy: selectedAssetApy,
+          viaSwap: didSwapInFlow,
+          volume,
+        });
+
+        // The `await` above is the abandonment window: the user may have
+        // closed away from this submit (or, in principle, started another)
+        // while it was in flight. Skip every write below if so.
+        if (activeRequestIdRef.current !== requestId) {
+          return;
+        }
+
+        setTransactionHash(hash);
+        setStatus("success");
+      } catch (err) {
+        // Signing failed, or the debug override threw: the deposit never
+        // reached the network, so there's no volume and no result code to
+        // report (reason_code falls back to "unknown", as on Send), and its
+        // price fetch is dropped.
+        depositVolume?.cancel();
+        analytics.trackEarnDepositFail(depositIdentifiers);
+
+        if (activeRequestIdRef.current !== requestId) {
+          return;
+        }
+
+        const message = err instanceof Error ? err.message : String(err);
+        // As in Swap: the transaction builder store logs signing and submit
+        // failures at the right level (a network rejection with result codes
+        // is a warn breadcrumb, anything else an error). Logging again here
+        // would send each one to Sentry twice. The amount screen shows the
+        // user a plain error toast.
+        setError(message);
+        setStatus("error");
       }
-
-      // A signature exists, so the signing action succeeded.
-      analytics.trackInternalSignedTransaction();
-
-      // submitTransaction throws only for the debug forced-failure override;
-      // otherwise it resolves with this attempt's own outcome. Read the
-      // reason and result codes off that outcome, never off the store: a
-      // mid-submit Close resets the store, so it may not hold this attempt's
-      // result. The codes ride the thrown error into the catch block below.
-      const submitOutcome = await submitTransaction({ network });
-      const { hash } = submitOutcome;
-
-      if (!hash) {
-        const submitFailure = new Error(
-          submitOutcome.error || "Failed to submit transaction",
-        ) as Error & { resultCodes?: SubmitResultCodes | null };
-        submitFailure.resultCodes = submitOutcome.resultCodes;
-        throw submitFailure;
-      }
-
-      // Only the success carries the APY, as in the extension.
-      analytics.trackEarnDepositSuccess({
-        ...depositIdentifiers,
-        apy: selectedAssetApy,
-        viaSwap: didSwapInFlow,
-      });
-
-      // The `await` above is the abandonment window: the user may have
-      // closed away from this submit (or, in principle, started another)
-      // while it was in flight. Skip every write below if so.
-      if (activeRequestIdRef.current !== requestId) {
-        return;
-      }
-
-      setTransactionHash(hash);
-      setStatus("success");
-    } catch (err) {
-      // Result codes come off this attempt's own submit outcome, carried on
-      // the thrown error. Absent for a signing failure (there's no Horizon
-      // result yet) -- reason_code falls back to "unknown" in that case, same
-      // as trackTransactionError elsewhere.
-      const submitResultCodes =
-        err instanceof Error
-          ? (err as Error & { resultCodes?: SubmitResultCodes | null })
-              .resultCodes
-          : undefined;
-      analytics.trackEarnDepositFail({
-        ...depositIdentifiers,
-        errorCode:
-          submitResultCodes?.operations?.[0] || submitResultCodes?.transaction,
-      });
-
-      if (activeRequestIdRef.current !== requestId) {
-        return;
-      }
-
-      const message = err instanceof Error ? err.message : String(err);
-      // As in Swap: the transaction builder store logs signing and submit
-      // failures at the right level (a network rejection with result codes
-      // is a warn breadcrumb, anything else an error). Logging again here
-      // would send each one to Sentry twice. The amount screen shows the
-      // user a plain error toast.
-      setError(message);
-      setStatus("error");
-    }
-  }, [account, network, signTransaction, submitTransaction]);
+    },
+    [account, network, signTransaction, submitTransaction],
+  );
 
   const reset = useCallback(() => {
     // No call site reaches this mid-submit today (the only caller renders

@@ -18,6 +18,7 @@ import type {
   TransactionErrorEvent,
   EarnDepositSuccessEvent,
   EarnDepositErrorEvent,
+  PaymentVolume,
 } from "services/analytics/types";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
@@ -467,20 +468,34 @@ export const trackGrantAccessBlocked = (
   });
 };
 
-// earn.deposit_completed carries asset_code + pool_id + apy. NO amount/fiat
-// value -- product decision (matches payment.completed / swap.completed's
-// no-amount shape), non-negotiable per the cross-platform funnel agreement.
-// Named earn.deposit_completed (not earn_deposit.completed) to match the
-// extension's event name -- the two platforms must land in the same
-// Amplitude funnel.
+// A deposit's USD volume, under the names payment.completed uses for a
+// payment's, so a SUM(amount_usd) covers deposits too.
+const depositVolumeProps = (
+  volume: PaymentVolume,
+): Record<string, unknown> => ({
+  ...assetIdentityProps("", volume.identity),
+  amount: volume.amount,
+  ...buildSourceLegUsdProps(
+    volume.sourceLeg,
+    volume.priceSource,
+    volume.priceFreshness,
+  ),
+});
+
+// earn.deposit_completed carries asset_code + pool_id + apy + via_swap, and
+// the deposit's USD volume. Named earn.deposit_completed (not
+// earn_deposit.completed) to match the extension's event name -- the two
+// platforms must land in the same Amplitude funnel.
 export const trackEarnDepositSuccess = (
   data: EarnDepositSuccessEvent,
 ): void => {
+  const { volume } = data;
   track(AnalyticsEvent.EARN_DEPOSIT_SUCCESS, {
     asset_code: data.assetCode,
     pool_id: data.poolId,
     apy: data.apy,
     via_swap: data.viaSwap,
+    ...(volume ? depositVolumeProps(volume) : {}),
   });
 };
 
@@ -488,11 +503,20 @@ export const trackEarnDepositSuccess = (
 // the APY, as in the extension. Like trackTransactionError, reason_code is the
 // machine-readable Horizon result code (falling back to "unknown") -- never
 // the free-text error message, to avoid unbounded reason_code cardinality.
+// A deposit that reached the network also carries its USD volume and
+// failure_category, as payment.failed does.
 export const trackEarnDepositFail = (data: EarnDepositErrorEvent): void => {
+  const { volume } = data;
   track(AnalyticsEvent.EARN_DEPOSIT_FAIL, {
     asset_code: data.assetCode,
     pool_id: data.poolId,
-    reason_code: data.errorCode ?? "unknown",
+    reason_code: volume?.reasonCode ?? data.errorCode ?? "unknown",
+    ...(volume
+      ? {
+          ...depositVolumeProps(volume),
+          failure_category: volume.failureCategory,
+        }
+      : {}),
   });
 };
 

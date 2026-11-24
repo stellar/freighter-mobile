@@ -1367,6 +1367,34 @@ describe("EarnAmountScreen", () => {
       );
     });
 
+    // The deposit's USD volume is the amount it was built with, priced from
+    // the balance Review showed.
+    it("confirms with the reviewed amount and the deposited balance", async () => {
+      const { getByTestId, rerender } = renderScreen();
+      await fireEvent.press(getByTestId("earn-amount-cta"));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      setTokenAmount("5");
+      rerenderScreen(rerender);
+      act(() => {
+        useTransactionBuilderStore.setState({
+          transactionXDR: "prepared-xdr",
+          isBuilding: false,
+        });
+      });
+      act(() => {
+        (
+          latestSheetContent("onSettingsPress")?.props.onConfirm as () => void
+        )();
+      });
+
+      expect(mockSubmitEarnTransaction).toHaveBeenCalledWith({
+        amount: "10",
+        balance: USDC_BALANCE,
+      });
+    });
+
     it("only confirms a finished build", () => {
       renderScreen();
       const confirm = () =>

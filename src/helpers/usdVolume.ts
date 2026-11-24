@@ -86,7 +86,8 @@ export const deriveLegUsd = (
 };
 
 /**
- * Amplitude props for the source leg, shared by all four terminal events —
+ * Amplitude props for the source leg, shared by every terminal event that
+ * carries USD volume (payments, swaps and Earn deposits) —
  * `amount_usd`-family properties are named identically across events so
  * `SUM(amount_usd)` works regardless of event name.
  */

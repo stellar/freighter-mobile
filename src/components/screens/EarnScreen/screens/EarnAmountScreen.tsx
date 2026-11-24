@@ -552,8 +552,17 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       return;
     }
     hasApprovedDepositRef.current = true;
-    submitEarnTransaction();
-  }, [submitEarnTransaction, isSimulating]);
+    submitEarnTransaction({
+      amount: reviewedAmount ?? tokenAmount,
+      balance: depositBalance,
+    });
+  }, [
+    submitEarnTransaction,
+    isSimulating,
+    reviewedAmount,
+    tokenAmount,
+    depositBalance,
+  ]);
 
   // Close during "submitting": returns Home WITHOUT waiting for the result.
   // There is no background-submission infrastructure to show the outcome

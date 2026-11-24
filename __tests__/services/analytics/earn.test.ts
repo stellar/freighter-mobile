@@ -1,4 +1,7 @@
+import BigNumber from "bignumber.js";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { PriceFreshness, PriceSource } from "helpers/confirmationPriceSnapshot";
+import { AssetKind, deriveLegUsd, FailureCategory } from "helpers/usdVolume";
 import {
   trackEarnBalanceInsufficientShown,
   trackEarnDepositDismissed,
@@ -160,5 +163,106 @@ describe("Earn funnel events", () => {
       apy: 0.0257,
       via_swap: true,
     });
+  });
+});
+
+// A deposit that reached the network carries its USD volume under
+// payment.completed's names, so one SUM(amount_usd) covers deposits too.
+describe("Earn deposit volume", () => {
+  const USDC_ISSUER = `G${"A".repeat(55)}`;
+  const volume = {
+    identity: { code: "USDC", issuer: USDC_ISSUER, type: AssetKind.CLASSIC },
+    amount: 10,
+    sourceLeg: deriveLegUsd("10", new BigNumber("2")),
+    priceSource: PriceSource.TOKEN_PRICES_V2,
+    priceFreshness: PriceFreshness.CONFIRMATION_FETCH,
+  };
+
+  beforeEach(() => {
+    track.mockClear();
+  });
+
+  it("earn.deposit_completed carries the token's issuer and type, the amount and its USD value", () => {
+    trackEarnDepositSuccess({
+      assetCode: "USDC",
+      poolId: POOL_ID,
+      apy: 0.0257,
+      viaSwap: false,
+      volume,
+    });
+
+    expect(track).toHaveBeenCalledWith("earn.deposit_completed", {
+      asset_code: "USDC",
+      asset_issuer: USDC_ISSUER,
+      asset_type: "classic",
+      pool_id: POOL_ID,
+      apy: 0.0257,
+      via_swap: false,
+      amount: 10,
+      amount_usd: 20,
+      amount_usd_status: "ok",
+      amount_usd_rate: 2,
+      amount_usd_source: "token_prices_v2",
+      amount_usd_price_freshness: "confirmation_fetch",
+    });
+  });
+
+  it("earn.deposit_failed adds the failure category", () => {
+    trackEarnDepositFail({
+      assetCode: "USDC",
+      poolId: POOL_ID,
+      errorCode: "op_underfunded",
+      volume: {
+        ...volume,
+        reasonCode: "op_underfunded",
+        failureCategory: FailureCategory.BALANCE,
+      },
+    });
+
+    expect(track).toHaveBeenCalledWith("earn.deposit_failed", {
+      asset_code: "USDC",
+      asset_issuer: USDC_ISSUER,
+      asset_type: "classic",
+      pool_id: POOL_ID,
+      reason_code: "op_underfunded",
+      failure_category: "balance",
+      amount: 10,
+      amount_usd: 20,
+      amount_usd_status: "ok",
+      amount_usd_rate: 2,
+      amount_usd_source: "token_prices_v2",
+      amount_usd_price_freshness: "confirmation_fetch",
+    });
+  });
+
+  it("reports an unpriced deposit's status, never a USD figure of 0", () => {
+    trackEarnDepositSuccess({
+      assetCode: "USDC",
+      poolId: POOL_ID,
+      apy: 0.0257,
+      viaSwap: false,
+      volume: { ...volume, sourceLeg: deriveLegUsd("10", null) },
+    });
+
+    const props = track.mock.calls[0][1];
+    expect(props.amount_usd_status).toBe("no_price");
+    expect(props.amount).toBe(10);
+    expect(props).not.toHaveProperty("amount_usd");
+    expect(props).not.toHaveProperty("amount_usd_rate");
+  });
+
+  it("leaves the issuer off an XLM deposit", () => {
+    trackEarnDepositSuccess({
+      assetCode: "XLM",
+      poolId: POOL_ID,
+      apy: 0.0257,
+      viaSwap: false,
+      volume: { ...volume, identity: { code: "XLM", type: AssetKind.NATIVE } },
+    });
+
+    const props = track.mock.calls[0][1];
+    expect(props.asset_code).toBe("XLM");
+    expect(props.asset_type).toBe("native");
+    expect(props).not.toHaveProperty("asset_issuer");
   });
 });
