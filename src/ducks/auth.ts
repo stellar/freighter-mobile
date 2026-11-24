@@ -44,6 +44,7 @@ import { usePreferencesStore } from "ducks/preferences";
 import { usePricesStore } from "ducks/prices";
 import { useRecentProtocolsStore } from "ducks/recentProtocols";
 import { useWalletKitStore } from "ducks/walletKit";
+import { withAccountMutationLock } from "helpers/accountMutationLock";
 import {
   getNextDefaultAccountName,
   normalizeAccountName,
@@ -1432,6 +1433,21 @@ const getKeyFromKeyManager = async (
   return result;
 };
 
+const FUNDED_LOOKUP_TIMEOUT_MS = 5_000;
+
+/**
+ * Resolves to null once the lookup has taken `FUNDED_LOOKUP_TIMEOUT_MS`.
+ * Horizon's loadAccount takes no abort signal, so the request itself runs on;
+ * only the wait for it ends.
+ */
+const withFundedLookupTimeout = <T>(lookup: Promise<T>): Promise<T | null> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), FUNDED_LOOKUP_TIMEOUT_MS);
+  });
+  return Promise.race([lookup, timeout]).finally(() => clearTimeout(timer));
+};
+
 /**
  * Derive keypairs from the mnemonic phrase and verify if they exist on the network.
  * If they do, create accounts for them.
@@ -1492,9 +1508,12 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
     return;
   }
 
-  // Only make network calls for accounts we don't have locally
+  // Only make network calls for accounts we don't have locally. Bounded:
+  // this runs under the account-mutation lock, and a stalled lookup would
+  // hold off a wipe. A lookup that times out reads as unfunded, as a failed
+  // one does.
   const promises = accountsToVerify.map((keyPair) =>
-    getAccount(keyPair.publicKey, NETWORKS.PUBLIC),
+    withFundedLookupTimeout(getAccount(keyPair.publicKey, NETWORKS.PUBLIC)),
   );
 
   const result = await Promise.all(promises);
@@ -2535,6 +2554,42 @@ const loadPrivateKeyFromKeyManager = async (
 };
 
 /**
+ * Writes a lazily loaded private key into the temporary store, under the
+ * account-mutation lock and onto a fresh read of the store. The copy
+ * getActiveAccount read can predate an add or import that finished since,
+ * and writing it back would drop that account's key or phrase.
+ *
+ * Takes the lock, so it must not run inside a holder: getActiveAccount runs
+ * only from store actions, after their locked part.
+ *
+ * @param {AuthStatus} authStatus - Current auth status, gating the session read
+ * @param {string} accountId - The account the key belongs to
+ * @param {string} privateKey - The key to cache
+ * @returns {Promise<void>}
+ */
+const cachePrivateKey = (
+  authStatus: AuthStatus,
+  accountId: string,
+  privateKey: string,
+): Promise<void> =>
+  withAccountMutationLock(async () => {
+    const [temporaryStore, hashKey] = await Promise.all([
+      getTemporaryStore(authStatus),
+      getHashKey(),
+    ]);
+    // Gone since the read: a wipe got there first.
+    if (!temporaryStore || !hashKey) {
+      return;
+    }
+    await updateTemporaryStoreWithPrivateKey(
+      temporaryStore,
+      accountId,
+      privateKey,
+      hashKey,
+    );
+  });
+
+/**
  * Gets the active account data by combining temporary store sensitive data with account list information
  *
  * Retrieves the active account ID, loads account information from storage,
@@ -2608,12 +2663,7 @@ const getActiveAccount = async (
 
         if (derivedKey) {
           privateKey = derivedKey;
-          await updateTemporaryStoreWithPrivateKey(
-            temporaryStore,
-            activeAccountId,
-            privateKey,
-            hashKey,
-          );
+          await cachePrivateKey(authStatus, activeAccountId, privateKey);
         }
 
         // If still not found and account was imported from secret key, try loading from key manager
@@ -2623,12 +2673,7 @@ const getActiveAccount = async (
 
           if (loadedKey) {
             privateKey = loadedKey;
-            await updateTemporaryStoreWithPrivateKey(
-              temporaryStore,
-              activeAccountId,
-              privateKey,
-              hashKey,
-            );
+            await cachePrivateKey(authStatus, activeAccountId, privateKey);
           }
         }
       } catch (e) {
@@ -3198,19 +3243,33 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             // Clear all recent protocols data
             useRecentProtocolsStore.getState().clearRecentProtocols();
 
-            await clearTemporaryData();
-            await clearNonSensitiveData();
-            await clearLinkStatus();
-            await dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST);
+            // Under the lock, so an add, import or switch in flight finishes
+            // first and none of them writes its account back into the wiped
+            // wallet's storage. The lock covers storage only: a holder's
+            // store updates run after it releases, so each one checks the
+            // auth status before writing (see signIn and selectAccount). The
+            // WalletConnect and WebView cleanup above stays outside: it waits
+            // on the network and holds no account state.
+            await withAccountMutationLock(async () => {
+              // A holder that finished since the top of the wipe may have
+              // cached its session key or sources again.
+              clearDerivedKeyCache();
+              clearCachedWalletSources();
 
-            // Reset auto-lock so the next wallet on this device doesn't
-            // inherit the previous user's timer. The awaited secure-mirror
-            // write (source of truth for getAuthStatus / generateHashKey)
-            // means an interrupted wipe can't leave a weaker policy — e.g.
-            // NONE's never-expire — behind for the next wallet.
-            await resetAutoLockForNewWallet();
+              await clearTemporaryData();
+              await clearNonSensitiveData();
+              await clearLinkStatus();
+              await dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST);
 
-            await clearBiometricsData();
+              // Reset auto-lock so the next wallet on this device doesn't
+              // inherit the previous user's timer. The awaited secure-mirror
+              // write (source of truth for getAuthStatus / generateHashKey)
+              // means an interrupted wipe can't leave a weaker policy — e.g.
+              // NONE's never-expire — behind for the next wallet.
+              await resetAutoLockForNewWallet();
+
+              await clearBiometricsData();
+            });
 
             set({ isLoading: false });
           }
@@ -3287,8 +3346,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     try {
       // Fresh wallet: reset auto-lock to the default before the hash key is
       // generated so it doesn't inherit a previous wallet's timer.
-      await resetAutoLockForNewWallet();
-      await signUp(params);
+      await withAccountMutationLock(async () => {
+        await resetAutoLockForNewWallet();
+        await signUp(params);
+      });
       // Mirror the extension's onboarding.password_created (createAccount.fulfilled)
       // so the create-password funnel has a success side on mobile (was fail-only).
       analytics.track(AnalyticsEvent.CREATE_PASSWORD_SUCCESS);
@@ -3341,18 +3402,37 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       const currentAuthStatus = get().authStatus;
       const shouldCreateTempStore = currentAuthStatus !== AUTH_STATUS.LOCKED;
 
-      const { phraseSigners } = await signIn({
-        ...params,
-        shouldCreateTempStore,
+      // Sign-in rebuilds or merges into the temporary store and can append
+      // and attribute accounts, so it holds the lock. The account load below
+      // runs after it, outside.
+      const { phraseSigners } = await withAccountMutationLock(async () => {
+        const signedIn = await signIn({
+          ...params,
+          shouldCreateTempStore,
+        });
+
+        // Clear the persisted LOCKED marker and stale backgrounded-at
+        // timestamp before flipping to AUTHENTICATED — awaited so the
+        // auto-lock funnel can't observe the old values and re-lock the
+        // fresh session.
+        await Promise.all([
+          secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS),
+          clearBackgroundedAt(),
+        ]);
+
+        return signedIn;
       });
 
-      // Clear the persisted LOCKED marker and stale backgrounded-at timestamp
-      // before flipping to AUTHENTICATED — awaited so the auto-lock funnel
-      // can't observe the old values and re-lock the fresh session.
-      await Promise.all([
-        secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS),
-        clearBackgroundedAt(),
-      ]);
+      // A wipe that started while this waited has reset the store and owns
+      // it from here: it is queued on the lock behind this sign-in and clears
+      // storage next. Don't authenticate over the wallet it is removing, or
+      // load its key and sources back into memory.
+      if (
+        currentAuthStatus !== AUTH_STATUS.NOT_AUTHENTICATED &&
+        get().authStatus === AUTH_STATUS.NOT_AUTHENTICATED
+      ) {
+        return;
+      }
 
       // Password verified — unblock navigation immediately.
       // getActiveAccount is slow (derivePrivateKeyFromMnemonic) so we run it
@@ -3401,6 +3481,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
       getActiveAccount(AUTH_STATUS.AUTHENTICATED)
         .then((activeAccount) => {
+          // The session ended during the slow key derivation above: a
+          // soft-lock, a manual lock or a wipe (each clears account to null).
+          // Drop this stale load rather than putting the private key into a
+          // store that is no longer authenticated, or locking over a wipe —
+          // the next unlock reloads it.
+          if (get().authStatus !== AUTH_STATUS.AUTHENTICATED) {
+            set({ isLoadingAccount: false });
+            return;
+          }
           if (!activeAccount) {
             // No active account after sign-in: lock and surface an error.
             // isSoftLocked must accompany LOCKED (RootNavigator unmounts the
@@ -3415,17 +3504,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             get().navigateToLockScreen();
             return;
           }
-          // A soft-lock may have engaged during the slow key derivation above
-          // (softLock clears account to null). Drop this stale load rather than
-          // repopulating the private key into a locked store — the next unlock
-          // reloads it.
-          if (get().isSoftLocked) {
-            set({ isLoadingAccount: false });
-            return;
-          }
           set({ account: activeAccount, isLoadingAccount: false });
         })
         .catch((accountError) => {
+          // A lock or wipe during the load fails it (the session it was
+          // reading is gone). That state stands: don't soft-lock over it.
+          if (get().authStatus !== AUTH_STATUS.AUTHENTICATED) {
+            set({ isLoadingAccount: false });
+            return;
+          }
           logger.error(
             "useAuthenticationStore.signIn",
             "Failed to load account in background",
@@ -3786,8 +3873,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     try {
       // Re-import replaces the wallet: reset auto-lock to the default before
       // the hash key is generated so it doesn't inherit the previous timer.
-      await resetAutoLockForNewWallet();
-      await importWallet(params);
+      await withAccountMutationLock(async () => {
+        await resetAutoLockForNewWallet();
+        await importWallet(params);
+      });
       set({
         ...initialState,
         navigationRef: get().navigationRef,
@@ -3989,7 +4078,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isRenamingAccount: true });
 
     try {
-      await renameAccount(params);
+      await withAccountMutationLock(() => renameAccount(params));
       await Promise.all([get().fetchActiveAccount(), get().getAllAccounts()]);
       set({ isRenamingAccount: false });
     } catch (error) {
@@ -4042,7 +4131,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isCreatingAccount: true, error: null });
 
     try {
-      await createAccount(password, get().authStatus, sourceId, accountName);
+      await withAccountMutationLock(() =>
+        createAccount(password, get().authStatus, sourceId, accountName),
+      );
 
       // The new account becomes active: drop the previous account's data so
       // nothing (e.g. priced balances) carries over into its first render.
@@ -4089,11 +4180,13 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isCreatingAccount: true, error: null });
 
     try {
-      await addRecoveryPhraseSource(
-        password,
-        get().authStatus,
-        pendingPhraseId,
-        accountName,
+      await withAccountMutationLock(() =>
+        addRecoveryPhraseSource(
+          password,
+          get().authStatus,
+          pendingPhraseId,
+          accountName,
+        ),
       );
 
       // The new account becomes active, as on createAccount.
@@ -4146,8 +4239,16 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       // dropping them would flash $0.00 rows in the sheet mid-switch (the
       // switch itself force-refreshes them in the background).
       clearAccountData({ keepAccountsFiatTotals: true });
-      await selectAccount(publicKey);
+      await withAccountMutationLock(() => selectAccount(publicKey));
       const activeAccount = await getActiveAccount(authStatus);
+      // A soft-lock, a manual lock or a wipe may have landed while the switch
+      // waited on the lock or loaded the key (each clears account to null).
+      // Don't put the private key back into a store that is no longer
+      // authenticated; the next unlock reloads it.
+      if (get().authStatus !== AUTH_STATUS.AUTHENTICATED) {
+        set({ isSwitchingAccount: false });
+        return;
+      }
       set({ account: activeAccount, isSwitchingAccount: false });
     } catch (error) {
       logger.error(
@@ -4191,7 +4292,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      await importSecretKeyLocal(params, get().authStatus);
+      await withAccountMutationLock(() =>
+        importSecretKeyLocal(params, get().authStatus),
+      );
 
       // The imported account becomes active: drop the previous account's
       // data so nothing (e.g. priced balances) carries over into its first
