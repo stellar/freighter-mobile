@@ -833,7 +833,7 @@ export const createTokenFiatConverterReducer =
         // Guard non-finite values (e.g. user pasted "1e999" → Infinity, or
         // a malformed input that returns NaN) so the store never holds a
         // string that would crash BigNumber arithmetic downstream or get
-        // serialized into a Horizon strictSendPaths request.
+        // serialized into a swap quote request.
         const bnInternal = new BigNumber(rawInternal);
 
         // Reject amounts above the protocol-level cap when a maxTokenAmount

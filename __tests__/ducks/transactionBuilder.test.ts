@@ -1,3 +1,13 @@
+import {
+  Account,
+  Address,
+  Asset,
+  Keypair,
+  Operation,
+  TransactionBuilder,
+  nativeToScVal,
+  xdr as stellarXdr,
+} from "@stellar/stellar-sdk";
 import { act } from "@testing-library/react-hooks";
 import {
   BASE_CONTRACT,
@@ -12,6 +22,7 @@ import {
   SubmitTransactionOutcome,
   useTransactionBuilderStore,
 } from "ducks/transactionBuilder";
+import * as backend from "services/backend";
 import * as stellarServices from "services/stellar";
 import * as transactionService from "services/transactionService";
 
@@ -33,6 +44,7 @@ jest.mock("config/logger", () => ({
 
 jest.mock("services/stellar");
 jest.mock("services/transactionService");
+jest.mock("services/backend", () => ({ buildSwapTx: jest.fn() }));
 
 const store = useTransactionBuilderStore;
 
@@ -66,6 +78,7 @@ describe("transactionBuilder Duck", () => {
         isSoroban: false,
         sorobanResourceFeeXlm: null,
         sorobanInclusionFeeXlm: null,
+        swapReview: null,
       });
     });
 
@@ -891,6 +904,337 @@ describe("transactionBuilder Duck", () => {
         transactionService.buildSendCollectibleTransaction,
       ).toHaveBeenCalled();
       expect(transactionService.simulateCollectibleTransfer).toHaveBeenCalled();
+    });
+  });
+
+  describe("buildSwapTransaction", () => {
+    const USDC_ISSUER =
+      "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+    const SWAP_ACCOUNT =
+      "GBTYAFHGNZSTE4VBWZYAGB3SRGJEPTI5I4Y22KZ4JTVAN56LESB6JZOF";
+    const request = {
+      network: mockNetwork,
+      account: SWAP_ACCOUNT,
+      source: "classic",
+      fromAsset: "XLM",
+      toAsset: `USDC:${USDC_ISSUER}`,
+      amount: "100",
+      minOut: "17.1941798",
+      slippage: "2",
+      timeout: 180,
+      fee: "0.00002",
+    };
+    const swapParams = {
+      request,
+      sourceBalance: {} as never,
+      destinationBalance: {} as never,
+      destinationAmount: "17.5450814",
+    };
+    const backendXdr = (destination = SWAP_ACCOUNT) =>
+      new TransactionBuilder(new Account(SWAP_ACCOUNT, "1"), {
+        fee: "100",
+        networkPassphrase: `Passphrase for ${mockNetwork}`,
+      })
+        .addOperation(
+          Operation.changeTrust({ asset: new Asset("USDC", USDC_ISSUER) }),
+        )
+        .addOperation(
+          Operation.pathPaymentStrictSend({
+            sendAsset: Asset.native(),
+            sendAmount: "100",
+            destination,
+            destAsset: new Asset("USDC", USDC_ISSUER),
+            destMin: "17.1941798",
+            path: [],
+          }),
+        )
+        .setTimeout(180)
+        .build()
+        .toXDR();
+
+    it("stores the backend's transaction and its decoded review values", async () => {
+      const xdr = backendXdr();
+      (backend.buildSwapTx as jest.Mock).mockResolvedValue({
+        xdr,
+        addsTrustline: true,
+      });
+
+      await act(async () => {
+        await store.getState().buildSwapTransaction(swapParams);
+      });
+
+      expect(backend.buildSwapTx).toHaveBeenCalledWith(request);
+      const state = store.getState();
+      expect(state.transactionXDR).toBe(xdr);
+      expect(state.swapReview).toEqual({
+        sendAmount: "100",
+        minReceived: "17.1941798",
+        fee: "0.00002",
+        addsTrustline: true,
+      });
+      expect(state.isBuilding).toBe(false);
+    });
+
+    it("reads a contract token's amount sold at the token's decimals", async () => {
+      const token = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      const swapContract =
+        "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
+      const call = (
+        contract: string,
+        fn: string,
+        args: stellarXdr.ScVal[],
+        subInvocations: stellarXdr.SorobanAuthorizedInvocation[] = [],
+      ) =>
+        new stellarXdr.SorobanAuthorizedInvocation({
+          function:
+            stellarXdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+              new stellarXdr.InvokeContractArgs({
+                contractAddress: new Address(contract).toScAddress(),
+                functionName: fn,
+                args,
+              }),
+            ),
+          subInvocations,
+        });
+      const xdr = new TransactionBuilder(new Account(SWAP_ACCOUNT, "1"), {
+        fee: "100",
+        networkPassphrase: `Passphrase for ${mockNetwork}`,
+      })
+        .addOperation(
+          Operation.invokeContractFunction({
+            contract: swapContract,
+            function: "swap",
+            args: [],
+            auth: [
+              new stellarXdr.SorobanAuthorizationEntry({
+                credentials:
+                  stellarXdr.SorobanCredentials.sorobanCredentialsSourceAccount(),
+                rootInvocation: call(
+                  swapContract,
+                  "swap",
+                  [],
+                  [
+                    call(token, "transfer", [
+                      new Address(SWAP_ACCOUNT).toScVal(),
+                      new Address(swapContract).toScVal(),
+                      nativeToScVal(BigInt("1500000000000000000"), {
+                        type: "i128",
+                      }),
+                    ]),
+                  ],
+                ),
+              }),
+            ],
+          }),
+        )
+        .setTimeout(180)
+        .build()
+        .toXDR();
+      (backend.buildSwapTx as jest.Mock).mockResolvedValue({
+        xdr,
+        addsTrustline: false,
+      });
+
+      await act(async () => {
+        await store.getState().buildSwapTransaction({
+          ...swapParams,
+          request: {
+            ...request,
+            source: "lifi",
+            fromAsset: token,
+            amount: "1.5",
+          },
+          sourceBalance: { decimals: 18 } as never,
+        });
+      });
+
+      expect(store.getState().swapReview?.sendAmount).toBe("1.5");
+    });
+
+    it("decodes a 6-decimal token sold for an 18-decimal token at each token's decimals", async () => {
+      const token = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      const bought = "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL";
+      const swapContract =
+        "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
+      const call = (
+        contract: string,
+        fn: string,
+        args: stellarXdr.ScVal[],
+        subInvocations: stellarXdr.SorobanAuthorizedInvocation[] = [],
+      ) =>
+        new stellarXdr.SorobanAuthorizedInvocation({
+          function:
+            stellarXdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+              new stellarXdr.InvokeContractArgs({
+                contractAddress: new Address(contract).toScAddress(),
+                functionName: fn,
+                args,
+              }),
+            ),
+          subInvocations,
+        });
+      const xdr = new TransactionBuilder(new Account(SWAP_ACCOUNT, "1"), {
+        fee: "100",
+        networkPassphrase: `Passphrase for ${mockNetwork}`,
+      })
+        .addOperation(
+          Operation.invokeContractFunction({
+            contract: swapContract,
+            function: "swap",
+            args: [],
+            auth: [
+              new stellarXdr.SorobanAuthorizationEntry({
+                credentials:
+                  stellarXdr.SorobanCredentials.sorobanCredentialsSourceAccount(),
+                rootInvocation: call(
+                  swapContract,
+                  "swap",
+                  [],
+                  [
+                    call(token, "transfer", [
+                      new Address(SWAP_ACCOUNT).toScVal(),
+                      new Address(swapContract).toScVal(),
+                      nativeToScVal(BigInt("1123456"), {
+                        type: "i128",
+                      }),
+                    ]),
+                  ],
+                ),
+              }),
+            ],
+          }),
+        )
+        .setTimeout(180)
+        .build()
+        .toXDR();
+      (backend.buildSwapTx as jest.Mock).mockResolvedValue({
+        xdr,
+        addsTrustline: false,
+      });
+
+      await act(async () => {
+        await store.getState().buildSwapTransaction({
+          ...swapParams,
+          request: {
+            ...request,
+            source: "lifi",
+            fromAsset: token,
+            toAsset: bought,
+            amount: "1.123456",
+            minOut: "2.102222221122222221",
+          },
+          sourceBalance: { decimals: 6 } as never,
+          destinationBalance: { decimals: 18 } as never,
+        });
+      });
+
+      expect(backend.buildSwapTx).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: "1.123456",
+          minOut: "2.102222221122222221",
+        }),
+      );
+      expect(store.getState().swapReview?.sendAmount).toBe("1.123456");
+    });
+
+    it("keeps the review in step with the transaction during a rebuild", async () => {
+      const xdr = backendXdr();
+      (backend.buildSwapTx as jest.Mock).mockResolvedValue({
+        xdr,
+        addsTrustline: true,
+      });
+      await act(async () => {
+        await store.getState().buildSwapTransaction(swapParams);
+      });
+      const firstReview = store.getState().swapReview;
+
+      let fail: (e: unknown) => void = () => {};
+      (backend.buildSwapTx as jest.Mock).mockReturnValue(
+        new Promise((_, reject) => {
+          fail = reject;
+        }),
+      );
+      let rebuild: Promise<unknown> = Promise.resolve();
+      act(() => {
+        rebuild = store.getState().buildSwapTransaction(swapParams);
+      });
+
+      expect(store.getState().isBuilding).toBe(true);
+      expect(store.getState().transactionXDR).toBe(xdr);
+      expect(store.getState().swapReview).toBe(firstReview);
+
+      await act(async () => {
+        fail(new Error("boom"));
+        await rebuild.catch(() => {});
+      });
+
+      expect(store.getState().transactionXDR).toBeNull();
+      expect(store.getState().swapReview).toBeNull();
+    });
+
+    it("refuses a transaction that pays someone else", async () => {
+      (backend.buildSwapTx as jest.Mock).mockResolvedValueOnce({
+        xdr: backendXdr(),
+        addsTrustline: true,
+      });
+      await act(async () => {
+        await store.getState().buildSwapTransaction(swapParams);
+      });
+      expect(store.getState().transactionXDR).not.toBeNull();
+      (backend.buildSwapTx as jest.Mock).mockResolvedValueOnce({
+        xdr: backendXdr(Keypair.random().publicKey()),
+        addsTrustline: true,
+      });
+
+      await act(async () => {
+        await expect(
+          store.getState().buildSwapTransaction(swapParams),
+        ).rejects.toThrow(/does not match/);
+      });
+
+      expect(store.getState().transactionXDR).toBeNull();
+      expect(store.getState().swapReview).toBeNull();
+      expect(store.getState().error).toMatch(/does not match/);
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it("reports a rejected request (400): the body came from our own state", async () => {
+      const badRequest = {
+        message: "invalid swap request",
+        status: 400,
+        isNetworkError: false,
+      };
+      (backend.buildSwapTx as jest.Mock).mockRejectedValue(badRequest);
+
+      await act(async () => {
+        await expect(
+          store.getState().buildSwapTransaction(swapParams),
+        ).rejects.toBe(badRequest);
+      });
+
+      expect(logger.error).toHaveBeenCalledWith(
+        "TransactionBuilderStore",
+        "Failed to build swap transaction",
+        badRequest,
+      );
+    });
+
+    it("passes a moved quote (409) through without reporting it", async () => {
+      const quoteMoved = {
+        message: "quote_moved",
+        status: 409,
+        isNetworkError: false,
+      };
+      (backend.buildSwapTx as jest.Mock).mockRejectedValue(quoteMoved);
+
+      await act(async () => {
+        await expect(
+          store.getState().buildSwapTransaction(swapParams),
+        ).rejects.toBe(quoteMoved);
+      });
+
+      expect(store.getState().transactionXDR).toBeNull();
+      expect(logger.error).not.toHaveBeenCalled();
     });
   });
 });

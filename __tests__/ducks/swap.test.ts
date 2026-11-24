@@ -133,6 +133,21 @@ describe("descriptorAsPathBalance", () => {
     });
   });
 
+  it("projects a contract-token descriptor with its contract ID and decimals", () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    const result = descriptorAsPathBalance({
+      id: `TKN:${contractId}`,
+      tokenCode: "TKN",
+      issuer: contractId,
+      decimals: 18,
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      requiresTrustline: false,
+    });
+
+    expect(result).toMatchObject({ contractId, decimals: 18 });
+  });
+
   it("throws when a non-native descriptor is missing issuer", () => {
     expect(() =>
       descriptorAsPathBalance({

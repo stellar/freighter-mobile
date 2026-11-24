@@ -560,6 +560,15 @@ describe("formatAmount helpers", () => {
       expect(parseDisplayNumber("1.234.567,89,extra")).toBe("1.234"); // Only the first part is parsed
     });
 
+    it("keeps digits past a double's precision", () => {
+      expect(parseDisplayNumber("1.000000000000000001")).toBe(
+        "1.000000000000000001",
+      );
+      expect(parseDisplayNumber("12,345.123456789012345678")).toBe(
+        "12345.123456789012345678",
+      );
+    });
+
     it("should handle BigNumber input", () => {
       const bigNum = new BigNumber("123.45");
       const result = parseDisplayNumber(bigNum);

@@ -2,6 +2,8 @@
 import { Asset, Keypair, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
 import { renderHook, act } from "@testing-library/react-hooks";
 import BigNumber from "bignumber.js";
+import { SwapTxMismatchError } from "components/screens/SwapScreen/helpers/decodeSwapTx";
+import { SwapSetupAnswerError } from "components/screens/SwapScreen/helpers/quoteErrors";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
@@ -11,7 +13,7 @@ import { useSwapStore } from "ducks/swap";
 
 const mockSignTransaction = jest.fn();
 const mockSubmitTransaction = jest.fn();
-const mockBuildSwapTransaction = jest.fn().mockResolvedValue("xdr");
+const mockBuildSwapTransaction = jest.fn();
 const mockShowToast = jest.fn();
 const mockTrackTransactionError = jest.fn();
 const mockTrackSwapSuccess = jest.fn();
@@ -73,13 +75,15 @@ jest.mock("@stellar/stellar-sdk", () => {
   };
 });
 
+const DEFAULT_SWAP_SETTINGS = {
+  swapFee: "100",
+  swapTimeout: "30",
+  swapSlippage: "0.5",
+};
+let mockSwapSettings = DEFAULT_SWAP_SETTINGS;
 jest.mock("ducks/swapSettings", () => ({
   useSwapSettingsStore: Object.assign(() => ({}), {
-    getState: () => ({
-      swapFee: "100",
-      swapTimeout: "30",
-      swapSlippage: "0.5",
-    }),
+    getState: () => mockSwapSettings,
   }),
 }));
 
@@ -115,6 +119,16 @@ jest.mock("services/analytics", () => ({
   },
 }));
 
+const USDC_ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+const USDC = `USDC:${USDC_ISSUER}`;
+const QUOTED_ROUTE = {
+  source: "lifi",
+  fromAmount: "1",
+  toAmount: "2.5",
+  paths: [{ share: "1", hops: [{ venue: "Aquarius", from: "XLM", to: USDC }] }],
+  fees: [],
+};
+
 const mockNavigation = {
   reset: jest.fn(),
 } as unknown as Parameters<typeof useSwapTransaction>[0]["navigation"];
@@ -125,19 +139,29 @@ const baseParams: Parameters<typeof useSwapTransaction>[0] = {
   // "1" for both would let `sourceAmount` and `destAmount` be transposed
   // without any test failing.
   sourceAmount: "1",
-  sourceBalance: { tokenCode: "XLM" } as never,
-  destinationTokenInput: { tokenCode: "USDC" } as never,
+  sourceBalance: { tokenCode: "XLM", token: { type: "native" } } as never,
+  destinationTokenInput: {
+    tokenCode: "USDC",
+    token: {
+      code: "USDC",
+      type: "credit_alphanum4",
+      issuer: { key: USDC_ISSUER },
+    },
+  } as never,
   pathResult: {
-    path: [],
+    route: QUOTED_ROUTE,
     destinationAmount: "2.5",
     destinationAmountMin: "2.4",
+    quoteKey: "quote-key",
   } as never,
+  currentQuoteKey: "quote-key",
   account: {
-    publicKey: "GA...",
+    publicKey: "GACCOUNT",
     privateKey: "SA...",
   } as ActiveAccount,
   network: NETWORKS.PUBLIC,
   navigation: mockNavigation,
+  recommendedFee: "",
 };
 
 /** submitTransaction now resolves with the attempt's own outcome. */
@@ -170,7 +194,12 @@ const submitFailed = (
 describe("useSwapTransaction", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetBuilderState.mockReturnValue({ error: "Submit error from store" });
+    mockGetBuilderState.mockReturnValue({
+      error: "Submit error from store",
+      transactionXDR: "xdr",
+    });
+    mockSwapSettings = DEFAULT_SWAP_SETTINGS;
+    mockBuildSwapTransaction.mockResolvedValue({ xdr: "xdr", review: {} });
     mockPricesByNetwork = {};
     act(() => {
       useSwapStore.getState().resetSwap();
@@ -340,21 +369,8 @@ describe("useSwapTransaction", () => {
     });
   });
 
-  describe("setupSwapTransaction — includeTrustline wiring", () => {
-    it("passes includeTrustline when destinationToken.requiresTrustline is true", async () => {
-      act(() => {
-        useSwapStore.setState({
-          destinationToken: {
-            id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-            tokenCode: "USDC",
-            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-            decimals: 7,
-            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-            requiresTrustline: true,
-          },
-        } as never);
-      });
-
+  describe("setupSwapTransaction — /swap/tx request", () => {
+    it("sends the quoted route with the user's slippage, timeout and fee", async () => {
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
       await act(async () => {
@@ -363,63 +379,383 @@ describe("useSwapTransaction", () => {
 
       expect(mockBuildSwapTransaction).toHaveBeenCalledWith(
         expect.objectContaining({
-          includeTrustline: {
-            tokenCode: "USDC",
-            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          request: {
+            network: NETWORKS.PUBLIC,
+            account: "GACCOUNT",
+            source: "lifi",
+            fromAsset: "XLM",
+            toAsset: USDC,
+            amount: "1",
+            // toAmount 2.5 at the settings mock's 0.5% slippage.
+            minOut: "2.4875000",
+            slippage: "0.5",
+            timeout: "30",
+            fee: "100",
+            paths: QUOTED_ROUTE.paths,
           },
         }),
       );
+      expect(mockScanTransaction).toHaveBeenCalledWith("xdr", "internal");
+      // The scan result is tied to the transaction it scanned.
+      expect(result.current.scannedTransactionXDR).toBe("xdr");
     });
+  });
 
-    it("omits includeTrustline when destinationToken.requiresTrustline is false", async () => {
-      act(() => {
-        useSwapStore.setState({
-          destinationToken: {
-            id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-            tokenCode: "USDC",
-            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-            decimals: 7,
-            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-            requiresTrustline: false,
-          },
-        } as never);
-      });
+  describe("setupSwapTransaction — fee by route", () => {
+    const requestFee = () =>
+      (
+        mockBuildSwapTransaction.mock.calls[0][0] as {
+          request: { fee: string };
+        }
+      ).request.fee;
 
-      const { result } = renderHook(() => useSwapTransaction(baseParams));
+    it("sends the per-op recommended fee for a LI.FI route, not the op-count total", async () => {
+      // The store holds recommended × 2 (a new-trustline classic swap is two
+      // ops); LI.FI builds one op and charges the whole fee as inclusion.
+      mockSwapSettings = { ...DEFAULT_SWAP_SETTINGS, swapFee: "0.00002" };
+      const { result } = renderHook(() =>
+        useSwapTransaction({ ...baseParams, recommendedFee: "0.00001" }),
+      );
 
       await act(async () => {
         await result.current.setupSwapTransaction();
       });
 
-      expect(mockBuildSwapTransaction).toHaveBeenCalled();
-      const callArgs = mockBuildSwapTransaction.mock.calls[0][0];
-      expect(callArgs.includeTrustline).toBeUndefined();
+      expect(requestFee()).toBe("0.00001");
     });
 
-    it("throws when requiresTrustline=true but issuer is missing on destinationToken", async () => {
-      act(() => {
-        useSwapStore.setState({
-          destinationToken: {
-            id: "BROKEN",
-            tokenCode: "BROKEN",
-            // issuer intentionally omitted
-            decimals: 7,
-            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-            requiresTrustline: true,
+    it("never sends more than the frozen total the balance check reserved", async () => {
+      // The store's fee is frozen once an amount is entered (Max is sized
+      // from it); a recommendation that rose since must not exceed it.
+      mockSwapSettings = { ...DEFAULT_SWAP_SETTINGS, swapFee: "0.00002" };
+      const { result } = renderHook(() =>
+        useSwapTransaction({ ...baseParams, recommendedFee: "0.00005" }),
+      );
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(requestFee()).toBe("0.00002");
+    });
+
+    it("sends the op-count total for a classic route", async () => {
+      mockSwapSettings = { ...DEFAULT_SWAP_SETTINGS, swapFee: "0.00002" };
+      const { result } = renderHook(() =>
+        useSwapTransaction({
+          ...baseParams,
+          pathResult: {
+            ...baseParams.pathResult,
+            route: { ...QUOTED_ROUTE, source: "classic" },
+          } as never,
+          recommendedFee: "0.00001",
+        }),
+      );
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(requestFee()).toBe("0.00002");
+    });
+
+    it("sends a user-set fee as typed whatever the route", async () => {
+      mockSwapSettings = {
+        ...DEFAULT_SWAP_SETTINGS,
+        swapFee: "0.0005",
+        feeManuallyChanged: true,
+      } as never;
+      const { result } = renderHook(() =>
+        useSwapTransaction({ ...baseParams, recommendedFee: "0.00001" }),
+      );
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(requestFee()).toBe("0.0005");
+    });
+  });
+
+  describe("setupSwapTransaction — quote freshness", () => {
+    it("refuses to build from a quote for other inputs", async () => {
+      const { result } = renderHook(() =>
+        useSwapTransaction({ ...baseParams, currentQuoteKey: "newer-key" }),
+      );
+
+      await act(async () => {
+        await expect(result.current.setupSwapTransaction()).rejects.toThrow(
+          "swapScreen.errors.quoteExpired",
+        );
+      });
+
+      expect(mockBuildSwapTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setupSwapTransaction — minOut", () => {
+    it("rounds the minOut down, so it never exceeds LI.FI's truncated minimum", async () => {
+      mockSwapSettings = {
+        ...DEFAULT_SWAP_SETTINGS,
+        swapSlippage: 1 as unknown as string,
+      };
+      const params = {
+        ...baseParams,
+        pathResult: {
+          ...(baseParams.pathResult as object),
+          route: { ...QUOTED_ROUTE, toAmount: "1.0000001" },
+        } as never,
+      };
+      const { result } = renderHook(() => useSwapTransaction(params));
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(mockBuildSwapTransaction.mock.calls[0][0].request.minOut).toBe(
+        "0.9900000",
+      );
+    });
+
+    it("rounds the minOut to a contract token's own decimals and sends its contract ID", async () => {
+      const token = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      mockSwapSettings = {
+        ...DEFAULT_SWAP_SETTINGS,
+        swapSlippage: 1 as unknown as string,
+      };
+      const params = {
+        ...baseParams,
+        destinationTokenInput: {
+          tokenCode: "TKN",
+          contractId: token,
+          decimals: 18,
+          token: { code: "TKN", type: "custom_token", issuer: { key: token } },
+        } as never,
+        pathResult: {
+          ...(baseParams.pathResult as object),
+          route: { ...QUOTED_ROUTE, toAmount: "1.000000000000000001" },
+        } as never,
+      };
+      const { result } = renderHook(() => useSwapTransaction(params));
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(mockBuildSwapTransaction.mock.calls[0][0].request).toMatchObject({
+        toAsset: token,
+        minOut: "0.990000000000000000",
+      });
+    });
+
+    it("sends a 6-decimal amount sold and an 18-decimal minOut for a 6 → 18 decimal swap", async () => {
+      const sold = "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL";
+      const bought = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      mockSwapSettings = {
+        ...DEFAULT_SWAP_SETTINGS,
+        swapSlippage: 1 as unknown as string,
+      };
+      const params = {
+        ...baseParams,
+        sourceAmount: "1.123456",
+        sourceBalance: {
+          tokenCode: "SIX",
+          contractId: sold,
+          decimals: 6,
+          token: { code: "SIX", type: "custom_token", issuer: { key: sold } },
+        } as never,
+        destinationTokenInput: {
+          tokenCode: "EIGHTEEN",
+          contractId: bought,
+          decimals: 18,
+          token: {
+            code: "EIGHTEEN",
+            type: "custom_token",
+            issuer: { key: bought },
           },
-        } as never);
+        } as never,
+        pathResult: {
+          ...(baseParams.pathResult as object),
+          route: { ...QUOTED_ROUTE, toAmount: "2.123456789012345678" },
+        } as never,
+      };
+      const { result } = renderHook(() => useSwapTransaction(params));
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(mockBuildSwapTransaction.mock.calls[0][0].request).toMatchObject({
+        fromAsset: sold,
+        toAsset: bought,
+        amount: "1.123456",
+        minOut: "2.102222221122222221",
+      });
+    });
+  });
+
+  describe("setupSwapTransaction — superseded while running", () => {
+    const deferred = <T>() => {
+      let resolve: (value: T) => void = () => {};
+      const promise = new Promise<T>((r) => {
+        resolve = r;
+      });
+      return { promise, resolve };
+    };
+
+    it("discards a build whose amount was edited while it ran", async () => {
+      const build = deferred<{ xdr: string; review: object }>();
+      mockBuildSwapTransaction.mockReturnValue(build.promise);
+      const { result, rerender } = renderHook(
+        (props: typeof baseParams) => useSwapTransaction(props),
+        { initialProps: baseParams },
+      );
+
+      let setup: Promise<unknown> = Promise.resolve();
+      act(() => {
+        setup = result.current.setupSwapTransaction();
+      });
+      rerender({ ...baseParams, sourceAmount: "2", currentQuoteKey: "2-key" });
+
+      await act(async () => {
+        build.resolve({ xdr: "xdr", review: {} });
+        await expect(setup).resolves.toEqual({ superseded: true });
+      });
+
+      expect(mockScanTransaction).not.toHaveBeenCalled();
+    });
+
+    it("discards a build whose slippage setting changed while it ran", async () => {
+      const build = deferred<{ xdr: string; review: object }>();
+      mockBuildSwapTransaction.mockReturnValue(build.promise);
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      let setup: Promise<unknown> = Promise.resolve();
+      act(() => {
+        setup = result.current.setupSwapTransaction();
+      });
+      mockSwapSettings = { ...DEFAULT_SWAP_SETTINGS, swapSlippage: "3" };
+
+      await act(async () => {
+        build.resolve({ xdr: "xdr", review: {} });
+        await expect(setup).resolves.toEqual({ superseded: true });
+      });
+
+      expect(mockScanTransaction).not.toHaveBeenCalled();
+    });
+
+    it("does not apply a scan for a transaction a newer build replaced", async () => {
+      const scan = deferred<object>();
+      mockScanTransaction.mockReturnValueOnce(scan.promise);
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      let setup: Promise<unknown> = Promise.resolve();
+      act(() => {
+        setup = result.current.setupSwapTransaction();
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(mockScanTransaction).toHaveBeenCalledWith("xdr", "internal");
+      mockGetBuilderState.mockReturnValue({ transactionXDR: "newer-xdr" });
+
+      await act(async () => {
+        scan.resolve({ validation: { result_type: "Malicious" } });
+        await expect(setup).resolves.toEqual({ superseded: true });
+      });
+
+      expect(result.current.transactionScanResult).toBeUndefined();
+    });
+  });
+
+  describe("setupSwapTransaction — build failures", () => {
+    const apiError = (status: number) => ({
+      message: `status ${status}`,
+      status,
+      isNetworkError: false,
+    });
+
+    it("treats a 409 as an expired quote: tracks it and re-quotes", async () => {
+      mockBuildSwapTransaction.mockRejectedValue(apiError(409));
+      const { findSwapPath: realFindSwapPath } = useSwapStore.getState();
+      const findSwapPath = jest.fn();
+      act(() => {
+        useSwapStore.setState({ findSwapPath });
       });
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
-      await expect(
-        act(async () => {
-          await result.current.setupSwapTransaction();
-        }),
-      ).rejects.toThrow(/requiresTrustline=true but issuer missing/);
+      try {
+        await act(async () => {
+          await expect(
+            result.current.setupSwapTransaction(),
+          ).rejects.toBeInstanceOf(SwapSetupAnswerError);
+        });
+      } finally {
+        act(() => {
+          useSwapStore.setState({ findSwapPath: realFindSwapPath });
+        });
+      }
 
-      // mockBuildSwapTransaction should NOT have been called — we threw before reaching it
-      expect(mockBuildSwapTransaction).not.toHaveBeenCalled();
+      expect(mockTrack).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_QUOTE_EXPIRED,
+        {
+          from_asset_code: "XLM",
+          to_asset_code: "USDC",
+          result_code: "quote_moved",
+        },
+      );
+      expect(findSwapPath).toHaveBeenCalledWith(
+        expect.objectContaining({ sourceAmount: "1", publicKey: "GACCOUNT" }),
+      );
+      expect(mockScanTransaction).not.toHaveBeenCalled();
+    });
+
+    it("shows a rejected request (400) with a translated message", async () => {
+      mockBuildSwapTransaction.mockRejectedValue(apiError(400));
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      let failure: unknown;
+      await act(async () => {
+        failure = await result.current.setupSwapTransaction().catch((e) => e);
+      });
+      // An answer, not a fault: the screen doesn't report it.
+      expect(failure).toBeInstanceOf(SwapSetupAnswerError);
+      expect((failure as Error).message).toBe(
+        "swapScreen.errors.failedToSetupTransaction",
+      );
+    });
+
+    it("shows a transaction that does not match the request with a translated message", async () => {
+      mockBuildSwapTransaction.mockRejectedValue(
+        new SwapTxMismatchError("path payment"),
+      );
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await expect(result.current.setupSwapTransaction()).rejects.toThrow(
+          "swapScreen.errors.swapTransactionMismatch",
+        );
+      });
+    });
+
+    it("shows a backend outage as swaps unavailable", async () => {
+      mockBuildSwapTransaction.mockRejectedValue(apiError(503));
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await expect(result.current.setupSwapTransaction()).rejects.toThrow(
+          "swapScreen.errors.swapsUnavailable",
+        );
+      });
+
+      expect(mockTrack).not.toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_QUOTE_EXPIRED,
+        expect.anything(),
+      );
     });
   });
 
@@ -428,7 +764,7 @@ describe("useSwapTransaction", () => {
       mockTrack.mockClear();
     });
 
-    it("fires SWAP_TRUSTLINE_ADDED when the swap succeeds and destinationToken.requiresTrustline is true", async () => {
+    it("fires SWAP_TRUSTLINE_ADDED when the built transaction adds the trustline", async () => {
       act(() => {
         useSwapStore.setState({
           destinationToken: {
@@ -437,9 +773,13 @@ describe("useSwapTransaction", () => {
             issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
             decimals: 7,
             tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-            requiresTrustline: true,
+            // The transaction, not the picker's guess, decides.
+            requiresTrustline: false,
           },
         } as never);
+      });
+      mockGetBuilderState.mockReturnValue({
+        swapReview: { addsTrustline: true },
       });
 
       mockSignTransaction.mockReturnValue("signed-xdr");
@@ -460,7 +800,7 @@ describe("useSwapTransaction", () => {
       );
     });
 
-    it("does NOT fire SWAP_TRUSTLINE_ADDED when the swap succeeds but destinationToken.requiresTrustline is false", async () => {
+    it("does NOT fire SWAP_TRUSTLINE_ADDED when the built transaction adds no trustline", async () => {
       act(() => {
         useSwapStore.setState({
           destinationToken: {
@@ -469,9 +809,12 @@ describe("useSwapTransaction", () => {
             issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
             decimals: 7,
             tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-            requiresTrustline: false,
+            requiresTrustline: true,
           },
         } as never);
+      });
+      mockGetBuilderState.mockReturnValue({
+        swapReview: { addsTrustline: false },
       });
 
       mockSignTransaction.mockReturnValue("signed-xdr");
@@ -491,9 +834,6 @@ describe("useSwapTransaction", () => {
   });
 
   describe("confirmation snapshot cached_display fallback", () => {
-    const USDC_ISSUER =
-      "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
-
     /** A TransactionResult XDR whose single op settled a pathPaymentStrictSend. */
     const settledResultXdr = (stroops: string): string => {
       const simple = new xdr.SimplePaymentResult({
