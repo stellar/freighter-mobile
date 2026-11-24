@@ -40,6 +40,12 @@ describe("ImportSecretKeyScreen", () => {
     expect(getAllByLabelText("Show password")).toHaveLength(1);
   });
 
+  it("gives the import button the id e2e flows tap", () => {
+    const { getByTestId } = renderScreen();
+
+    expect(getByTestId("import-secret-key-submit")).toBeTruthy();
+  });
+
   it("asks for the acknowledgement with the shared checkbox", () => {
     const { getByTestId, getByText } = renderScreen();
     const checkbox = getByTestId("import-secret-key-aware-checkbox");

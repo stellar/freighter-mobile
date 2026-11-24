@@ -1,0 +1,102 @@
+appId: org.stellar.freighterdev
+tags:
+  - accounts
+  - add-wallet
+---
+# Generate a second recovery phrase, then add an account under it. The new
+# account lands in "Recovery phrase 2" and the first phrase's group is left
+# as it was.
+- runFlow:
+    file: ../onboarding/ImportWallet.yaml
+
+# --- Create new wallet → New recovery phrase, first account "Fresh" ---
+- runFlow:
+    file: ../shared/OpenAddWallet.yaml
+- tapOn:
+    id: add-wallet-create
+- extendedWaitUntil:
+    visible:
+      id: create-wallet-generate
+    timeout: 15000
+- tapOn:
+    id: create-wallet-generate
+# The field opens focused and holds the next default name. It is typed into
+# without a tap: iOS doesn't expose a bottom sheet's input or texts to
+# Maestro, only its buttons.
+- extendedWaitUntil:
+    visible:
+      id: set-account-name-submit
+    timeout: 15000
+- eraseText
+- inputText: "Fresh"
+- tapOn:
+    id: set-account-name-submit
+# Back up the new phrase, then confirm with the wallet password.
+- extendedWaitUntil:
+    visible:
+      id: backup-recovery-phrase-reveal
+    timeout: 15000
+- tapOn:
+    id: backup-recovery-phrase-reveal
+- extendedWaitUntil:
+    visible:
+      id: backup-recovery-phrase-value
+    timeout: 15000
+- tapOn:
+    id: default-action-button
+- runFlow:
+    file: ../shared/VerifyPassword.yaml
+    env:
+      DONE_TIMEOUT: 60000
+
+# --- Create new wallet → Add account under the second phrase ---
+- runFlow:
+    file: ../shared/OpenAddWallet.yaml
+- tapOn:
+    id: add-wallet-create
+- extendedWaitUntil:
+    visible:
+      id: create-wallet-generate
+    timeout: 15000
+# Each phrase group's Add account row is labelled with its group.
+- scrollUntilVisible:
+    element: "Add account to Recovery phrase 2"
+    direction: DOWN
+    timeout: 15000
+- tapOn: "Add account to Recovery phrase 2"
+- extendedWaitUntil:
+    visible:
+      id: set-account-name-submit
+    timeout: 15000
+- eraseText
+- inputText: "Second on two"
+- tapOn:
+    id: set-account-name-submit
+# An existing phrase needs no backup step.
+- runFlow:
+    file: ../shared/VerifyPassword.yaml
+    env:
+      DONE_TIMEOUT: 60000
+
+# --- Accounts & recovery groups the accounts by source ---
+# Checked here and not in the manage-accounts sheet, whose rows iOS doesn't
+# expose to Maestro. Each row's Edit button is labelled with its account.
+- runFlow:
+    file: ../shared/OpenAccountsRecovery.yaml
+- assertVisible: "Recovery phrase 1"
+- assertVisible: "Recovery phrase 2"
+- assertNotVisible: "Recovery phrase 3"
+# Account 1 stays in the first group, above the second group's header.
+- assertVisible:
+    text: "Edit Account 1"
+    above: "Recovery phrase 2"
+- scrollUntilVisible:
+    element: "Edit Second on two"
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    text: "Edit Fresh"
+    below: "Recovery phrase 2"
+- assertVisible:
+    text: "Edit Second on two"
+    below: "Recovery phrase 2"

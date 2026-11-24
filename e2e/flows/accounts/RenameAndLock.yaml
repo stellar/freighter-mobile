@@ -1,0 +1,78 @@
+appId: org.stellar.freighterdev
+tags:
+  - accounts
+  - lock-screen
+---
+# An account renamed from Edit account keeps its name across Log Out and
+# unlock. Log Out locks the wallet; it doesn't wipe it.
+- runFlow:
+    file: ../onboarding/ImportWallet.yaml
+
+- runFlow:
+    file: ../shared/OpenAccountsRecovery.yaml
+- tapOn: "Edit Account 1"
+- extendedWaitUntil:
+    visible:
+      id: edit-account-name
+    timeout: 15000
+- tapOn:
+    id: edit-account-name
+# The field opens focused and holds the current name. It is typed into
+# without a tap: iOS doesn't expose a bottom sheet's input or texts to
+# Maestro, only its buttons.
+- extendedWaitUntil:
+    visible:
+      id: rename-account-submit
+    timeout: 15000
+- eraseText
+- inputText: "Renamed e2e"
+- tapOn:
+    id: rename-account-submit
+- extendedWaitUntil:
+    notVisible:
+      id: rename-account-submit
+    timeout: 15000
+
+# Back to Settings: Edit account → Accounts & recovery → Settings. The row's
+# Edit button is labelled with the account's name.
+- tapOn:
+    id: header-button
+- extendedWaitUntil:
+    visible: "Edit Renamed e2e"
+    timeout: 15000
+- tapOn:
+    id: header-button
+- scrollUntilVisible:
+    element:
+      id: logout-button
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: logout-button
+- extendedWaitUntil:
+    visible:
+      id: lock-screen
+    timeout: 30000
+
+- tapOn:
+    id: password-input
+- inputText: "TestPassword123!"
+- tapOn:
+    id: unlock-button
+- extendedWaitUntil:
+    notVisible:
+      id: lock-screen
+    timeout: 60000
+
+# The home header carries the account name as its accessibility label.
+- extendedWaitUntil:
+    visible:
+      id: home-account-switcher
+      text: "Renamed e2e"
+    timeout: 30000
+# Accounts & recovery lists it under the new name too, so a stale header
+# alone can't pass.
+- runFlow:
+    file: ../shared/OpenAccountsRecovery.yaml
+- assertVisible: "Edit Renamed e2e"
+- assertNotVisible: "Edit Account 1"

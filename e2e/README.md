@@ -92,6 +92,12 @@ e2e/
 ├── docs/                 # Detailed guides (see Documentation Index)
 ├── scripts/              # Helper scripts (start/stop mock server)
 └── flows/
+    ├── accounts/         # Multi-source account flows (phrases and imported secret keys)
+    │   ├── AddAccountToPhrase.yaml
+    │   ├── ImportSecondPhrase.yaml
+    │   ├── OnboardSecretKey.yaml
+    │   ├── RenameAndLock.yaml
+    │   └── RevealSecrets.yaml
     ├── debug/            # Debug flows for development
     ├── onboarding/       # Wallet creation and import flows
     │   ├── CreateWallet.yaml
@@ -185,11 +191,16 @@ See [Test Data](docs/local-setup-and-env.md#test-data) in local-setup-and-env.
 
 ## Troubleshooting
 
-| Issue                 | Checklist                                                                                            |
-| --------------------- | ---------------------------------------------------------------------------------------------------- |
-| **Tests don't start** | App built and running in simulator/emulator; `IS_E2E_TEST=true` in `.env`; `maestro --version` works |
-| **Element not found** | Correct screen; `testID`s in components; run `maestro test --debug`                                  |
-| **Timeouts**          | Increase timeouts in flows; ensure simulator/emulator has enough resources; check network            |
+| Issue                     | Checklist                                                                                            |
+| ------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Tests don't start**     | App built and running in simulator/emulator; `IS_E2E_TEST=true` in `.env`; `maestro --version` works |
+| **Element not found**     | Correct screen; `testID`s in components; run `maestro test --debug`                                  |
+| **Timeouts**              | Increase timeouts in flows; ensure simulator/emulator has enough resources; check network            |
+| **Onboard Secret Key**    | `flows/accounts/OnboardSecretKey.yaml`                                                               | Imports a secret key at onboarding → Create new wallet, Security and Edit account offer no recovery phrase                                             |
+| **Reveal Secrets**        | `flows/accounts/RevealSecrets.yaml`                                                                  | Imports wallet → Edit account reveals the recovery phrase → imports a secret key → Edit account reveals it. Each reveal rejects a wrong password first |
+| **Rename and Lock**       | `flows/accounts/RenameAndLock.yaml`                                                                  | Imports wallet → renames Account 1 from Edit account → Log Out → unlock → the new name shows in the header and the manage-accounts sheet               |
+| **Add Account to Phrase** | `flows/accounts/AddAccountToPhrase.yaml`                                                             | Imports wallet → creates a wallet with a new recovery phrase → adds an account under it → both land in "Recovery phrase 2"                             |
+| **Import Second Phrase**  | `flows/accounts/ImportSecondPhrase.yaml`                                                             | Imports wallet → imports a second recovery phrase from Add wallet → both phrase groups show                                                            |
 
 For **debugging failures** using logs, recordings, and screenshots, see
 [artifacts-and-debugging.md](docs/artifacts-and-debugging.md).
