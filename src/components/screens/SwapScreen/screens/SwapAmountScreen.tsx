@@ -4,12 +4,14 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
 import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
+import InformationBottomSheet from "components/InformationBottomSheet";
 import { PercentageButtons } from "components/PercentageButtons";
 import Spinner from "components/Spinner";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
+  SwapDetailsBottomSheet,
   SwapReviewBottomSheet,
   TrendingListItem,
   TrendingTokenDetailBottomSheet,
@@ -22,7 +24,9 @@ import {
   buildSourceBalanceRight,
   computeDestinationFiat,
   recordTokenId,
+  selectSwapRoute,
   shouldShowXlmReservePreflight,
+  SwapSetupAnswerError,
 } from "components/screens/SwapScreen/helpers";
 import {
   SWAP_TOAST_IDS,
@@ -35,9 +39,11 @@ import {
   useSwapForXlmReserve,
   useSwapNavigation,
   useSwapPathFinding,
+  useSwapRouteView,
   useSwapSecurityAssessments,
   useSwapTransactionSettings,
   useSwapTokenPrices,
+  useStableConversionRate,
   useTrendingTokenDetail,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
@@ -50,6 +56,7 @@ import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
 import {
   BASE_RESERVE,
   DEFAULT_DECIMALS,
+  NATIVE_TOKEN_CODE,
   TransactionContext,
 } from "config/constants";
 import { logger } from "config/logger";
@@ -57,13 +64,24 @@ import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { FormattedSearchTokenRecord } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
-import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
+import {
+  descriptorAsPathBalance,
+  swapPairKey,
+  swapQuoteKey,
+  useSwapStore,
+} from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
-import { formatFiatAmount } from "helpers/formatAmount";
+import {
+  formatFiatAmount,
+  formatTokenForDisplay,
+  getTokenDecimals,
+  hasDecimals,
+} from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
+import { computeTotalFeeXlm } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem, useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -114,17 +132,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const headerHeight = useHeaderHeight();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { swapFee, swapSlippage, resetToDefaults } = useSwapSettingsStore();
+  const { swapFee, resetToDefaults } = useSwapSettingsStore();
   const { overriddenBlockaidResponse } = useDebugStore();
   const { isBuilding, resetTransaction } = useTransactionBuilderStore();
   const { transactionXDR, transactionHash } = useTransactionBuilderStore();
 
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const swapDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   // Review-side security sheet — its Proceed Anyway submits a tx. The
   // trending-detail security sheet is owned by useTrendingTokenDetail and
   // kept structurally separate so the two can't share a proceed handler.
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
+  const quoteUnavailableSheetRef = useRef<BottomSheetModal>(null);
   const amountInputRef = useRef<TextInput>(null);
   const { showToast } = useToast();
 
@@ -148,8 +168,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceAmount,
     destinationAmount,
     pathResult,
+    swapQuotes,
     isLoadingPath,
     pathError,
+    pathErrorReason,
+    pathErrorQuoteKey,
+    lastResourceFee,
     setSourceToken,
     setDestinationToken,
     setEntrySource,
@@ -165,14 +189,83 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       destinationTokenDescriptor,
     });
 
+  // For held destinations, useSwapPathFinding / useSwapTransaction
+  // receive the matching held PricedBalance. For non-held destinations
+  // the balance list doesn't include the token; we feed them a shim of
+  // the descriptor (`descriptorAsPathBalance`) that exposes the same
+  // fields findSwapPath / buildSwapTransaction read (token.code/issuer/
+  // type + id + tokenCode + tokenType). The shim returns PricedBalance
+  // structurally — no `any` cast needed.
+  const destinationForPath: HeldBalanceItem | undefined = useMemo(() => {
+    if (destinationBalance) return destinationBalance;
+    if (destinationTokenDescriptor) {
+      return descriptorAsPathBalance(destinationTokenDescriptor);
+    }
+    return undefined;
+  }, [destinationBalance, destinationTokenDescriptor]);
+
+  const currentQuoteKey = useMemo(
+    () =>
+      sourceBalance && destinationForPath && account?.publicKey
+        ? swapQuoteKey({
+            sourceBalance,
+            destinationBalance: destinationForPath,
+            sourceAmount,
+            network,
+            publicKey: account.publicKey,
+          })
+        : null,
+    [
+      sourceBalance,
+      destinationForPath,
+      sourceAmount,
+      network,
+      account?.publicKey,
+    ],
+  );
+
+  // The store keeps the last quote until the debounced re-quote replaces it.
+  const isQuoteCurrent =
+    !!pathResult && pathResult.quoteKey === currentQuoteKey;
+  const resourceFee =
+    isQuoteCurrent && swapQuotes
+      ? selectSwapRoute(swapQuotes)?.resourceFee
+      : undefined;
+  const totalFee = computeTotalFeeXlm(swapFee, resourceFee ?? null, swapFee);
+  // Max changes the amount, so the quote it lands on is a new one: without a
+  // current quote, size spendable with the pair's last resource fee so the
+  // first tap stays within the fee that quote will carry.
+  const pairKey =
+    sourceBalance && destinationForPath && account?.publicKey
+      ? swapPairKey({
+          sourceBalance,
+          destinationBalance: destinationForPath,
+          network,
+          publicKey: account.publicKey,
+        })
+      : null;
+  const lastPairFee =
+    pairKey && lastResourceFee?.pairKey === pairKey
+      ? lastResourceFee.fee
+      : null;
+  const spendableFee = computeTotalFeeXlm(
+    swapFee,
+    (isQuoteCurrent ? resourceFee : lastPairFee) ?? null,
+    swapFee,
+  );
+
   const spendableAmount = useMemo(() => {
     if (!sourceBalance || !account) return null;
 
-    const baseSpendable = calculateSpendableAmount({
+    const rawSpendable = calculateSpendableAmount({
       balance: sourceBalance,
       subentryCount: account.subentryCount || 0,
-      transactionFee: swapFee,
+      transactionFee: spendableFee,
     });
+    // A Soroban balance is in the token's smallest unit.
+    const baseSpendable = hasDecimals(sourceBalance)
+      ? rawSpendable.shiftedBy(-sourceBalance.decimals)
+      : rawSpendable;
 
     // Swapping XLM → a new token locks BASE_RESERVE (0.5 XLM) for the new
     // trustline, so that XLM isn't actually spendable. Reserve it up-front
@@ -191,7 +284,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [
     sourceBalance,
     account,
-    swapFee,
+    spendableFee,
     destinationTokenDescriptor?.requiresTrustline,
   ]);
 
@@ -231,30 +324,22 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     spendableAmount,
     sourceTokenSymbol,
     pathError,
+    pathErrorReason,
     pathResult,
     destinationTokenDescriptor,
   });
 
-  // For held destinations, useSwapPathFinding / useSwapTransaction
-  // receive the matching held PricedBalance. For non-held destinations
-  // the balance list doesn't include the token; we feed them a shim of
-  // the descriptor (`descriptorAsPathBalance`) that exposes the same
-  // fields findSwapPath / buildSwapTransaction read (token.code/issuer/
-  // type + id + tokenCode + tokenType). The shim returns PricedBalance
-  // structurally — no `any` cast needed.
-  const destinationForPath: HeldBalanceItem | undefined = useMemo(() => {
-    if (destinationBalance) return destinationBalance;
-    if (destinationTokenDescriptor) {
-      return descriptorAsPathBalance(destinationTokenDescriptor);
-    }
-    return undefined;
-  }, [destinationBalance, destinationTokenDescriptor]);
+  const swapRouteView = useSwapRouteView(balanceItems, network);
+  const { stableConversionRate } = useStableConversionRate({
+    pathResult: isQuoteCurrent ? pathResult : null,
+    sourceTokenSymbol,
+    destinationTokenSymbol: destinationTokenDescriptor?.tokenCode ?? "",
+  });
 
   useSwapPathFinding({
     sourceBalance,
     destinationTokenForPath: destinationForPath,
     sourceAmount,
-    swapSlippage,
     network,
     publicKey: account?.publicKey,
     amountError,
@@ -268,14 +353,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceToken,
     destinationToken,
     transactionScanResult,
+    scannedTransactionXDR,
   } = useSwapTransaction({
     sourceAmount,
     sourceBalance,
     destinationTokenInput: destinationForPath,
     pathResult,
-
+    currentQuoteKey,
     account,
     network,
+    recommendedFee,
     navigation,
   });
 
@@ -364,6 +451,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceTokenId,
     setSourceToken,
     setDestinationToken,
+    publicKey: account?.publicKey ?? "",
+    network,
   });
 
   // Scroll the amount screen back to the top whenever the selected source or
@@ -374,7 +463,48 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     trendingListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [sourceTokenId, destinationTokenDescriptor?.id, trendingListRef]);
 
-  const { ctaState, ctaLabel, isCtaDisabled } = useSwapCtaState({
+  // The amount error stays on the inclusion fee alone: it pauses
+  // path-finding, and the resource fee comes from the quote, so gating it
+  // on the total would hold a stale fee until the user edits the amount.
+  // As on the extension: only a non-XLM source pays the fee from a separate
+  // XLM balance (an XLM source's spendable already nets it out), and only
+  // what sits above the minimum balance can pay it.
+  const xlmBalance = balanceItems.find((b) => isNativeAssetId(b.id));
+  const lacksXlmForTotalFee =
+    !!resourceFee &&
+    !!sourceBalance &&
+    !isNativeAssetId(sourceBalance.id) &&
+    (!xlmBalance ||
+      calculateSpendableAmount({
+        balance: xlmBalance,
+        subentryCount: account?.subentryCount || 0,
+        transactionFee: "0",
+      }).lt(totalFee));
+  useEffect(() => {
+    if (!lacksXlmForTotalFee || transactionHash) return;
+    setActiveError({
+      message: t("swapScreen.errors.insufficientXlmForFees", {
+        fee: totalFee,
+      }),
+      toastId: SWAP_TOAST_IDS.INSUFFICIENT_XLM_FOR_FEES,
+      duration: 3000,
+    });
+  }, [lacksXlmForTotalFee, transactionHash, totalFee, setActiveError, t]);
+
+  // A failed quote stores its key too, so it settles; amountError stops the
+  // request, so it never settles and must not count as pending.
+  const isQuotePending =
+    !!currentQuoteKey &&
+    new BigNumber(sourceAmount || "0").gt(0) &&
+    !amountError &&
+    !isQuoteCurrent &&
+    pathErrorQuoteKey !== currentQuoteKey;
+
+  const {
+    ctaState,
+    ctaLabel,
+    isCtaDisabled: isCtaStateDisabled,
+  } = useSwapCtaState({
     sourceBalance,
     destinationTokenDescriptor,
     sourceAmount,
@@ -384,7 +514,23 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     pathResult,
     pathError,
     amountError,
+    currentQuoteKey,
+    isQuotePending,
   });
+  const isCtaDisabled = isCtaStateDisabled || lacksXlmForTotalFee;
+
+  const showQuoteUnavailable =
+    !isLoadingPath &&
+    !!currentQuoteKey &&
+    pathErrorQuoteKey === currentQuoteKey &&
+    ctaState.kind !== "insufficient" &&
+    !amountError &&
+    new BigNumber(sourceAmount || "0").gt(0) &&
+    pathErrorReason !== null;
+
+  useEffect(() => {
+    if (!showQuoteUnavailable) quoteUnavailableSheetRef.current?.dismiss();
+  }, [showQuoteUnavailable]);
 
   useEffect(() => {
     if (swapFromTokenId && swapFromTokenSymbol) {
@@ -460,18 +606,29 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     openSourcePicker,
   } = useSwapNavigation({ navigation });
 
+  // Max taps before the pair's first quote can't know its resource fee. When
+  // that quote leaves the Max amount over spendable, Max is applied again, once
+  // per tap, so a fee that moves with the amount can't keep re-sizing it.
+  const maxPendingRef = useRef<string | null>(null);
   const handlePercentagePress = useCallback(
-    (percentage: number) => {
+    (percentage: number, isTap = true) => {
       if (!spendableAmount) return;
+      maxPendingRef.current = null;
+      const decimals = sourceBalance
+        ? getTokenDecimals(sourceBalance)
+        : DEFAULT_DECIMALS;
 
       const targetAmount =
         percentage === 100
           ? spendableAmount
           : spendableAmount.multipliedBy(percentage / 100);
 
-      if (percentage === 100) {
+      if (percentage === 100 && isTap) {
         analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
       }
+      const trackMax = (amount: string) => {
+        if (percentage === 100 && isTap) maxPendingRef.current = amount;
+      };
 
       // In fiat-input mode the primary display IS the fiat field, so we
       // have to update fiatAmountDisplay alongside the token amount —
@@ -497,12 +654,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           const finalFiat = finalToken.multipliedBy(tokenPrice).toFixed(2);
 
           updateFiatDisplay(finalFiat);
-          setTokenAmount(finalToken.toFixed(DEFAULT_DECIMALS));
+          setTokenAmount(finalToken.toFixed(decimals));
+          trackMax(finalToken.toFixed(decimals));
           return;
         }
       }
 
-      setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
+      setTokenAmount(targetAmount.toFixed(decimals));
+      trackMax(targetAmount.toFixed(decimals));
     },
     [
       spendableAmount,
@@ -513,6 +672,23 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ],
   );
 
+  useEffect(() => {
+    const pending = maxPendingRef.current;
+    // Only the quote for the Max amount itself settles it.
+    if (
+      pending === null ||
+      !isQuoteCurrent ||
+      !spendableAmount ||
+      !new BigNumber(pending).eq(sourceAmount || "0")
+    ) {
+      return;
+    }
+    maxPendingRef.current = null;
+    if (spendableAmount.lt(pending)) {
+      handlePercentagePress(100, false);
+    }
+  }, [isQuoteCurrent, spendableAmount, sourceAmount, handlePercentagePress]);
+
   // XlmReserveBottomSheet's "Swap for 0.5 XLM" affordance — see hook.
   const {
     xlmReserveBottomSheetRef,
@@ -522,6 +698,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceBalance,
     bestNonXlmClassicBalance,
     network,
+    publicKey: account?.publicKey,
     subentryCount: account?.subentryCount ?? 0,
     swapFee,
     setSourceToken,
@@ -604,6 +781,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       if (shouldPresent) setIsOpeningReviewSheet(true);
       try {
         const setup = await setupSwapTransaction();
+        if (setup && "superseded" in setup) {
+          if (shouldPresent) setIsOpeningReviewSheet(false);
+          return;
+        }
 
         if (shouldPresent) {
           // Decide the gate from the FRESH tx scan (the lazily-scanned XDR),
@@ -624,11 +805,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         }
       } catch (error) {
         if (shouldPresent) setIsOpeningReviewSheet(false);
-        logger.error(
-          "SwapAmountScreen",
-          "Failed to setup swap transaction:",
-          error,
-        );
+        if (!(error instanceof SwapSetupAnswerError)) {
+          logger.error(
+            "SwapAmountScreen",
+            "Failed to setup swap transaction:",
+            error,
+          );
+        }
 
         const errorMessage =
           error instanceof Error
@@ -683,9 +866,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [executeSwap]);
 
   const handleSettingsChange = useCallback(() => {
+    // Review stays disabled until the matching quote lands, so there is
+    // nothing to rebuild yet.
+    if (pathResult?.quoteKey !== currentQuoteKey) return;
     // Settings have changed, rebuild the swap transaction with new values
     prepareSwapTransaction(false);
-  }, [prepareSwapTransaction]);
+  }, [prepareSwapTransaction, pathResult?.quoteKey, currentQuoteKey]);
 
   const handleMainButtonPress = useCallback(async () => {
     // "enter" branch focuses the input — let the keyboard rise naturally.
@@ -722,7 +908,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       shouldShowXlmReservePreflight({
         balanceItems,
         subentryCount: account?.subentryCount ?? 0,
-        swapFee,
+        // With a Soroban route's resource fee, as the review will charge.
+        swapFee: totalFee,
         sourceTokenId,
         destinationRequiresTrustline:
           !!destinationTokenDescriptor?.requiresTrustline,
@@ -743,7 +930,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     openSourcePicker,
     destinationTokenDescriptor,
     balanceItems,
-    swapFee,
+    totalFee,
     account,
     sourceTokenId,
     xlmReserveBottomSheetRef,
@@ -766,12 +953,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
   };
 
+  // A rebuild stores its XDR before its scan lands; until then the shown
+  // verdict is the previous transaction's, so confirming waits.
+  const confirmableXDR =
+    transactionXDR && scannedTransactionXDR === transactionXDR
+      ? transactionXDR
+      : undefined;
+
   const handleConfirmAnyway = () => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
     if (isUnableToScan) {
       swapReviewBottomSheetModalRef.current?.present();
-    } else {
+    } else if (!isBuilding && confirmableXDR) {
       handleConfirmSwap();
     }
   };
@@ -782,7 +976,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     isBuilding,
     isMalicious,
     isSuspicious,
-    transactionXDR,
+    transactionXDR: confirmableXDR,
     onSettingsPress: openSettings,
   });
 
@@ -839,6 +1033,20 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     spendableAmount,
     availableLabel: t("common.available"),
   });
+  const networkFeeText = formatTokenForDisplay(totalFee, NATIVE_TOKEN_CODE);
+  const xlmPrice = balanceItems.find((b) =>
+    isNativeAssetId(b.id),
+  )?.currentPrice;
+  const networkFeeFiat = xlmPrice?.times(totalFee);
+  // A fee under a cent would read "$0.00", so it shows in XLM instead.
+  const networkFeeFiatText =
+    networkFeeFiat?.isFinite() && networkFeeFiat.gte(0.01)
+      ? formatFiatAmount(networkFeeFiat)
+      : undefined;
+  const openSwapDetails = async () => {
+    await waitForKeyboardDismiss();
+    swapDetailsBottomSheetModalRef.current?.present();
+  };
   const listHeader = (
     <View>
       {/* Sell card */}
@@ -912,7 +1120,50 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           destinationTokenDescriptor ? receiveSmallText : formatFiatAmount("0")
         }
         placeholderActive={!destinationTokenDescriptor}
+        isAmountLoading={isQuotePending}
       />
+
+      {isQuoteCurrent && destinationTokenDescriptor && (
+        <TouchableOpacity
+          className="flex-row items-center justify-center gap-[6px] mt-[16px]"
+          onPress={() => {
+            openSwapDetails();
+          }}
+          hitSlop={8}
+          testID="swap-see-details"
+        >
+          <Text sm secondary>
+            {t("swapScreen.details.networkFeeLine", {
+              fee: networkFeeFiatText ?? networkFeeText,
+            })}
+          </Text>
+          <Text sm secondary>
+            ·
+          </Text>
+          <Text sm secondary>
+            {t("swapScreen.details.seeDetails")}
+          </Text>
+          <Icon.InfoCircle size={14} color={themeColors.text.secondary} />
+        </TouchableOpacity>
+      )}
+
+      {showQuoteUnavailable && (
+        <TouchableOpacity
+          className="flex-row items-center justify-center gap-[6px] mt-[16px]"
+          onPress={() => {
+            waitForKeyboardDismiss(500).then(() =>
+              quoteUnavailableSheetRef.current?.present(),
+            );
+          }}
+          hitSlop={8}
+          testID="swap-quote-unavailable"
+        >
+          <Text sm secondary>
+            {t("swapScreen.quoteUnavailable.title")}
+          </Text>
+          <Icon.InfoCircle size={14} color={themeColors.text.secondary} />
+        </TouchableOpacity>
+      )}
 
       <View className="items-center mt-[24px]">
         <PercentageButtons onPress={handlePercentagePress} />
@@ -1018,6 +1269,20 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         scrollViewFooterComponent={renderFooterComponent}
       />
       <BottomSheet
+        modalRef={swapDetailsBottomSheetModalRef}
+        scrollable
+        customContent={
+          <SwapDetailsBottomSheet
+            networkFee={networkFeeText}
+            networkFeeFiat={networkFeeFiatText}
+            showSorobanFeeNote={!!resourceFee}
+            rate={isQuoteCurrent ? stableConversionRate : ""}
+            routeView={isQuoteCurrent ? swapRouteView : null}
+            onClose={() => swapDetailsBottomSheetModalRef.current?.dismiss()}
+          />
+        }
+      />
+      <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}
         customContent={
           <SecurityDetailBottomSheet
@@ -1078,6 +1343,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             onConfirm={confirmSettings}
             onSettingsChange={handleSettingsChange}
             operationCount={swapOperationCount}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={quoteUnavailableSheetRef}
+        customContent={
+          <InformationBottomSheet
+            title={t("swapScreen.quoteUnavailable.title")}
+            texts={[
+              { key: "body", value: t("swapScreen.quoteUnavailable.body") },
+            ]}
+            onClose={() => quoteUnavailableSheetRef.current?.dismiss()}
+            closeTestID="quote-unavailable-close"
           />
         }
       />

@@ -1,13 +1,11 @@
 import { FormattedSearchTokenRecord, HookStatus } from "config/types";
-import { isContractId } from "helpers/soroban";
 
 /**
  * Derives the empty-state booleans for the swap-to search. Mutually
  * exclusive by construction:
  *
- *   isSearching       — debounced search is mid-fetch (takes precedence)
- *   showSorobanEmpty  — term has results filtered out as Soroban / contract id
- *   showNoResults     — term has no results, NOT a Soroban case
+ *   isSearching    — debounced search is mid-fetch (takes precedence)
+ *   showNoResults  — term has no results
  */
 export const useSwapToEmptyStates = ({
   searchTerm,
@@ -15,17 +13,14 @@ export const useSwapToEmptyStates = ({
   heldSearchMatches,
   verifiedSearchMatches,
   unverifiedSearchMatches,
-  hadSorobanMatches,
 }: {
   searchTerm: string;
   status: HookStatus;
   heldSearchMatches: FormattedSearchTokenRecord[];
   verifiedSearchMatches: FormattedSearchTokenRecord[];
   unverifiedSearchMatches: FormattedSearchTokenRecord[];
-  hadSorobanMatches: boolean;
 }): {
   isSearching: boolean;
-  showSorobanEmpty: boolean;
   showNoResults: boolean;
 } => {
   const totalSearchResults =
@@ -38,17 +33,8 @@ export const useSwapToEmptyStates = ({
     status === HookStatus.LOADING &&
     totalSearchResults === 0;
 
-  const showSorobanEmpty =
-    !isSearching &&
-    searchTerm.length > 0 &&
-    totalSearchResults === 0 &&
-    (hadSorobanMatches || isContractId(searchTerm));
-
   const showNoResults =
-    !isSearching &&
-    searchTerm.length > 0 &&
-    totalSearchResults === 0 &&
-    !showSorobanEmpty;
+    !isSearching && searchTerm.length > 0 && totalSearchResults === 0;
 
-  return { isSearching, showSorobanEmpty, showNoResults };
+  return { isSearching, showNoResults };
 };

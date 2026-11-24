@@ -32,6 +32,12 @@ import {
   GetTokenDetailsParams,
   DiscoverProtocol,
   PriceHistoryRange,
+  SwapBuildResponse,
+  SwapBuildResult,
+  SwapRoutePath,
+  SwapQuoteMode,
+  SwapQuotes,
+  SwapQuotesResponse,
   TokenDetailsResponse,
   TokenIdentifier,
   TokenPriceHistory,
@@ -973,6 +979,91 @@ export const fetchTokenStats = async ({
   return data.data;
 };
 
+export interface FetchSwapQuotesParams {
+  network: NETWORKS;
+  /** The account swapping (the JWT identifies the wallet, not the account) */
+  account: string;
+  mode: SwapQuoteMode;
+  /** `XLM`, `CODE:ISSUER` or a `C…` contract ID */
+  fromAsset: string;
+  /** `XLM`, `CODE:ISSUER` or a `C…` contract ID */
+  toAsset: string;
+  /** Decimal string: sold for `send`, received for `receive` */
+  amount: string;
+}
+
+/** A 200 from a swap route whose body is not the envelope; an outage. */
+export class SwapQuotesResponseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SwapQuotesResponseError";
+  }
+}
+
+/**
+ * Quotes a swap from every backend source, best route first. A 200 with empty
+ * `routes` means no source can quote the pair; HTTP failures reject with the
+ * normalized `ApiError` so callers can branch on `status`.
+ */
+export const fetchSwapQuotes = async ({
+  network,
+  ...body
+}: FetchSwapQuotesParams): Promise<SwapQuotes> => {
+  const { data } = await freighterBackendV2.post<SwapQuotesResponse>(
+    "/swap/quotes",
+    body,
+    { params: { network } },
+  );
+
+  if (!Array.isArray(data?.data?.routes)) {
+    throw new SwapQuotesResponseError("Unexpected swap quotes response shape");
+  }
+
+  return data.data;
+};
+
+export interface BuildSwapTxParams {
+  network: NETWORKS;
+  account: string;
+  /** The route's `source`, e.g. `classic` or `lifi` */
+  source: string;
+  fromAsset: string;
+  toAsset: string;
+  /** Decimal string sold */
+  amount: string;
+  /** Decimal string: the quoted `toAmount` minus slippage */
+  minOut: string;
+  /** Percent, 0-10, plain decimal ("0.5") */
+  slippage: string;
+  /** Whole seconds, 1-86400 */
+  timeout: number;
+  /** Network fee in XLM, plain decimal */
+  fee: string;
+  /** Classic routes only: the quoted route's paths, which the build follows */
+  paths?: SwapRoutePath[];
+}
+
+/**
+ * Builds the unsigned transaction for a quoted route. HTTP failures reject
+ * with the normalized `ApiError`; a 409 means the quote moved.
+ */
+export const buildSwapTx = async ({
+  network,
+  ...body
+}: BuildSwapTxParams): Promise<SwapBuildResult> => {
+  const { data } = await freighterBackendV2.post<SwapBuildResponse>(
+    "/swap/tx",
+    body,
+    { params: { network } },
+  );
+
+  if (typeof data?.data?.xdr !== "string" || !data.data.xdr) {
+    throw new SwapQuotesResponseError("Unexpected swap tx response shape");
+  }
+
+  return data.data;
+};
+
 /**
  * Fetches detailed information about a specific token contract
  * @async
@@ -1004,6 +1095,7 @@ export const getTokenDetails = async ({
   network,
   shouldFetchBalance,
   signal,
+  throwOnFailure,
 }: GetTokenDetailsParams): Promise<TokenDetailsResponse | null> => {
   try {
     // TODO: Add verification for custom network.
@@ -1048,6 +1140,7 @@ export const getTokenDetails = async ({
       );
     }
 
+    if (throwOnFailure && !isRequestCanceled(error)) throw error;
     return null;
   }
 };
@@ -1234,6 +1327,7 @@ export const handleContractLookup = async (
   network: NETWORKS,
   publicKey?: string,
   signal?: AbortSignal,
+  throwOnFailure = false,
 ): Promise<FormattedSearchTokenRecord | null> => {
   const { networkPassphrase } = mapNetworkToNetworkDetails(network);
 
@@ -1257,6 +1351,7 @@ export const handleContractLookup = async (
     publicKey: publicKey ?? "",
     network,
     signal,
+    throwOnFailure,
   });
 
   if (!tokenDetails) {

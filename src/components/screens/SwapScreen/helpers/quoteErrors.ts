@@ -25,3 +25,6 @@ export const isQuoteExpiredResultCodes = (
     | null
     | undefined,
 ): boolean => getQuoteExpiredOperationCodes(resultCodes).length > 0;
+
+/** A swap setup failure that is the backend's answer (400, 409), not a fault. */
+export class SwapSetupAnswerError extends Error {}

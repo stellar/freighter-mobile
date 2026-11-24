@@ -40,6 +40,21 @@ jest.mock("hooks/useGetActiveAccount", () => () => ({
   },
 }));
 
+const mockShowToast = jest.fn();
+jest.mock("providers/ToastProvider", () => ({
+  ...jest.requireActual("providers/ToastProvider"),
+  useToast: () => ({ showToast: mockShowToast }),
+}));
+
+const mockGetTokenDetails = jest.fn();
+jest.mock("services/backend", () => ({
+  getTokenDetails: (...args: unknown[]) => mockGetTokenDetails(...args),
+}));
+
+jest.mock("config/logger", () => ({
+  logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn() },
+}));
+
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: jest.fn(() => ({ network: "testnet" })),
 }));
@@ -102,7 +117,6 @@ const defaultLookupResult = {
   heldSearchMatches: [],
   verifiedSearchMatches: [],
   unverifiedSearchMatches: [],
-  hadSorobanMatches: false,
   stellarExpertDown: false,
   status: HookStatus.SUCCESS,
   isTrendingLoading: false,
@@ -268,22 +282,233 @@ describe("SwapToScreen", () => {
     expect(queryByText("Unverified")).toBeNull();
   });
 
-  it("renders the Soroban empty-state when hadSorobanMatches=true and all search buckets are empty", () => {
+  it("gives the token lookup the active account", () => {
+    renderWithProviders(
+      <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+    );
+
+    expect(useSwapTokenLookupModule.useSwapTokenLookup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publicKey: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+      }),
+    );
+  });
+
+  it("refuses a Soroban token whose decimals can't be read, with an error", async () => {
+    mockGetTokenDetails.mockResolvedValue(null);
     (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
       ...defaultLookupResult,
-      yourTokens: [],
-      popularTokens: [],
-      hadSorobanMatches: true,
-      searchTerm: "soroswap",
+      verifiedSearchMatches: [
+        {
+          tokenCode: "TKN",
+          issuer: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+          domain: "",
+          hasTrustline: false,
+          isNative: false,
+          tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        },
+      ],
+      searchTerm: "tkn",
     });
 
     const { getByText } = renderWithProviders(
-      <SwapToScreen {...mockNavProps} />,
+      <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+    );
+    fireEvent.press(getByText("TKN"));
+    await new Promise((r) => {
+      setImmediate(r);
+    });
+
+    expect(mockGetTokenDetails).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractId: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+        publicKey: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+      }),
+    );
+    expect(mockShowToast).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: "error" }),
+    );
+    expect(analytics.track).not.toHaveBeenCalledWith(
+      AnalyticsEvent.SWAP_DESTINATION_SELECTED,
+      expect.anything(),
+    );
+    expect(mockGoBack).not.toHaveBeenCalled();
+  });
+
+  describe("a Soroban pick waiting on /token-details", () => {
+    const sorobanRecord = {
+      tokenCode: "TKN",
+      issuer: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      domain: "",
+      hasTrustline: false,
+      isNative: false,
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+    };
+    const flush = () =>
+      new Promise((r) => {
+        setImmediate(r);
+      });
+    let resolveDetails: (v: unknown) => void = () => {};
+    let setDestinationTokenSpy: jest.Mock;
+
+    beforeEach(() => {
+      mockGetTokenDetails.mockReturnValue(
+        new Promise((r) => {
+          resolveDetails = r;
+        }),
+      );
+      setDestinationTokenSpy = jest.fn();
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        setSourceToken: jest.fn(),
+        setDestinationToken: setDestinationTokenSpy,
+        sourceTokenId: "XLM",
+        destinationToken: null,
+      });
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [mockHeldBalance],
+        verifiedSearchMatches: [sorobanRecord, mockPopularRecord],
+        searchTerm: "t",
+      });
+    });
+
+    it("ignores a second tap while the first is in flight", async () => {
+      const { getByText } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+      );
+      fireEvent.press(getByText("TKN"));
+      fireEvent.press(getByText("TKN"));
+      resolveDetails({ name: "Token", symbol: "TKN", decimals: 7 });
+      await flush();
+
+      expect(mockGetTokenDetails).toHaveBeenCalledTimes(1);
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
+    });
+
+    it("drops the result when another row was picked meanwhile", async () => {
+      const { getByText } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+      );
+      fireEvent.press(getByText("TKN"));
+      fireEvent.press(getByText("AQUA"));
+      resolveDetails({ name: "Token", symbol: "TKN", decimals: 7 });
+      await flush();
+
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
+      expect(setDestinationTokenSpy).toHaveBeenCalledTimes(1);
+      expect(setDestinationTokenSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ tokenCode: "AQUA" }),
+      );
+    });
+
+    it("drops the result when the picker closed meanwhile", async () => {
+      const { getByText, unmount } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+      );
+      fireEvent.press(getByText("TKN"));
+      unmount();
+      resolveDetails({ name: "Token", symbol: "TKN", decimals: 7 });
+      await flush();
+
+      expect(mockGoBack).not.toHaveBeenCalled();
+      expect(setDestinationTokenSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  it("treats a held Soroban token listed under another code as held, so it can't be swapped into itself", async () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    const heldSoroban = {
+      id: `SYM:${contractId}`,
+      tokenCode: "SYM",
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      contractId,
+      decimals: 7,
+      total: new BigNumber("10000000"),
+      token: {
+        code: "SYM",
+        issuer: { key: contractId },
+        type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      },
+    };
+    (useBalancesList as jest.Mock).mockReturnValue({
+      balanceItems: [heldSoroban],
+    });
+    const setSourceTokenSpy = jest.fn();
+    const setDestinationTokenSpy = jest.fn();
+    (useSwapStore as unknown as jest.Mock).mockReturnValue({
+      setSourceToken: setSourceTokenSpy,
+      setDestinationToken: setDestinationTokenSpy,
+      sourceTokenId: heldSoroban.id,
+      destinationToken: null,
+    });
+    mockGetTokenDetails.mockResolvedValue({
+      name: "Token",
+      symbol: "SYM",
+      decimals: 7,
+    });
+    (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
+      ...defaultLookupResult,
+      verifiedSearchMatches: [
+        {
+          tokenCode: "ABC",
+          issuer: contractId,
+          domain: "",
+          hasTrustline: true,
+          isNative: false,
+          tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        },
+      ],
+      searchTerm: "abc",
+    });
+
+    const { getByTestId } = renderWithProviders(
+      <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+    );
+    fireEvent.press(getByTestId(/token-option-/));
+    await new Promise((r) => {
+      setImmediate(r);
+    });
+
+    expect(setSourceTokenSpy).toHaveBeenCalledWith("", "");
+    expect(setDestinationTokenSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ id: heldSoroban.id }),
+    );
+  });
+
+  it("shows no match, not a Soroban notice, for a contract ID nothing resolves", () => {
+    const contractId =
+      "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL";
+    (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
+      ...defaultLookupResult,
+      searchTerm: contractId,
+    });
+
+    const { getByText, queryByText } = renderWithProviders(
+      <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+    );
+
+    expect(getByText(new RegExp(`No tokens match ${contractId}`))).toBeTruthy();
+    expect(queryByText(/Soroban contract tokens aren't supported/)).toBeNull();
+  });
+
+  it("shows only the unavailable notice, not 'No tokens match', when search is down", () => {
+    (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
+      ...defaultLookupResult,
+      stellarExpertDown: true,
+      searchTerm: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+    });
+
+    const { getByText, queryByText } = renderWithProviders(
+      <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
     );
 
     expect(
-      getByText(/Soroban contract tokens aren't supported for swaps yet/),
+      getByText(/Token discovery is temporarily unavailable/),
     ).toBeTruthy();
+    expect(queryByText(/No tokens match/)).toBeNull();
   });
 
   it("renders the stellar.expert-down notice when stellarExpertDown=true", () => {
@@ -336,12 +561,11 @@ describe("SwapToScreen", () => {
     expect(queryByText("Popular tokens")).toBeNull();
   });
 
-  it("renders the 'No tokens match' message for a search with zero classic results and no Soroban matches", () => {
+  it("renders the 'No tokens match' message for a search with no results", () => {
     (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
       ...defaultLookupResult,
       yourTokens: [],
       popularTokens: [],
-      hadSorobanMatches: false,
       searchTerm: "zloto",
     });
 
@@ -357,7 +581,6 @@ describe("SwapToScreen", () => {
       ...defaultLookupResult,
       yourTokens: [],
       popularTokens: [],
-      hadSorobanMatches: false,
       status: HookStatus.LOADING,
       searchTerm: "usd",
     });
@@ -368,8 +591,6 @@ describe("SwapToScreen", () => {
 
     // Spinner must be visible
     expect(getByTestId("search-loading-spinner")).toBeTruthy();
-    // Neither the Soroban message nor the no-results message should appear
-    expect(queryByText(/Soroban contract tokens aren't supported/)).toBeNull();
     expect(queryByText(/No tokens match/i)).toBeNull();
     // The Results section header must not appear while still loading
     expect(queryByText("Results")).toBeNull();
