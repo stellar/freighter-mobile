@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { userEvent } from "@testing-library/react-native";
+import { act, userEvent } from "@testing-library/react-native";
 import PreferencesScreen from "components/screens/SettingsScreen/PreferencesScreen";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
@@ -189,6 +189,28 @@ describe("PreferencesScreen", () => {
     await userEvent.press(getByTestId("theme-option-dark"));
 
     expect(await findByText("Theme preference updated")).toBeTruthy();
+  });
+
+  it("shows a fresh 2s toast each time another theme is picked", async () => {
+    jest.useFakeTimers();
+    try {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const { getByTestId, queryAllByText } = renderPreferencesScreen();
+
+      await user.press(getByTestId("theme-option-dark"));
+      await act(() => jest.advanceTimersByTimeAsync(1500));
+      const firstToast = queryAllByText("Theme preference updated")[0];
+      await user.press(getByTestId("theme-option-light"));
+      await act(() => jest.advanceTimersByTimeAsync(1500));
+      const toasts = queryAllByText("Theme preference updated");
+      expect(toasts).toHaveLength(1);
+      expect(toasts[0]).not.toBe(firstToast);
+
+      await act(() => jest.advanceTimersByTimeAsync(1000));
+      expect(queryAllByText("Theme preference updated")).toHaveLength(0);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("shows no toast when the choice didn't change", async () => {

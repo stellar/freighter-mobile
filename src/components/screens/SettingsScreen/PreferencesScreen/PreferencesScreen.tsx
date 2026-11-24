@@ -69,12 +69,15 @@ const SettingRow: React.FC<{
 
 const Divider: React.FC = () => <View className="h-[1px] bg-border-primary" />;
 
+const THEME_TOAST_DURATION_MS = 2000;
+
 const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const { themeColors } = useColors();
   const { open: openInAppBrowser } = useInAppBrowser();
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
+  const themeToastIdRef = useRef<string | null>(null);
   const themePreference = useThemePreferenceStore(
     (state) => state.themePreference,
   );
@@ -96,12 +99,19 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
       selectThemePreference(preference)
         .then((isSaved) => {
           if (isSaved) {
+            // A fresh id mounts a new toast instead of updating the one showing.
+            if (themeToastIdRef.current) {
+              dismissToast(themeToastIdRef.current);
+            }
+            const toastId = `theme-preference-updated-${Date.now()}`;
+            themeToastIdRef.current = toastId;
             const title = t("preferences.display.updated");
             showToast({
               variant: "success",
               title,
               content: <SuccessToastBanner title={title} />,
-              toastId: "theme-preference-updated",
+              toastId,
+              duration: THEME_TOAST_DURATION_MS,
             });
           }
         })
@@ -113,7 +123,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
           );
         });
     },
-    [showToast, t],
+    [showToast, dismissToast, t],
   );
 
   const {
