@@ -49,6 +49,7 @@ import {
   shouldOfferUnhide,
 } from "helpers/hiddenTokens";
 import { isMainnet } from "helpers/networks";
+import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
@@ -101,7 +102,13 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   const hiddenTokensBottomSheetModalRef = useRef<BottomSheetModal>(null);
   // Hidden tokens stay in `balanceItems` here: the search still needs to know
   // the account holds them, so a hidden token's row offers Unhide, not Add.
-  const { balanceItems, hiddenBalanceItems, handleRefresh } = useBalancesList({
+  const {
+    balanceItems,
+    hiddenBalanceItems,
+    handleRefresh,
+    isLoading: isBalancesLoading,
+    noBalances,
+  } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
     includeHidden: true,
@@ -144,16 +151,25 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   const popularRows = useMemo(() => {
     const offMainnet = !isMainnet(network);
 
-    return popularTokens.map((token) => ({
-      ...token,
-      hasTrustline: false,
-      ...(offMainnet && {
-        isSuspicious: false,
-        isMalicious: false,
-        isUnableToScan: false,
-        securityLevel: SecurityLevel.SAFE,
-      }),
-    }));
+    // XLM is never added, so it has no Popular row.
+    return popularTokens
+      .filter((token) => !token.isNative)
+      .map((token) => ({
+        ...token,
+        // A code-less Soroban token's code is its shortened contract id, which
+        // would be stored as its symbol; use the full id, as search does.
+        ...(token.tokenType === TokenTypeWithCustomToken.CUSTOM_TOKEN &&
+          token.tokenCode === truncateAddress(token.issuer) && {
+            tokenCode: token.issuer,
+          }),
+        hasTrustline: false,
+        ...(offMainnet && {
+          isSuspicious: false,
+          isMalicious: false,
+          isUnableToScan: false,
+          securityLevel: SecurityLevel.SAFE,
+        }),
+      }));
   }, [network, popularTokens]);
 
   const isTokenMalicious = scannedToken.isMalicious;
@@ -509,11 +525,16 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   // Only before the user starts searching: once there is a query, a hidden
   // token that matches shows Unhide on its own row instead.
   const isSearchEmpty = searchTerm.trim() === "";
+  // Before balances first load, Popular can't leave out what is held.
+  const hasBalancesLoaded = !(isBalancesLoading && noBalances);
   const popularIdle =
-    isSearchEmpty && status === HookStatus.IDLE && !stellarExpertDown;
-  const showPopular = popularIdle && popularTokens.length > 0;
+    isSearchEmpty &&
+    status === HookStatus.IDLE &&
+    !stellarExpertDown &&
+    hasBalancesLoaded;
+  const showPopular = popularIdle && popularRows.length > 0;
   const showPopularSpinner =
-    popularIdle && isTrendingLoading && popularTokens.length === 0;
+    popularIdle && isTrendingLoading && popularRows.length === 0;
 
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>

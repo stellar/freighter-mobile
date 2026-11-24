@@ -64,13 +64,17 @@ jest.mock("hooks/useRightHeader", () => ({
   useRightHeaderButton: jest.fn(),
 }));
 
+const mockManageTokenArgs: { token: { code: string } | null }[] = [];
 jest.mock("hooks/useManageToken", () => ({
-  useManageToken: () => ({
-    addToken: jest.fn(),
-    removeToken: jest.fn(),
-    isAddingToken: false,
-    isRemovingToken: false,
-  }),
+  useManageToken: (args: { token: { code: string } | null }) => {
+    mockManageTokenArgs.push(args);
+    return {
+      addToken: jest.fn(),
+      removeToken: jest.fn(),
+      isAddingToken: false,
+      isRemovingToken: false,
+    };
+  },
 }));
 
 jest.mock("ducks/auth", () => ({
@@ -343,6 +347,76 @@ describe("AddTokenScreen — Popular tokens", () => {
     const { getAllByTestId } = renderScreen();
 
     expect(getAllByTestId("add-token-button")).toHaveLength(1);
+  });
+
+  it("adds a code-less Soroban Popular token under its full contract id", () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    (useSwapTokenLookup as jest.Mock).mockReturnValue({
+      popularTokens: [
+        {
+          // formatSearchRecord shortens a code-less contract id for display.
+          tokenCode: "CCW6...MI75",
+          issuer: contractId,
+          domain: "",
+          isNative: false,
+          hasTrustline: false,
+          tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        },
+      ],
+      isTrendingLoading: false,
+      stellarExpertDown: false,
+    });
+    mockManageTokenArgs.length = 0;
+    const { getByTestId } = renderScreen();
+
+    fireEvent.press(getByTestId("add-token-button"));
+
+    expect(mockManageTokenArgs.at(-1)?.token?.code).toBe(contractId);
+  });
+
+  it("lists no native XLM row in Popular", () => {
+    (useSwapTokenLookup as jest.Mock).mockReturnValue({
+      popularTokens: [
+        { ...makeRecord("XLM"), issuer: "", isNative: true },
+        makeRecord("AQUA"),
+      ],
+      isTrendingLoading: false,
+      stellarExpertDown: false,
+    });
+    const { getAllByTestId } = renderScreen();
+
+    expect(getAllByTestId("add-token-button")).toHaveLength(1);
+  });
+
+  it("shows no Popular header when XLM is its only token", () => {
+    (useSwapTokenLookup as jest.Mock).mockReturnValue({
+      popularTokens: [{ ...makeRecord("XLM"), issuer: "", isNative: true }],
+      isTrendingLoading: false,
+      stellarExpertDown: false,
+    });
+    const { queryByText } = renderScreen();
+
+    expect(queryByText("Popular tokens")).toBeNull();
+  });
+
+  it("shows no Popular until balances have loaded once", () => {
+    const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+    const loaded = useBalancesList.getMockImplementation();
+    useBalancesList.mockImplementation(() => ({
+      balanceItems: [],
+      hiddenBalanceItems: [],
+      handleRefresh: jest.fn(),
+      isLoading: true,
+      noBalances: true,
+    }));
+    try {
+      const { queryByText } = renderScreen();
+
+      expect(queryByText("Popular tokens")).toBeNull();
+    } finally {
+      useBalancesList.mockImplementation(loaded);
+    }
   });
 
   describe("security verdict on Add", () => {

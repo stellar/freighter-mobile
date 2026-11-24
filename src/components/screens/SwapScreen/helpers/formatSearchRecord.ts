@@ -21,9 +21,9 @@ export const formatSearchRecord = (
     const formatted = formatSorobanSearchRecord(record, hasTrustline);
     return {
       ...formatted,
-      // The picker row, the Add token Popular row and asset_code show a no-code
-      // token by its shortened ID, as the extension does; the search path in
-      // `useTokenLookup` keeps the full ID.
+      // The picker row and asset_code show a no-code token by its shortened
+      // ID, as the extension does; Add token (search and Popular) uses the
+      // full ID.
       tokenCode:
         record.code || record.tomlInfo?.code || truncateAddress(record.asset),
       iconUrl: record.tomlInfo?.image,
