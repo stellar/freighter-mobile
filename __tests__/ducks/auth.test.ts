@@ -8,6 +8,7 @@ import {
   NETWORKS,
   STORAGE_KEYS,
   SENSITIVE_STORAGE_KEYS,
+  BIOMETRIC_STORAGE_KEYS,
   LoginType,
 } from "config/constants";
 import { logger } from "config/logger";
@@ -28,6 +29,7 @@ import {
   generatePendingRecoveryPhrase,
   getPendingRecoveryPhrase,
   clearPendingRecoveryPhrase,
+  holdPendingRecoveryPhrase,
 } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -45,6 +47,7 @@ import {
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { AppState } from "react-native";
+import * as Keychain from "react-native-keychain";
 import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
 import { analytics } from "services/analytics";
 import { deriveAuthKeypair } from "services/auth/deriveAuthKeypair";
@@ -123,6 +126,7 @@ jest.mock("services/storage/storageFactory", () => ({
     getItem: jest.fn(),
     setItem: jest.fn(),
     checkIfExists: jest.fn(),
+    remove: jest.fn(),
   },
 }));
 
@@ -147,6 +151,7 @@ jest.mock("stellar-hd-wallet", () => ({
   default: {
     fromMnemonic: jest.fn(),
     generateMnemonic: jest.fn(),
+    validateMnemonic: jest.fn(() => true),
   },
 }));
 
@@ -349,6 +354,8 @@ describe("auth duck", () => {
     logout: useAuthenticationStore.getState().logout,
     signUp: useAuthenticationStore.getState().signUp,
     importWallet: useAuthenticationStore.getState().importWallet,
+    importWalletFromSecretKey:
+      useAuthenticationStore.getState().importWalletFromSecretKey,
     fetchActiveAccount: useAuthenticationStore.getState().fetchActiveAccount,
     getAuthStatus: useAuthenticationStore.getState().getAuthStatus,
     selectAccount: useAuthenticationStore.getState().selectAccount,
@@ -359,6 +366,8 @@ describe("auth duck", () => {
     createAccount: useAuthenticationStore.getState().createAccount,
     addRecoveryPhraseSource:
       useAuthenticationStore.getState().addRecoveryPhraseSource,
+    importRecoveryPhrase:
+      useAuthenticationStore.getState().importRecoveryPhrase,
     initializeNetwork: useAuthenticationStore.getState().initializeNetwork,
     softLock: useAuthenticationStore.getState().softLock,
     navigateToLockScreen:
@@ -373,6 +382,7 @@ describe("auth duck", () => {
     useAuthenticationStore.getState().signUp = jest.fn();
     useAuthenticationStore.getState().signIn = jest.fn();
     useAuthenticationStore.getState().importWallet = jest.fn();
+    useAuthenticationStore.getState().importWalletFromSecretKey = jest.fn();
     useAuthenticationStore.getState().getAuthStatus = jest.fn();
     useAuthenticationStore.getState().fetchActiveAccount = jest.fn();
     useAuthenticationStore.getState().refreshActiveAccount = jest.fn();
@@ -2887,6 +2897,7 @@ describe("auth duck", () => {
         storeKey: jest.Mock;
         loadKey: jest.Mock;
         loadAllKeyIds: jest.Mock;
+        removeKey: jest.Mock;
       };
     }>("helpers/keyManager/keyManager");
 
@@ -3066,6 +3077,69 @@ describe("auth duck", () => {
       expect(linkWalletSources).not.toHaveBeenCalled();
     });
 
+    // The order of the biometric password's save and its removal.
+    const biometricPasswordWriteOrder = () => {
+      const savedAt = (
+        biometricDataStorage.setItem as jest.Mock
+      ).mock.calls.findIndex(
+        ([key]) => key === BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+      );
+      const removedAt = (
+        biometricDataStorage.remove as jest.Mock
+      ).mock.calls.findIndex(
+        ([key]) => key === BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+      );
+      return {
+        saved:
+          savedAt === -1
+            ? undefined
+            : (biometricDataStorage.setItem as jest.Mock).mock
+                .invocationCallOrder[savedAt],
+        removed:
+          removedAt === -1
+            ? undefined
+            : (biometricDataStorage.remove as jest.Mock).mock
+                .invocationCallOrder[removedAt],
+      };
+    };
+
+    // Fails the source registration, which runs after storeAccount saved
+    // the biometric password.
+    const failSourceRegistration = () =>
+      (dataStorage.setItem as jest.Mock).mockImplementation(
+        (key: STORAGE_KEYS, value: string) => {
+          if (key === STORAGE_KEYS.SECRET_SOURCES) {
+            return Promise.reject(new Error("write failed"));
+          }
+          dataStorageMemory[key] = value;
+          return Promise.resolve();
+        },
+      );
+
+    it.each(["signUp", "importWallet"] as const)(
+      "a failed %s removes the biometric password it saved",
+      async (action) => {
+        failSourceRegistration();
+        const { result } = renderHook(() => useAuthenticationStore());
+        act(() => {
+          useAuthenticationStore.setState({
+            [action]: originalStoreMethods[action],
+          });
+        });
+
+        await act(async () => {
+          await result.current[action]({
+            mnemonicPhrase: mockMnemonicPhrase,
+            password: mockPassword,
+          });
+        });
+
+        const { saved, removed } = biometricPasswordWriteOrder();
+        expect(saved).toBeDefined();
+        expect(removed).toBeGreaterThan(saved as number);
+      },
+    );
+
     it("importSecretKey records the key as its own source and stamps no phrase into its keystore", async () => {
       mockAuthenticatedSession(mockTemporaryStore);
       dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID] = mockAccountId;
@@ -3168,6 +3242,90 @@ describe("auth duck", () => {
       ]);
     });
 
+    describe("importSecretKey failure analytics", () => {
+      const importKey = async (secretKey = importedSecretKey) => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        act(() => {
+          useAuthenticationStore.setState({
+            importSecretKey: originalStoreMethods.importSecretKey,
+          });
+        });
+        await act(async () => {
+          await result.current
+            .importSecretKey({ secretKey, password: mockPassword })
+            .catch(() => undefined);
+        });
+      };
+
+      beforeEach(() => {
+        dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID] = mockAccountId;
+        dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST] = JSON.stringify([
+          {
+            id: mockAccountId,
+            name: mockAccountName,
+            publicKey: mockPublicKey,
+          },
+        ]);
+      });
+
+      it("reports an invalid key", async () => {
+        mockAuthenticatedSession(mockTemporaryStore);
+
+        await importKey(`${importedSecretKey.slice(0, -1)}A`);
+
+        expect(
+          analytics.trackAccountScreenImportAccountFail,
+        ).toHaveBeenCalledWith("invalid_secret_key");
+      });
+
+      it("reports a key the wallet already holds", async () => {
+        mockAuthenticatedSession(mockTemporaryStore);
+        dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST] = JSON.stringify([
+          {
+            id: mockAccountId,
+            name: mockAccountName,
+            publicKey: importedPublicKey,
+          },
+        ]);
+
+        await importKey();
+
+        expect(
+          analytics.trackAccountScreenImportAccountFail,
+        ).toHaveBeenCalledWith("account_already_exists");
+      });
+
+      it("reports a missing session", async () => {
+        await importKey();
+
+        expect(
+          analytics.trackAccountScreenImportAccountFail,
+        ).toHaveBeenCalledWith("temporary_store_not_found");
+      });
+
+      // `key_S…` has no word boundary before the key, so scrubStrKeys
+      // would let it through.
+      it("reports a failed store with a fixed code, never the error text", async () => {
+        mockAuthenticatedSession(mockTemporaryStore);
+        sharedKeyManager.storeKey.mockRejectedValue(
+          new Error(`could not store key_${importedSecretKey}`),
+        );
+
+        await importKey();
+
+        expect(
+          analytics.trackAccountScreenImportAccountFail,
+        ).toHaveBeenCalledWith("store_failed");
+        expect(
+          JSON.stringify([
+            (analytics.track as jest.Mock).mock.calls,
+            (analytics.trackAccountScreenImportAccountFail as jest.Mock).mock
+              .calls,
+          ]),
+        ).not.toContain(importedSecretKey);
+      });
+    });
+
     it("importSecretKey leaves the active account alone when the account list write fails", async () => {
       mockAuthenticatedSession(mockTemporaryStore);
       dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID] = mockAccountId;
@@ -3207,6 +3365,409 @@ describe("auth duck", () => {
       expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
         mockAccountId,
       );
+    });
+
+    describe("importWalletFromSecretKey", () => {
+      const previousSources = () => {
+        dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID] = mockAccountId;
+        dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST] = JSON.stringify([
+          {
+            id: mockAccountId,
+            name: mockAccountName,
+            publicKey: mockPublicKey,
+          },
+        ]);
+        dataStorageMemory[STORAGE_KEYS.SECRET_SOURCES] = JSON.stringify({
+          [mockPhraseSourceId]: {
+            id: mockPhraseSourceId,
+            type: SecretSourceType.PHRASE,
+            label: "Seed Phrase 1",
+            createdAt: 1,
+          },
+        });
+        dataStorageMemory[STORAGE_KEYS.PINNED_SOURCE_ID] = mockPhraseSourceId;
+      };
+
+      const runImport = async (secretKey = importedSecretKey) => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        act(() => {
+          useAuthenticationStore.setState({
+            importWalletFromSecretKey:
+              originalStoreMethods.importWalletFromSecretKey,
+          });
+        });
+        let succeeded = false;
+        await act(async () => {
+          succeeded = await result.current.importWalletFromSecretKey({
+            secretKey,
+            password: mockPassword,
+          });
+        });
+        return { result, succeeded };
+      };
+
+      beforeEach(() => {
+        wipeNonSensitiveData();
+        sharedKeyManager.storeKey.mockResolvedValue({
+          id: "imported-account-id",
+        });
+      });
+
+      it("replaces the wallet with one imported account and no phrase", async () => {
+        previousSources();
+
+        const { result, succeeded } = await runImport();
+
+        expect(succeeded).toBe(true);
+        expect(result.current.authStatus).toBe(AUTH_STATUS.AUTHENTICATED);
+        expect(result.current.error).toBeNull();
+        expect(sharedKeyManager.removeKey).toHaveBeenCalledWith(mockAccountId);
+        expect(sharedKeyManager.storeKey).toHaveBeenCalledWith(
+          expect.objectContaining({
+            key: expect.objectContaining({
+              publicKey: importedPublicKey,
+              privateKey: importedSecretKey,
+              extra: { imported: true },
+            }),
+          }),
+        );
+        expect(
+          JSON.parse(dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST]),
+        ).toEqual([
+          expect.objectContaining({
+            id: "imported-account-id",
+            sourceId: `key:${importedSecretKey}`,
+            publicKey: importedPublicKey,
+            importedFromSecretKey: true,
+          }),
+        ]);
+        expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
+          "imported-account-id",
+        );
+        expect(storedSources()).toEqual([
+          expect.objectContaining({
+            id: `key:${importedSecretKey}`,
+            type: SecretSourceType.SECRET_KEY,
+            label: "Secret Key 1",
+          }),
+        ]);
+        expect(dataStorageMemory[STORAGE_KEYS.PINNED_SOURCE_ID]).toBe(
+          `key:${importedSecretKey}`,
+        );
+        const [written] = writtenTemporaryStores();
+        expect(written.mnemonics).toEqual({});
+        expect(written.privateKeys["imported-account-id"]).toBe(
+          importedSecretKey,
+        );
+        expect(linkWalletSources).toHaveBeenCalledTimes(1);
+        expect(analytics.track).toHaveBeenCalledWith(
+          AnalyticsEvent.RECOVER_ACCOUNT_SUCCESS,
+          { recovery_method: "secret_key" },
+        );
+        expect(biometricDataStorage.setItem).toHaveBeenCalledWith(
+          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+          mockPassword,
+        );
+        expect(biometricDataStorage.remove).not.toHaveBeenCalled();
+      });
+
+      it("leaves the wallet untouched when the key is invalid", async () => {
+        previousSources();
+        const before = { ...dataStorageMemory };
+
+        const { result, succeeded } = await runImport(
+          `${importedSecretKey.slice(0, -1)}A`,
+        );
+
+        expect(succeeded).toBe(false);
+        expect(result.current.error).toBe("authStore.error.invalidSecretKey");
+        expect(clearNonSensitiveData).not.toHaveBeenCalled();
+        expect(sharedKeyManager.removeKey).not.toHaveBeenCalled();
+        expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+        expect(dataStorageMemory).toEqual(before);
+        expect(analytics.track).toHaveBeenCalledWith(
+          AnalyticsEvent.RECOVER_ACCOUNT_FAIL,
+          { recovery_method: "secret_key", reason_code: "invalid_secret_key" },
+        );
+        // Auto-lock is reset only for a valid key: the timer and the lock
+        // marker are as they were.
+        expect(usePreferencesStore.setState).not.toHaveBeenCalledWith({
+          autoLockTimer: DEFAULT_AUTO_LOCK_TIMER,
+        });
+        expect(secureDataStorage.remove).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+        );
+      });
+
+      // The new wallet's hash key must not inherit the previous timer.
+      it("resets auto-lock for a valid key before the hash key is written", async () => {
+        const { succeeded } = await runImport();
+
+        expect(succeeded).toBe(true);
+        expect(usePreferencesStore.setState).toHaveBeenCalledWith({
+          autoLockTimer: DEFAULT_AUTO_LOCK_TIMER,
+        });
+        const removeCalls = (secureDataStorage.remove as jest.Mock).mock;
+        const resetAt =
+          removeCalls.invocationCallOrder[
+            removeCalls.calls.findIndex(
+              ([key]) => key === SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+            )
+          ];
+        const setCalls = (secureDataStorage.setItem as jest.Mock).mock;
+        const hashKeyAt =
+          setCalls.invocationCallOrder[
+            setCalls.calls.findIndex(
+              ([key]) => key === SENSITIVE_STORAGE_KEYS.HASH_KEY,
+            )
+          ];
+        expect(resetAt).toBeDefined();
+        expect(hashKeyAt).toBeDefined();
+        expect(resetAt).toBeLessThan(hashKeyAt);
+      });
+
+      it.each([
+        [
+          "the key store",
+          () => sharedKeyManager.storeKey.mockRejectedValue(new Error("boom")),
+        ],
+        [
+          "the source registration",
+          () =>
+            (dataStorage.setItem as jest.Mock).mockImplementation(
+              (key: STORAGE_KEYS, value: string) => {
+                if (key === STORAGE_KEYS.SECRET_SOURCES) {
+                  return Promise.reject(new Error("write failed"));
+                }
+                dataStorageMemory[key] = value;
+                return Promise.resolve();
+              },
+            ),
+        ],
+      ])(
+        "leaves a fresh install when %s fails after the wipe",
+        async (_label, fail) => {
+          previousSources();
+          fail();
+
+          const { result, succeeded } = await runImport();
+
+          expect(succeeded).toBe(false);
+          expect(result.current.error).toBe(
+            "authStore.error.failedToImportWallet",
+          );
+          // Wiped before storing, and again to drop the partial writes.
+          expect(clearNonSensitiveData).toHaveBeenCalledTimes(2);
+          // Each wipe also sweeps keystore entries the index doesn't list.
+          expect(Keychain.getAllGenericPasswordServices).toHaveBeenCalledTimes(
+            2,
+          );
+          expect(dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST]).toBeUndefined();
+          expect(
+            dataStorageMemory[STORAGE_KEYS.SECRET_SOURCES],
+          ).toBeUndefined();
+          expect(analytics.track).toHaveBeenCalledWith(
+            AnalyticsEvent.RECOVER_ACCOUNT_FAIL,
+            { recovery_method: "secret_key", reason_code: "store_failed" },
+          );
+          expect(linkWalletSources).not.toHaveBeenCalled();
+          expect(biometricDataStorage.remove).toHaveBeenCalledWith(
+            BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+          );
+        },
+      );
+
+      // One of storeAccount's writes fails while the biometric save is still
+      // running. The removal must wait for it, or the save would land after
+      // the rollback and leave the password behind.
+      it("removes the biometric password only after its save has finished", async () => {
+        let finishSave: () => void = () => {};
+        (biometricDataStorage.setItem as jest.Mock).mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              finishSave = resolve;
+            }),
+        );
+        (dataStorage.setItem as jest.Mock).mockImplementation(
+          (key: STORAGE_KEYS, value: string) => {
+            if (key === STORAGE_KEYS.ACTIVE_ACCOUNT_ID) {
+              return Promise.reject(new Error("write failed"));
+            }
+            dataStorageMemory[key] = value;
+            return Promise.resolve();
+          },
+        );
+        const { result } = renderHook(() => useAuthenticationStore());
+        act(() => {
+          useAuthenticationStore.setState({
+            importWalletFromSecretKey:
+              originalStoreMethods.importWalletFromSecretKey,
+          });
+        });
+
+        let succeeded: boolean | undefined;
+        let pending: Promise<void> = Promise.resolve();
+        act(() => {
+          pending = result.current
+            .importWalletFromSecretKey({
+              secretKey: importedSecretKey,
+              password: mockPassword,
+            })
+            .then((value) => {
+              succeeded = value;
+            });
+        });
+        await act(async () => {
+          await new Promise((resolve) => {
+            setTimeout(resolve, 0);
+          });
+        });
+
+        expect(biometricDataStorage.setItem).toHaveBeenCalledWith(
+          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+          mockPassword,
+        );
+        expect(biometricDataStorage.remove).not.toHaveBeenCalled();
+
+        await act(async () => {
+          finishSave();
+          await pending;
+        });
+
+        expect(succeeded).toBe(false);
+        expect(biometricDataStorage.remove).toHaveBeenCalledWith(
+          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+        );
+      });
+
+      /** Starts the import without waiting for it. */
+      const startImport = () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        act(() => {
+          useAuthenticationStore.setState({
+            importWalletFromSecretKey:
+              originalStoreMethods.importWalletFromSecretKey,
+          });
+        });
+        let succeeded: boolean | undefined;
+        let pending: Promise<void> = Promise.resolve();
+        act(() => {
+          pending = result.current
+            .importWalletFromSecretKey({
+              secretKey: importedSecretKey,
+              password: mockPassword,
+            })
+            .then((value) => {
+              succeeded = value;
+            });
+        });
+        return { pending, succeeded: () => succeeded };
+      };
+
+      /** Lets every promise that can run, run. */
+      const flush = () =>
+        act(async () => {
+          await new Promise((resolve) => {
+            setTimeout(resolve, 0);
+          });
+        });
+
+      // The active-account write fails while the temporary store is still
+      // being written. Rolling back then would let that write bring the
+      // session back after the wipe.
+      it("waits for the temporary-store write before rolling back", async () => {
+        let finishTemporaryStore: () => void = () => {};
+        const setSecureItem = secureDataStorage.setItem as jest.Mock;
+        const originalSetSecureItem = setSecureItem.getMockImplementation();
+        setSecureItem.mockImplementation((key: SENSITIVE_STORAGE_KEYS) =>
+          key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE
+            ? new Promise<void>((resolve) => {
+                finishTemporaryStore = resolve;
+              })
+            : Promise.resolve(),
+        );
+        (dataStorage.setItem as jest.Mock).mockImplementation(
+          (key: STORAGE_KEYS, value: string) => {
+            if (key === STORAGE_KEYS.ACTIVE_ACCOUNT_ID) {
+              return Promise.reject(new Error("write failed"));
+            }
+            dataStorageMemory[key] = value;
+            return Promise.resolve();
+          },
+        );
+
+        try {
+          const run = startImport();
+          await flush();
+
+          expect(setSecureItem).toHaveBeenCalledWith(
+            SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
+            expect.anything(),
+          );
+          // Only the wipe before storing has run.
+          expect(clearTemporaryData).toHaveBeenCalledTimes(1);
+
+          await act(async () => {
+            finishTemporaryStore();
+            await run.pending;
+          });
+
+          expect(run.succeeded()).toBe(false);
+          expect(clearTemporaryData).toHaveBeenCalledTimes(2);
+        } finally {
+          setSecureItem.mockImplementation(originalSetSecureItem);
+        }
+      });
+
+      // The account-list read fails while the key is still being stored.
+      // Rolling back then would let the keystore write land after the wipe.
+      it("waits for the keystore write before rolling back", async () => {
+        let finishStoreKey: () => void = () => {};
+        sharedKeyManager.storeKey.mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishStoreKey = () => resolve({ id: "imported-account-id" });
+            }),
+        );
+        (dataStorage.getItem as jest.Mock).mockImplementation(
+          (key: STORAGE_KEYS) =>
+            key === STORAGE_KEYS.ACCOUNT_LIST
+              ? Promise.reject(new Error("read failed"))
+              : Promise.resolve(dataStorageMemory[key] ?? null),
+        );
+
+        const run = startImport();
+        await flush();
+
+        expect(sharedKeyManager.storeKey).toHaveBeenCalledTimes(1);
+        // Only the wipe before storing has listed the keys.
+        expect(sharedKeyManager.loadAllKeyIds).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+          finishStoreKey();
+          await run.pending;
+        });
+
+        expect(run.succeeded()).toBe(false);
+        expect(sharedKeyManager.loadAllKeyIds).toHaveBeenCalledTimes(2);
+      });
+
+      // `key_S…` has no word boundary before the key, so scrubStrKeys
+      // would let it through.
+      it("never logs or tracks the key", async () => {
+        sharedKeyManager.storeKey.mockRejectedValue(
+          new Error(`could not store key_${importedSecretKey}`),
+        );
+
+        await runImport();
+
+        const calls = JSON.stringify([
+          (logger.error as jest.Mock).mock.calls,
+          (logger.warn as jest.Mock).mock.calls,
+          (analytics.track as jest.Mock).mock.calls,
+        ]);
+        expect(calls).not.toContain(importedSecretKey);
+      });
     });
 
     describe("signIn", () => {
@@ -5003,6 +5564,208 @@ describe("auth duck", () => {
         expect(storedIndices()).toEqual({ [mockPhraseSourceId]: [0, 1, 2] });
       });
 
+      describe("overlapping account changes", () => {
+        const flush = () =>
+          new Promise((resolve) => {
+            setTimeout(resolve, 0);
+          });
+
+        it("gives two overlapping adds on one phrase different indices", async () => {
+          const { result } = mockAddAccountSession({
+            accounts: [phraseAccount(0)],
+            indices: { [mockPhraseSourceId]: [0] },
+          });
+          let stored = 0;
+          sharedKeyManager.storeKey.mockImplementation(() => {
+            stored += 1;
+            return Promise.resolve({ id: `new-account-${stored}` });
+          });
+
+          await act(async () => {
+            await Promise.all([
+              result.current.createAccount(mockPassword),
+              result.current.createAccount(mockPassword),
+            ]);
+          });
+
+          expect(result.current.error).toBeNull();
+          expect(storedPublicKeys()).toEqual([
+            publicKeyAt(mockMnemonicPhrase, 1),
+            publicKeyAt(mockMnemonicPhrase, 2),
+          ]);
+          expect(storedIndices()).toEqual({
+            [mockPhraseSourceId]: [0, 1, 2],
+          });
+          expect(storedAccounts().map(({ id }) => id)).toEqual([
+            "account-0",
+            "new-account-1",
+            "new-account-2",
+          ]);
+        });
+
+        it("lets an add in flight finish before a wipe clears the wallet", async () => {
+          const { result } = mockAddAccountSession({
+            accounts: [phraseAccount(0)],
+            indices: { [mockPhraseSourceId]: [0] },
+          });
+          wipeNonSensitiveData();
+          let releaseKeystore: (() => void) | undefined;
+          sharedKeyManager.storeKey.mockImplementation(
+            () =>
+              new Promise((resolve) => {
+                releaseKeystore = () => resolve({ id: "new-account" });
+              }),
+          );
+          act(() => {
+            useAuthenticationStore.setState({
+              logout: originalStoreMethods.logout,
+            });
+          });
+
+          await act(async () => {
+            const adding = result.current
+              .createAccount(mockPassword)
+              .catch(() => undefined);
+            await flush();
+            expect(releaseKeystore).toBeDefined();
+
+            result.current.logout(true);
+            await flush();
+            await flush();
+
+            releaseKeystore?.();
+            await adding;
+            await flush();
+            await flush();
+          });
+
+          expect(clearNonSensitiveData).toHaveBeenCalled();
+          expect(dataStorageMemory).not.toHaveProperty(
+            STORAGE_KEYS.ACCOUNT_LIST,
+          );
+          expect(dataStorageMemory).not.toHaveProperty(
+            STORAGE_KEYS.DERIVATION_INDICES,
+          );
+        });
+
+        it("drops a switch's account once a soft-lock lands during it", async () => {
+          const { result } = mockAddAccountSession({
+            accounts: [phraseAccount(0), phraseAccount(1)],
+            indices: { [mockPhraseSourceId]: [0, 1] },
+          });
+          (
+            useAuthenticationStore.getState().getAuthStatus as jest.Mock
+          ).mockResolvedValue(AUTH_STATUS.AUTHENTICATED);
+          act(() => {
+            useAuthenticationStore.setState({
+              selectAccount: originalStoreMethods.selectAccount,
+              softLock: originalStoreMethods.softLock,
+            });
+          });
+
+          await act(async () => {
+            const switching = result.current.selectAccount(
+              publicKeyAt(mockMnemonicPhrase, 1),
+            );
+            await result.current.softLock();
+            await switching;
+          });
+
+          expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
+            "account-1",
+          );
+          expect(result.current.isSoftLocked).toBe(true);
+          expect(result.current.account).toBeNull();
+          expect(result.current.isSwitchingAccount).toBe(false);
+        });
+
+        it("caches a lazily loaded key onto the session as it stands, not as first read", async () => {
+          mockAddAccountSession({ accounts: [phraseAccount(0)] });
+          const mnemonics = { [mockPhraseSourceId]: mockMnemonicPhrase };
+          // The first read is getActiveAccount's; by the second, an add has
+          // put its key into the session.
+          (decryptDataWithDerivedKey as jest.Mock)
+            .mockReturnValueOnce(JSON.stringify({ privateKeys: {}, mnemonics }))
+            .mockReturnValue(
+              JSON.stringify({
+                privateKeys: { "added-account": "S:added" },
+                mnemonics,
+              }),
+            );
+          (
+            useAuthenticationStore.getState().getAuthStatus as jest.Mock
+          ).mockResolvedValue(AUTH_STATUS.AUTHENTICATED);
+          act(() => {
+            useAuthenticationStore.setState({
+              fetchActiveAccount: originalStoreMethods.fetchActiveAccount,
+            });
+          });
+
+          await act(async () => {
+            await useAuthenticationStore.getState().fetchActiveAccount();
+          });
+
+          const written = writtenTemporaryStores();
+          expect(written[written.length - 1].privateKeys).toEqual({
+            "added-account": "S:added",
+            "account-0": `S:${mockMnemonicPhrase}:0`,
+          });
+        });
+
+        it("cuts off a funded lookup that stalls, so the import finishes", async () => {
+          jest.useFakeTimers();
+          try {
+            mockIndexedWallet();
+            mockAuthenticatedSession(
+              JSON.stringify({ privateKeys: {}, mnemonics: {} }),
+            );
+            delete dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST];
+            let stored = 0;
+            sharedKeyManager.storeKey.mockImplementation(() => {
+              stored += 1;
+              return Promise.resolve({ id: `recovered-${stored}` });
+            });
+            // Index 1 is funded but its lookup never answers; the rest are
+            // unfunded.
+            (getAccount as jest.Mock).mockImplementation((publicKey: string) =>
+              publicKey === publicKeyAt(mockMnemonicPhrase, 1)
+                ? new Promise(() => {})
+                : Promise.resolve(null),
+            );
+            const { result } = renderHook(() => useAuthenticationStore());
+            act(() => {
+              useAuthenticationStore.setState({
+                importWallet: originalStoreMethods.importWallet,
+              });
+            });
+
+            let imported: boolean | undefined;
+            await act(async () => {
+              const importing = result.current
+                .importWallet({
+                  mnemonicPhrase: mockMnemonicPhrase,
+                  password: mockPassword,
+                })
+                .then((value) => {
+                  imported = value;
+                });
+              // Short of the cutoff, the import still waits on the lookup.
+              await jest.advanceTimersByTimeAsync(4_999);
+              expect(imported).toBeUndefined();
+              await jest.advanceTimersByTimeAsync(1);
+              await importing;
+            });
+
+            expect(imported).toBe(true);
+            expect(storedAccounts().map(({ publicKey }) => publicKey)).toEqual([
+              publicKeyAt(mockMnemonicPhrase, 0),
+            ]);
+          } finally {
+            jest.useRealTimers();
+          }
+        });
+      });
+
       describe("account names", () => {
         it("names the new account as the caller asks, trimmed", async () => {
           const { result } = mockAddAccountSession({
@@ -5315,6 +6078,317 @@ describe("auth duck", () => {
 
           expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
           expect(getPendingRecoveryPhrase(id)).toBe(newPhrase);
+        });
+      });
+
+      describe("importRecoveryPhrase", () => {
+        const importedPhrase =
+          "alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima";
+        const importedSourceId = `phrase:${importedPhrase}`;
+
+        // Index 3 of the imported phrase is funded on mainnet; the rest are
+        // not.
+        const mockFunded = (funded: number[]) => {
+          (getAccount as jest.Mock).mockImplementation((publicKey: string) =>
+            Promise.resolve(
+              funded.some(
+                (index) => publicKey === publicKeyAt(importedPhrase, index),
+              )
+                ? { accountId: () => publicKey }
+                : null,
+            ),
+          );
+        };
+
+        const mockImportSession = (
+          accounts: Account[] = [phraseAccount(0)],
+        ) => {
+          const hook = mockAddAccountSession({
+            accounts,
+            indices: { [mockPhraseSourceId]: [0] },
+          });
+          dataStorageMemory[STORAGE_KEYS.SECRET_SOURCES] = JSON.stringify({
+            [mockPhraseSourceId]: {
+              id: mockPhraseSourceId,
+              type: SecretSourceType.PHRASE,
+              label: "Seed Phrase 1",
+              createdAt: 1,
+            },
+          });
+          dataStorageMemory[STORAGE_KEYS.PINNED_SOURCE_ID] = mockPhraseSourceId;
+          let stored = 0;
+          sharedKeyManager.storeKey.mockImplementation(() => {
+            stored += 1;
+            return Promise.resolve({ id: `imported-${stored}` });
+          });
+          mockFunded([3]);
+          act(() => {
+            useAuthenticationStore.setState({
+              importRecoveryPhrase: originalStoreMethods.importRecoveryPhrase,
+            });
+          });
+          return hook;
+        };
+
+        afterEach(() => {
+          clearPendingRecoveryPhrase();
+        });
+
+        it("adds the phrase as a new source with index 0 and its funded indices, landing on index 0", async () => {
+          const { result } = mockImportSession();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          await act(async () => {
+            await result.current.importRecoveryPhrase(mockPassword, id);
+          });
+
+          expect(result.current.error).toBeNull();
+          // Indices 1 to 49 are looked up on mainnet.
+          expect(getAccount).toHaveBeenCalledTimes(49);
+          expect(getAccount).toHaveBeenCalledWith(
+            publicKeyAt(importedPhrase, 49),
+            NETWORKS.PUBLIC,
+          );
+          expect(storedAccounts()).toEqual([
+            phraseAccount(0),
+            expect.objectContaining({
+              id: "imported-1",
+              sourceId: importedSourceId,
+              publicKey: publicKeyAt(importedPhrase, 0),
+            }),
+            expect.objectContaining({
+              id: "imported-2",
+              sourceId: importedSourceId,
+              publicKey: publicKeyAt(importedPhrase, 3),
+            }),
+          ]);
+          expect(storedIndices()).toEqual({
+            [mockPhraseSourceId]: [0],
+            [importedSourceId]: [0, 3],
+          });
+          expect(storedSources()).toEqual([
+            expect.objectContaining({ id: mockPhraseSourceId }),
+            expect.objectContaining({
+              id: importedSourceId,
+              type: SecretSourceType.PHRASE,
+              label: "Seed Phrase 2",
+            }),
+          ]);
+          // The wallet's pin and phrase stay; the imported one joins them.
+          expect(dataStorageMemory[STORAGE_KEYS.PINNED_SOURCE_ID]).toBe(
+            mockPhraseSourceId,
+          );
+          const written = writtenTemporaryStores();
+          expect(written[written.length - 1].mnemonics).toEqual({
+            [mockPhraseSourceId]: mockMnemonicPhrase,
+            [importedSourceId]: importedPhrase,
+          });
+          expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
+            "imported-1",
+          );
+          expect(getPendingRecoveryPhrase(id)).toBeNull();
+          expect(linkWalletSources).toHaveBeenCalledTimes(1);
+        });
+
+        it("refuses a phrase the wallet already holds before looking anything up", async () => {
+          const { result } = mockImportSession();
+          dataStorageMemory[STORAGE_KEYS.SECRET_SOURCES] = JSON.stringify({
+            [importedSourceId]: {
+              id: importedSourceId,
+              type: SecretSourceType.PHRASE,
+              label: "Seed Phrase 1",
+              createdAt: 1,
+            },
+          });
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow("authStore.error.recoveryPhraseAlreadyHeld");
+          });
+
+          expect(result.current.error).toBe(
+            "authStore.error.recoveryPhraseAlreadyHeld",
+          );
+          expect(getAccount).not.toHaveBeenCalled();
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+        });
+
+        it("refuses, and adds nothing, when one of the phrase's addresses is already in the wallet", async () => {
+          const { result } = mockImportSession([
+            phraseAccount(0),
+            {
+              id: "imported-key",
+              sourceId: "key:imported",
+              name: "Account 2",
+              publicKey: publicKeyAt(importedPhrase, 3),
+              importedFromSecretKey: true,
+            },
+          ]);
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow("authStore.error.accountAlreadyExists");
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(storedSources()).toHaveLength(1);
+          expect(storedAccounts()).toHaveLength(2);
+        });
+
+        it("stores nothing and keeps the phrase on a wrong password", async () => {
+          const { result } = mockImportSession();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+          sharedKeyManager.loadKey.mockRejectedValue(new Error("bad password"));
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase("wrong", id),
+            ).rejects.toThrow();
+          });
+
+          expect(getAccount).not.toHaveBeenCalled();
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(getPendingRecoveryPhrase(id)).toBe(importedPhrase);
+        });
+
+        it("refuses a phrase that fails validation", async () => {
+          const { result } = mockImportSession();
+          (StellarHDWallet.validateMnemonic as jest.Mock).mockReturnValueOnce(
+            false,
+          );
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow("authStore.error.invalidMnemonicPhrase");
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+        });
+
+        it("removes the source and its indices again when no account was stored", async () => {
+          const { result } = mockImportSession();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+          sharedKeyManager.storeKey.mockRejectedValue(new Error("disk full"));
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow();
+          });
+
+          expect(result.current.error).toBe(
+            "authStore.error.failedToImportRecoveryPhrase",
+          );
+          expect(storedSources()).toEqual([
+            expect.objectContaining({ id: mockPhraseSourceId }),
+          ]);
+          expect(storedIndices()?.[importedSourceId] ?? []).toEqual([]);
+          expect(storedAccounts()).toEqual([phraseAccount(0)]);
+          expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
+            "account-0",
+          );
+          // The user can retry without typing the phrase again.
+          expect(getPendingRecoveryPhrase(id)).toBe(importedPhrase);
+        });
+
+        it("keeps the source, and puts the previous account back, when a later account fails to store", async () => {
+          const { result } = mockImportSession();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+          sharedKeyManager.storeKey
+            .mockResolvedValueOnce({ id: "imported-1" })
+            .mockRejectedValueOnce(new Error("disk full"));
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow();
+          });
+
+          // A retry is refused as held rather than storing index 0 twice.
+          expect(storedSources()).toEqual([
+            expect.objectContaining({ id: mockPhraseSourceId }),
+            expect.objectContaining({ id: importedSourceId }),
+          ]);
+          expect(
+            storedAccounts().map(({ id: accountId }) => accountId),
+          ).toEqual(["account-0", "imported-1"]);
+          expect(dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID]).toBe(
+            "account-0",
+          );
+        });
+
+        it("stores one set of accounts when the same import runs twice at once", async () => {
+          const { result } = mockImportSession();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+
+          let outcomes: PromiseSettledResult<void>[] = [];
+          await act(async () => {
+            outcomes = await Promise.allSettled([
+              result.current.importRecoveryPhrase(mockPassword, id),
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ]);
+          });
+
+          expect(outcomes.map(({ status }) => status).sort()).toEqual([
+            "fulfilled",
+            "rejected",
+          ]);
+          expect(storedPublicKeys()).toEqual([
+            publicKeyAt(importedPhrase, 0),
+            publicKeyAt(importedPhrase, 3),
+          ]);
+          expect(storedSources()).toHaveLength(2);
+        });
+
+        it("lets only the latest of two overlapping holds store the phrase", async () => {
+          const { result } = mockImportSession();
+
+          let outcomes: PromiseSettledResult<void>[] = [];
+          await act(async () => {
+            const first = result.current.importRecoveryPhrase(
+              mockPassword,
+              holdPendingRecoveryPhrase(importedPhrase),
+            );
+            // A second surface, or a retry, holds the same phrase again
+            // while the first import's lookups run.
+            const second = result.current.importRecoveryPhrase(
+              mockPassword,
+              holdPendingRecoveryPhrase(importedPhrase),
+            );
+            outcomes = await Promise.allSettled([first, second]);
+          });
+
+          expect(
+            outcomes.filter(({ status }) => status === "fulfilled"),
+          ).toHaveLength(1);
+          expect(storedPublicKeys()).toEqual([
+            publicKeyAt(importedPhrase, 0),
+            publicKeyAt(importedPhrase, 3),
+          ]);
+        });
+
+        it("stores nothing when a lock drops the phrase while the lookups run", async () => {
+          const { result } = mockImportSession();
+          const id = holdPendingRecoveryPhrase(importedPhrase);
+          (getAccount as jest.Mock).mockImplementation(() => {
+            clearPendingRecoveryPhrase();
+            return Promise.resolve(null);
+          });
+
+          await act(async () => {
+            await expect(
+              result.current.importRecoveryPhrase(mockPassword, id),
+            ).rejects.toThrow("authStore.error.pendingRecoveryPhraseMissing");
+          });
+
+          expect(sharedKeyManager.storeKey).not.toHaveBeenCalled();
+          expect(storedSources()).toHaveLength(1);
         });
       });
     });

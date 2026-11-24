@@ -52,6 +52,33 @@ const keychainErrorDetails = (error: unknown): Record<string, unknown> => {
 };
 
 /**
+ * Removes every keystore entry in the default service, indexed or not, and
+ * the index itself. A wipe that only walks the index misses an entry whose
+ * index write failed or an index that lost ids, so the wipe runs this after
+ * it. Like `secureStorage.clear`, it logs a failure instead of throwing, so
+ * the wipe goes on.
+ */
+export const removeAllKeystoreEntries = async (): Promise<void> => {
+  try {
+    const prefix = `${DEFAULT_SERVICE}_`;
+    const services = await Keychain.getAllGenericPasswordServices();
+    await Promise.all(
+      services
+        .filter((service) => service.startsWith(prefix))
+        .map((service) => Keychain.resetGenericPassword({ service })),
+    );
+  } catch (error) {
+    // Part of the wipe: a keystore left on the device is security relevant.
+    logger.error(
+      "ReactNativeKeychainFacade.removeAllKeystoreEntries",
+      "Error removing keystore entries",
+      error,
+      keychainErrorDetails(error),
+    );
+  }
+};
+
+/**
  * Facade for secure storage using react-native-keychain
  * This provides a simple interface for storing encrypted keys
  */

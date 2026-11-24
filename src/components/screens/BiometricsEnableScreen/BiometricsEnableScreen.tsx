@@ -29,7 +29,11 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
-import { walletSetupFlowFor } from "hooks/useFinishWalletSetup";
+import {
+  hasWalletSetupSecret,
+  runWalletSetup,
+  walletSetupFlowFor,
+} from "hooks/useFinishWalletSetup";
 import { useSetupFailedToast } from "hooks/useSetupFailedToast";
 import useTheme from "hooks/useTheme";
 import React, { useCallback, useMemo, useState } from "react";
@@ -179,11 +183,14 @@ export const BiometricsOnboardingScreen: React.FC<
     isLoading,
     signUp,
     importWallet,
+    importWalletFromSecretKey,
+    storeBiometricPassword,
     enableBiometrics: enableBiometricsAction,
   } = useAuthenticationStore();
   const { setIsBiometricsEnabled, biometryType } = useBiometrics();
   const { themeColors } = useColors();
-  const { mnemonicPhrase, password, clearLoginData } = useLoginDataStore();
+  const { mnemonicPhrase, secretKey, password, clearLoginData } =
+    useLoginDataStore();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -213,16 +220,24 @@ export const BiometricsOnboardingScreen: React.FC<
       return;
     }
 
-    if (!mnemonicPhrase || !password) {
+    if (
+      !hasWalletSetupSecret(source, { mnemonicPhrase, secretKey }) ||
+      !password
+    ) {
       logger.error(
         "BiometricsOnboardingScreen",
         "Missing mnemonic phrase",
-        "mnemonicPhrase or password is missing",
+        "mnemonicPhrase, secretKey or password is missing",
       );
       return;
     }
 
     try {
+      // The biometric check reads the password from biometric storage. A
+      // failed setup removes it there, so each attempt saves it again from
+      // login data, which a failure keeps; otherwise a retry would find none.
+      await storeBiometricPassword(password);
+
       // The callback runs once the biometric check has passed, so the wallet
       // setup screen comes up then, not when Enable is tapped.
       await enableBiometricsAction((biometricPassword) =>
@@ -232,19 +247,15 @@ export const BiometricsOnboardingScreen: React.FC<
             "true",
           );
 
-          // Use importWallet for import flow, signUp for onboarding flow.
-          // These return false (rather than throwing) on failure — bail out so
-          // we don't clear login data / enable biometrics on a failed setup.
-          const success =
-            source === BiometricsSource.IMPORT_WALLET
-              ? await importWallet({
-                  mnemonicPhrase,
-                  password: biometricPassword ?? password,
-                })
-              : await signUp({
-                  mnemonicPhrase,
-                  password: biometricPassword ?? password,
-                });
+          // Import (phrase or secret key) or sign up. These return false
+          // (rather than throwing) on failure — bail out so we don't clear
+          // login data / enable biometrics on a failed setup.
+          const success = await runWalletSetup(
+            source,
+            { mnemonicPhrase, secretKey },
+            biometricPassword ?? password,
+            { signUp, importWallet, importWalletFromSecretKey },
+          );
 
           if (!success) {
             throw new Error("Wallet setup failed during biometric enable");
@@ -272,9 +283,12 @@ export const BiometricsOnboardingScreen: React.FC<
     setIsBiometricsEnabled,
     signUp,
     importWallet,
+    importWalletFromSecretKey,
+    storeBiometricPassword,
     enableBiometricsAction,
     navigation,
     mnemonicPhrase,
+    secretKey,
     password,
     clearLoginData,
     notifySetupFailed,
@@ -293,25 +307,30 @@ export const BiometricsOnboardingScreen: React.FC<
       return;
     }
 
-    if (!mnemonicPhrase || !password) {
+    if (
+      !hasWalletSetupSecret(source, { mnemonicPhrase, secretKey }) ||
+      !password
+    ) {
       logger.error(
         "BiometricsOnboardingScreen",
         "Missing mnemonic phrase or password",
-        "mnemonicPhrase or password is missing",
+        "mnemonicPhrase, secretKey or password is missing",
       );
       return;
     }
 
     try {
-      // Use importWallet for import flow, signUp for onboarding flow.
-      // Both return false (rather than throwing) on failure. The wallet setup
-      // screen covers the wait.
+      // Import (phrase or secret key) or sign up. Both return false
+      // (rather than throwing) on failure. The wallet setup screen covers the
+      // wait.
       const success = await runWithWalletSetupOverlay(
         walletSetupFlowFor(source),
         () =>
-          source === BiometricsSource.IMPORT_WALLET
-            ? importWallet({ mnemonicPhrase, password })
-            : signUp({ mnemonicPhrase, password }),
+          runWalletSetup(source, { mnemonicPhrase, secretKey }, password, {
+            signUp,
+            importWallet,
+            importWalletFromSecretKey,
+          }),
       );
 
       if (success) {
@@ -334,8 +353,10 @@ export const BiometricsOnboardingScreen: React.FC<
     route.params,
     signUp,
     importWallet,
+    importWalletFromSecretKey,
     navigation,
     mnemonicPhrase,
+    secretKey,
     password,
     clearLoginData,
     notifySetupFailed,

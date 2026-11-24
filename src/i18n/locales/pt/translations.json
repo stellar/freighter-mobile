@@ -178,6 +178,7 @@
     "passwordTooLong": "Deve ter menos de 2048 caracteres",
     "passwordsDontMatch": "As senhas não coincidem",
     "importAcknowledgement": "Entendo que a frase de recuperação importada não pode ser recuperada e deve ser guardada com segurança.",
+    "importSecretKeyAcknowledgement": "Entendo que a chave secreta importada não pode ser recuperada e deve ser guardada com segurança.",
     "importWalletButtonText": "Importar carteira"
   },
   "recoveryPhraseScreen": {
@@ -230,8 +231,15 @@
   },
   "importWalletScreen": {
     "title": "Importar Carteira",
-    "description": "Importe sua carteira com a frase de recuperação de 12 ou 24 palavras",
-    "textAreaPlaceholder": "Digite sua frase de recuperação"
+    "description": "Importe sua carteira usando uma frase de recuperação ou chave secreta",
+    "textAreaPlaceholder": "Digite sua frase de recuperação ou chave secreta",
+    "invalidInput": "Digite uma frase de recuperação ou chave secreta válida"
+  },
+  "importRecoveryPhraseScreen": {
+    "title": "Importar frase de recuperação",
+    "description": "Adicione uma carteira com a frase de recuperação de 12 ou 24 palavras",
+    "textAreaPlaceholder": "Digite sua frase de recuperação",
+    "importButton": "Importar"
   },
   "rebrandAnnouncementScreen": {
     "title": "O Freighter agora é Varial",
@@ -448,6 +456,7 @@
       "failedToLoadAccount": "Falha ao carregar conta",
       "invalidPassword": "Senha inválida. Por favor, tente novamente.",
       "invalidMnemonicPhrase": "Frase inválida - as palavras devem estar na ordem correta, em minúsculas e separadas por espaços",
+      "invalidSecretKey": "Chave secreta inválida",
       "failedToCreateAccount": "Falha ao criar conta. Por favor, tente novamente.",
       "accountAlreadyExists": "Conta já existe",
       "failedToImportSecretKey": "Falha ao importar chave secreta",
@@ -479,7 +488,8 @@
       "disableBiometricsFailedMessage": "Não conseguimos verificar sua identidade. Por favor, tente novamente.",
       "pendingRecoveryPhraseMissing": "A nova frase de recuperação não está mais disponível. Comece novamente.",
       "recoveryPhraseAlreadyHeld": "Esta frase de recuperação já está na sua carteira",
-      "failedToAddRecoveryPhrase": "Falha ao adicionar a frase de recuperação. Por favor, tente novamente."
+      "failedToAddRecoveryPhrase": "Falha ao adicionar a frase de recuperação. Por favor, tente novamente.",
+      "failedToImportRecoveryPhrase": "Falha ao importar a frase de recuperação. Por favor, tente novamente."
     },
     "account": "Conta {{number}}",
     "faceId": {
@@ -873,6 +883,8 @@
     "actions": {
       "createNewWallet": "Criar nova carteira",
       "createNewWalletDescription": "Usando uma frase de recuperação existente ou nova",
+      "importRecoveryPhrase": "Importar frase de recuperação",
+      "importRecoveryPhraseDescription": "Importe carteiras usando uma frase de recuperação.",
       "importSecretKey": "Importar chave secreta",
       "importSecretKeyDescription": "Importe uma carteira usando a chave secreta dela."
     }
@@ -899,7 +911,8 @@
     "verifyPasswordTemplateTitle": "Digite sua senha",
     "verifyPasswordTemplateDescription": "Digite sua senha para verificar sua conta.",
     "actions": {
-      "createNewWallet": "Criar nova carteira"
+      "createNewWallet": "Criar nova carteira",
+      "importRecoveryPhrase": "Importar"
     }
   },
   "logout": "Sair",

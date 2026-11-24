@@ -91,9 +91,18 @@ export const useWalletSetupOverlayStore = create<WalletSetupOverlayState>()(
 );
 
 /**
- * Runs the last onboarding step's setup (`signUp` or `importWallet`) behind
- * the wallet setup screen: shows it, then turns it to "ready" if setup
- * resolves true, or fades it away otherwise.
+ * Shortest time "Creating your wallet..." or "Importing your wallet..."
+ * stays up. A secret-key import has no account discovery and finishes almost
+ * at once, which would otherwise show the title as a flash.
+ */
+export const SETTING_UP_MIN_MS = 500;
+
+/**
+ * Runs the last onboarding step's setup (`signUp`, `importWallet` or
+ * `importWalletFromSecretKey`) behind the wallet setup screen: shows it,
+ * then turns it to "ready" if setup resolves true, or fades it away
+ * otherwise. Either way the setting-up title stays up for at least
+ * SETTING_UP_MIN_MS.
  *
  * It owns the outcome in a `finally`, so whatever the setup does, including
  * throwing, the screen never stays up. It also works after the screen that
@@ -106,12 +115,17 @@ export const runWithWalletSetupOverlay = async (
   setup: () => Promise<boolean>,
 ): Promise<boolean> => {
   useWalletSetupOverlayStore.getState().begin(flow);
+  // Started alongside setup, so it only adds time when setup finishes early.
+  const minimumWait = new Promise<void>((resolve) => {
+    setTimeout(resolve, SETTING_UP_MIN_MS);
+  });
 
   let succeeded = false;
   try {
     succeeded = await setup();
     return succeeded;
   } finally {
+    await minimumWait;
     const { succeed, fail } = useWalletSetupOverlayStore.getState();
     if (succeeded) {
       succeed();

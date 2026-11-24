@@ -15,11 +15,13 @@ jest.mock("@react-navigation/native", () => ({
 
 const mockSignUp = jest.fn();
 const mockImportWallet = jest.fn();
+const mockImportWalletFromSecretKey = jest.fn();
 const mockStoreBiometricPassword = jest.fn();
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: () => ({
     signUp: mockSignUp,
     importWallet: mockImportWallet,
+    importWalletFromSecretKey: mockImportWalletFromSecretKey,
     storeBiometricPassword: mockStoreBiometricPassword,
   }),
 }));
@@ -37,6 +39,7 @@ jest.mock("hooks/useSetupFailedToast", () => ({
 const PHRASE =
   "abandon ability able about above absent absorb abstract absurd abuse access accident";
 const PASSWORD = "password1";
+const SECRET_KEY = "SBUV3MRWKNS6AYKZ6E6MOUVF2OYMON3MIUASWL3JLY5E3ISDJFELYBRZ";
 
 const finish = async (source: WalletSetupSource) => {
   const { result } = renderHook(() => useFinishWalletSetup());
@@ -58,7 +61,11 @@ describe("useFinishWalletSetup", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockBiometryType = null;
-    useLoginDataStore.setState({ mnemonicPhrase: PHRASE, password: PASSWORD });
+    useLoginDataStore.setState({
+      mnemonicPhrase: PHRASE,
+      secretKey: null,
+      password: PASSWORD,
+    });
     useWalletSetupOverlayStore.setState(
       useWalletSetupOverlayStore.getInitialState(),
       true,
@@ -92,6 +99,40 @@ describe("useFinishWalletSetup", () => {
         password: PASSWORD,
       });
       expect(mockSignUp).not.toHaveBeenCalled();
+    });
+
+    it("imports from the secret key when Import Wallet kept one", async () => {
+      useLoginDataStore.setState({
+        mnemonicPhrase: null,
+        secretKey: SECRET_KEY,
+      });
+      mockImportWalletFromSecretKey.mockResolvedValue(true);
+
+      await finish(BiometricsSource.IMPORT_WALLET);
+
+      expect(mockImportWalletFromSecretKey).toHaveBeenCalledWith({
+        secretKey: SECRET_KEY,
+        password: PASSWORD,
+      });
+      expect(mockImportWallet).not.toHaveBeenCalled();
+      expect(mockSignUp).not.toHaveBeenCalled();
+      expect(useLoginDataStore.getState()).toMatchObject({
+        secretKey: null,
+        password: null,
+      });
+    });
+
+    it("never signs up from a secret key", async () => {
+      useLoginDataStore.setState({
+        mnemonicPhrase: null,
+        secretKey: SECRET_KEY,
+      });
+
+      await finish(BiometricsSource.ONBOARDING);
+
+      expect(mockSignUp).not.toHaveBeenCalled();
+      expect(mockImportWalletFromSecretKey).not.toHaveBeenCalled();
+      expect(mockNotifySetupFailed).toHaveBeenCalledTimes(1);
     });
 
     it("keeps the phrase and password after a failure, so the user can retry", async () => {
