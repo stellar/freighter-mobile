@@ -1,0 +1,82 @@
+appId: org.stellar.freighterdev
+tags:
+  - accounts
+  - add-wallet
+env:
+  # Test-only phrase: generated for this suite, never funded.
+  TEST_SECOND_PHRASE:
+    comfort elder because guide pole sound pipe stand jaguar shift crater guide
+---
+# Import a second recovery phrase into an existing wallet. Both phrase groups
+# show, and the first phrase's accounts are still there.
+- runFlow:
+    file: ../onboarding/ImportWallet.yaml
+
+# One retryable unit up to the password step. A phrase typed with a dropped
+# letter fails the app's check and stays on the form, so each attempt backs
+# out to the chooser and opens a fresh form.
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: import-recovery-phrase-input
+          commands:
+            - runFlow:
+                when:
+                  platform: android
+                commands:
+                  - hideKeyboard
+            - tapOn:
+                id: header-button
+            - extendedWaitUntil:
+                visible:
+                  id: add-wallet-import-phrase
+                timeout: 15000
+      - runFlow:
+          when:
+            notVisible:
+              id: add-wallet-import-phrase
+          commands:
+            - runFlow:
+                file: ../shared/OpenAddWallet.yaml
+      - tapOn:
+          id: add-wallet-import-phrase
+      - runFlow:
+          file: ../shared/EnterSecret.yaml
+          env:
+            FIELD_ID: import-recovery-phrase-input
+            SECRET: ${TEST_SECOND_PHRASE}
+      - runFlow:
+          when:
+            platform: android
+          commands:
+            - hideKeyboard
+      - tapOn:
+          id: default-action-button
+      # Only a valid phrase reaches the password step.
+      - extendedWaitUntil:
+          visible:
+            id: verify-password-continue
+          timeout: 15000
+
+# The import looks the phrase's accounts up on the network before it returns.
+- runFlow:
+    file: ../shared/VerifyPassword.yaml
+    env:
+      DONE_TIMEOUT: 120000
+
+# Checked in Accounts & recovery and not in the manage-accounts sheet, whose
+# rows iOS doesn't expose to Maestro.
+- runFlow:
+    file: ../shared/OpenAccountsRecovery.yaml
+- assertVisible: "Recovery phrase 1"
+- scrollUntilVisible:
+    element: "Recovery phrase 2"
+    direction: DOWN
+    timeout: 15000
+- assertNotVisible: "Secret key 1"
+- assertVisible:
+    text: "Edit Account 1"
+    above: "Recovery phrase 2"

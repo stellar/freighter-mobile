@@ -1,0 +1,22 @@
+appId: org.stellar.freighterdev
+---
+# Shared flow: go from the home screen to Settings → Accounts & recovery.
+# Returns with `accounts-recovery-screen` visible. Each row's Edit button is
+# `accounts-recovery-edit`, labelled "Edit <account name>".
+- runFlow:
+    file: OpenManageAccountsSheet.yaml
+- scrollUntilVisible:
+    element:
+      id: settings-accounts-recovery
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: settings-accounts-recovery
+- extendedWaitUntil:
+    visible:
+      id: accounts-recovery-screen
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: accounts-recovery-edit
+    timeout: 15000

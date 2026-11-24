@@ -1,0 +1,24 @@
+appId: org.stellar.freighterdev
+---
+# Shared flow: go from the home screen to the Add wallet chooser through the
+# manage-accounts sheet. Returns with the three `add-wallet-*` options visible.
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              id: manage-accounts-add-wallet-button
+          commands:
+            - tapOn:
+                id: home-account-switcher
+      - extendedWaitUntil:
+          visible:
+            id: manage-accounts-add-wallet-button
+          timeout: 15000
+      - tapOn:
+          id: manage-accounts-add-wallet-button
+      - extendedWaitUntil:
+          visible:
+            id: add-wallet-create
+          timeout: 15000

@@ -238,6 +238,11 @@ jobs:
       # - SwapClassicToken: Swap tokens on testnet (small amount: 0.000001 XLM)
       # - ForgotPasswordWarning: Lock screen forgot password confirmation modal
       # - SendFederatedAddress: Send XLM and USDC to a federated address on testnet (small amount: 0.000001 each)
+      # - OnboardSecretKey: Secret-key onboarding offers no recovery phrase anywhere
+      # - RevealSecrets: Reveal a recovery phrase and an imported secret key from Edit account
+      # - RenameAndLock: A renamed account keeps its name across Log Out and unlock
+      # - AddAccountToPhrase: Generate a second recovery phrase and add an account under it
+      # - ImportSecondPhrase: Import a second recovery phrase into an existing wallet
       # - SignMessageMockDapp: WalletConnect sign message (requires mock server)
       # - SignAuthEntryMockDapp: WalletConnect sign auth entry (requires mock server)
       # Note: mock-dapp tests use shard-index:0, to run sequentially in isolation,
@@ -283,6 +288,26 @@ jobs:
           - shard-index: 9
             shard-total: 10
             flow-name: SendClassicTokenFromDetails
+            requires-mock-server: false
+          - shard-index: 10
+            shard-total: 10
+            flow-name: OnboardSecretKey
+            requires-mock-server: false
+          - shard-index: 11
+            shard-total: 10
+            flow-name: RevealSecrets
+            requires-mock-server: false
+          - shard-index: 12
+            shard-total: 10
+            flow-name: RenameAndLock
+            requires-mock-server: false
+          - shard-index: 13
+            shard-total: 10
+            flow-name: AddAccountToPhrase
+            requires-mock-server: false
+          - shard-index: 14
+            shard-total: 10
+            flow-name: ImportSecondPhrase
             requires-mock-server: false
           - shard-index: 0
             shard-total: 10

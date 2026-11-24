@@ -539,7 +539,8 @@ set_ios_clipboard_for_flow() {
       echo "$E2E_TEST_FUNDED_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
       echo "✅ Funded recovery phrase set in simulator clipboard (for $FLOW_NAME)"
     fi
-  elif [ "$FLOW_NAME" = "ImportWallet" ] || echo "$FLOW_NAME" | grep -qi "import"; then
+  # Same for ImportWallet: flows that run it as a subflow paste the phrase too.
+  elif [ "$FLOW_NAME" = "ImportWallet" ] || echo "$FLOW_NAME" | grep -qi "import" || grep -q "onboarding/ImportWallet.yaml" "$file" 2>/dev/null; then
     if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
       echo "$E2E_TEST_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
       echo "✅ Recovery phrase set in simulator clipboard (for $FLOW_NAME)"
