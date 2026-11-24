@@ -327,7 +327,10 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     if (isContractId(tokenId)) {
       return `${base}/contract/${tokenId}`;
     }
-    const [code, issuer = ""] = tokenId.split(":");
+    // A symbol can contain a colon, so the issuer is after the last one.
+    const separator = tokenId.lastIndexOf(":");
+    const code = tokenId.slice(0, separator);
+    const issuer = tokenId.slice(separator + 1);
     return isContractId(issuer)
       ? `${base}/contract/${issuer}`
       : `${base}/asset/${code}-${issuer}`;
@@ -373,19 +376,26 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             },
           ]
         : []),
-      {
-        title: t("swapScreen.viewOnStellarExpert"),
-        systemIcon: headerMenuIcons!.viewOnExplorer,
-        onPress: () => {
-          openInAppBrowser(stellarExpertUrl).catch((err) => {
-            logger.error(
-              "TokenDetailsScreen",
-              "Failed to open stellar expert URL:",
-              err,
-            );
-          });
-        },
-      },
+      // stellar.expert has no page for a pool share. getTokenType also
+      // reports a bare contract id as one, which does have a page.
+      ...(tokenType === TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES &&
+      !isContractId(tokenId)
+        ? []
+        : [
+            {
+              title: t("swapScreen.viewOnStellarExpert"),
+              systemIcon: headerMenuIcons!.viewOnExplorer,
+              onPress: () => {
+                openInAppBrowser(stellarExpertUrl).catch((err) => {
+                  logger.error(
+                    "TokenDetailsScreen",
+                    "Failed to open stellar expert URL:",
+                    err,
+                  );
+                });
+              },
+            },
+          ]),
     ],
     [
       t,
@@ -398,6 +408,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       canOfferRemove,
       openInAppBrowser,
       stellarExpertUrl,
+      tokenType,
     ],
   );
 

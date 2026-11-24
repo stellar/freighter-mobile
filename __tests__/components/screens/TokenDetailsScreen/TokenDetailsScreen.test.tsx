@@ -707,6 +707,61 @@ describe("TokenDetailsScreen", () => {
       );
     });
 
+    it("links a custom token whose symbol contains a colon to its contract page", () => {
+      const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
+      const contractId =
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      mockOpenInAppBrowser.mockClear();
+
+      renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={
+            {
+              ...mockRoute,
+              params: {
+                tokenId: `A:B:${contractId}`,
+                tokenSymbol: "A:B",
+              },
+            } as unknown as TokenDetailsScreenProps["route"]
+          }
+        />,
+      );
+      const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+      actions
+        .find((a: { title: string }) => a.title === "View on stellar.expert")
+        .onPress();
+
+      expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
+        expect.stringMatching(new RegExp(`/contract/${contractId}$`)),
+      );
+    });
+
+    it("offers no stellar.expert link for a liquidity pool share", () => {
+      const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
+
+      renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={
+            {
+              ...mockRoute,
+              params: {
+                tokenId:
+                  "4ac86c65b9f7b175ae0493da0d36cc5bc88b72677ca69fce8fe374233983d8e7:lp",
+                tokenSymbol: "LP",
+              },
+            } as unknown as TokenDetailsScreenProps["route"]
+          }
+        />,
+      );
+
+      const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+      expect(actions.map((a: { title: string }) => a.title)).not.toContain(
+        "View on stellar.expert",
+      );
+    });
+
     it("offers Copy address and stellar.expert, but no Hide or Remove, for a token the account does not hold", () => {
       const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
 
