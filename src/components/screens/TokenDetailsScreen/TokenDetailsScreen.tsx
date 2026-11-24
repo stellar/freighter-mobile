@@ -587,9 +587,9 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
   let securityBannerText: string | undefined;
   if (isMalicious) {
-    securityBannerText = t("transactionAmountScreen.errors.malicious");
+    securityBannerText = t("blockaid.security.token.malicious");
   } else if (isSuspicious) {
-    securityBannerText = t("transactionAmountScreen.errors.suspicious");
+    securityBannerText = t("blockaid.security.token.suspicious");
   } else if (isUnableToScan) {
     securityBannerText = t("securityWarning.proceedWithCaution");
   }

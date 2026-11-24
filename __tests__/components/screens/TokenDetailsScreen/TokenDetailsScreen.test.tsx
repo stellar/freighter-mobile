@@ -829,7 +829,7 @@ describe("TokenDetailsScreen", () => {
       );
 
       expect(
-        screen.getByText("transactionAmountScreen.errors.malicious"),
+        screen.getByText("blockaid.security.token.malicious"),
       ).toBeTruthy();
     });
 
@@ -1296,7 +1296,7 @@ describe("TokenDetailsScreen", () => {
       );
 
       expect(
-        screen.getByText("transactionAmountScreen.errors.suspicious"),
+        screen.getByText("blockaid.security.token.suspicious"),
       ).toBeTruthy();
       expect(securitySheetProps(screen).severity).toBe(
         SecurityLevel.SUSPICIOUS,
@@ -1360,7 +1360,7 @@ describe("TokenDetailsScreen", () => {
         screen.getByText("securityWarning.proceedWithCaution"),
       ).toBeTruthy();
       expect(
-        screen.queryByText("transactionAmountScreen.errors.suspicious"),
+        screen.queryByText("blockaid.security.token.suspicious"),
       ).toBeNull();
       expect(securitySheetProps(screen).severity).toBe(
         SecurityLevel.UNABLE_TO_SCAN,
