@@ -22,6 +22,8 @@ export interface ToastOptions {
   icon?: React.ReactNode;
   /** Toast message */
   message?: string;
+  /** Replaces the standard notification body, e.g. SuccessToastBanner */
+  content?: React.ReactNode;
   /** Duration in milliseconds before auto-dismissing (default: 3000) */
   duration?: number;
   /** Optional ID for the toast. If a toast with the same ID already exists, it will be replaced */

@@ -273,6 +273,10 @@ export enum AnalyticsEvent {
   ETHENA_LAUNCH_LEARN_MORE_TAPPED = "ethena_launch.learn_more_tapped",
   ETHENA_LAUNCH_BANNER_DISMISSED = "ethena_launch.banner_dismissed",
 
+  // Theme picker in Preferences; same name as the extension
+  // carries preferred_theme, previous_preferred_theme (system | light | dark)
+  THEME_CHANGED = "theme.changed",
+
   // Platform-only events (retained; renamed to the shared grammar)
   QR_SCAN_SUCCESS = "qr_scan.completed",
   // carries reason_code

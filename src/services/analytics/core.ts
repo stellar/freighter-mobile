@@ -5,10 +5,12 @@ import { AnalyticsEvent, isScreenViewEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { syncSentryEnablement } from "config/sentryConfig";
 import { DEFAULT_COLOR_SCHEME } from "config/theme";
+import { ThemePreference } from "config/themePreference";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useNetworkStore } from "ducks/networkInfo";
+import { useThemePreferenceStore } from "ducks/themePreference";
 import { isE2ETest } from "helpers/isEnv";
 import { throttle, memoize } from "lodash";
 import { Appearance, Platform } from "react-native";
@@ -107,6 +109,56 @@ export const syncIdentifyTraits = (
   }
 };
 
+// Keyed by user ID too: a new identity (e.g. the seed-derived ID adopted on
+// unlock) is a new Amplitude profile and needs its own copy.
+let lastIdentifiedTheme: {
+  userId: string | null;
+  preference: ThemePreference;
+} | null = null;
+
+/**
+ * Sends the Preferences theme choice as the `preferred_theme` user property.
+ * Unlike `color_scheme` (event-level, flips with the device), this only changes
+ * when the user changes the setting. Same consent and dirty-check rules as
+ * syncIdentifyTraits; same name and values as the extension.
+ *
+ * `force` skips the dirty-check, which only knows what this app sent. The
+ * extension can write the same profile, so a pick must always send.
+ */
+export const syncPreferredThemeTrait = (
+  preference: ThemePreference,
+  { force = false }: { force?: boolean } = {},
+): void => {
+  const { userId } = useAnalyticsStore.getState();
+  if (
+    !force &&
+    lastIdentifiedTheme?.preference === preference &&
+    lastIdentifiedTheme.userId === userId
+  )
+    return;
+  if (!AMPLITUDE_API_KEY || !hasInitialised) return;
+  if (!useAnalyticsStore.persist.hasHydrated()) return;
+  if (!useAnalyticsStore.getState().isEnabled) return;
+
+  try {
+    const identify = new amplitude.Identify();
+    identify.set("preferred_theme", preference);
+    amplitude.identify(identify);
+    lastIdentifiedTheme = { userId, preference };
+  } catch (error) {
+    logger.error(
+      DEBUG_CONFIG.LOG_PREFIX,
+      "Failed to sync preferred_theme",
+      error,
+    );
+  }
+};
+
+const syncProfileTraits = (): void => {
+  syncIdentifyTraits(useAuthenticationStore.getState().allAccounts);
+  syncPreferredThemeTrait(useThemePreferenceStore.getState().themePreference);
+};
+
 export const initAnalytics = (): void => {
   if (hasInitialised) return;
 
@@ -174,11 +226,9 @@ export const initAnalytics = (): void => {
     // after persist flips hasHydrated() to true (unlike a plain store
     // subscription, which is notified during the rehydrate set, before it).
     if (useAnalyticsStore.persist.hasHydrated()) {
-      syncIdentifyTraits(useAuthenticationStore.getState().allAccounts);
+      syncProfileTraits();
     } else {
-      useAnalyticsStore.persist.onFinishHydration(() => {
-        syncIdentifyTraits(useAuthenticationStore.getState().allAccounts);
-      });
+      useAnalyticsStore.persist.onFinishHydration(syncProfileTraits);
     }
   } catch (error) {
     logger.error(
@@ -451,6 +501,8 @@ const UNTHROTTLED_EVENTS: ReadonlySet<AnalyticsEventName> = new Set([
   AnalyticsEvent.TOKEN_CHART_VIEWED,
   AnalyticsEvent.TOKEN_CHART_RANGE_CHANGED,
   AnalyticsEvent.TOKEN_CHART_BRUSHED,
+  // Each pick is a distinct change; quick consecutive picks must all report.
+  AnalyticsEvent.THEME_CHANGED,
 ]);
 
 const getThrottleKey = (
@@ -565,7 +617,7 @@ useAnalyticsStore.subscribe((state) => {
   // correctly skip (opted-out, nothing cached). Re-sync here so traits reach
   // Amplitude once consent becomes allowed. The dirty-check + consent-gate in
   // syncIdentifyTraits make this a safe no-op when unchanged or still opted-out.
-  syncIdentifyTraits(useAuthenticationStore.getState().allAccounts);
+  syncProfileTraits();
 });
 
 // Set up auth store subscription so wallet traits stay in sync as accounts

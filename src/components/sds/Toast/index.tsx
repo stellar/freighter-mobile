@@ -26,6 +26,8 @@ export interface ToastProps {
   onDismiss?: () => void;
   /** Whether to show filled background */
   isFilled?: boolean;
+  /** Replaces the standard notification body, e.g. SuccessToastBanner */
+  content?: React.ReactNode;
 }
 
 const AnimatedWrapper = styled(Animated.View)`
@@ -55,6 +57,7 @@ export const Toast: React.FC<ToastProps> = ({
     : DEFAULT_REGULAR_DURATION,
   onDismiss,
   isFilled,
+  content,
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
@@ -162,13 +165,15 @@ export const Toast: React.FC<ToastProps> = ({
         }}
         {...panResponder.panHandlers}
       >
-        <Notification
-          variant={variant}
-          title={title}
-          icon={icon}
-          message={message}
-          isFilled={isFilled}
-        />
+        {content ?? (
+          <Notification
+            variant={variant}
+            title={title}
+            icon={icon}
+            message={message}
+            isFilled={isFilled}
+          />
+        )}
       </AnimatedWrapper>
     </View>
   );

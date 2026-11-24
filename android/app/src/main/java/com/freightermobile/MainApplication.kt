@@ -1,6 +1,7 @@
 package org.stellar.freighterwallet
 
 import android.app.Application
+import androidx.appcompat.app.AppCompatDelegate
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -25,6 +26,7 @@ class MainApplication : Application(), ReactApplication {
               add(org.stellar.freighterwallet.PrivacyShieldPackage())
               add(org.stellar.freighterwallet.WebViewMediaConsentPackage())
               add(org.stellar.freighterwallet.PillBlurPackage())
+              add(org.stellar.freighterwallet.ThemePreferencePackage())
             }
 
         override fun getJSMainModuleName(): String = "index"
@@ -40,6 +42,11 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    // Here, not in MainActivity: AppCompat reads the night mode when the
+    // activity's context is attached, before the boot splash is created.
+    AppCompatDelegate.setDefaultNightMode(
+      ThemePreferenceStore.appCompatNightMode(ThemePreferenceStore.read(this)),
+    )
     loadReactNative(this)
   }
 }

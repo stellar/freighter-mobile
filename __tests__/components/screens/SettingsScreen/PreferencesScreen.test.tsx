@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { userEvent } from "@testing-library/react-native";
+import { act, userEvent } from "@testing-library/react-native";
 import PreferencesScreen from "components/screens/SettingsScreen/PreferencesScreen";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
@@ -20,6 +20,17 @@ const mockHandleOpenSettings = jest.fn(() => Promise.resolve());
 
 jest.mock("hooks/useAnalyticsPermissions", () => ({
   useAnalyticsPermissions: jest.fn(),
+}));
+
+const mockSelectThemePreference = jest.fn(() => Promise.resolve(true));
+jest.mock("services/themePreference", () => ({
+  selectThemePreference: (...args: unknown[]) =>
+    mockSelectThemePreference(...(args as [])),
+}));
+
+const mockOpenInAppBrowser = jest.fn(() => Promise.resolve());
+jest.mock("hooks/useInAppBrowser", () => ({
+  useInAppBrowser: () => ({ open: mockOpenInAppBrowser }),
 }));
 
 const mockUseAnalyticsPermissions =
@@ -148,6 +159,77 @@ describe("PreferencesScreen", () => {
     await userEvent.press(toggle);
 
     expect(mockHandleAnalyticsToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the theme picker with Auto(System) selected by default", () => {
+    const { getByTestId } = renderPreferencesScreen();
+
+    expect(
+      getByTestId("theme-option-system").props.accessibilityState.checked,
+    ).toBe(true);
+    expect(
+      getByTestId("theme-option-light").props.accessibilityState.checked,
+    ).toBe(false);
+    expect(
+      getByTestId("theme-option-dark").props.accessibilityState.checked,
+    ).toBe(false);
+  });
+
+  it("selects a theme when its option is pressed", async () => {
+    const { getByTestId } = renderPreferencesScreen();
+
+    await userEvent.press(getByTestId("theme-option-dark"));
+
+    expect(mockSelectThemePreference).toHaveBeenCalledWith("dark");
+  });
+
+  it("confirms a saved theme change with a toast", async () => {
+    const { getByTestId, findByText } = renderPreferencesScreen();
+
+    await userEvent.press(getByTestId("theme-option-dark"));
+
+    expect(await findByText("Theme preference updated")).toBeTruthy();
+  });
+
+  it("shows a fresh 2s toast each time another theme is picked", async () => {
+    jest.useFakeTimers();
+    try {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const { getByTestId, queryAllByText } = renderPreferencesScreen();
+
+      await user.press(getByTestId("theme-option-dark"));
+      await act(() => jest.advanceTimersByTimeAsync(1500));
+      const firstToast = queryAllByText("Theme preference updated")[0];
+      await user.press(getByTestId("theme-option-light"));
+      await act(() => jest.advanceTimersByTimeAsync(1500));
+      const toasts = queryAllByText("Theme preference updated");
+      expect(toasts).toHaveLength(1);
+      expect(toasts[0]).not.toBe(firstToast);
+
+      await act(() => jest.advanceTimersByTimeAsync(1000));
+      expect(queryAllByText("Theme preference updated")).toHaveLength(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("shows no toast when the choice didn't change", async () => {
+    mockSelectThemePreference.mockResolvedValueOnce(false);
+    const { getByTestId, queryByText } = renderPreferencesScreen();
+
+    await userEvent.press(getByTestId("theme-option-system"));
+
+    expect(queryByText("Theme preference updated")).toBeNull();
+  });
+
+  it("opens the privacy policy from the data sharing row", async () => {
+    const { getByTestId } = renderPreferencesScreen();
+
+    await userEvent.press(getByTestId("privacy-policy-link"));
+
+    expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
+      "https://varialwallet.com/privacy",
+    );
   });
 
   it("shows loading spinner when permission is being checked", () => {
