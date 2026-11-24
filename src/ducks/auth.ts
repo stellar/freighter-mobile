@@ -3245,8 +3245,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
             // Under the lock, so an add, import or switch in flight finishes
             // first and none of them writes its account back into the wiped
-            // wallet. The WalletConnect and WebView cleanup above stays
-            // outside: it waits on the network and holds no account state.
+            // wallet's storage. The lock covers storage only: a holder's
+            // store updates run after it releases, so each one checks the
+            // auth status before writing (see signIn and selectAccount). The
+            // WalletConnect and WebView cleanup above stays outside: it waits
+            // on the network and holds no account state.
             await withAccountMutationLock(async () => {
               // A holder that finished since the top of the wipe may have
               // cached its session key or sources again.
@@ -3420,6 +3423,17 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         return signedIn;
       });
 
+      // A wipe that started while this waited has reset the store and owns
+      // it from here: it is queued on the lock behind this sign-in and clears
+      // storage next. Don't authenticate over the wallet it is removing, or
+      // load its key and sources back into memory.
+      if (
+        currentAuthStatus !== AUTH_STATUS.NOT_AUTHENTICATED &&
+        get().authStatus === AUTH_STATUS.NOT_AUTHENTICATED
+      ) {
+        return;
+      }
+
       // Password verified — unblock navigation immediately.
       // getActiveAccount is slow (derivePrivateKeyFromMnemonic) so we run it
       // in the background and let the home screen render with isLoadingAccount=true.
@@ -3467,6 +3481,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
       getActiveAccount(AUTH_STATUS.AUTHENTICATED)
         .then((activeAccount) => {
+          // The session ended during the slow key derivation above: a
+          // soft-lock, a manual lock or a wipe (each clears account to null).
+          // Drop this stale load rather than putting the private key into a
+          // store that is no longer authenticated, or locking over a wipe —
+          // the next unlock reloads it.
+          if (get().authStatus !== AUTH_STATUS.AUTHENTICATED) {
+            set({ isLoadingAccount: false });
+            return;
+          }
           if (!activeAccount) {
             // No active account after sign-in: lock and surface an error.
             // isSoftLocked must accompany LOCKED (RootNavigator unmounts the
@@ -3481,17 +3504,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             get().navigateToLockScreen();
             return;
           }
-          // A soft-lock may have engaged during the slow key derivation above
-          // (softLock clears account to null). Drop this stale load rather than
-          // repopulating the private key into a locked store — the next unlock
-          // reloads it.
-          if (get().isSoftLocked) {
-            set({ isLoadingAccount: false });
-            return;
-          }
           set({ account: activeAccount, isLoadingAccount: false });
         })
         .catch((accountError) => {
+          // A lock or wipe during the load fails it (the session it was
+          // reading is gone). That state stands: don't soft-lock over it.
+          if (get().authStatus !== AUTH_STATUS.AUTHENTICATED) {
+            set({ isLoadingAccount: false });
+            return;
+          }
           logger.error(
             "useAuthenticationStore.signIn",
             "Failed to load account in background",
@@ -4220,10 +4241,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       clearAccountData({ keepAccountsFiatTotals: true });
       await withAccountMutationLock(() => selectAccount(publicKey));
       const activeAccount = await getActiveAccount(authStatus);
-      // A soft-lock may have engaged while the switch waited on the lock or
-      // loaded the key (softLock clears account to null). Don't put the
-      // private key back into a locked store; the next unlock reloads it.
-      if (get().isSoftLocked) {
+      // A soft-lock, a manual lock or a wipe may have landed while the switch
+      // waited on the lock or loaded the key (each clears account to null).
+      // Don't put the private key back into a store that is no longer
+      // authenticated; the next unlock reloads it.
+      if (get().authStatus !== AUTH_STATUS.AUTHENTICATED) {
         set({ isSwitchingAccount: false });
         return;
       }

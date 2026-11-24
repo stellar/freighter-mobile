@@ -5118,6 +5118,130 @@ describe("auth duck", () => {
           expect(result.current.isSwitchingAccount).toBe(false);
         });
 
+        it("drops a switch's account once a manual lock lands during it", async () => {
+          const { result } = mockAddAccountSession({
+            accounts: [phraseAccount(0), phraseAccount(1)],
+            indices: { [mockPhraseSourceId]: [0, 1] },
+          });
+          (
+            useAuthenticationStore.getState().getAuthStatus as jest.Mock
+          ).mockResolvedValue(AUTH_STATUS.AUTHENTICATED);
+          act(() => {
+            useAuthenticationStore.setState({
+              selectAccount: originalStoreMethods.selectAccount,
+              // An earlier test's soft-lock must not be what drops the load.
+              isSoftLocked: false,
+            });
+          });
+
+          await act(async () => {
+            const switching = result.current.selectAccount(
+              publicKeyAt(mockMnemonicPhrase, 1),
+            );
+            // What logout() leaves behind: LOCKED without isSoftLocked.
+            useAuthenticationStore.setState({
+              authStatus: AUTH_STATUS.LOCKED,
+              account: null,
+            });
+            await switching;
+          });
+
+          expect(result.current.authStatus).toBe(AUTH_STATUS.LOCKED);
+          expect(result.current.account).toBeNull();
+          expect(result.current.isSwitchingAccount).toBe(false);
+        });
+
+        describe("a sign-in overtaken by a wipe or a lock", () => {
+          beforeEach(() => {
+            dataStorageMemory[STORAGE_KEYS.ACTIVE_ACCOUNT_ID] = mockAccountId;
+            dataStorageMemory[STORAGE_KEYS.ACCOUNT_LIST] = JSON.stringify([
+              {
+                id: mockAccountId,
+                name: mockAccountName,
+                publicKey: mockPublicKey,
+              },
+            ]);
+            act(() => {
+              useAuthenticationStore.setState({
+                authStatus: AUTH_STATUS.HASH_KEY_EXPIRED,
+                signIn: originalStoreMethods.signIn,
+                logout: originalStoreMethods.logout,
+                isSoftLocked: false,
+              });
+            });
+          });
+
+          it("stays signed out when a wipe was queued behind the sign-in", async () => {
+            wipeNonSensitiveData();
+            // Hold the sign-in inside the lock, on its keystore read.
+            let releaseKeystore: (() => void) | undefined;
+            sharedKeyManager.loadKey.mockImplementation(
+              () =>
+                new Promise((resolve) => {
+                  releaseKeystore = () =>
+                    resolve({
+                      id: mockAccountId,
+                      publicKey: mockPublicKey,
+                      privateKey: mockPrivateKey,
+                      extra: { mnemonicPhrase: mockMnemonicPhrase },
+                    });
+                }),
+            );
+            const { result } = renderHook(() => useAuthenticationStore());
+
+            await act(async () => {
+              const signingIn = result.current.signIn({
+                password: mockPassword,
+              });
+              await flush();
+              expect(releaseKeystore).toBeDefined();
+
+              result.current.logout(true);
+              await flush();
+              await flush();
+              expect(useAuthenticationStore.getState().authStatus).toBe(
+                AUTH_STATUS.NOT_AUTHENTICATED,
+              );
+
+              releaseKeystore?.();
+              await signingIn;
+              await flush();
+              await flush();
+            });
+
+            expect(clearNonSensitiveData).toHaveBeenCalled();
+            expect(result.current.authStatus).toBe(
+              AUTH_STATUS.NOT_AUTHENTICATED,
+            );
+            expect(result.current.isSoftLocked).toBe(false);
+            expect(result.current.account).toBeNull();
+            expect(result.current.isLoading).toBe(false);
+          });
+
+          it("drops the background account load once a manual lock lands during it", async () => {
+            const { result } = renderHook(() => useAuthenticationStore());
+
+            await act(async () => {
+              await result.current.signIn({ password: mockPassword });
+              expect(useAuthenticationStore.getState().authStatus).toBe(
+                AUTH_STATUS.AUTHENTICATED,
+              );
+              // What logout() leaves behind: LOCKED without isSoftLocked.
+              useAuthenticationStore.setState({
+                authStatus: AUTH_STATUS.LOCKED,
+                account: null,
+              });
+              await flush();
+              await flush();
+            });
+
+            expect(result.current.authStatus).toBe(AUTH_STATUS.LOCKED);
+            expect(result.current.isSoftLocked).toBe(false);
+            expect(result.current.account).toBeNull();
+            expect(result.current.isLoadingAccount).toBe(false);
+          });
+        });
+
         it("caches a lazily loaded key onto the session as it stands, not as first read", async () => {
           mockAddAccountSession({ accounts: [phraseAccount(0)] });
           const mnemonics = { [mockPhraseSourceId]: mockMnemonicPhrase };
