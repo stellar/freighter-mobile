@@ -69,7 +69,7 @@ import { useTokenActions } from "hooks/useTokenActions";
 import useTokenDetails from "hooks/useTokenDetails";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
-import { View, Platform, ScrollView } from "react-native";
+import { InteractionManager, View, Platform, ScrollView } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import {
@@ -544,8 +544,6 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   // Swap from: the source picker's own held-row pick, then back to the
   // amount screen.
   const selectSwapSource = () => {
-    const { destinationToken, setDestinationToken, setSourceToken } =
-      useSwapStore.getState();
     analytics.track(AnalyticsEvent.SWAP_SOURCE_SELECTED, {
       asset_code: tokenSymbol,
       asset_issuer: tokenId.includes(":") ? tokenId.split(":")[1] : "",
@@ -554,12 +552,18 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           ? SwapSelectionSource.SEARCH
           : SwapSelectionSource.BALANCES,
     });
-    // The same token cannot be on both sides.
-    if (destinationToken && destinationToken.id === tokenId) {
-      setDestinationToken(null);
-    }
-    setSourceToken(tokenId, tokenSymbol);
     returnToSwapAmount();
+    // As SwapToScreen's dismissThenApply: a store write mid-transition
+    // re-renders the amount screen and cancels the Android slide.
+    InteractionManager.runAfterInteractions(() => {
+      const { destinationToken, setDestinationToken, setSourceToken } =
+        useSwapStore.getState();
+      // The same token cannot be on both sides.
+      if (destinationToken && destinationToken.id === tokenId) {
+        setDestinationToken(null);
+      }
+      setSourceToken(tokenId, tokenSymbol);
+    });
   };
   // Unable-to-scan is not flagged: the banner alone signals caution.
   const isFlagged = isMalicious || isSuspicious;

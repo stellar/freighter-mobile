@@ -13,6 +13,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { InteractionManager } from "react-native";
 import { analytics } from "services/analytics";
 
 interface UseSelectSwapDestinationParams {
@@ -22,7 +23,7 @@ interface UseSelectSwapDestinationParams {
   heldTokenId?: string;
   /** Tags swap.destination_selected; TRENDING also tracks the Swap To press. */
   selectionSource?: SwapSelectionSource;
-  /** Called after the store is updated; the screen pops back here. */
+  /** Called before the store is updated, which waits for interactions; the screen pops back here. */
   onSelected: () => void;
 }
 
@@ -86,15 +87,19 @@ export const useSelectSwapDestination = ({
         requires_trustline: descriptor.requiresTrustline,
         source: selectionSource,
       });
-      const { sourceTokenId, setSourceToken, setDestinationToken } =
-        useSwapStore.getState();
-      // If the new destination equals the current source, clear source so
-      // the user doesn't end up with the same token on both sides.
-      if (sourceTokenId && sourceTokenId === descriptor.id) {
-        setSourceToken("", "");
-      }
-      setDestinationToken(descriptor);
       onSelected();
+      // As SwapToScreen's dismissThenApply: a store write mid-transition
+      // re-renders the amount screen and cancels the Android slide.
+      InteractionManager.runAfterInteractions(() => {
+        const { sourceTokenId, setSourceToken, setDestinationToken } =
+          useSwapStore.getState();
+        // If the new destination equals the current source, clear source so
+        // the user doesn't end up with the same token on both sides.
+        if (sourceTokenId && sourceTokenId === descriptor.id) {
+          setSourceToken("", "");
+        }
+        setDestinationToken(descriptor);
+      });
     };
     if (heldById) {
       apply(descriptorFromBalance(heldById));

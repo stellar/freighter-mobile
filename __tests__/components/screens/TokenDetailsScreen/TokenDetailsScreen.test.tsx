@@ -24,7 +24,7 @@ import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { SectionList, View } from "react-native";
+import { InteractionManager, SectionList, View } from "react-native";
 import { ReactTestInstance } from "react-test-renderer";
 import { SecurityLevel } from "services/blockaid/constants";
 
@@ -192,6 +192,19 @@ const mockRoute = {
   key: "token-details",
   name: ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
 } as unknown as TokenDetailsScreenProps["route"];
+
+// Swap from/to write the store once interactions finish; run that
+// synchronously unless a test captures it.
+const runAfterInteractions = jest
+  .spyOn(InteractionManager, "runAfterInteractions")
+  .mockImplementation((cb: any) => {
+    if (typeof cb === "function") cb();
+    return { cancel: jest.fn(), then: jest.fn(), done: jest.fn() } as any;
+  });
+
+afterAll(() => {
+  runAfterInteractions.mockRestore();
+});
 
 describe("TokenDetailsScreen", () => {
   beforeEach(() => {
@@ -1091,7 +1104,18 @@ describe("TokenDetailsScreen", () => {
       expect(
         screen.getByText("swapScreen.trendingDetail.swapFrom"),
       ).toBeTruthy();
+      let runDeferred: () => void = () => {};
+      runAfterInteractions.mockImplementationOnce((cb: any) => {
+        runDeferred = cb;
+        return { cancel: jest.fn(), then: jest.fn(), done: jest.fn() } as any;
+      });
       fireEvent.press(button);
+
+      // Navigates first; writing the store mid-transition makes Android
+      // drop the slide.
+      expect(mockNavigate).toHaveBeenCalled();
+      expect(useSwapStore.getState().sourceTokenId).not.toBe(usdcId);
+      runDeferred();
 
       expect(useSwapStore.getState().sourceTokenId).toBe(usdcId);
       // The same token was the destination: cleared, as the row press does.

@@ -4,6 +4,7 @@ import { AnalyticsEvent, SwapSelectionSource } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useSwapStore } from "ducks/swap";
+import { InteractionManager } from "react-native";
 import { analytics } from "services/analytics";
 
 const mockGetTokenDetails = jest.fn();
@@ -82,6 +83,19 @@ const deferDecimals = () => {
     await flush();
   };
 };
+
+// The store writes wait for interactions; run them synchronously unless a
+// test captures them.
+const runAfterInteractions = jest
+  .spyOn(InteractionManager, "runAfterInteractions")
+  .mockImplementation((cb: any) => {
+    if (typeof cb === "function") cb();
+    return { cancel: jest.fn(), then: jest.fn(), done: jest.fn() } as any;
+  });
+
+afterAll(() => {
+  runAfterInteractions.mockRestore();
+});
 
 describe("useSelectSwapDestination", () => {
   const onSelected = jest.fn();
@@ -171,12 +185,12 @@ describe("useSelectSwapDestination", () => {
     expect(onSelected).not.toHaveBeenCalled();
   });
 
-  it("calls onSelected after the destination is set", async () => {
+  it("calls onSelected first and sets the destination once interactions finish", async () => {
     const resolveDecimals = deferDecimals();
-    onSelected.mockImplementation(() => {
-      expect(useSwapStore.getState().destinationToken?.id).toBe(
-        `TKN:${CONTRACT}`,
-      );
+    let runDeferred: () => void = () => {};
+    runAfterInteractions.mockImplementationOnce((cb: any) => {
+      runDeferred = cb;
+      return { cancel: jest.fn(), then: jest.fn(), done: jest.fn() } as any;
     });
     const { result } = renderHook(() =>
       useSelectSwapDestination({ record, onSelected }),
@@ -188,6 +202,13 @@ describe("useSelectSwapDestination", () => {
 
     expect(onSelected).toHaveBeenCalledTimes(1);
     expect(result.current.isPending).toBe(false);
+    expect(useSwapStore.getState().destinationToken).toBeNull();
+
+    runDeferred();
+
+    expect(useSwapStore.getState().destinationToken?.id).toBe(
+      `TKN:${CONTRACT}`,
+    );
   });
 
   it("reads /token-details once while a select for the same token is pending", () => {
