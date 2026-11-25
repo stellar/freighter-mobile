@@ -238,6 +238,9 @@ export enum AnalyticsEvent {
   // Account management
   ACCOUNT_SCREEN_ADD_ACCOUNT = "account.created",
   ACCOUNT_SCREEN_IMPORT_ACCOUNT = "account.imported",
+  // The active account went from unfunded (USD value zero) to funded (USD
+  // value above zero) on PUBLIC. No event-specific properties.
+  ACCOUNT_FUNDED = "account.funded",
   // carries reason_code
   ACCOUNT_SCREEN_IMPORT_ACCOUNT_FAIL = "account.import_failed",
   VIEW_PUBLIC_KEY_ACCOUNT_RENAMED = "account.renamed",

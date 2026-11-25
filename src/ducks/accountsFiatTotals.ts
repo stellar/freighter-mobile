@@ -13,6 +13,7 @@ import {
 import { getBalanceInWholeUnits } from "helpers/formatAmount";
 import { retrieveHiddenTokens } from "helpers/hiddenTokens";
 import { isMainnet } from "helpers/networks";
+import { reportListAccountBalances } from "services/analytics/accountFunding";
 import { fetchBalances } from "services/backend";
 import { create } from "zustand";
 
@@ -281,7 +282,7 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
                   // SEP-41 balances that the balances endpoint returns are
                   // still priced, because the prices backend prices contract
                   // tokens.
-                  const [{ balances, isFunded }, hiddenTokenIds] =
+                  const [{ balances, isFunded, error }, hiddenTokenIds] =
                     await Promise.all([
                       fetchBalances({
                         publicKey,
@@ -300,7 +301,10 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
                       balances ?? {},
                       hiddenTokenIds,
                     ),
-                    isFunded: isFunded ?? false,
+                    // Raw flag: the account.funded rule tells a missing
+                    // value (no definite result) from false (no ledger entry).
+                    isFunded,
+                    balancesError: error,
                   };
                 } catch (error) {
                   // One account failing shouldn't blank out the whole list —
@@ -313,7 +317,12 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
                     { publicKey, error },
                   );
 
-                  return { publicKey, balances: null, isFunded: false };
+                  return {
+                    publicKey,
+                    balances: null,
+                    isFunded: undefined,
+                    balancesError: undefined,
+                  };
                 }
               }),
             );
@@ -329,6 +338,9 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
             const tokensToPrice = shouldRefreshPrices
               ? tokens.filter((token) => !refreshedTokens.has(token))
               : tokens;
+            // False when the price fetch for this batch failed. Then no
+            // account in the batch gives a definite funded state.
+            let batchPricesOk = true;
 
             if (tokensToPrice.length > 0) {
               // On non-refreshing cycles this still dedupes against the shared
@@ -345,6 +357,7 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
 
               if (!pricesOk) {
                 pricesFetchFailed = true;
+                batchPricesOk = false;
               } else if (shouldRefreshPrices) {
                 tokensToPrice.forEach((token) => refreshedTokens.add(token));
               }
@@ -362,24 +375,44 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
             // the only place that knows all of it: whether the fetch failed,
             // whether the account is funded, and whether anything priced.
             const batchTotals: Record<string, AccountFiatTotal> = {};
-            results.forEach(({ publicKey, balances, isFunded }) => {
-              const hasError = balances === null;
-              const { total, pricedCount } = balances
-                ? computeFiatTotal(balances, prices ?? {})
-                : { total: new BigNumber(0), pricedCount: 0 };
+            results.forEach(
+              ({ publicKey, balances, isFunded, balancesError }) => {
+                const hasError = balances === null;
+                const { total, pricedCount } = balances
+                  ? computeFiatTotal(balances, prices ?? {})
+                  : { total: new BigNumber(0), pricedCount: 0 };
 
-              batchTotals[publicKey] = {
-                label: getTotalUsdLabel({
+                batchTotals[publicKey] = {
+                  label: getTotalUsdLabel({
+                    hasError,
+                    // Past the guard above, so the network prices tokens.
+                    hasPriceFeed: isMainnet(network),
+                    isFunded: isFunded ?? false,
+                    hasPrices: pricedCount > 0,
+                    totalUsd: total,
+                  }),
                   hasError,
-                  // Past the guard above, so the network prices tokens.
-                  hasPriceFeed: isMainnet(network),
+                };
+
+                // Feeds funded_account_count. It changes only `funded` in the
+                // funding record, never the account.funded event state. Not
+                // awaited: telemetry must not delay the cycle.
+                reportListAccountBalances({
+                  publicKey,
+                  network,
+                  balances,
                   isFunded,
-                  hasPrices: pricedCount > 0,
+                  prices: prices ?? {},
+                  pricesOk: batchPricesOk,
                   totalUsd: total,
-                }),
-                hasError,
-              };
-            });
+                  balancesError,
+                  // The v1 path gets no contractIds here, so it can leave out
+                  // custom-token balances that the active-account fetch
+                  // includes. v2 returns every held token.
+                  mayOmitTokens: !useBalancesV2,
+                });
+              },
+            );
 
             set({ fiatTotals: { ...get().fiatTotals, ...batchTotals } });
           }
