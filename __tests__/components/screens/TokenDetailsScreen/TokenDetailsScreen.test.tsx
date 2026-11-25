@@ -835,6 +835,26 @@ describe("TokenDetailsScreen", () => {
       ).toBeTruthy();
     });
 
+    it("applies the debug Blockaid override to the record's verdict", () => {
+      useDebugStore.setState({
+        overriddenBlockaidResponse: SecurityLevel.MALICIOUS,
+      });
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={nonHeldRoute(TokenChartSource.SWAP_PICKER, {
+            ...shxRecord,
+            securityLevel: SecurityLevel.SAFE,
+          })}
+        />,
+      );
+      useDebugStore.setState({ overriddenBlockaidResponse: null });
+
+      expect(
+        screen.getByText("blockaid.security.token.malicious"),
+      ).toBeTruthy();
+    });
+
     it("shows no chart, stats or About when the kill switch is off", () => {
       useRemoteConfigStore.setState({
         use_token_price_history: false,

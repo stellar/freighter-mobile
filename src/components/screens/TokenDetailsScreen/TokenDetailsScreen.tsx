@@ -74,6 +74,7 @@ import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import {
   assessTokenSecurity,
+  assessTokenSecurityFromLevel,
   extractSecurityWarnings,
   SecurityWarning,
 } from "services/blockaid/helper";
@@ -455,14 +456,16 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     overriddenBlockaidResponse,
   );
   // A token the account doesn't hold has no balances scan; its search record
-  // carries the scan instead.
-  const recordLevel = record?.securityLevel;
-  const recordMalicious =
-    recordLevel === SecurityLevel.MALICIOUS || !!record?.isMalicious;
-  const recordSuspicious =
-    recordLevel === SecurityLevel.SUSPICIOUS || !!record?.isSuspicious;
-  const recordUnableToScan =
-    recordLevel === SecurityLevel.UNABLE_TO_SCAN || !!record?.isUnableToScan;
+  // carries the scan instead, assessed as the swap review assesses it.
+  const recordSecurity = record
+    ? assessTokenSecurityFromLevel(
+        record.securityLevel,
+        overriddenBlockaidResponse,
+      )
+    : undefined;
+  const recordMalicious = !!recordSecurity?.isMalicious;
+  const recordSuspicious = !!recordSecurity?.isSuspicious;
+  const recordUnableToScan = !!recordSecurity?.isUnableToScan;
   // A held token opened from a row takes the worse of its balances scan and
   // the record. Unable-to-scan needs both to have no result, and only comes
   // from a record: Home passes none.
