@@ -584,6 +584,57 @@ describe("useSwapTokenLookup — idle mode", () => {
     expect(popularCodes).not.toContain("AQUA");
     expect(popularCodes).not.toContain("FOO");
   });
+
+  describe("sorobanOffMainnet", () => {
+    beforeEach(() => {
+      // mockTrendingRecords already carries a Soroban record; verify it so it
+      // survives the trending intersection and only the network filter decides.
+      mockStores.getVerifiedTokens.mockResolvedValue([
+        {
+          issuer: USDC_ISSUER,
+          name: "USDC",
+          code: "USDC",
+          domain: "circle.com",
+        },
+        { contract: SOROBAN_CONTRACT, name: "", code: "SOROBANTOKEN" },
+      ]);
+    });
+
+    it("drops a non-held Soroban popular token off mainnet by default", async () => {
+      const { result } = renderHook(() =>
+        useSwapTokenLookup({ network: NETWORKS.TESTNET, balanceItems: [] }),
+      );
+
+      await act(async () => {
+        await settleAsync();
+      });
+
+      expect(result.current.popularTokens.map((t) => t.tokenCode)).toContain(
+        "USDC",
+      );
+      expect(
+        result.current.popularTokens.map((t) => t.tokenCode),
+      ).not.toContain("SOROBANTOKEN");
+    });
+
+    it("keeps a non-held Soroban popular token off mainnet when sorobanOffMainnet is set", async () => {
+      const { result } = renderHook(() =>
+        useSwapTokenLookup({
+          network: NETWORKS.TESTNET,
+          balanceItems: [],
+          sorobanOffMainnet: true,
+        }),
+      );
+
+      await act(async () => {
+        await settleAsync();
+      });
+
+      expect(result.current.popularTokens.map((t) => t.tokenCode)).toContain(
+        "SOROBANTOKEN",
+      );
+    });
+  });
 });
 
 describe("useSwapTokenLookup — active search", () => {

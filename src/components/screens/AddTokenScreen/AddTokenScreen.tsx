@@ -23,6 +23,7 @@ import ErrorState from "components/screens/AddTokenScreen/ErrorState";
 import RemoveTokenBottomSheetContent from "components/screens/AddTokenScreen/RemoveTokenBottomSheet";
 import TokenItem from "components/screens/AddTokenScreen/TokenItem";
 import { detailsRouteForRecord } from "components/screens/SwapScreen/helpers";
+import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
@@ -47,6 +48,8 @@ import {
   getSearchTokenRecordId,
   shouldOfferUnhide,
 } from "helpers/hiddenTokens";
+import { isMainnet } from "helpers/networks";
+import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
@@ -59,7 +62,7 @@ import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useTokenLookup } from "hooks/useTokenLookup";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { Keyboard, ScrollView, TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import {
@@ -125,6 +128,44 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     balanceItems,
   });
 
+  // Only `popularTokens` is used; search stays with `useTokenLookup`. Off
+  // mainnet, trending Soroban tokens are kept because this screen can add them.
+  const { popularTokens, isTrendingLoading, stellarExpertDown } =
+    useSwapTokenLookup({
+      network,
+      balanceItems,
+      publicKey: account?.publicKey,
+      sorobanOffMainnet: true,
+    });
+
+  // `hasTrustline` on a record can be stale (cached from when the trending list
+  // was built) and Popular is non-held by construction, so a row must offer
+  // Add. Blockaid is mainnet-only, so off mainnet the verdict must match the
+  // search rows' (SAFE), not the lookup's "unable to scan".
+  const popularRows = useMemo(() => {
+    const offMainnet = !isMainnet(network);
+
+    // XLM is never added, so it has no Popular row.
+    return popularTokens
+      .filter((token) => !token.isNative)
+      .map((token) => ({
+        ...token,
+        // A code-less Soroban token's code is its shortened contract id, which
+        // would be stored as its symbol; use the full id, as search does.
+        ...(token.tokenType === TokenTypeWithCustomToken.CUSTOM_TOKEN &&
+          token.tokenCode === truncateAddress(token.issuer) && {
+            tokenCode: token.issuer,
+          }),
+        hasTrustline: false,
+        ...(offMainnet && {
+          isSuspicious: false,
+          isMalicious: false,
+          isUnableToScan: false,
+          securityLevel: SecurityLevel.SAFE,
+        }),
+      }));
+  }, [network, popularTokens]);
+
   const isTokenMalicious = scannedToken.isMalicious;
   const isTokenSuspicious = scannedToken.isSuspicious;
   const isUnableToScanToken = scannedToken.isUnableToScan;
@@ -159,6 +200,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   // navigate() bubbles from the manage-tokens stack up to the root stack.
   const openTokenDetails = useCallback(
     (record: FormattedSearchTokenRecord) => {
+      Keyboard.dismiss();
       (
         navigation as unknown as NativeStackNavigationProp<RootStackParamList>
       ).navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
@@ -211,7 +253,10 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     });
   }, [getClipboardText, handleSearch]);
 
+  // The lists keep taps while the keyboard is up, so each row action closes
+  // it rather than leaving it over the sheet or screen it opens.
   const handleAddToken = useCallback((token: FormattedSearchTokenRecord) => {
+    Keyboard.dismiss();
     setSelectedToken(token);
     setScannedToken({
       isMalicious: token?.isMalicious || false,
@@ -313,6 +358,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   }, []);
 
   const handleRemoveToken = useCallback((token: FormattedSearchTokenRecord) => {
+    Keyboard.dismiss();
     setSelectedToken(token);
     removeTokenBottomSheetModalRef.current?.present();
   }, []);
@@ -426,11 +472,13 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   );
 
   const handleUnhideSearchToken = useCallback(
-    (token: FormattedSearchTokenRecord) =>
-      handleUnhideToken({
+    (token: FormattedSearchTokenRecord) => {
+      Keyboard.dismiss();
+      return handleUnhideToken({
         tokenId: getSearchTokenRecordId(token),
         tokenCode: token.tokenCode,
-      }),
+      });
+    },
     [handleUnhideToken],
   );
 
@@ -478,6 +526,21 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   // Only before the user starts searching: once there is a query, a hidden
   // token that matches shows Unhide on its own row instead.
   const isSearchEmpty = searchTerm.trim() === "";
+  // Until this account and network's balances load, Popular can't leave out
+  // what is held; the list may still be another account's or network's.
+  const hasBalancesLoaded = useBalancesStore(
+    (state) =>
+      state.fetchedPublicKey === account?.publicKey &&
+      state.fetchedNetwork === network,
+  );
+  const popularIdle =
+    isSearchEmpty &&
+    status === HookStatus.IDLE &&
+    !stellarExpertDown &&
+    hasBalancesLoaded;
+  const showPopular = popularIdle && popularRows.length > 0;
+  const showPopularSpinner =
+    popularIdle && isTrendingLoading && popularRows.length === 0;
 
   return (
     <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
@@ -630,12 +693,44 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
             </View>
           )}
         </View>
+        {showPopularSpinner && (
+          <View className="items-center py-8">
+            <Spinner testID="add-token-popular-spinner" />
+          </View>
+        )}
+        {showPopular && (
+          <ScrollView
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+            alwaysBounceVertical={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View
+              className="mt-4 mb-6 flex-row items-center gap-2"
+              testID="add-token-popular-header"
+            >
+              <Text md medium secondary>
+                {t("swapScreen.popularTokensSection")}
+              </Text>
+            </View>
+            {popularRows.map((token) => (
+              <TokenItem
+                key={`${token.tokenCode}:${token.issuer}`}
+                token={token}
+                handleAddToken={handleAddTokenMemo}
+                handleRemoveToken={handleRemoveTokenMemo}
+                onPress={canViewDetails ? openTokenDetails : undefined}
+              />
+            ))}
+          </ScrollView>
+        )}
         {status === HookStatus.LOADING && <Spinner />}
         {status === HookStatus.SUCCESS && (
           <ScrollView
             className="flex-1"
             showsVerticalScrollIndicator={false}
             alwaysBounceVertical={false}
+            keyboardShouldPersistTaps="handled"
           >
             {searchResults.length > 0 ? (
               <>
