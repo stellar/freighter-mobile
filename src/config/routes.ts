@@ -1,5 +1,8 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
-import { SwapSelectionSource, TokenChartSource } from "config/analyticsConfig";
+import type {
+  SwapSelectionSource,
+  TokenChartSource,
+} from "config/analyticsConfig";
 import {
   BiometricsSource,
   NETWORKS,
