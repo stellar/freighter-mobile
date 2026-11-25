@@ -102,13 +102,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   const hiddenTokensBottomSheetModalRef = useRef<BottomSheetModal>(null);
   // Hidden tokens stay in `balanceItems` here: the search still needs to know
   // the account holds them, so a hidden token's row offers Unhide, not Add.
-  const {
-    balanceItems,
-    hiddenBalanceItems,
-    handleRefresh,
-    isLoading: isBalancesLoading,
-    noBalances,
-  } = useBalancesList({
+  const { balanceItems, hiddenBalanceItems, handleRefresh } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
     includeHidden: true,
@@ -525,8 +519,13 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   // Only before the user starts searching: once there is a query, a hidden
   // token that matches shows Unhide on its own row instead.
   const isSearchEmpty = searchTerm.trim() === "";
-  // Before balances first load, Popular can't leave out what is held.
-  const hasBalancesLoaded = !(isBalancesLoading && noBalances);
+  // Until this account and network's balances load, Popular can't leave out
+  // what is held; the list may still be another account's or network's.
+  const hasBalancesLoaded = useBalancesStore(
+    (state) =>
+      state.fetchedPublicKey === account?.publicKey &&
+      state.fetchedNetwork === network,
+  );
   const popularIdle =
     isSearchEmpty &&
     status === HookStatus.IDLE &&

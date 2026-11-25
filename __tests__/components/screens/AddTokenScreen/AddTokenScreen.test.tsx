@@ -7,6 +7,7 @@ import { NETWORKS } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES } from "config/routes";
 import { HookStatus, TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { renderWithProviders } from "helpers/testUtils";
 import { useTokenLookup } from "hooks/useTokenLookup";
 import React from "react";
@@ -95,6 +96,7 @@ const makeRecord = (tokenCode: string) => ({
   hasTrustline: false,
   tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
 });
+const PUBLIC_KEY = "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH";
 const verified = makeRecord("USDC");
 const unverified = makeRecord("SCAM");
 
@@ -234,6 +236,10 @@ describe("AddTokenScreen — Popular tokens", () => {
       popularTokens: [makeRecord("AQUA"), makeRecord("EURC")],
       isTrendingLoading: false,
       stellarExpertDown: false,
+    });
+    useBalancesStore.setState({
+      fetchedPublicKey: PUBLIC_KEY,
+      fetchedNetwork: NETWORKS.PUBLIC,
     });
   });
 
@@ -410,6 +416,30 @@ describe("AddTokenScreen — Popular tokens", () => {
       isLoading: true,
       noBalances: true,
     }));
+    useBalancesStore.setState({ fetchedPublicKey: null, fetchedNetwork: null });
+    try {
+      const { queryByText } = renderScreen();
+
+      expect(queryByText("Popular tokens")).toBeNull();
+    } finally {
+      useBalancesList.mockImplementation(loaded);
+    }
+  });
+
+  it("shows no Popular while loading over another network's balances", () => {
+    const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+    const loaded = useBalancesList.getMockImplementation();
+    useBalancesList.mockImplementation(() => ({
+      balanceItems: [{ id: "AQUA:GAQUAISSUER", tokenCode: "AQUA" }],
+      hiddenBalanceItems: [],
+      handleRefresh: jest.fn(),
+      isLoading: true,
+      noBalances: false,
+    }));
+    useBalancesStore.setState({
+      fetchedPublicKey: PUBLIC_KEY,
+      fetchedNetwork: NETWORKS.TESTNET,
+    });
     try {
       const { queryByText } = renderScreen();
 
@@ -430,6 +460,7 @@ describe("AddTokenScreen — Popular tokens", () => {
       (useAuthenticationStore as unknown as jest.Mock).mockReturnValue({
         network,
       });
+      useBalancesStore.setState({ fetchedNetwork: network });
       (useSwapTokenLookup as jest.Mock).mockReturnValue({
         popularTokens: [unscanned],
         isTrendingLoading: false,
