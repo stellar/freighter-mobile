@@ -457,18 +457,25 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   // A token the account doesn't hold has no balances scan; its search record
   // carries the scan instead.
   const recordLevel = record?.securityLevel;
-  const isMalicious = isNoBalanceVariant
-    ? recordLevel === SecurityLevel.MALICIOUS || !!record?.isMalicious
-    : heldSecurity.isMalicious;
-  const isSuspicious = isNoBalanceVariant
-    ? recordLevel === SecurityLevel.SUSPICIOUS || !!record?.isSuspicious
-    : heldSecurity.isSuspicious;
-  // A held token takes unable-to-scan only from the record of the row that
-  // opened it (Home passes none); its balances scan still wins when flagged.
+  const recordMalicious =
+    recordLevel === SecurityLevel.MALICIOUS || !!record?.isMalicious;
+  const recordSuspicious =
+    recordLevel === SecurityLevel.SUSPICIOUS || !!record?.isSuspicious;
+  const recordUnableToScan =
+    recordLevel === SecurityLevel.UNABLE_TO_SCAN || !!record?.isUnableToScan;
+  // A held token opened from a row takes the worse of its balances scan and
+  // the record. Unable-to-scan needs both to have no result, and only comes
+  // from a record: Home passes none.
+  const isMalicious =
+    recordMalicious || (!isNoBalanceVariant && heldSecurity.isMalicious);
+  const isSuspicious =
+    !isMalicious &&
+    (recordSuspicious || (!isNoBalanceVariant && heldSecurity.isSuspicious));
   const isUnableToScan =
-    (recordLevel === SecurityLevel.UNABLE_TO_SCAN ||
-      !!record?.isUnableToScan) &&
-    (isNoBalanceVariant || !(isMalicious || isSuspicious));
+    recordUnableToScan &&
+    !isMalicious &&
+    !isSuspicious &&
+    (isNoBalanceVariant || heldSecurity.isUnableToScan);
 
   const securityWarnings = useMemo((): SecurityWarning[] => {
     // Blockaid returns no feature-level warnings for an unable-to-scan

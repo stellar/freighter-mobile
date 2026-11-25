@@ -7,6 +7,7 @@ import {
 } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
+import { SwapToFooter } from "components/screens/TokenDetailsScreen/components/SwapToFooter";
 import { TokenChartSource } from "config/analyticsConfig";
 import { NETWORKS, SWAP_SELECTION_TYPES } from "config/constants";
 import {
@@ -19,6 +20,7 @@ import {
   TokenTypeWithCustomToken,
 } from "config/types";
 import { useBalancesStore } from "ducks/balances";
+import { useDebugStore } from "ducks/debug";
 import { usePriceHistoryStore } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useSwapStore } from "ducks/swap";
@@ -1053,6 +1055,133 @@ describe("TokenDetailsScreen", () => {
         "unable-to-scan-trending-token",
       );
       expect(sheet.props.proceedAnywayText).not.toBe("common.continue");
+    });
+
+    describe("combines the balances scan with the row's record", () => {
+      const renderHeld = (
+        scanResults: Record<string, unknown>,
+        securityLevel: SecurityLevel,
+      ) => {
+        const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+        useBalancesList.mockReturnValue({
+          balanceItems: [
+            {
+              id: usdcId,
+              tokenCode: "USDC",
+              tokenType: "credit_alphanum4",
+              total: { isGreaterThan: () => true },
+            },
+          ],
+          hiddenBalanceItems: [],
+          scanResults,
+          isLoading: false,
+          error: null,
+          noBalances: false,
+          isRefreshing: false,
+          isFunded: true,
+          localOnlyTokenIds: [],
+          handleRefresh: jest.fn(),
+        });
+        const route = {
+          ...mockRoute,
+          params: {
+            tokenId: usdcId,
+            tokenSymbol: "USDC",
+            source: TokenChartSource.SWAP_PICKER,
+            record: {
+              tokenCode: "USDC",
+              issuer:
+                "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+              domain: "centre.io",
+              isNative: false,
+              hasTrustline: true,
+              securityLevel,
+            } as FormattedSearchTokenRecord,
+          },
+        } as unknown as TokenDetailsScreenProps["route"];
+        const screen = renderWithProviders(
+          <TokenDetailsScreen navigation={mockNavigation} route={route} />,
+        );
+        const sheet = screen
+          .UNSAFE_getAllByType(BottomSheet)
+          .map(
+            (s) =>
+              s.props
+                .customContent as React.ReactElement<SecurityDetailBottomSheetProps>,
+          )
+          .find((content) => content?.type === SecurityDetailBottomSheet)!;
+        return { screen, sheet };
+      };
+
+      afterEach(() => {
+        useDebugStore.setState({ overriddenBlockaidResponse: null });
+      });
+
+      it("a clean balances scan suppresses an unable-to-scan record", () => {
+        const { screen, sheet } = renderHeld(
+          { [usdcId.replace(":", "-")]: { result_type: "Benign" } },
+          SecurityLevel.UNABLE_TO_SCAN,
+        );
+
+        expect(
+          screen.queryByText("securityWarning.proceedWithCaution"),
+        ).toBeNull();
+        expect(sheet.props.severity).toBeUndefined();
+        expect(screen.UNSAFE_getByType(SwapToFooter).props.isFlagged).toBe(
+          false,
+        );
+      });
+
+      it("a malicious record flags a token whose balances scan is missing", () => {
+        const { screen, sheet } = renderHeld({}, SecurityLevel.MALICIOUS);
+
+        expect(
+          screen.getByText("blockaid.security.token.malicious"),
+        ).toBeTruthy();
+        expect(
+          screen.queryByText("securityWarning.proceedWithCaution"),
+        ).toBeNull();
+        expect(sheet.props.severity).toBe(SecurityLevel.MALICIOUS);
+        const footer = screen.UNSAFE_getByType(SwapToFooter);
+        expect(footer.props.isFlagged).toBe(true);
+        expect(footer.props.isMalicious).toBe(true);
+      });
+
+      it("a suspicious record flags a token whose balances scan is unable to scan", () => {
+        const { screen, sheet } = renderHeld({}, SecurityLevel.SUSPICIOUS);
+
+        expect(
+          screen.getByText("blockaid.security.token.suspicious"),
+        ).toBeTruthy();
+        expect(sheet.props.severity).toBe(SecurityLevel.SUSPICIOUS);
+        expect(screen.UNSAFE_getByType(SwapToFooter).props.isFlagged).toBe(
+          true,
+        );
+      });
+
+      it("an overridden SAFE response counts as the balances scan's clean result", () => {
+        useDebugStore.setState({
+          overriddenBlockaidResponse: SecurityLevel.SAFE,
+        });
+        const { screen, sheet } = renderHeld({}, SecurityLevel.UNABLE_TO_SCAN);
+
+        expect(
+          screen.queryByText("securityWarning.proceedWithCaution"),
+        ).toBeNull();
+        expect(sheet.props.severity).toBeUndefined();
+      });
+
+      it("an overridden MALICIOUS response outranks a suspicious record", () => {
+        useDebugStore.setState({
+          overriddenBlockaidResponse: SecurityLevel.MALICIOUS,
+        });
+        const { screen, sheet } = renderHeld({}, SecurityLevel.SUSPICIOUS);
+
+        expect(
+          screen.getByText("blockaid.security.token.malicious"),
+        ).toBeTruthy();
+        expect(sheet.props.severity).toBe(SecurityLevel.MALICIOUS);
+      });
     });
 
     it("from the SOURCE picker: Swap from sets the source token and returns to the amount screen", () => {
