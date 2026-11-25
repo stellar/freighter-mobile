@@ -88,8 +88,8 @@ export interface SwapTokenRowProps {
    */
   rowStyle?: "default" | "shared";
   /**
-   * Adds the info button at the row's end (Swap to, 4827:102907), which opens
-   * the token's details. On a "non-held" row it stands in for the menu.
+   * Adds the info button at the row's end, which opens the token's details.
+   * On a "non-held" row it stands in for the menu.
    */
   onViewDetails?: () => void;
 }
