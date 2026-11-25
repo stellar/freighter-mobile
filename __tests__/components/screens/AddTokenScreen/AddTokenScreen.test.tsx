@@ -11,6 +11,7 @@ import { useBalancesStore } from "ducks/balances";
 import { renderWithProviders } from "helpers/testUtils";
 import { useTokenLookup } from "hooks/useTokenLookup";
 import React from "react";
+import { Keyboard } from "react-native";
 import { SecurityLevel } from "services/blockaid/constants";
 
 // The real sheets' refs are gorhom modals that expose nothing observable, so
@@ -489,5 +490,77 @@ describe("AddTokenScreen — Popular tokens", () => {
 
       expect(mockPresented).toEqual(["SecurityDetailBottomSheet"]);
     });
+  });
+});
+
+describe("AddTokenScreen — row taps dismiss the keyboard", () => {
+  const dismiss = jest.spyOn(Keyboard, "dismiss");
+  const held = { ...makeRecord("USDC"), hasTrustline: true };
+
+  const rowProps = () => {
+    const screen = renderWithProviders(
+      <AddTokenScreen navigation={navigation} route={{} as any} />,
+    );
+    const row = screen.UNSAFE_root.findAll(
+      (n) =>
+        n.props.token?.tokenCode === "USDC" &&
+        typeof n.props.handleUnhideToken === "function",
+    )[0];
+    return { screen, row };
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPriceHistoryEnabled.mockReturnValue(true);
+    (useTokenLookup as jest.Mock).mockReturnValue({
+      searchResults: [held, unverified],
+      verifiedTokens: [held],
+      unverifiedTokens: [unverified],
+      hasScanFailed: false,
+      status: HookStatus.SUCCESS,
+      handleSearch: jest.fn(),
+      resetSearch: jest.fn(),
+    });
+  });
+
+  afterAll(() => {
+    dismiss.mockRestore();
+  });
+
+  it("on Add", () => {
+    const { getByTestId } = renderWithProviders(
+      <AddTokenScreen navigation={navigation} route={{} as any} />,
+    );
+
+    fireEvent.press(getByTestId("add-token-button"));
+
+    expect(dismiss).toHaveBeenCalled();
+  });
+
+  it("on opening details", () => {
+    const { getByTestId } = renderWithProviders(
+      <AddTokenScreen navigation={navigation} route={{} as any} />,
+    );
+
+    fireEvent.press(getByTestId("token-item-body-SCAM"));
+
+    expect(mockNavigate).toHaveBeenCalled();
+    expect(dismiss).toHaveBeenCalled();
+  });
+
+  it("on Remove", () => {
+    const { row } = rowProps();
+
+    row.props.handleRemoveToken(held);
+
+    expect(dismiss).toHaveBeenCalled();
+  });
+
+  it("on Unhide", () => {
+    const { row } = rowProps();
+
+    row.props.handleUnhideToken(held);
+
+    expect(dismiss).toHaveBeenCalled();
   });
 });

@@ -62,7 +62,7 @@ import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useTokenLookup } from "hooks/useTokenLookup";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { Keyboard, ScrollView, TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import {
@@ -200,6 +200,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   // navigate() bubbles from the manage-tokens stack up to the root stack.
   const openTokenDetails = useCallback(
     (record: FormattedSearchTokenRecord) => {
+      Keyboard.dismiss();
       (
         navigation as unknown as NativeStackNavigationProp<RootStackParamList>
       ).navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
@@ -252,7 +253,10 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     });
   }, [getClipboardText, handleSearch]);
 
+  // The lists keep taps while the keyboard is up, so each row action closes
+  // it rather than leaving it over the sheet or screen it opens.
   const handleAddToken = useCallback((token: FormattedSearchTokenRecord) => {
+    Keyboard.dismiss();
     setSelectedToken(token);
     setScannedToken({
       isMalicious: token?.isMalicious || false,
@@ -354,6 +358,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   }, []);
 
   const handleRemoveToken = useCallback((token: FormattedSearchTokenRecord) => {
+    Keyboard.dismiss();
     setSelectedToken(token);
     removeTokenBottomSheetModalRef.current?.present();
   }, []);
@@ -467,11 +472,13 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   );
 
   const handleUnhideSearchToken = useCallback(
-    (token: FormattedSearchTokenRecord) =>
-      handleUnhideToken({
+    (token: FormattedSearchTokenRecord) => {
+      Keyboard.dismiss();
+      return handleUnhideToken({
         tokenId: getSearchTokenRecordId(token),
         tokenCode: token.tokenCode,
-      }),
+      });
+    },
     [handleUnhideToken],
   );
 
