@@ -159,6 +159,29 @@ export const addSecretSource = async ({
   return source;
 };
 
+/**
+ * Unregisters one source. Only for undoing a registration that never got an
+ * account (a phrase import whose first account failed to store); nothing
+ * else removes sources. If the source was pinned, the pin moves to the
+ * earliest remaining source.
+ */
+export const removeSecretSource = async (id: string): Promise<void> => {
+  const sources = await getSecretSources();
+  if (!sources[id]) {
+    return;
+  }
+
+  const rest = Object.fromEntries(
+    Object.entries(sources).filter(([sourceId]) => sourceId !== id),
+  );
+  await dataStorage.setItem(STORAGE_KEYS.SECRET_SOURCES, JSON.stringify(rest));
+
+  if ((await getPinnedSourceId()) === id) {
+    await clearPinnedSourceId();
+    await pinFirstSource();
+  }
+};
+
 export const clearSecretSources = async (): Promise<void> => {
   await dataStorage.remove(STORAGE_KEYS.SECRET_SOURCES);
 };
