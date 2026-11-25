@@ -8,7 +8,7 @@ import {
 import { BaseLayout } from "components/layout/BaseLayout";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import { SwapToFooter } from "components/screens/TokenDetailsScreen/components/SwapToFooter";
-import { TokenChartSource } from "config/analyticsConfig";
+import { AnalyticsEvent, TokenChartSource } from "config/analyticsConfig";
 import { NETWORKS, SWAP_SELECTION_TYPES } from "config/constants";
 import {
   ROOT_NAVIGATOR_ROUTES,
@@ -28,6 +28,7 @@ import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { InteractionManager, SectionList, View } from "react-native";
 import { ReactTestInstance } from "react-test-renderer";
+import { analytics } from "services/analytics";
 import { SecurityLevel } from "services/blockaid/constants";
 
 jest.mock("components/screens/HistoryScreen/HistoryList", () => {
@@ -1275,6 +1276,55 @@ describe("TokenDetailsScreen", () => {
         { pop: true },
       );
     });
+  });
+
+  it("Swap from reports the contract as asset_issuer for a symbol with a colon", () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    const tokenId = `A:B:${contractId}`;
+    const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+    useBalancesList.mockReturnValue({
+      balanceItems: [
+        {
+          id: tokenId,
+          tokenCode: "A:B",
+          contractId,
+          tokenType: "custom_token",
+          total: { isGreaterThan: () => true },
+        },
+      ],
+      hiddenBalanceItems: [],
+      scanResults: {},
+      isLoading: false,
+      error: null,
+      noBalances: false,
+      isRefreshing: false,
+      isFunded: true,
+      localOnlyTokenIds: [],
+      handleRefresh: jest.fn(),
+    });
+    const track = jest.spyOn(analytics, "track");
+    const route = {
+      ...mockRoute,
+      params: {
+        tokenId,
+        tokenSymbol: "A:B",
+        source: TokenChartSource.SWAP_PICKER,
+        swapSelectionSource: "balances",
+        swapSelectionType: SWAP_SELECTION_TYPES.SOURCE,
+      },
+    } as unknown as TokenDetailsScreenProps["route"];
+
+    const screen = renderWithProviders(
+      <TokenDetailsScreen navigation={mockNavigation} route={route} />,
+    );
+    fireEvent.press(screen.getByTestId("token-details-swap-to-button"));
+
+    expect(track).toHaveBeenCalledWith(
+      AnalyticsEvent.SWAP_SOURCE_SELECTED,
+      expect.objectContaining({ asset_issuer: contractId }),
+    );
+    track.mockRestore();
   });
 
   describe("opened from the swap amount screen", () => {

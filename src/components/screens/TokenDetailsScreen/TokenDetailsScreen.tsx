@@ -556,7 +556,9 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const selectSwapSource = () => {
     analytics.track(AnalyticsEvent.SWAP_SOURCE_SELECTED, {
       asset_code: tokenSymbol,
-      asset_issuer: tokenId.includes(":") ? tokenId.split(":")[1] : "",
+      asset_issuer: tokenId.includes(":")
+        ? tokenId.slice(tokenId.lastIndexOf(":") + 1)
+        : "",
       source:
         route.params.swapSelectionSource === SwapSelectionSource.SEARCH
           ? SwapSelectionSource.SEARCH
