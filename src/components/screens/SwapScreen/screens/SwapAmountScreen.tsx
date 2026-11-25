@@ -448,16 +448,21 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         position,
       });
       Keyboard.dismiss();
+      // A held Soroban balance is keyed by its contract symbol, which the
+      // stellar.expert record's code can differ from.
+      const heldContract = balanceItems.find(
+        (b) => "contractId" in b && b.contractId === record.issuer,
+      );
       (
         navigation as unknown as NativeStackNavigationProp<RootStackParamList>
       ).navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
-        tokenId: recordTokenId(record),
+        tokenId: heldContract?.id ?? recordTokenId(record),
         tokenSymbol: record.tokenCode,
         record,
         source: TokenChartSource.SWAP_AMOUNT,
       });
     },
-    [navigation],
+    [navigation, balanceItems],
   );
 
   // Scroll the amount screen back to the top whenever the selected source or

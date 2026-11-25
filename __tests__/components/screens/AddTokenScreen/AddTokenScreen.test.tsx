@@ -101,6 +101,61 @@ describe("AddTokenScreen — View details gate", () => {
     },
   );
 
+  describe("Soroban rows", () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    const sorobanRecord = (tokenCode: string) => ({
+      tokenCode,
+      issuer: contractId,
+      domain: "",
+      isNative: false,
+      hasTrustline: false,
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+    });
+    const openDetails = (record: ReturnType<typeof sorobanRecord>) => {
+      mockPriceHistoryEnabled.mockReturnValue(true);
+      (useTokenLookup as jest.Mock).mockReturnValue({
+        searchResults: [record],
+        verifiedTokens: [record],
+        unverifiedTokens: [],
+        hasScanFailed: false,
+        status: HookStatus.SUCCESS,
+        handleSearch: jest.fn(),
+        resetSearch: jest.fn(),
+      });
+      const { getByTestId } = renderWithProviders(
+        <AddTokenScreen navigation={navigation} route={{} as any} />,
+      );
+      fireEvent.press(getByTestId(`token-item-body-${record.tokenCode}`));
+    };
+
+    it("opens a code-less token by its contract id", () => {
+      openDetails(sorobanRecord(contractId));
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+        expect.objectContaining({ tokenId: contractId }),
+      );
+    });
+
+    it("opens a held token by its balance id when the record's code differs", () => {
+      const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+      useBalancesList.mockReturnValueOnce({
+        balanceItems: [
+          { id: `TKN:${contractId}`, contractId, tokenCode: "TKN" },
+        ],
+        hiddenBalanceItems: [],
+        handleRefresh: jest.fn(),
+      });
+      openDetails(sorobanRecord("SEXPCODE"));
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+        expect.objectContaining({ tokenId: `TKN:${contractId}` }),
+      );
+    });
+  });
+
   it("renders no pressable body when price history is disabled, and keeps Add", () => {
     const { queryByTestId, getAllByTestId } = renderWithProviders(
       <AddTokenScreen navigation={navigation} route={{} as any} />,

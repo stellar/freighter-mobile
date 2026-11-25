@@ -1620,6 +1620,57 @@ describe("SwapAmountScreen", () => {
       );
     });
 
+    it("opens a held Soroban token by its balance id when the record's code differs", () => {
+      const contractId =
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: [
+          ...mockBalances,
+          { id: `TKN:${contractId}`, contractId, tokenCode: "TKN" },
+        ],
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+      mockUseSwapTokenLookup.mockReturnValue({
+        yourTokens: [],
+        popularTokens: [],
+        trendingTokens: [
+          {
+            tokenCode: "SEXPCODE",
+            domain: "",
+            hasTrustline: true,
+            issuer: contractId,
+            isNative: false,
+          },
+        ],
+        searchResults: [],
+        stellarExpertDown: false,
+        status: "idle",
+        isTrendingLoading: false,
+        searchTerm: "",
+        handleSearch: jest.fn(),
+        resetSearch: jest.fn(),
+      });
+      const navigation = makeNavigation();
+      const { getAllByText } = renderWithProviders(
+        <SwapAmountScreen navigation={navigation} route={makeRoute()} />,
+      );
+
+      act(() => {
+        fireEvent.press(getAllByText("SEXPCODE")[0]);
+      });
+
+      expect(navigation.navigate).toHaveBeenCalledWith(
+        ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+        expect.objectContaining({ tokenId: `TKN:${contractId}` }),
+      );
+    });
+
     it("hides the trending list when stellarExpertDown is true", () => {
       mockUseSwapTokenLookup.mockReturnValue({
         yourTokens: [],
