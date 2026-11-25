@@ -324,22 +324,30 @@ export const assessTransactionSecurity = (
     );
   }
 
-  if (simulation && "error" in simulation) {
+  // A risk verdict (Malicious, Warning, Spam) wins over a simulation revert.
+  const validationLevel =
+    validation && "result_type" in validation
+      ? getSecurityLevel(validation.result_type)
+      : undefined;
+
+  if (validationLevel && validationLevel !== SecurityLevel.SAFE) {
     const messageKeys =
-      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.SUSPICIOUS];
+      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[validationLevel];
+
     return createSecurityAssessment(
-      SecurityLevel.SUSPICIOUS,
+      validationLevel,
       messageKeys.title,
       messageKeys.description,
     );
   }
 
-  if (validation && "result_type" in validation) {
-    const level = getSecurityLevel(validation.result_type);
-    const messageKeys = TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[level];
-
+  // A simulation revert (e.g. a missing trustline) means the transaction will
+  // fail. It is not a risk verdict, so it must not read as suspicious.
+  if (simulation && "error" in simulation) {
+    const messageKeys =
+      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.EXPECTED_TO_FAIL];
     return createSecurityAssessment(
-      level,
+      SecurityLevel.EXPECTED_TO_FAIL,
       messageKeys.title,
       messageKeys.description,
     );
@@ -451,7 +459,8 @@ export const extractSecurityWarnings = (
       warnings.push({
         id: "simulation-error",
         description: scanResult.simulation.error,
-        severity: "malicious",
+        // The revert reason explains a failure, not a risk.
+        severity: "warning",
       });
     }
 

@@ -7,6 +7,7 @@ interface DappRequestBannersProps {
   onBannerPress?: () => void;
   isMalicious?: boolean;
   isSuspicious?: boolean;
+  isExpectedToFail?: boolean;
   isUnableToScan?: boolean;
   securityWarningAction?: () => void;
 }
@@ -16,6 +17,7 @@ export const DappRequestBanners: React.FC<DappRequestBannersProps> = ({
   onBannerPress,
   isMalicious,
   isSuspicious,
+  isExpectedToFail,
   isUnableToScan,
   securityWarningAction,
 }) => {
@@ -25,9 +27,11 @@ export const DappRequestBanners: React.FC<DappRequestBannersProps> = ({
     if (isMalicious) return t("dappConnectionBottomSheetContent.maliciousFlag");
     if (isSuspicious)
       return t("dappConnectionBottomSheetContent.suspiciousFlag");
+    if (isExpectedToFail)
+      return t("blockaid.security.transaction.expectedToFail");
     if (isUnableToScan) return t("securityWarning.proceedWithCaution");
     return "";
-  }, [isMalicious, isSuspicious, isUnableToScan, t]);
+  }, [isMalicious, isSuspicious, isExpectedToFail, isUnableToScan, t]);
 
   const securityBannerVariant = isMalicious
     ? ("error" as const)
@@ -42,7 +46,7 @@ export const DappRequestBanners: React.FC<DappRequestBannersProps> = ({
           onPress={onBannerPress}
         />
       )}
-      {(isMalicious || isSuspicious || isUnableToScan) && (
+      {(isMalicious || isSuspicious || isExpectedToFail || isUnableToScan) && (
         <Banner
           variant={securityBannerVariant}
           text={securityBannerText}

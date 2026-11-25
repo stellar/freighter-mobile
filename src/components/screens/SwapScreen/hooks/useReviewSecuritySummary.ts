@@ -27,6 +27,7 @@ export const useReviewSecuritySummary = ({
 }): {
   isMalicious: boolean;
   isSuspicious: boolean;
+  isExpectedToFail: boolean;
   isUnableToScan: boolean;
   isSourceMalicious: boolean;
   isSourceSuspicious: boolean;
@@ -45,6 +46,7 @@ export const useReviewSecuritySummary = ({
 
   const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
   const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
+  const isExpectedToFail = !!transactionSecurityAssessment.isExpectedToFail;
   // Native XLM is unscannable by definition, so a failed scan against it on a
   // token side doesn't count.
   const isUnableToScan =
@@ -67,11 +69,14 @@ export const useReviewSecuritySummary = ({
     if (isDestSuspicious || isSourceSuspicious) {
       return t("transactionAmountScreen.errors.suspiciousToken");
     }
+    if (isExpectedToFail) {
+      return t("blockaid.security.transaction.expectedToFail");
+    }
     if (isUnableToScan) {
       return t("securityWarning.proceedWithCaution");
     }
     // Unreachable in practice: the banner is only rendered when one of
-    // the six flags above is true. Return "" rather than a misleading
+    // the flags above is true. Return "" rather than a misleading
     // malicious-fallback string.
     return "";
   }, [
@@ -82,12 +87,14 @@ export const useReviewSecuritySummary = ({
     isSourceMalicious,
     isDestSuspicious,
     isSourceSuspicious,
+    isExpectedToFail,
     isUnableToScan,
   ]);
 
   return {
     isMalicious,
     isSuspicious,
+    isExpectedToFail,
     isUnableToScan,
     isSourceMalicious,
     isSourceSuspicious,

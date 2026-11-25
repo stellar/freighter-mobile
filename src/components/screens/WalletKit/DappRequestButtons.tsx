@@ -7,6 +7,7 @@ import { View } from "react-native";
 interface DappRequestButtonsProps {
   isMalicious?: boolean;
   isSuspicious?: boolean;
+  isExpectedToFail?: boolean;
   isUnableToScan?: boolean;
   isSigning: boolean;
   isValidatingMemo?: boolean;
@@ -18,6 +19,7 @@ interface DappRequestButtonsProps {
 export const DappRequestButtons: React.FC<DappRequestButtonsProps> = ({
   isMalicious,
   isSuspicious,
+  isExpectedToFail,
   isUnableToScan,
   isSigning,
   isValidatingMemo,
@@ -27,7 +29,7 @@ export const DappRequestButtons: React.FC<DappRequestButtonsProps> = ({
 }) => {
   const { t } = useAppTranslation();
 
-  if (!isMalicious && !isSuspicious && !isUnableToScan) {
+  if (!isMalicious && !isSuspicious && !isExpectedToFail && !isUnableToScan) {
     return (
       <View className="flex-row justify-between gap-3">
         <View className="flex-1">
@@ -97,7 +99,7 @@ export const DappRequestButtons: React.FC<DappRequestButtonsProps> = ({
     <View className="flex-col gap-3">
       <View className="w-full">
         <Button
-          secondary={isSuspicious}
+          secondary={isSuspicious || isExpectedToFail}
           destructive={isMalicious}
           xl
           isFullWidth

@@ -22,6 +22,8 @@ interface DappRequestBottomSheetContentProps {
   isSigning: boolean;
   isMalicious?: boolean;
   isSuspicious?: boolean;
+  /** The transaction's simulation reverted: it will fail, but isn't flagged. */
+  isExpectedToFail?: boolean;
   isUnableToScan?: boolean;
   transactionScanResult?: Blockaid.StellarTransactionScanResponse;
   securityWarningAction?: () => void;

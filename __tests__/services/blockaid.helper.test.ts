@@ -2,6 +2,7 @@ import BigNumber from "bignumber.js";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
   assessTokenSecurityFromLevel,
+  assessTransactionSecurity,
   extractSecurityWarnings,
   getTransactionBalanceChanges,
   isUnfundedDestinationError,
@@ -738,6 +739,58 @@ describe("extractSecurityWarnings — feature.type filter + severity stamp", () 
     const miss = extractSecurityWarnings({ status: "miss" } as any);
     expect(miss).toEqual([
       expect.objectContaining({ id: "site-miss", severity: "warning" }),
+    ]);
+  });
+});
+
+describe("assessTransactionSecurity — simulation reverts", () => {
+  const TRUSTLINE_ERROR = "op_no_trust: destination is missing a trustline";
+
+  const txScan = (resultType: string | undefined, simError?: string): any => ({
+    simulation: simError ? { error: simError } : { assets_diffs: {} },
+    validation: resultType
+      ? { result_type: resultType, description: "", features: [] }
+      : undefined,
+  });
+
+  it("reads a revert on a benign scan as expected to fail, not suspicious", () => {
+    const a = assessTransactionSecurity(txScan("Benign", TRUSTLINE_ERROR));
+
+    expect(a.level).toBe(SecurityLevel.EXPECTED_TO_FAIL);
+    expect(a.isExpectedToFail).toBe(true);
+    expect(a.isSuspicious).toBe(false);
+    expect(a.isMalicious).toBe(false);
+  });
+
+  it("reads a revert with no validation as expected to fail", () => {
+    expect(
+      assessTransactionSecurity(txScan(undefined, TRUSTLINE_ERROR)).level,
+    ).toBe(SecurityLevel.EXPECTED_TO_FAIL);
+  });
+
+  it.each([
+    ["Malicious", SecurityLevel.MALICIOUS],
+    ["Warning", SecurityLevel.SUSPICIOUS],
+    ["Spam", SecurityLevel.SUSPICIOUS],
+  ])("keeps a %s verdict over a revert", (resultType, level) => {
+    expect(
+      assessTransactionSecurity(txScan(resultType, TRUSTLINE_ERROR)).level,
+    ).toBe(level);
+  });
+
+  it("stays safe for a benign scan that simulates cleanly", () => {
+    expect(assessTransactionSecurity(txScan("Benign")).level).toBe(
+      SecurityLevel.SAFE,
+    );
+  });
+
+  it("lists the revert reason as a warning row, not a malicious one", () => {
+    expect(extractSecurityWarnings(txScan("Benign", TRUSTLINE_ERROR))).toEqual([
+      {
+        id: "simulation-error",
+        description: TRUSTLINE_ERROR,
+        severity: "warning",
+      },
     ]);
   });
 });
