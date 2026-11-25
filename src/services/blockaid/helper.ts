@@ -313,17 +313,6 @@ export const assessTransactionSecurity = (
 
   const { simulation, validation } = scanResult;
 
-  // Early check: if context says unfunded + cannot create account, mark expected to fail
-  if (isUnfundedDestinationError(unfundedContext)) {
-    const messageKeys =
-      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.EXPECTED_TO_FAIL];
-    return createSecurityAssessment(
-      SecurityLevel.EXPECTED_TO_FAIL,
-      messageKeys.title,
-      messageKeys.description,
-    );
-  }
-
   // A risk verdict (Malicious, Warning, Spam) wins over a simulation revert.
   const validationLevel =
     validation && "result_type" in validation
@@ -341,9 +330,13 @@ export const assessTransactionSecurity = (
     );
   }
 
-  // A simulation revert (e.g. a missing trustline) means the transaction will
-  // fail. It is not a risk verdict, so it must not read as suspicious.
-  if (simulation && "error" in simulation) {
+  // A simulation revert (e.g. a missing trustline) or an unfunded destination
+  // means the transaction will fail. It is not a risk verdict, so it must not
+  // read as suspicious.
+  if (
+    isUnfundedDestinationError(unfundedContext) ||
+    (simulation && "error" in simulation)
+  ) {
     const messageKeys =
       TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.EXPECTED_TO_FAIL];
     return createSecurityAssessment(
@@ -477,8 +470,17 @@ export const extractSecurityWarnings = (
         severity: "warning",
       });
 
-      // Do not surface Blockaid technical messages for unfunded accounts
-      return warnings;
+      // Do not surface Blockaid technical messages for unfunded accounts,
+      // unless Blockaid flagged the transaction as a risk.
+      const hasRiskVerdict =
+        !!scanResult.validation &&
+        "result_type" in scanResult.validation &&
+        (scanResult.validation.result_type === BLOCKAID_RESULT_TYPES.WARNING ||
+          scanResult.validation.result_type ===
+            BLOCKAID_RESULT_TYPES.MALICIOUS);
+      if (!hasRiskVerdict) {
+        return warnings;
+      }
     }
 
     if (

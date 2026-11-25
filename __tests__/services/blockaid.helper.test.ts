@@ -778,6 +778,47 @@ describe("assessTransactionSecurity — simulation reverts", () => {
     ).toBe(level);
   });
 
+  describe("with an unfunded destination", () => {
+    const unfunded: any = {
+      isDestinationFunded: false,
+      isNativeAsset: false,
+      canCreateAccountWithAmount: false,
+      isClassicAsset: true,
+      isContractDestination: false,
+    };
+
+    it("reads a benign scan as expected to fail", () => {
+      expect(
+        assessTransactionSecurity(txScan("Benign"), null, unfunded).level,
+      ).toBe(SecurityLevel.EXPECTED_TO_FAIL);
+    });
+
+    it.each([
+      ["Malicious", SecurityLevel.MALICIOUS],
+      ["Warning", SecurityLevel.SUSPICIOUS],
+    ])("keeps a %s verdict", (resultType, level) => {
+      expect(
+        assessTransactionSecurity(txScan(resultType), null, unfunded).level,
+      ).toBe(level);
+    });
+
+    it("lists the risk reason next to the unfunded explanation", () => {
+      const scan = {
+        simulation: { assets_diffs: {} },
+        validation: {
+          result_type: "Malicious",
+          description: "Known drainer",
+          features: [],
+        },
+      } as any;
+
+      expect(extractSecurityWarnings(scan, unfunded).map((w) => w.id)).toEqual([
+        "unfunded-destination-details",
+        "validation-malicious",
+      ]);
+    });
+  });
+
   it("stays safe for a benign scan that simulates cleanly", () => {
     expect(assessTransactionSecurity(txScan("Benign")).level).toBe(
       SecurityLevel.SAFE,
