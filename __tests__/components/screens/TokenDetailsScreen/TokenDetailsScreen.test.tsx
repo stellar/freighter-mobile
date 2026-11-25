@@ -840,20 +840,53 @@ describe("TokenDetailsScreen", () => {
       useDebugStore.setState({
         overriddenBlockaidResponse: SecurityLevel.MALICIOUS,
       });
+      try {
+        const screen = renderWithProviders(
+          <TokenDetailsScreen
+            navigation={mockNavigation}
+            route={nonHeldRoute(TokenChartSource.SWAP_PICKER, {
+              ...shxRecord,
+              securityLevel: SecurityLevel.SAFE,
+            })}
+          />,
+        );
+
+        expect(
+          screen.getByText("blockaid.security.token.malicious"),
+        ).toBeTruthy();
+      } finally {
+        useDebugStore.setState({ overriddenBlockaidResponse: null });
+      }
+    });
+
+    it("shows no Blockaid banner for a record with no verdict (off mainnet or a failed scan)", () => {
+      const screen = renderWithProviders(
+        <TokenDetailsScreen
+          navigation={mockNavigation}
+          route={nonHeldRoute(TokenChartSource.SWAP_PICKER)}
+        />,
+      );
+
+      expect(
+        screen.queryByText("securityWarning.proceedWithCaution"),
+      ).toBeNull();
+    });
+
+    it("shows no Blockaid banner for the native token's record", () => {
       const screen = renderWithProviders(
         <TokenDetailsScreen
           navigation={mockNavigation}
           route={nonHeldRoute(TokenChartSource.SWAP_PICKER, {
             ...shxRecord,
-            securityLevel: SecurityLevel.SAFE,
+            isNative: true,
+            securityLevel: SecurityLevel.UNABLE_TO_SCAN,
           })}
         />,
       );
-      useDebugStore.setState({ overriddenBlockaidResponse: null });
 
       expect(
-        screen.getByText("blockaid.security.token.malicious"),
-      ).toBeTruthy();
+        screen.queryByText("securityWarning.proceedWithCaution"),
+      ).toBeNull();
     });
 
     it("shows no chart, stats or About when the kill switch is off", () => {
@@ -1283,6 +1316,7 @@ describe("TokenDetailsScreen", () => {
       "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
     const tokenId = `A:B:${contractId}`;
     const { useBalancesList } = jest.requireMock("hooks/useBalancesList");
+    const defaultBalances = useBalancesList.getMockImplementation();
     useBalancesList.mockReturnValue({
       balanceItems: [
         {
@@ -1315,16 +1349,20 @@ describe("TokenDetailsScreen", () => {
       },
     } as unknown as TokenDetailsScreenProps["route"];
 
-    const screen = renderWithProviders(
-      <TokenDetailsScreen navigation={mockNavigation} route={route} />,
-    );
-    fireEvent.press(screen.getByTestId("token-details-swap-to-button"));
+    try {
+      const screen = renderWithProviders(
+        <TokenDetailsScreen navigation={mockNavigation} route={route} />,
+      );
+      fireEvent.press(screen.getByTestId("token-details-swap-to-button"));
 
-    expect(track).toHaveBeenCalledWith(
-      AnalyticsEvent.SWAP_SOURCE_SELECTED,
-      expect.objectContaining({ asset_issuer: contractId }),
-    );
-    track.mockRestore();
+      expect(track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_SOURCE_SELECTED,
+        expect.objectContaining({ asset_issuer: contractId }),
+      );
+    } finally {
+      track.mockRestore();
+      useBalancesList.mockImplementation(defaultBalances);
+    }
   });
 
   describe("opened from the swap amount screen", () => {

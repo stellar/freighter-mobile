@@ -78,6 +78,7 @@ import {
   extractSecurityWarnings,
   SecurityWarning,
 } from "services/blockaid/helper";
+import type { SecurityAssessment } from "services/blockaid/types";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -456,13 +457,28 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     overriddenBlockaidResponse,
   );
   // A token the account doesn't hold has no balances scan; its search record
-  // carries the scan instead, assessed as the swap review assesses it.
-  const recordSecurity = record
-    ? assessTokenSecurityFromLevel(
-        record.securityLevel,
-        overriddenBlockaidResponse,
-      )
-    : undefined;
+  // carries the scan instead. A record with no level got no verdict (off
+  // mainnet, or the bulk scan failed): the helper would read that as unable
+  // to scan, so its own flags stand. XLM is never scanned.
+  let recordSecurity:
+    | Pick<
+        SecurityAssessment,
+        "isMalicious" | "isSuspicious" | "isUnableToScan"
+      >
+    | undefined;
+  if (record && !record.isNative) {
+    recordSecurity =
+      record.securityLevel || overriddenBlockaidResponse
+        ? assessTokenSecurityFromLevel(
+            record.securityLevel,
+            overriddenBlockaidResponse,
+          )
+        : {
+            isMalicious: !!record.isMalicious,
+            isSuspicious: !!record.isSuspicious,
+            isUnableToScan: !!record.isUnableToScan,
+          };
+  }
   const recordMalicious = !!recordSecurity?.isMalicious;
   const recordSuspicious = !!recordSecurity?.isSuspicious;
   const recordUnableToScan = !!recordSecurity?.isUnableToScan;
