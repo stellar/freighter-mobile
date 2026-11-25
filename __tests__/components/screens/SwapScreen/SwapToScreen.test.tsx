@@ -1047,6 +1047,30 @@ describe("SwapToScreen", () => {
       );
     });
 
+    it("View details on a code-less Soroban row opens it by its contract id", () => {
+      const contractId =
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        popularTokens: [
+          { ...mockPopularRecord, tokenCode: contractId, issuer: contractId },
+        ],
+      });
+      mockPriceHistoryEnabled.mockReturnValue(true);
+      const { getByTestId } = renderWithProviders(
+        <SwapToScreen {...mockNavProps} />,
+      );
+
+      fireEvent.press(getByTestId(`token-option-${contractId}-view-details`));
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+        expect.objectContaining({ tokenId: contractId }),
+      );
+    });
+
     it("View details on a Your tokens row pushes TokenDetailsScreen by balance id, with no record", () => {
       mockPriceHistoryEnabled.mockReturnValue(true);
       (useBalancesList as jest.Mock).mockReturnValue({

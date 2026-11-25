@@ -35,6 +35,31 @@ export const recordTokenId = (
     : record.tokenCode;
 };
 
+/**
+ * The token details route id and symbol for a search record. A held Soroban
+ * balance is keyed by its contract symbol, which the record's stellar.expert
+ * code can differ from, so it is found by contract id; a code-less record's
+ * code is its contract id, which identifies it on its own.
+ */
+export const detailsRouteForRecord = (
+  record: FormattedSearchTokenRecord,
+  balanceItems: Array<PricedBalance & { id: string }>,
+): { tokenId: TokenIdentifier; tokenSymbol: string } => {
+  const held = balanceItems.find(
+    (b) => "contractId" in b && b.contractId === record.issuer,
+  );
+  if (held) {
+    return {
+      tokenId: held.id,
+      tokenSymbol: held.tokenCode ?? record.tokenCode,
+    };
+  }
+  if (record.tokenCode === record.issuer) {
+    return { tokenId: record.issuer, tokenSymbol: record.tokenCode };
+  }
+  return { tokenId: recordTokenId(record), tokenSymbol: record.tokenCode };
+};
+
 interface FindBalanceForTokenParams {
   token: NonNativeToken | NativeToken;
   balanceItems: PricedBalance[];

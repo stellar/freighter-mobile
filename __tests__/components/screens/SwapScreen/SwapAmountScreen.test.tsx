@@ -1667,7 +1667,48 @@ describe("SwapAmountScreen", () => {
 
       expect(navigation.navigate).toHaveBeenCalledWith(
         ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
-        expect.objectContaining({ tokenId: `TKN:${contractId}` }),
+        expect.objectContaining({
+          tokenId: `TKN:${contractId}`,
+          tokenSymbol: "TKN",
+        }),
+      );
+    });
+
+    it("opens a code-less Soroban token by its contract id", () => {
+      const contractId =
+        "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+      mockUseSwapTokenLookup.mockReturnValue({
+        yourTokens: [],
+        popularTokens: [],
+        trendingTokens: [
+          {
+            tokenCode: contractId,
+            domain: "",
+            hasTrustline: false,
+            issuer: contractId,
+            isNative: false,
+          },
+        ],
+        searchResults: [],
+        stellarExpertDown: false,
+        status: "idle",
+        isTrendingLoading: false,
+        searchTerm: "",
+        handleSearch: jest.fn(),
+        resetSearch: jest.fn(),
+      });
+      const navigation = makeNavigation();
+      const { getAllByText } = renderWithProviders(
+        <SwapAmountScreen navigation={navigation} route={makeRoute()} />,
+      );
+
+      act(() => {
+        fireEvent.press(getAllByText(contractId)[0]);
+      });
+
+      expect(navigation.navigate).toHaveBeenCalledWith(
+        ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
+        expect.objectContaining({ tokenId: contractId }),
       );
     });
 

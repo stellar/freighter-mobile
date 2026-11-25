@@ -151,7 +151,10 @@ describe("AddTokenScreen — View details gate", () => {
 
       expect(mockNavigate).toHaveBeenCalledWith(
         ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN,
-        expect.objectContaining({ tokenId: `TKN:${contractId}` }),
+        expect.objectContaining({
+          tokenId: `TKN:${contractId}`,
+          tokenSymbol: "TKN",
+        }),
       );
     });
   });

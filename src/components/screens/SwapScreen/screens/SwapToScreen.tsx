@@ -17,6 +17,7 @@ import {
   descriptorFromSearchRecord,
   getItemKey,
   isHeldToken,
+  detailsRouteForRecord,
   recordTokenId,
   withTokenDecimals,
 } from "components/screens/SwapScreen/helpers";
@@ -248,8 +249,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     (
       navigation as unknown as NativeStackNavigationProp<RootStackParamList>
     ).navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
-      tokenId: recordTokenId(record),
-      tokenSymbol: record.tokenCode,
+      ...detailsRouteForRecord(record, balanceItems),
       record,
       source,
       swapSelectionSource,

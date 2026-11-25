@@ -22,7 +22,7 @@ import EmptyState from "components/screens/AddTokenScreen/EmptyState";
 import ErrorState from "components/screens/AddTokenScreen/ErrorState";
 import RemoveTokenBottomSheetContent from "components/screens/AddTokenScreen/RemoveTokenBottomSheet";
 import TokenItem from "components/screens/AddTokenScreen/TokenItem";
-import { recordTokenId } from "components/screens/SwapScreen/helpers";
+import { detailsRouteForRecord } from "components/screens/SwapScreen/helpers";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
@@ -159,23 +159,10 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   // navigate() bubbles from the manage-tokens stack up to the root stack.
   const openTokenDetails = useCallback(
     (record: FormattedSearchTokenRecord) => {
-      // A held Soroban balance is keyed by its contract symbol, which the
-      // search record's code can differ from; a code-less record's code is
-      // its contract id, which already identifies it.
-      const heldContract = balanceItems.find(
-        (b) => "contractId" in b && b.contractId === record.issuer,
-      );
-      let tokenId = recordTokenId(record);
-      if (heldContract) {
-        tokenId = heldContract.id;
-      } else if (record.tokenCode === record.issuer) {
-        tokenId = record.issuer;
-      }
       (
         navigation as unknown as NativeStackNavigationProp<RootStackParamList>
       ).navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
-        tokenId,
-        tokenSymbol: record.tokenCode,
+        ...detailsRouteForRecord(record, balanceItems),
         record,
         source: TokenChartSource.ADD_TOKEN,
       });
