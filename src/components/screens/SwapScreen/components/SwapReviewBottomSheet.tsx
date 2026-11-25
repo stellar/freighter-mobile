@@ -120,6 +120,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   const {
     isMalicious,
     isSuspicious,
+    isExpectedToFail,
     isUnableToScan,
     isSourceMalicious,
     isSourceSuspicious,
@@ -189,11 +190,11 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         />
       )}
 
-      {(isMalicious || isSuspicious || isUnableToScan) && (
+      {(isMalicious || isSuspicious || isExpectedToFail || isUnableToScan) && (
         <Banner
           testID="security-warning-banner"
           className="mt-[16px]"
-          variant={isSuspicious || isUnableToScan ? "warning" : "error"}
+          variant={isMalicious ? "error" : "warning"}
           text={bannerText}
           onPress={onSecurityWarningPress}
         />
@@ -309,6 +310,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 type SwapReviewFooterProps = {
   isMalicious: boolean;
   isSuspicious: boolean;
+  isExpectedToFail?: boolean;
   onCancel?: () => void;
   onConfirm?: () => void;
   isBuilding?: boolean;
@@ -323,6 +325,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
     const {
       isMalicious,
       isSuspicious,
+      isExpectedToFail = false,
       onCancel,
       onConfirm,
       isBuilding = false,
@@ -330,7 +333,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
       onSettingsPress,
     } = props;
 
-    const isTrusted = !isMalicious && !isSuspicious;
+    const isTrusted = !isMalicious && !isSuspicious && !isExpectedToFail;
     const isDisabled = !transactionXDR || isBuilding;
 
     const renderButtons = () => {
@@ -366,7 +369,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
       const cancelButton = (
         <View className={`${isTrusted ? "flex-1" : "w-full"}`}>
           <Button
-            secondary={isSuspicious}
+            secondary={isSuspicious || isExpectedToFail}
             tertiary={isTrusted}
             destructive={isMalicious}
             xl

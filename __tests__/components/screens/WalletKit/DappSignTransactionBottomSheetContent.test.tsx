@@ -188,6 +188,18 @@ describe("DappSignTransactionBottomSheetContent", () => {
     expect(getByTestId("dapp-request-buttons")).toBeTruthy();
   });
 
+  it("labels a simulation revert as expected to fail, not suspicious", () => {
+    const { getByText, queryByText } = renderSheet({ isExpectedToFail: true });
+
+    expect(
+      getByText("blockaid.security.transaction.expectedToFail"),
+    ).toBeTruthy();
+    expect(
+      queryByText("dappConnectionBottomSheetContent.suspiciousFlag"),
+    ).toBeNull();
+    expect(queryByText("blockaid.security.site.confirmTrust")).toBeNull();
+  });
+
   it("renders the details and the buttons when displayable, wiring the boundary callback", () => {
     const { getByTestId, queryByTestId } = renderSheet({
       isUndisplayable: false,

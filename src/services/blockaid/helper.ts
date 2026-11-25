@@ -313,33 +313,34 @@ export const assessTransactionSecurity = (
 
   const { simulation, validation } = scanResult;
 
-  // Early check: if context says unfunded + cannot create account, mark expected to fail
-  if (isUnfundedDestinationError(unfundedContext)) {
+  // A risk verdict (Malicious, Warning, Spam) wins over a simulation revert.
+  const validationLevel =
+    validation && "result_type" in validation
+      ? getSecurityLevel(validation.result_type)
+      : undefined;
+
+  if (validationLevel && validationLevel !== SecurityLevel.SAFE) {
+    const messageKeys =
+      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[validationLevel];
+
+    return createSecurityAssessment(
+      validationLevel,
+      messageKeys.title,
+      messageKeys.description,
+    );
+  }
+
+  // A simulation revert (e.g. a missing trustline) or an unfunded destination
+  // means the transaction will fail. It is not a risk verdict, so it must not
+  // read as suspicious.
+  if (
+    isUnfundedDestinationError(unfundedContext) ||
+    (simulation && "error" in simulation)
+  ) {
     const messageKeys =
       TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.EXPECTED_TO_FAIL];
     return createSecurityAssessment(
       SecurityLevel.EXPECTED_TO_FAIL,
-      messageKeys.title,
-      messageKeys.description,
-    );
-  }
-
-  if (simulation && "error" in simulation) {
-    const messageKeys =
-      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.SUSPICIOUS];
-    return createSecurityAssessment(
-      SecurityLevel.SUSPICIOUS,
-      messageKeys.title,
-      messageKeys.description,
-    );
-  }
-
-  if (validation && "result_type" in validation) {
-    const level = getSecurityLevel(validation.result_type);
-    const messageKeys = TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[level];
-
-    return createSecurityAssessment(
-      level,
       messageKeys.title,
       messageKeys.description,
     );
@@ -365,6 +366,14 @@ export const assessTransactionSecurity = (
 export const isBlockaidWarning = (resultType: string): boolean =>
   resultType === BLOCKAID_RESULT_TYPES.WARNING ||
   resultType === BLOCKAID_RESULT_TYPES.SPAM;
+
+/**
+ * True when a transaction validation result is a risk verdict (Warning, Spam
+ * or Malicious): the same results assessTransactionSecurity flags.
+ */
+const isBlockaidRiskVerdict = (resultType: string): boolean =>
+  isBlockaidWarning(resultType) ||
+  resultType === BLOCKAID_RESULT_TYPES.MALICIOUS;
 
 /**
  * Extracts security warnings from Blockaid scan results
@@ -451,7 +460,8 @@ export const extractSecurityWarnings = (
       warnings.push({
         id: "simulation-error",
         description: scanResult.simulation.error,
-        severity: "malicious",
+        // The revert reason explains a failure, not a risk.
+        severity: "warning",
       });
     }
 
@@ -468,8 +478,15 @@ export const extractSecurityWarnings = (
         severity: "warning",
       });
 
-      // Do not surface Blockaid technical messages for unfunded accounts
-      return warnings;
+      // Do not surface Blockaid technical messages for unfunded accounts,
+      // unless Blockaid flagged the transaction as a risk.
+      const hasRiskVerdict =
+        !!scanResult.validation &&
+        "result_type" in scanResult.validation &&
+        isBlockaidRiskVerdict(scanResult.validation.result_type);
+      if (!hasRiskVerdict) {
+        return warnings;
+      }
     }
 
     if (
@@ -479,10 +496,7 @@ export const extractSecurityWarnings = (
     ) {
       const resultType = scanResult.validation.result_type;
 
-      if (
-        resultType === BLOCKAID_RESULT_TYPES.WARNING ||
-        resultType === BLOCKAID_RESULT_TYPES.MALICIOUS
-      ) {
+      if (isBlockaidRiskVerdict(resultType)) {
         warnings.push({
           id: `validation-${resultType.toLowerCase()}`,
           description: scanResult.validation.description,

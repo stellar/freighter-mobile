@@ -67,6 +67,8 @@ export const useSwapSecurityAssessments = ({
   isTokenUnableToScan: boolean;
   isMalicious: boolean;
   isSuspicious: boolean;
+  /** The transaction scan's simulation reverted: the swap will fail. */
+  isExpectedToFail: boolean;
   swapSecuritySeverity:
     | SecurityLevel.SUSPICIOUS
     | SecurityLevel.MALICIOUS
@@ -149,6 +151,7 @@ export const useSwapSecurityAssessments = ({
     if (
       transactionSecurityAssessment.isMalicious ||
       transactionSecurityAssessment.isSuspicious ||
+      transactionSecurityAssessment.isExpectedToFail ||
       sourceSecurityAssessment.isMalicious ||
       sourceSecurityAssessment.isSuspicious ||
       destinationSecurityAssessment.isMalicious ||
@@ -227,6 +230,7 @@ export const useSwapSecurityAssessments = ({
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    transactionSecurityAssessment.isExpectedToFail,
     transactionSecurityAssessment.isUnableToScan,
     sourceSecurityAssessment.isMalicious,
     sourceSecurityAssessment.isSuspicious,
@@ -250,8 +254,9 @@ export const useSwapSecurityAssessments = ({
     transactionSecurityAssessment.isSuspicious ||
     sourceSecurityAssessment.isSuspicious ||
     destinationSecurityAssessment.isSuspicious;
+  const isExpectedToFail = !!transactionSecurityAssessment.isExpectedToFail;
 
-  // Worst-of-three: malicious > suspicious > unable-to-scan. Includes
+  // Worst-of-three: malicious > suspicious > expected-to-fail > unable-to-scan. Includes
   // source + destination assessments so a malicious destination paired
   // with a benign tx scan still drives the "Do not proceed" header
   // copy/colour. The SecurityDetailBottomSheet no longer defaults
@@ -260,9 +265,10 @@ export const useSwapSecurityAssessments = ({
   const swapSecuritySeverity = useMemo(() => {
     if (isMalicious) return SecurityLevel.MALICIOUS;
     if (isSuspicious) return SecurityLevel.SUSPICIOUS;
+    if (isExpectedToFail) return SecurityLevel.EXPECTED_TO_FAIL;
     if (isUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
     return undefined;
-  }, [isMalicious, isSuspicious, isUnableToScan]);
+  }, [isMalicious, isSuspicious, isExpectedToFail, isUnableToScan]);
 
   return {
     transactionSecurityAssessment,
@@ -272,6 +278,7 @@ export const useSwapSecurityAssessments = ({
     isTokenUnableToScan,
     isMalicious,
     isSuspicious,
+    isExpectedToFail,
     swapSecuritySeverity,
     securityWarnings,
   };

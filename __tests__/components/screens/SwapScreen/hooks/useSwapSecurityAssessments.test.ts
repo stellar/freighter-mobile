@@ -498,4 +498,58 @@ describe("useSwapSecurityAssessments", () => {
       expect(result.current.swapSecuritySeverity).toBe(SecurityLevel.MALICIOUS);
     });
   });
+
+  describe("transaction simulation revert", () => {
+    const revertError = "op_no_trust: destination is missing a trustline";
+    const revertingScan = {
+      simulation: { error: revertError },
+      validation: { result_type: "Benign", description: "", features: [] },
+    } as never;
+    const xlmProps: HookProps = {
+      ...baseProps,
+      transactionScanResult: revertingScan,
+      sourceBalance: xlmSourceBalance,
+      sourceTokenId: NATIVE_TOKEN_CODE,
+      destinationTokenDescriptor: xlmDestinationDescriptor,
+    };
+
+    it("reads as expected to fail, not suspicious", () => {
+      const { result } = renderHook(() => useSwapSecurityAssessments(xlmProps));
+
+      expect(result.current.isExpectedToFail).toBe(true);
+      expect(result.current.isSuspicious).toBe(false);
+      expect(result.current.isMalicious).toBe(false);
+      expect(result.current.swapSecuritySeverity).toBe(
+        SecurityLevel.EXPECTED_TO_FAIL,
+      );
+    });
+
+    it("lists the revert reason as a warning row", () => {
+      const { result } = renderHook(() => useSwapSecurityAssessments(xlmProps));
+
+      expect(result.current.securityWarnings).toEqual([
+        {
+          id: "simulation-error",
+          description: revertError,
+          severity: "warning",
+        },
+      ]);
+    });
+
+    it("lets a suspicious token outrank the revert", () => {
+      const { result } = renderHook(() =>
+        useSwapSecurityAssessments({
+          ...xlmProps,
+          destinationTokenDescriptor: {
+            ...baseDestinationDescriptor,
+            securityLevel: SecurityLevel.SUSPICIOUS,
+          },
+        }),
+      );
+
+      expect(result.current.swapSecuritySeverity).toBe(
+        SecurityLevel.SUSPICIOUS,
+      );
+    });
+  });
 });

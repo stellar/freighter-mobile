@@ -760,6 +760,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     isTokenUnableToScan,
     isMalicious,
     isSuspicious,
+    isExpectedToFail,
     swapSecuritySeverity,
     securityWarnings,
   } = useSwapSecurityAssessments({
@@ -976,6 +977,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     isBuilding,
     isMalicious,
     isSuspicious,
+    isExpectedToFail,
     transactionXDR: confirmableXDR,
     onSettingsPress: openSettings,
   });

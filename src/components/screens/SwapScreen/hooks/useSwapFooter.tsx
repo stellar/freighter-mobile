@@ -11,6 +11,7 @@ export const useSwapFooter = ({
   isBuilding,
   isMalicious,
   isSuspicious,
+  isExpectedToFail,
   transactionXDR,
   onSettingsPress,
 }: {
@@ -19,6 +20,7 @@ export const useSwapFooter = ({
   isBuilding: boolean;
   isMalicious: boolean;
   isSuspicious: boolean;
+  isExpectedToFail: boolean;
   transactionXDR: string | undefined | null;
   onSettingsPress: () => void;
 }): { renderFooterComponent: () => React.JSX.Element } => {
@@ -33,6 +35,7 @@ export const useSwapFooter = ({
       isBuilding,
       isMalicious,
       isSuspicious,
+      isExpectedToFail,
       transactionXDR: transactionXDR ?? undefined,
       onSettingsPress,
     }),
@@ -42,6 +45,7 @@ export const useSwapFooter = ({
       isBuilding,
       isMalicious,
       isSuspicious,
+      isExpectedToFail,
       transactionXDR,
       onSettingsPress,
     ],

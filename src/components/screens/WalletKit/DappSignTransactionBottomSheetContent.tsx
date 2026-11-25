@@ -35,6 +35,8 @@ interface DappSignTransactionBottomSheetContentProps {
   isSigning: boolean;
   isMalicious?: boolean;
   isSuspicious?: boolean;
+  /** The transaction's simulation reverted: it will fail, but isn't flagged. */
+  isExpectedToFail?: boolean;
   isUnableToScan?: boolean;
   transactionScanResult?: Blockaid.StellarTransactionScanResponse;
   securityWarningAction?: () => void;
@@ -82,6 +84,7 @@ export const DappSignTransactionBottomSheetContent: React.FC<
   isSigning,
   isMalicious,
   isSuspicious,
+  isExpectedToFail,
   isUnableToScan,
   transactionScanResult,
   securityWarningAction,
@@ -254,6 +257,7 @@ export const DappSignTransactionBottomSheetContent: React.FC<
           onBannerPress={onBannerPress}
           isMalicious={isMalicious}
           isSuspicious={isSuspicious}
+          isExpectedToFail={isExpectedToFail}
           isUnableToScan={isUnableToScan}
           securityWarningAction={securityWarningAction}
         />
@@ -268,16 +272,20 @@ export const DappSignTransactionBottomSheetContent: React.FC<
           )}
         </View>
 
-        {!isMalicious && !isSuspicious && !isUnableToScan && (
-          <Text sm secondary textAlign="center">
-            {t("blockaid.security.site.confirmTrust")}
-          </Text>
-        )}
+        {!isMalicious &&
+          !isSuspicious &&
+          !isExpectedToFail &&
+          !isUnableToScan && (
+            <Text sm secondary textAlign="center">
+              {t("blockaid.security.site.confirmTrust")}
+            </Text>
+          )}
 
         <View className="w-full">
           <DappRequestButtons
             isMalicious={isMalicious}
             isSuspicious={isSuspicious}
+            isExpectedToFail={isExpectedToFail}
             isUnableToScan={isUnableToScan}
             isSigning={isSigning}
             isValidatingMemo={isValidatingMemo}

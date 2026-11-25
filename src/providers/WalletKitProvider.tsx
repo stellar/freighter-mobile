@@ -262,6 +262,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     !isSignMessageRequest &&
     !isSignAuthEntryRequest &&
     transactionSecurityAssessment.isSuspicious;
+  const requestIsExpectedToFail =
+    !isSignMessageRequest &&
+    !isSignAuthEntryRequest &&
+    transactionSecurityAssessment.isExpectedToFail;
   const requestIsUnableToScan =
     !isSignMessageRequest &&
     !isSignAuthEntryRequest &&
@@ -369,7 +373,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
     if (
       transactionSecurityAssessment.isMalicious ||
-      transactionSecurityAssessment.isSuspicious
+      transactionSecurityAssessment.isSuspicious ||
+      transactionSecurityAssessment.isExpectedToFail
     ) {
       const warnings = extractSecurityWarnings(transactionScanResult);
 
@@ -382,6 +387,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    transactionSecurityAssessment.isExpectedToFail,
     transactionSecurityAssessment.isUnableToScan,
     transactionSecurityAssessment.details,
     transactionScanResult,
@@ -410,6 +416,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       return SecurityLevel.MALICIOUS;
     if (transactionSecurityAssessment.isSuspicious)
       return SecurityLevel.SUSPICIOUS;
+    if (transactionSecurityAssessment.isExpectedToFail)
+      return SecurityLevel.EXPECTED_TO_FAIL;
     if (transactionSecurityAssessment.isUnableToScan)
       return SecurityLevel.UNABLE_TO_SCAN;
 
@@ -417,6 +425,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    transactionSecurityAssessment.isExpectedToFail,
     transactionSecurityAssessment.isUnableToScan,
   ]);
 
@@ -1340,6 +1349,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             onCancelRequest={handleClearDappRequest}
             isMalicious={requestIsMalicious}
             isSuspicious={requestIsSuspicious}
+            isExpectedToFail={requestIsExpectedToFail}
             isUnableToScan={requestIsUnableToScan}
             transactionScanResult={
               isNonTransactionRequest ? undefined : transactionScanResult
