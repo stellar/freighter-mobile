@@ -368,6 +368,14 @@ export const isBlockaidWarning = (resultType: string): boolean =>
   resultType === BLOCKAID_RESULT_TYPES.SPAM;
 
 /**
+ * True when a transaction validation result is a risk verdict (Warning, Spam
+ * or Malicious): the same results assessTransactionSecurity flags.
+ */
+const isBlockaidRiskVerdict = (resultType: string): boolean =>
+  isBlockaidWarning(resultType) ||
+  resultType === BLOCKAID_RESULT_TYPES.MALICIOUS;
+
+/**
  * Extracts security warnings from Blockaid scan results
  * Matches extension behavior: sites show simple labels, tokens/transactions show detailed warnings
  *
@@ -475,9 +483,7 @@ export const extractSecurityWarnings = (
       const hasRiskVerdict =
         !!scanResult.validation &&
         "result_type" in scanResult.validation &&
-        (scanResult.validation.result_type === BLOCKAID_RESULT_TYPES.WARNING ||
-          scanResult.validation.result_type ===
-            BLOCKAID_RESULT_TYPES.MALICIOUS);
+        isBlockaidRiskVerdict(scanResult.validation.result_type);
       if (!hasRiskVerdict) {
         return warnings;
       }
@@ -490,10 +496,7 @@ export const extractSecurityWarnings = (
     ) {
       const resultType = scanResult.validation.result_type;
 
-      if (
-        resultType === BLOCKAID_RESULT_TYPES.WARNING ||
-        resultType === BLOCKAID_RESULT_TYPES.MALICIOUS
-      ) {
+      if (isBlockaidRiskVerdict(resultType)) {
         warnings.push({
           id: `validation-${resultType.toLowerCase()}`,
           description: scanResult.validation.description,

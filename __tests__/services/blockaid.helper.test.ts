@@ -796,6 +796,7 @@ describe("assessTransactionSecurity — simulation reverts", () => {
     it.each([
       ["Malicious", SecurityLevel.MALICIOUS],
       ["Warning", SecurityLevel.SUSPICIOUS],
+      ["Spam", SecurityLevel.SUSPICIOUS],
     ])("keeps a %s verdict", (resultType, level) => {
       expect(
         assessTransactionSecurity(txScan(resultType), null, unfunded).level,
@@ -817,6 +818,17 @@ describe("assessTransactionSecurity — simulation reverts", () => {
         "validation-malicious",
       ]);
     });
+  });
+
+  it("lists a Spam reason as a warning row", () => {
+    const scan = {
+      simulation: { assets_diffs: {} },
+      validation: { result_type: "Spam", description: "Spam", features: [] },
+    } as any;
+
+    expect(extractSecurityWarnings(scan)).toEqual([
+      { id: "validation-spam", description: "Spam", severity: "warning" },
+    ]);
   });
 
   it("stays safe for a benign scan that simulates cleanly", () => {
