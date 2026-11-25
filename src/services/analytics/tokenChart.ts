@@ -1,4 +1,4 @@
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, TokenChartSource } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
 import {
   PriceHistoryRange,
@@ -36,6 +36,8 @@ interface TrackTokenChartLoadedParams {
   network?: NETWORKS;
   /** The resolved history payload */
   data: TokenPriceHistory;
+  /** The surface the token details view was opened from */
+  source: TokenChartSource;
 }
 
 /**
@@ -49,12 +51,14 @@ export const trackTokenChartLoaded = ({
   tokenId,
   data,
   network,
+  source,
 }: TrackTokenChartLoadedParams): void => {
   track(AnalyticsEvent.TOKEN_CHART_LOADED, {
     token_type: getChartTokenType(tokenId, network),
     has_data: hasChartData(data.points),
     ...(data.lowVolume === true ? { low_volume: true } : {}),
     range: data.range,
+    source,
   });
 };
 

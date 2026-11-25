@@ -1,6 +1,9 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import { DefaultListFooter } from "components/DefaultListFooter";
 import Spinner from "components/Spinner";
@@ -14,6 +17,7 @@ import {
   descriptorFromSearchRecord,
   getItemKey,
   isHeldToken,
+  detailsRouteForRecord,
   recordTokenId,
   withTokenDecimals,
 } from "components/screens/SwapScreen/helpers";
@@ -25,9 +29,18 @@ import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapT
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent, SwapSelectionSource } from "config/analyticsConfig";
+import {
+  AnalyticsEvent,
+  SwapSelectionSource,
+  TokenChartSource,
+} from "config/analyticsConfig";
 import { SWAP_SELECTION_TYPES } from "config/constants";
-import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
+import {
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+  SWAP_ROUTES,
+  SwapStackParamList,
+} from "config/routes";
 import { FormattedSearchTokenRecord } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
@@ -38,6 +51,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import { useToast } from "providers/ToastProvider";
 import React, { useEffect, useRef } from "react";
 import {
@@ -76,6 +90,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   } = useSwapStore();
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
+  const canViewDetails = usePriceHistoryEnabled(network);
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
@@ -222,6 +237,51 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       setDestinationToken(descriptor);
     });
   };
+
+  // navigate() bubbles from the swap stack up to the root stack.
+  const openTokenDetails = (
+    record: FormattedSearchTokenRecord,
+    source: TokenChartSource,
+    swapSelectionSource: SwapSelectionSource,
+  ) => {
+    pickIdRef.current += 1;
+    pendingPickRef.current = null;
+    (
+      navigation as unknown as NativeStackNavigationProp<RootStackParamList>
+    ).navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
+      ...detailsRouteForRecord(record, balanceItems),
+      record,
+      source,
+      swapSelectionSource,
+      swapSelectionType: selectionType,
+    });
+  };
+
+  // A held row has no search record; the screen resolves it from balances.
+  const openHeldTokenDetails = (
+    balance: HeldBalanceItem,
+    swapSelectionSource: SwapSelectionSource,
+  ) => {
+    pickIdRef.current += 1;
+    pendingPickRef.current = null;
+    (
+      navigation as unknown as NativeStackNavigationProp<RootStackParamList>
+    ).navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
+      tokenId: balance.id,
+      tokenSymbol: balance.tokenCode ?? "",
+      source: TokenChartSource.SWAP_PICKER,
+      swapSelectionSource,
+      swapSelectionType: selectionType,
+    });
+  };
+
+  const heldViewDetails = (
+    balance: HeldBalanceItem,
+    swapSelectionSource: SwapSelectionSource,
+  ) =>
+    canViewDetails
+      ? () => openHeldTokenDetails(balance, swapSelectionSource)
+      : undefined;
 
   const handleRecordPress = (
     record: FormattedSearchTokenRecord,
@@ -380,6 +440,10 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                     balance={item}
                     network={network}
                     testID={`token-option-${item.tokenCode}`}
+                    onViewDetails={heldViewDetails(
+                      item,
+                      SwapSelectionSource.BALANCES,
+                    )}
                     onPress={() =>
                       handleHeldPress(item, SwapSelectionSource.BALANCES)
                     }
@@ -410,6 +474,12 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                       balance={heldMatch}
                       network={network}
                       testID={`token-option-${heldMatch.tokenCode}`}
+                      onViewDetails={heldViewDetails(
+                        heldMatch,
+                        isSearchActive
+                          ? SwapSelectionSource.SEARCH
+                          : SwapSelectionSource.POPULAR,
+                      )}
                       onPress={() =>
                         handleHeldPress(
                           heldMatch,
@@ -435,6 +505,18 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                   record={record}
                   network={network}
                   testID={`token-option-${record.tokenCode}`}
+                  onViewDetails={
+                    canViewDetails
+                      ? () =>
+                          openTokenDetails(
+                            record,
+                            TokenChartSource.SWAP_PICKER,
+                            isSearchActive
+                              ? SwapSelectionSource.SEARCH
+                              : SwapSelectionSource.POPULAR,
+                          )
+                      : undefined
+                  }
                   onPress={() =>
                     handleRecordPress(
                       record,

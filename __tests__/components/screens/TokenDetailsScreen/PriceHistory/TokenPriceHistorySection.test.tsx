@@ -12,6 +12,7 @@ import {
   INSPECT_GESTURE_TEST_ID,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChart";
 import TokenPriceHistorySection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection";
+import { TokenChartSource } from "config/analyticsConfig";
 import { getThemeColors } from "config/colors";
 import { DEFAULT_PADDING, NETWORKS } from "config/constants";
 import { PRICE_HISTORY_RANGES, TokenPriceHistory } from "config/types";
@@ -137,6 +138,7 @@ const renderSection = (
     <TokenPriceHistorySection
       tokenId="native"
       network={NETWORKS.PUBLIC}
+      source={TokenChartSource.BALANCES}
       {...props}
     />,
   );
@@ -1048,6 +1050,7 @@ describe("TokenPriceHistorySection", () => {
           <TokenPriceHistorySection
             tokenId="USDC:GABC"
             network={NETWORKS.PUBLIC}
+            source={TokenChartSource.BALANCES}
           />,
         );
       });

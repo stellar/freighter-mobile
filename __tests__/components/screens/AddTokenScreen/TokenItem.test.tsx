@@ -92,6 +92,35 @@ describe("TokenItem", () => {
     expect(handleUnhideToken).toHaveBeenCalledWith(token);
   });
 
+  it("calls onPress with the token when the body is pressed", () => {
+    const token = makeToken({});
+    const onPress = jest.fn();
+    const { getByTestId } = render(
+      <TokenItem
+        token={token}
+        handleAddToken={handleAddToken}
+        handleRemoveToken={handleRemoveToken}
+        onPress={onPress}
+      />,
+    );
+
+    fireEvent.press(getByTestId("token-item-body-USDC"));
+
+    expect(onPress).toHaveBeenCalledWith(token);
+  });
+
+  it("renders no pressable body without onPress", () => {
+    const { queryByTestId } = render(
+      <TokenItem
+        token={makeToken({})}
+        handleAddToken={handleAddToken}
+        handleRemoveToken={handleRemoveToken}
+      />,
+    );
+
+    expect(queryByTestId("token-item-body-USDC")).toBeNull();
+  });
+
   it("falls back to the regular controls when no unhide handler is given", () => {
     const token = makeToken({ hasTrustline: true, isHidden: true });
 

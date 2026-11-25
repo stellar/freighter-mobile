@@ -8,6 +8,7 @@
     "unreadableAmount": "Não foi possível ler esse valor — insira-o novamente"
   },
   "common": {
+    "viewDetails": "Ver detalhes",
     "close": "Fechar",
     "unhide": "Mostrar",
     "back": "Voltar",
@@ -442,6 +443,7 @@
       "issuer": "Emissor",
       "type": "Tipo",
       "domain": "Domínio",
+      "stellarNetwork": "Rede Stellar",
       "tokenType": {
         "native": "Nativo",
         "classic": "Stellar Clássico",
@@ -743,12 +745,9 @@
       "body": "Não está nas listas de tokens confiáveis. Tenha cuidado ao adicionar ou transacionar."
     },
     "trendingDetail": {
+      "swapFrom": "Trocar de {{tokenCode}}",
       "swapTo": "Trocar para {{tokenCode}}",
-      "swapToAnyway": "Trocar para {{tokenCode}} mesmo assim",
-      "issuer": "Emissor",
-      "tokenAddress": "Endereço do token",
-      "domain": "Domínio",
-      "stellarNetwork": "Rede Stellar"
+      "swapToAnyway": "Trocar para {{tokenCode}} mesmo assim"
     },
     "trustlineInfo": {
       "title": "Isto adicionará uma trustline para {{tokenCode}}",

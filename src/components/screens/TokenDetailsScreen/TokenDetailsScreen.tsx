@@ -1,12 +1,15 @@
 /* eslint-disable react/no-unstable-nested-components */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { NavigatorScreenParams } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import HistoryList from "components/screens/HistoryScreen/HistoryList";
+import { useSelectSwapDestination } from "components/screens/SwapScreen/hooks/useSelectSwapDestination";
 import {
+  NonHeldTokenHeader,
   TokenBalanceHeader,
   TokenBalanceDetails,
 } from "components/screens/TokenDetailsScreen/components";
@@ -19,17 +22,28 @@ import {
   RemoveTokenSheetContent,
   RemoveTokenSheetVariant,
 } from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
+import { SwapToFooter } from "components/screens/TokenDetailsScreen/components/SwapToFooter";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsConfig";
-import { mapNetworkToNetworkDetails } from "config/constants";
+import {
+  AnalyticsEvent,
+  SwapSelectionSource,
+  TokenChartSource,
+} from "config/analyticsConfig";
+import {
+  NATIVE_TOKEN_CODE,
+  SWAP_SELECTION_TYPES,
+  mapNetworkToNetworkDetails,
+} from "config/constants";
+import { logger } from "config/logger";
 import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   SWAP_ROUTES,
   SEND_PAYMENT_ROUTES,
+  SwapStackParamList,
 } from "config/routes";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -37,14 +51,17 @@ import { useBalancesStore } from "ducks/balances";
 import { useDebugStore } from "ducks/debug";
 import { useIsInspectingPriceHistory } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { useSwapStore } from "ducks/swap";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { getTokenType, getIssuerFromIdentifier } from "helpers/balances";
 import { isContractId } from "helpers/soroban";
+import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useManageToken } from "hooks/useManageToken";
 import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
@@ -52,13 +69,16 @@ import { useTokenActions } from "hooks/useTokenActions";
 import useTokenDetails from "hooks/useTokenDetails";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
-import { View, Platform } from "react-native";
+import { InteractionManager, View, Platform, ScrollView } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import {
   assessTokenSecurity,
+  assessTokenSecurityFromLevel,
   extractSecurityWarnings,
+  SecurityWarning,
 } from "services/blockaid/helper";
+import type { SecurityAssessment } from "services/blockaid/types";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -68,11 +88,13 @@ const headerMenuIcons = Platform.select({
     copyAddress: "doc.on.doc",
     hideToken: "eye.slash",
     removeToken: "minus.circle",
+    viewOnExplorer: "link",
   },
   android: {
     copyAddress: "baseline_format_paint",
     hideToken: "visibility_off",
     removeToken: "outline_circle",
+    viewOnExplorer: "public",
   },
 });
 
@@ -84,11 +106,39 @@ type TokenDetailsScreenProps = NativeStackScreenProps<
 /**
  * Token Details Screen component showing transaction history for a specific token
  */
+/**
+ * A hidden or removed token can no longer be swapped: clear it from whichever
+ * side of the in-progress swap holds it. Clearing the source resets its
+ * amount (see the swap store).
+ */
+const dropFromSwap = (tokenId: string) => {
+  const {
+    sourceTokenId,
+    destinationToken,
+    setSourceToken,
+    setDestinationToken,
+  } = useSwapStore.getState();
+  if (sourceTokenId === tokenId) {
+    setSourceToken("", "");
+  }
+  if (destinationToken?.id === tokenId) {
+    setDestinationToken(null);
+  }
+};
+
 const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   route,
   navigation,
 }) => {
-  const { tokenId, tokenSymbol } = route.params;
+  const { tokenId, tokenSymbol, record } = route.params;
+  const source = route.params.source ?? TokenChartSource.BALANCES;
+  const isFromBalances = source === TokenChartSource.BALANCES;
+  const isFromSwapAmount = source === TokenChartSource.SWAP_AMOUNT;
+  const isFromSwapPicker = source === TokenChartSource.SWAP_PICKER;
+  // The source ("Swap from") picker lists held tokens only.
+  const isSwapSourcePick =
+    isFromSwapPicker &&
+    route.params.swapSelectionType === SWAP_SELECTION_TYPES.SOURCE;
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { t } = useAppTranslation();
@@ -105,6 +155,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     useTransactionSettingsStore();
   const hideToken = useBalancesStore((state) => state.hideToken);
   const { showToast } = useToast();
+  const { open: openInAppBrowser } = useInAppBrowser();
   const securityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
@@ -135,6 +186,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const {
     scanResults,
     balanceItems,
+    hiddenBalanceItems,
     localOnlyTokenIds,
     handleRefresh: refreshBalances,
   } = useBalancesList({
@@ -152,6 +204,8 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     () => balanceItems.find((item) => item.id === tokenId) ?? null,
     [balanceItems, tokenId],
   );
+  const isHeld = selectedBalance !== null;
+  const isNoBalanceVariant = !isHeld && !!record;
 
   const { removeToken, isRemovingToken } = useManageToken({
     token: selectedBalance
@@ -169,6 +223,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       // Refresh balances so Home reflects the removal immediately instead of
       // waiting for the next focused poll.
       refreshBalances();
+      dropFromSwap(tokenId);
       navigation.goBack();
     },
   });
@@ -206,7 +261,9 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
   // XLM pays every transaction fee, so it is never hidden: Send and Swap
   // would stop seeing it and report insufficient XLM for fees.
-  const canOfferHide = !isNativeAssetId(tokenId);
+  const canOfferHide =
+    !isNativeAssetId(tokenId) &&
+    !hiddenBalanceItems.some((item) => item.id === tokenId);
   // Neither XLM nor LP shares can ever be removed here, so Remove isn't
   // offered for them rather than opening a sheet that only says so.
   const tokenType = getTokenType(tokenId);
@@ -224,8 +281,8 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
   /**
    * Hides the token, then returns to the previous screen and confirms with a
-   * toast. This screen only opens from a visible token on Home, so it never
-   * shows a hidden one; unhiding happens from Add token.
+   * toast. An already hidden token offers no Hide (Add token can open one);
+   * unhiding happens from Add token.
    */
   const handleHideToken = useCallback(async () => {
     const publicKey = account?.publicKey;
@@ -236,6 +293,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
     try {
       await hideToken({ publicKey, network, tokenId });
+      dropFromSwap(tokenId);
 
       navigation.goBack();
 
@@ -262,6 +320,27 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     hideTokenCode,
   ]);
 
+  // stellar.expert's page for the token, as the swap picker rows link it.
+  const stellarExpertUrl = useMemo(() => {
+    const base = getStellarExpertUrl(network);
+    if (isNativeAssetId(tokenId)) {
+      return `${base}/asset/${NATIVE_TOKEN_CODE}`;
+    }
+    if (isContractId(tokenId)) {
+      return `${base}/contract/${tokenId}`;
+    }
+    // A symbol can contain a colon, so the issuer is after the last one.
+    const separator = tokenId.lastIndexOf(":");
+    const code = tokenId.slice(0, separator);
+    const issuer = tokenId.slice(separator + 1);
+    return isContractId(issuer)
+      ? `${base}/contract/${issuer}`
+      : `${base}/asset/${code}-${issuer}`;
+  }, [network, tokenId]);
+
+  // Hide and Remove follow the held balance, whatever opened the screen;
+  // Home also offers them before balances load.
+  const canOfferBalanceActions = isFromBalances || isHeld;
   const headerMenuActions = useMemo(
     () => [
       {
@@ -273,7 +352,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             "manageTokenRightContent.tokenAddressCopied",
           ),
       },
-      ...(canOfferHide
+      ...(canOfferBalanceActions && canOfferHide
         ? [
             {
               title: t("tokenDetailsScreen.hideToken", {
@@ -289,7 +368,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             },
           ]
         : []),
-      ...(canOfferRemove
+      ...(canOfferBalanceActions && canOfferRemove
         ? [
             {
               title: t("common.remove"),
@@ -299,15 +378,39 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             },
           ]
         : []),
+      // stellar.expert has no page for a pool share. getTokenType also
+      // reports a bare contract id as one, which does have a page.
+      ...(tokenType === TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES &&
+      !isContractId(tokenId)
+        ? []
+        : [
+            {
+              title: t("swapScreen.viewOnStellarExpert"),
+              systemIcon: headerMenuIcons!.viewOnExplorer,
+              onPress: () => {
+                openInAppBrowser(stellarExpertUrl).catch((err) => {
+                  logger.error(
+                    "TokenDetailsScreen",
+                    "Failed to open stellar expert URL:",
+                    err,
+                  );
+                });
+              },
+            },
+          ]),
     ],
     [
       t,
       copyTokenAddress,
       tokenId,
+      canOfferBalanceActions,
       canOfferHide,
       hideTokenCode,
       handleHideToken,
       canOfferRemove,
+      openInAppBrowser,
+      stellarExpertUrl,
+      tokenType,
     ],
   );
 
@@ -349,12 +452,67 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     });
   };
   const scanResult = scanResults[tokenId.replace(":", "-")];
-  const { isMalicious, isSuspicious } = assessTokenSecurity(
+  const heldSecurity = assessTokenSecurity(
     scanResult,
     overriddenBlockaidResponse,
   );
+  // A token the account doesn't hold has no balances scan; its search record
+  // carries the scan instead. A record with no level got no verdict (off
+  // mainnet, or the bulk scan failed): the helper would read that as unable
+  // to scan, so its own flags stand. XLM is never scanned.
+  let recordSecurity:
+    | Pick<
+        SecurityAssessment,
+        "isMalicious" | "isSuspicious" | "isUnableToScan"
+      >
+    | undefined;
+  if (record && !record.isNative) {
+    recordSecurity =
+      record.securityLevel || overriddenBlockaidResponse
+        ? assessTokenSecurityFromLevel(
+            record.securityLevel,
+            overriddenBlockaidResponse,
+          )
+        : {
+            isMalicious: !!record.isMalicious,
+            isSuspicious: !!record.isSuspicious,
+            isUnableToScan: !!record.isUnableToScan,
+          };
+  }
+  const recordMalicious = !!recordSecurity?.isMalicious;
+  const recordSuspicious = !!recordSecurity?.isSuspicious;
+  const recordUnableToScan = !!recordSecurity?.isUnableToScan;
+  // A held token opened from a row takes the worse of its balances scan and
+  // the record. Unable-to-scan needs both to have no result, and only comes
+  // from a record: Home passes none.
+  const isMalicious =
+    recordMalicious || (!isNoBalanceVariant && heldSecurity.isMalicious);
+  const isSuspicious =
+    !isMalicious &&
+    (recordSuspicious || (!isNoBalanceVariant && heldSecurity.isSuspicious));
+  const isUnableToScan =
+    recordUnableToScan &&
+    !isMalicious &&
+    !isSuspicious &&
+    (isNoBalanceVariant || heldSecurity.isUnableToScan);
 
-  const securityWarnings = useMemo(() => {
+  const securityWarnings = useMemo((): SecurityWarning[] => {
+    // Blockaid returns no feature-level warnings for an unable-to-scan
+    // token; synthesize a row so the reasons list isn't blank.
+    if (isUnableToScan) {
+      return [
+        {
+          id: "unable-to-scan-trending-token",
+          description: t("blockaid.unableToScan.token"),
+          severity: "warning",
+        },
+      ];
+    }
+
+    if (isNoBalanceVariant) {
+      return record?.securityWarnings ?? [];
+    }
+
     if (isMalicious || isSuspicious) {
       const warnings = extractSecurityWarnings(scanResult);
 
@@ -364,108 +522,231 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     }
 
     return [];
-  }, [isMalicious, isSuspicious, scanResult]);
+  }, [
+    isNoBalanceVariant,
+    isUnableToScan,
+    record?.securityWarnings,
+    t,
+    isMalicious,
+    isSuspicious,
+    scanResult,
+  ]);
+
+  // Back past the picker to the amount screen. It is already on the swap
+  // stack, so `merge` keeps its params instead of re-sending them.
+  const returnToSwapAmount = () =>
+    navigation.navigate(
+      ROOT_NAVIGATOR_ROUTES.SWAP_STACK,
+      {
+        screen: SWAP_ROUTES.SWAP_AMOUNT_SCREEN,
+        merge: true,
+        pop: true,
+      } as NavigatorScreenParams<SwapStackParamList>,
+      { pop: true },
+    );
+
+  // Swap To is offered from the swap amount screen and the destination
+  // picker. A picker held row carries no record; the balance is picked by
+  // id instead.
+  const isSwapToDestination =
+    (isFromSwapAmount || isFromSwapPicker) && !isSwapSourcePick;
+  const swapToRecord = isSwapToDestination ? record : undefined;
+  const swapToHeldId =
+    isSwapToDestination && isFromSwapPicker && !record ? tokenId : undefined;
+  const isSwapToDestinationOffered = !!swapToRecord || !!swapToHeldId;
+  const isSwapToOffered = isSwapToDestinationOffered || isSwapSourcePick;
+  const { select: selectSwapDestination, isPending: isSelectingSwapTo } =
+    useSelectSwapDestination({
+      record: swapToRecord,
+      heldTokenId: swapToHeldId,
+      selectionSource: isFromSwapPicker
+        ? (route.params.swapSelectionSource ?? SwapSelectionSource.POPULAR)
+        : SwapSelectionSource.TRENDING,
+      onSelected: isFromSwapPicker
+        ? returnToSwapAmount
+        : () => navigation.goBack(),
+    });
+
+  // Swap from: the source picker's own held-row pick, then back to the
+  // amount screen.
+  const selectSwapSource = () => {
+    analytics.track(AnalyticsEvent.SWAP_SOURCE_SELECTED, {
+      asset_code: tokenSymbol,
+      asset_issuer: tokenId.includes(":")
+        ? tokenId.slice(tokenId.lastIndexOf(":") + 1)
+        : "",
+      source:
+        route.params.swapSelectionSource === SwapSelectionSource.SEARCH
+          ? SwapSelectionSource.SEARCH
+          : SwapSelectionSource.BALANCES,
+    });
+    returnToSwapAmount();
+    // As SwapToScreen's dismissThenApply: a store write mid-transition
+    // re-renders the amount screen and cancels the Android slide.
+    InteractionManager.runAfterInteractions(() => {
+      const { destinationToken, setDestinationToken, setSourceToken } =
+        useSwapStore.getState();
+      // The same token cannot be on both sides.
+      if (destinationToken && destinationToken.id === tokenId) {
+        setDestinationToken(null);
+      }
+      setSourceToken(tokenId, tokenSymbol);
+    });
+  };
+  // Unable-to-scan is not flagged: the banner alone signals caution.
+  const isFlagged = isMalicious || isSuspicious;
+
+  // A held source needs no warning: the account holds it.
+  const isSwapToFlagged = !isSwapSourcePick && isFlagged;
+  let onSwapTo = selectSwapDestination;
+  if (isSwapSourcePick) {
+    onSwapTo = selectSwapSource;
+  } else if (isSwapToFlagged) {
+    onSwapTo = () => securityWarningBottomSheetModalRef.current?.present();
+  }
 
   const securitySeverity = useMemo(() => {
     if (isMalicious) return SecurityLevel.MALICIOUS;
     if (isSuspicious) return SecurityLevel.SUSPICIOUS;
+    if (isUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
 
     return undefined;
-  }, [isMalicious, isSuspicious]);
+  }, [isMalicious, isSuspicious, isUnableToScan]);
+
+  let securityBannerText: string | undefined;
+  if (isMalicious) {
+    securityBannerText = t("blockaid.security.token.malicious");
+  } else if (isSuspicious) {
+    securityBannerText = t("blockaid.security.token.suspicious");
+  } else if (isUnableToScan) {
+    securityBannerText = t("securityWarning.proceedWithCaution");
+  }
+
+  // Everything above the transactions lives in the list header so the
+  // screen scrolls as one column, as the extension's does, even with no
+  // transactions. Order matches the extension: name, price and delta,
+  // then the chart, then the holdings it describes.
+  const renderAboveList = () => (
+    <View className="mb-6 max-xs:mb-0 gap-8 max-xs:gap-4">
+      {isNoBalanceVariant ? (
+        <NonHeldTokenHeader
+          tokenId={tokenId}
+          network={network}
+          record={record}
+        />
+      ) : (
+        <TokenBalanceHeader
+          tokenId={tokenId}
+          tokenSymbol={tokenSymbol}
+          network={network}
+          actualTokenSymbol={actualTokenDetails?.symbol}
+          tokenName={actualTokenDetails?.name}
+        />
+      )}
+      {/* Above the ~250px chart, so the warning stays directly under
+          the header. */}
+      {securityBannerText && (
+        <Banner
+          variant={isSuspicious || !isMalicious ? "warning" : "error"}
+          text={securityBannerText}
+          onPress={() => securityWarningBottomSheetModalRef.current?.present()}
+        />
+      )}
+      {priceHistoryEnabled && (
+        <TokenPriceHistorySection
+          tokenId={tokenId}
+          network={network}
+          source={source}
+        />
+      )}
+      {!isNoBalanceVariant && (
+        <TokenBalanceDetails tokenId={tokenId} network={network} />
+      )}
+      {priceHistoryEnabled && (
+        <TokenStatsSection tokenId={tokenId} network={network} />
+      )}
+      {priceHistoryEnabled && (
+        <AboutSection tokenId={tokenId} network={network} />
+      )}
+      {!isNoBalanceVariant && (
+        <Text md medium secondary>
+          {t("tokenDetailsScreen.listHeader", {
+            tokenName: displayTitle,
+          })}
+        </Text>
+      )}
+    </View>
+  );
 
   return (
     // The bottom inset (the safe area plus 24pt) keeps Swap and Send where
     // Figma has them, with nothing under them.
     <BaseLayout insets={{ top: false, bottom: true }}>
       <View testID="token-details-screen" className="flex-1 mt-5 max-xs:mt-2">
-        <HistoryList
-          ignoreTopInset
-          noHorizontalPadding
-          loadingPlaceholder="skeleton"
-          historyData={historyData}
-          isLoading={isLoading}
-          error={error}
-          publicKey={account?.publicKey ?? ""}
-          networkDetails={networkDetails}
-          onRefresh={handleRefresh}
-          refreshActionPosition="start"
-          isRefreshing={isRefreshing}
-          isNavigationRefresh={isNavigationRefresh}
-          scrollEnabled={!isInspectingChart}
-          ListHeaderComponent={
-            /* EVERYTHING above the transactions lives in the list header, so
-               the screen scrolls as one column like the extension's does.
-               As siblings of the list these sat in a fixed flex row: the
-               chart ate ~250px of viewport, the list scrolled inside what was
-               left, and on a token with no transactions nothing scrolled at
-               all. Order matches the extension: name, price and delta, then
-               the chart, then the holdings it describes. */
-            <View className="mb-6 max-xs:mb-0 gap-8 max-xs:gap-4">
-              <TokenBalanceHeader
-                tokenId={tokenId}
-                tokenSymbol={tokenSymbol}
-                network={network}
-                actualTokenSymbol={actualTokenDetails?.symbol}
-                tokenName={actualTokenDetails?.name}
-              />
-              {/* Above the chart, deliberately: the chart block is ~250px
-                  tall, and a flagged token's warning sat directly under the
-                  header before this feature existed. Only shown when
-                  flagged, so the ordinary layout is unchanged. */}
-              {(isMalicious || isSuspicious) && (
-                <Banner
-                  variant={isSuspicious ? "warning" : "error"}
-                  text={
-                    isMalicious
-                      ? t("transactionAmountScreen.errors.malicious")
-                      : t("transactionAmountScreen.errors.suspicious")
-                  }
-                  onPress={() =>
-                    securityWarningBottomSheetModalRef.current?.present()
-                  }
-                />
-              )}
-              {priceHistoryEnabled && (
-                <TokenPriceHistorySection tokenId={tokenId} network={network} />
-              )}
-              <TokenBalanceDetails tokenId={tokenId} network={network} />
-              {priceHistoryEnabled && (
-                <TokenStatsSection tokenId={tokenId} network={network} />
-              )}
-              {priceHistoryEnabled && (
-                <AboutSection tokenId={tokenId} network={network} />
-              )}
-              <Text md medium secondary>
-                {t("tokenDetailsScreen.listHeader", {
-                  tokenName: displayTitle,
-                })}
-              </Text>
-            </View>
-          }
-        />
+        {isNoBalanceVariant ? (
+          <ScrollView
+            scrollEnabled={!isInspectingChart}
+            showsVerticalScrollIndicator={false}
+          >
+            {renderAboveList()}
+          </ScrollView>
+        ) : (
+          <HistoryList
+            ignoreTopInset
+            noHorizontalPadding
+            loadingPlaceholder="skeleton"
+            historyData={historyData}
+            isLoading={isLoading}
+            error={error}
+            publicKey={account?.publicKey ?? ""}
+            networkDetails={networkDetails}
+            onRefresh={handleRefresh}
+            refreshActionPosition="start"
+            isRefreshing={isRefreshing}
+            isNavigationRefresh={isNavigationRefresh}
+            scrollEnabled={!isInspectingChart}
+            ListHeaderComponent={renderAboveList()}
+          />
+        )}
       </View>
-      <View className="mt-7">
-        <View className="flex-row gap-3">
-          {swapEnabled && isSwappable && (
-            <View className="flex-1">
-              <Button secondary xl isFullWidth onPress={handleSwapPress}>
-                {t("tokenDetailsScreen.swap")}
-              </Button>
+      {isFromSwapAmount || isFromSwapPicker
+        ? isSwapToOffered && (
+            <View className="mt-7">
+              <SwapToFooter
+                tokenCode={swapToRecord?.tokenCode ?? tokenSymbol}
+                side={isSwapSourcePick ? "from" : "to"}
+                isFlagged={isSwapToFlagged}
+                isMalicious={isMalicious}
+                isPending={isSelectingSwapTo}
+                onSwapTo={onSwapTo}
+                onCancel={() => navigation.goBack()}
+              />
+            </View>
+          )
+        : isFromBalances && (
+            <View className="mt-7">
+              <View className="flex-row gap-3">
+                {swapEnabled && isSwappable && (
+                  <View className="flex-1">
+                    <Button secondary xl isFullWidth onPress={handleSwapPress}>
+                      {t("tokenDetailsScreen.swap")}
+                    </Button>
+                  </View>
+                )}
+                <View className="flex-1">
+                  <Button
+                    secondary
+                    xl
+                    isFullWidth
+                    onPress={handleSendPress}
+                    testID="token-details-send-button"
+                  >
+                    {t("tokenDetailsScreen.send")}
+                  </Button>
+                </View>
+              </View>
             </View>
           )}
-          <View className="flex-1">
-            <Button
-              secondary
-              xl
-              isFullWidth
-              onPress={handleSendPress}
-              testID="token-details-send-button"
-            >
-              {t("tokenDetailsScreen.send")}
-            </Button>
-          </View>
-        </View>
-      </View>
       <BottomSheet
         modalRef={securityWarningBottomSheetModalRef}
         customContent={
@@ -476,36 +757,55 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             }
             severity={securitySeverity}
             securityContext={SecurityContext.TOKEN}
+            {...(isSwapToDestinationOffered && {
+              onCancel: () =>
+                securityWarningBottomSheetModalRef.current?.dismiss(),
+              onProceedAnyway: () => {
+                securityWarningBottomSheetModalRef.current?.dismiss();
+                selectSwapDestination();
+              },
+              proceedAnywayText: isUnableToScan
+                ? t("common.continue")
+                : t("swapScreen.trendingDetail.swapToAnyway", {
+                    tokenCode: swapToRecord?.tokenCode ?? tokenSymbol,
+                  }),
+            })}
           />
         }
       />
-      <BottomSheet
-        modalRef={removeTokenBottomSheetModalRef}
-        bottomSheetModalProps={{
-          onChange: (index: number) => {
-            if (index >= 0) {
-              hasApprovedRemoveRef.current = false;
-            }
-          },
-          onDismiss: handleRemoveDismiss,
-        }}
-        analyticsEvent={AnalyticsEvent.VIEW_REMOVE_TOKEN}
-        shouldCloseOnPressBackdrop={!!selectedBalance}
-        customContent={
-          <RemoveTokenSheetContent
-            selectedToken={selectedBalance}
-            localOnlyTokenIds={localOnlyTokenIds}
-            account={account}
-            onCancel={handleCancelTokenRemoval}
-            onRemoveToken={() => {
-              hasApprovedRemoveRef.current = true;
-              return removeToken();
-            }}
-            isRemovingToken={isRemovingToken}
-            onDismiss={() => removeTokenBottomSheetModalRef.current?.dismiss()}
-          />
-        }
-      />
+      {/* Not isHeld: Remove is offered before balances load, and its
+          sheet must still open. */}
+      {!isNoBalanceVariant && (
+        <BottomSheet
+          modalRef={removeTokenBottomSheetModalRef}
+          bottomSheetModalProps={{
+            onChange: (index: number) => {
+              if (index >= 0) {
+                hasApprovedRemoveRef.current = false;
+              }
+            },
+            onDismiss: handleRemoveDismiss,
+          }}
+          analyticsEvent={AnalyticsEvent.VIEW_REMOVE_TOKEN}
+          shouldCloseOnPressBackdrop={!!selectedBalance}
+          customContent={
+            <RemoveTokenSheetContent
+              selectedToken={selectedBalance}
+              localOnlyTokenIds={localOnlyTokenIds}
+              account={account}
+              onCancel={handleCancelTokenRemoval}
+              onRemoveToken={() => {
+                hasApprovedRemoveRef.current = true;
+                return removeToken();
+              }}
+              isRemovingToken={isRemovingToken}
+              onDismiss={() =>
+                removeTokenBottomSheetModalRef.current?.dismiss()
+              }
+            />
+          }
+        />
+      )}
     </BaseLayout>
   );
 };

@@ -11,6 +11,7 @@ import TokenPriceChart, {
 import { Button } from "components/sds/Button";
 import Shimmer, { ShimmerVariant } from "components/sds/Shimmer";
 import { Text } from "components/sds/Typography";
+import { TokenChartSource } from "config/analyticsConfig";
 import { DEFAULT_PADDING, NETWORKS } from "config/constants";
 import {
   PriceHistoryRange,
@@ -61,6 +62,7 @@ interface TokenPriceHistorySectionProps {
   /** Route-param token identifier ("native" for XLM) */
   tokenId: TokenIdentifier;
   network: NETWORKS;
+  source: TokenChartSource;
 }
 
 /**
@@ -111,6 +113,7 @@ const formatRangeEndpoints = (
 const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
   tokenId,
   network,
+  source,
 }) => {
   const { t } = useAppTranslation();
   const { fontScale } = useWindowDimensions();
@@ -124,9 +127,14 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
   // hook's onLoaded skips cache hits, superseded responses, and errors.
   const handleLoaded = useCallback(
     (loadedData: TokenPriceHistory) => {
-      analytics.trackTokenChartLoaded({ tokenId, data: loadedData, network });
+      analytics.trackTokenChartLoaded({
+        tokenId,
+        data: loadedData,
+        network,
+        source,
+      });
     },
-    [tokenId, network],
+    [tokenId, network, source],
   );
 
   // token_chart.range_changed fires once the user SETTLES on a timeframe —

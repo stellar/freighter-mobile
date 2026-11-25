@@ -6,9 +6,8 @@ import { useCallback, useEffect, useMemo } from "react";
 
 /**
  * Batch-fetches prices for a set of token records and returns the live
- * prices map. Used by SwapAmountScreen — the Trending list, the
- * Receive-card fiat conversion, and the TrendingTokenDetailBottomSheet
- * price fallback all read from the same map.
+ * prices map. Used by SwapAmountScreen — the Trending list and the
+ * Receive-card fiat conversion read from the same map.
  *
  * Two fetch sources, merged into one effect:
  *

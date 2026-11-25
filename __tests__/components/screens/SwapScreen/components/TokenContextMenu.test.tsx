@@ -29,9 +29,13 @@ jest.mock("hooks/useInAppBrowser", () => ({
   }),
 }));
 
+const mockContextMenuProps = jest.fn();
 jest.mock("components/ContextMenuButton", () => ({
   __esModule: true,
-  default: () => null,
+  default: (props: { contextMenuProps: unknown }) => {
+    mockContextMenuProps(props.contextMenuProps);
+    return null;
+  },
 }));
 
 jest.mock("helpers/soroban", () => ({

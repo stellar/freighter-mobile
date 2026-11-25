@@ -8,6 +8,7 @@
     "unreadableAmount": "Couldn't read that amount — please enter it again"
   },
   "common": {
+    "viewDetails": "View details",
     "close": "Close",
     "unhide": "Unhide",
     "back": "Back",
@@ -476,6 +477,7 @@
       "issuer": "Issuer",
       "type": "Type",
       "domain": "Domain",
+      "stellarNetwork": "Stellar Network",
       "tokenType": {
         "native": "Native",
         "classic": "Stellar Classic",
@@ -777,12 +779,9 @@
       "body": "Not from trusted token lists. Use caution when adding or transacting."
     },
     "trendingDetail": {
+      "swapFrom": "Swap from {{tokenCode}}",
       "swapTo": "Swap to {{tokenCode}}",
-      "swapToAnyway": "Swap to {{tokenCode}} anyway",
-      "issuer": "Issuer",
-      "tokenAddress": "Token Address",
-      "domain": "Domain",
-      "stellarNetwork": "Stellar Network"
+      "swapToAnyway": "Swap to {{tokenCode}} anyway"
     },
     "trustlineInfo": {
       "title": "This will add a trustline to {{tokenCode}}",

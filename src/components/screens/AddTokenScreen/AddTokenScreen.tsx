@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import { BottomSheetHeader } from "components/BottomSheetHeader";
@@ -19,15 +22,18 @@ import EmptyState from "components/screens/AddTokenScreen/EmptyState";
 import ErrorState from "components/screens/AddTokenScreen/ErrorState";
 import RemoveTokenBottomSheetContent from "components/screens/AddTokenScreen/RemoveTokenBottomSheet";
 import TokenItem from "components/screens/AddTokenScreen/TokenItem";
+import { detailsRouteForRecord } from "components/screens/SwapScreen/helpers";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, TokenChartSource } from "config/analyticsConfig";
 import {
   MANAGE_TOKENS_ROUTES,
   ManageTokensStackParamList,
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
 } from "config/routes";
 import {
   FormattedSearchTokenRecord,
@@ -48,6 +54,7 @@ import useColors from "hooks/useColors";
 import useDebounce from "hooks/useDebounce";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useManageToken } from "hooks/useManageToken";
+import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useTokenLookup } from "hooks/useTokenLookup";
 import { useToast } from "providers/ToastProvider";
@@ -76,6 +83,7 @@ const DEBOUNCE_SEARCH_BACKOFF_MS = 500;
  */
 const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   const { network } = useAuthenticationStore();
+  const canViewDetails = usePriceHistoryEnabled(network);
   const { account } = useGetActiveAccount();
   const { t } = useAppTranslation();
   const { getClipboardText } = useClipboard();
@@ -147,6 +155,20 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
 
     return undefined;
   }, [isTokenMalicious, isTokenSuspicious, isUnableToScanToken]);
+
+  // navigate() bubbles from the manage-tokens stack up to the root stack.
+  const openTokenDetails = useCallback(
+    (record: FormattedSearchTokenRecord) => {
+      (
+        navigation as unknown as NativeStackNavigationProp<RootStackParamList>
+      ).navigate(ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN, {
+        ...detailsRouteForRecord(record, balanceItems),
+        record,
+        source: TokenChartSource.ADD_TOKEN,
+      });
+    },
+    [navigation, balanceItems],
+  );
 
   const resetPageState = useCallback(() => {
     handleRefresh();
@@ -651,6 +673,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
                         handleAddToken={handleAddTokenMemo}
                         handleRemoveToken={handleRemoveTokenMemo}
                         handleUnhideToken={handleUnhideSearchToken}
+                        onPress={canViewDetails ? openTokenDetails : undefined}
                         isUnhiding={
                           unhidingTokenId === getSearchTokenRecordId(token)
                         }
@@ -682,6 +705,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
                         handleAddToken={handleAddTokenMemo}
                         handleRemoveToken={handleRemoveTokenMemo}
                         handleUnhideToken={handleUnhideSearchToken}
+                        onPress={canViewDetails ? openTokenDetails : undefined}
                         isUnhiding={
                           unhidingTokenId === getSearchTokenRecordId(token)
                         }

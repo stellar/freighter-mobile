@@ -1,4 +1,5 @@
 /* eslint-disable react/no-unstable-nested-components */
+import BigNumber from "bignumber.js";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import TokenPriceDelta, {
@@ -71,6 +72,28 @@ const useTokenDetailBalance = (tokenId: string) => {
 export const priceRowHeight = (fontScale: number): number =>
   fsValue(DISPLAY_SIZES.xs.lineHeight) * fontScale;
 
+/**
+ * While a drag-to-inspect is in progress the price is the inspected point's
+ * close; released, it is spot again (Phase 3). Guarded on the SELECTED range
+ * too, exactly like {@link TokenPriceDelta}: keeps the price honest if an
+ * inspection ever carries another range. `scrollEnabled` needs no such guard
+ * — it follows the gesture itself, independent of range. Otherwise the price
+ * is live spot and does NOT vary by timeframe; only the delta beneath it
+ * follows the chart's selected range (§7.3).
+ */
+export const useInspectedHeaderPrice = (
+  network: NETWORKS,
+  tokenId: string,
+): BigNumber | string | undefined => {
+  const isPriceHistoryEnabled = usePriceHistoryEnabled(network);
+  const inspected = useInspectedPriceHistory(network, tokenId);
+  const selectedRange = useSelectedPriceHistoryRange(network, tokenId);
+
+  return isPriceHistoryEnabled && inspected && inspected.range === selectedRange
+    ? inspected.point.p
+    : undefined;
+};
+
 const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   tokenId,
   tokenSymbol,
@@ -84,8 +107,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const isLoadingBalances = useBalancesStore((state) => state.isLoading);
   const { fontScale } = useWindowDimensions();
   const isPriceHistoryEnabled = usePriceHistoryEnabled(network);
-  const inspected = useInspectedPriceHistory(network, tokenId);
-  const selectedRange = useSelectedPriceHistoryRange(network, tokenId);
+  const inspectedHeaderPrice = useInspectedHeaderPrice(network, tokenId);
 
   // Loading placeholders, from the Figma "Data loading" frame: one pill at the
   // price line and one at the delta row, while there is no balance at all. A
@@ -170,18 +192,6 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   }
 
   const hasPrice = tokenBalance.currentPrice && tokenBalance.fiatTotal;
-
-  // While a drag-to-inspect is in progress the price is the inspected
-  // point's close; released, it is spot again (Phase 3). Guarded on the
-  // SELECTED range too, exactly like {@link TokenPriceDelta}: keeps the price
-  // honest if an inspection ever carries another range. `scrollEnabled` needs
-  // no such guard — it follows the gesture itself, independent of range.
-  // Otherwise the price is live spot and does NOT vary by timeframe; only the
-  // delta beneath it follows the chart's selected range (§7.3).
-  const inspectedHeaderPrice =
-    isPriceHistoryEnabled && inspected && inspected.range === selectedRange
-      ? inspected.point.p
-      : undefined;
 
   // An active inspection re-points the header even without a spot quote — the
   // chart is fetched independently of it, so a spot-price failure must not

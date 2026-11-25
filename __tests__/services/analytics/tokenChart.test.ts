@@ -1,5 +1,5 @@
 import { Asset } from "@stellar/stellar-sdk";
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, TokenChartSource } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { TokenPriceHistory } from "config/types";
 import {
@@ -45,7 +45,21 @@ const makeHistory = (
 const CANONICAL_FIXTURES = {
   loadedClassic: {
     event: "token_chart.loaded",
-    props: { token_type: "classic", has_data: true, range: "1D" },
+    props: {
+      token_type: "classic",
+      has_data: true,
+      range: "1D",
+      source: "balances",
+    },
+  },
+  loadedFromSwapAmount: {
+    event: "token_chart.loaded",
+    props: {
+      token_type: "classic",
+      has_data: true,
+      range: "1D",
+      source: "swap_amount",
+    },
   },
   loadedSorobanLowVolume: {
     event: "token_chart.loaded",
@@ -54,6 +68,7 @@ const CANONICAL_FIXTURES = {
       has_data: true,
       low_volume: true,
       range: "1D",
+      source: "balances",
     },
   },
   // Per-range VIEW — fires for a range the user was shown, cache hits
@@ -141,6 +156,7 @@ describe("token_chart analytics (frozen cross-platform payloads)", () => {
     trackTokenChartLoaded({
       tokenId: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
       data: makeHistory({ lowVolume: false }),
+      source: TokenChartSource.BALANCES,
     });
 
     expect(track).toHaveBeenCalledTimes(1);
@@ -153,12 +169,24 @@ describe("token_chart analytics (frozen cross-platform payloads)", () => {
     trackTokenChartLoaded({
       tokenId: `SOLVBTC:${CONTRACT_ID}`,
       data: makeHistory({ lowVolume: true }),
+      source: TokenChartSource.BALANCES,
     });
 
     const [event, props] = track.mock.calls[0];
     expect(event).toBe(CANONICAL_FIXTURES.loadedSorobanLowVolume.event);
     expect(props).toStrictEqual(
       CANONICAL_FIXTURES.loadedSorobanLowVolume.props,
+    );
+  });
+
+  it("tags loaded with the surface it was opened from", () => {
+    trackTokenChartLoaded({
+      tokenId: "USDC:GCK3D3V2XNLLKRFGFFFDEJXA4O2J4X36HET2FE446AV3M4U7DPHO3PEM",
+      data: makeHistory({}),
+      source: TokenChartSource.SWAP_AMOUNT,
+    });
+    expect(track.mock.calls[0][1]).toStrictEqual(
+      CANONICAL_FIXTURES.loadedFromSwapAmount.props,
     );
   });
 
@@ -188,6 +216,7 @@ describe("token_chart analytics (frozen cross-platform payloads)", () => {
     trackTokenChartLoaded({
       tokenId: "native",
       data: makeHistory({ points: [], change: null }),
+      source: TokenChartSource.BALANCES,
     });
 
     const [, props] = track.mock.calls[0];
@@ -195,6 +224,7 @@ describe("token_chart analytics (frozen cross-platform payloads)", () => {
       token_type: "native",
       has_data: false,
       range: "1D",
+      source: "balances",
     });
   });
 
@@ -202,6 +232,7 @@ describe("token_chart analytics (frozen cross-platform payloads)", () => {
     trackTokenChartLoaded({
       tokenId: "native",
       data: makeHistory({ range: "ALL" }),
+      source: TokenChartSource.BALANCES,
     });
 
     const [, props] = track.mock.calls[0];
@@ -209,6 +240,7 @@ describe("token_chart analytics (frozen cross-platform payloads)", () => {
       token_type: "native",
       has_data: true,
       range: "ALL",
+      source: "balances",
     });
   });
 
