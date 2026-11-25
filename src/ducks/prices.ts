@@ -30,11 +30,16 @@ interface PricesState {
   isLoading: boolean;
   error: string | null;
   lastUpdated: number | null;
+  /**
+   * Resolves `true` when the prices for the balances are in the store (or the
+   * balances hold nothing to price), and `false` when the request failed or a
+   * reset dropped it.
+   */
   fetchPricesForBalances: (params: {
     balances: Record<string, Balance>;
     publicKey: string;
     network: NETWORKS;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   /**
    * Fetch prices for arbitrary token identifiers (e.g., from Blockaid
    * diffs). Resolves `true` when the requested quotes are available (fetched
@@ -70,7 +75,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
       const tokens = getTokenIdentifiersFromBalances(balances);
       if (tokens.length === 0) {
         set({ isLoading: false, lastUpdated: Date.now() });
-        return;
+        return true;
       }
 
       // Refetch every held token on each call — no per-token dedupe here. The
@@ -83,7 +88,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
 
       // A reset landed while this request was in flight. reset() already
       // cleared isLoading, so leave the store as it is.
-      if (generation !== resetGeneration) return;
+      if (generation !== resetGeneration) return false;
 
       set({
         pricesByNetwork: {
@@ -97,8 +102,10 @@ export const usePricesStore = create<PricesState>((set, get) => ({
         error: null,
         lastUpdated: Date.now(),
       });
+
+      return true;
     } catch (error) {
-      if (generation !== resetGeneration) return;
+      if (generation !== resetGeneration) return false;
       set({
         error:
           error instanceof Error
@@ -106,6 +113,8 @@ export const usePricesStore = create<PricesState>((set, get) => ({
             : "Failed to fetch token prices",
         isLoading: false,
       });
+
+      return false;
     }
   },
   /** Lightweight fetch for arbitrary tokens */

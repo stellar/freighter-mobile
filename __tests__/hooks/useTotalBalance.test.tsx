@@ -1,5 +1,6 @@
 import { renderHook } from "@testing-library/react-hooks";
 import { BigNumber } from "bignumber.js";
+import { sumVisibleFiatTotals } from "helpers/balances";
 import { useTotalBalance } from "hooks/useTotalBalance";
 
 const USDC_ID = "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
@@ -57,5 +58,25 @@ describe("useTotalBalance", () => {
 
     expect(result.current.rawBalance.toString()).toBe("0");
     expect(result.current.hasFiatTotal).toBe(false);
+  });
+
+  it("gives the same value as the account.funded detection sum (VT-20)", () => {
+    mockBalancesState = {
+      ...mockBalancesState,
+      pricedBalances: {
+        ...(mockBalancesState.pricedBalances as Record<string, unknown>),
+        UNPRICED: { fiatTotal: undefined },
+      },
+      hiddenTokenIds: [SPAM_ID],
+    };
+
+    const { result } = renderHook(() => useTotalBalance());
+    const detection = sumVisibleFiatTotals(
+      mockBalancesState.pricedBalances as never,
+      mockBalancesState.hiddenTokenIds as string[],
+    );
+
+    expect(result.current.rawBalance.isEqualTo(detection.total)).toBe(true);
+    expect(result.current.hasFiatTotal).toBe(detection.hasPrices);
   });
 });

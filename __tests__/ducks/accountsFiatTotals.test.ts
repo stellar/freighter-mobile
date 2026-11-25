@@ -13,6 +13,8 @@ import {
   useAccountsFiatTotalsStore,
 } from "ducks/accountsFiatTotals";
 import { usePricesStore } from "ducks/prices";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { reportListAccountBalances } from "services/analytics/accountFunding";
 import { fetchBalances } from "services/backend";
 
 jest.mock("services/backend", () => ({
@@ -23,6 +25,10 @@ jest.mock("ducks/prices", () => ({
   usePricesStore: {
     getState: jest.fn(),
   },
+}));
+
+jest.mock("services/analytics/accountFunding", () => ({
+  reportListAccountBalances: jest.fn(),
 }));
 
 jest.mock("ducks/remoteConfig", () => ({
@@ -531,6 +537,123 @@ describe("accountsFiatTotals duck", () => {
     expect(mockFetchBalances).toHaveBeenCalledTimes(
       ACCOUNTS_FIAT_TOTALS_BATCH_SIZE,
     );
+  });
+
+  describe("funded_account_count hook point", () => {
+    const mockReport = reportListAccountBalances as jest.Mock;
+
+    it("reports each account with the raw isFunded and the computed total", async () => {
+      mockFetchBalances.mockImplementation(({ publicKey }) =>
+        Promise.resolve(
+          publicKey === PK_1
+            ? { balances: mockBalanceMap, isFunded: true, subentryCount: 1 }
+            : // No isFunded value: the rule must see it as missing, not false.
+              { balances: {}, subentryCount: 0 },
+        ),
+      );
+
+      await useAccountsFiatTotalsStore.getState().fetchAccountsFiatTotals({
+        publicKeys: [PK_1, PK_2],
+        network: NETWORKS.PUBLIC,
+      });
+
+      expect(mockReport).toHaveBeenCalledTimes(2);
+      const byKey = Object.fromEntries(
+        mockReport.mock.calls.map(([args]) => [args.publicKey, args]),
+      );
+      expect(byKey[PK_1]).toEqual(
+        expect.objectContaining({
+          network: NETWORKS.PUBLIC,
+          isFunded: true,
+          pricesOk: true,
+          balances: mockBalanceMap,
+        }),
+      );
+      expect(byKey[PK_1].totalUsd.toString()).toBe("250");
+      expect(byKey[PK_2].isFunded).toBeUndefined();
+    });
+
+    it("reports the response error, and mayOmitTokens on the v1 path only", async () => {
+      const mockRemoteConfig = useRemoteConfigStore.getState as jest.Mock;
+      const balancesError = { horizon: null, soroban: { message: "rpc" } };
+      mockFetchBalances.mockResolvedValue({
+        balances: mockBalanceMap,
+        isFunded: true,
+        error: balancesError,
+      });
+
+      mockRemoteConfig.mockReturnValueOnce({ use_balances_v2: false });
+      await useAccountsFiatTotalsStore.getState().fetchAccountsFiatTotals({
+        publicKeys: [PK_1],
+        network: NETWORKS.PUBLIC,
+        forceRefresh: true,
+      });
+      expect(mockReport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ balancesError, mayOmitTokens: true }),
+      );
+
+      mockRemoteConfig.mockReturnValueOnce({ use_balances_v2: true });
+      await useAccountsFiatTotalsStore.getState().fetchAccountsFiatTotals({
+        publicKeys: [PK_1],
+        network: NETWORKS.PUBLIC,
+        forceRefresh: true,
+      });
+      expect(mockReport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ mayOmitTokens: false }),
+      );
+    });
+
+    it("reports a failed account fetch with null balances", async () => {
+      mockFetchBalances.mockRejectedValue(new Error("boom"));
+
+      await useAccountsFiatTotalsStore.getState().fetchAccountsFiatTotals({
+        publicKeys: [PK_1],
+        network: NETWORKS.PUBLIC,
+      });
+
+      expect(mockReport).toHaveBeenCalledWith(
+        expect.objectContaining({ publicKey: PK_1, balances: null }),
+      );
+    });
+
+    it("reports pricesOk: false for every account in a batch whose price fetch failed", async () => {
+      mockFetchPricesForTokenIds.mockResolvedValue(false);
+
+      await useAccountsFiatTotalsStore.getState().fetchAccountsFiatTotals({
+        publicKeys: [PK_1, PK_2],
+        network: NETWORKS.PUBLIC,
+      });
+
+      expect(mockReport).toHaveBeenCalledTimes(2);
+      mockReport.mock.calls.forEach(([args]) => {
+        expect(args.pricesOk).toBe(false);
+      });
+    });
+
+    it("does not report a batch that a newer cycle superseded", async () => {
+      let resolveFetch: (value: unknown) => void = () => undefined;
+      mockFetchBalances.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFetch = resolve;
+          }) as never,
+      );
+
+      const { fetchAccountsFiatTotals } = useAccountsFiatTotalsStore.getState();
+      const mainnetFetch = fetchAccountsFiatTotals({
+        publicKeys: [PK_1],
+        network: NETWORKS.PUBLIC,
+      });
+      await fetchAccountsFiatTotals({
+        publicKeys: [PK_1],
+        network: NETWORKS.TESTNET,
+      });
+
+      resolveFetch({ balances: mockBalanceMap, isFunded: true });
+      await mainnetFetch;
+
+      expect(mockReport).not.toHaveBeenCalled();
+    });
   });
 
   it("retries failed totals on the next fetch within the TTL", async () => {
