@@ -13,6 +13,7 @@ import {
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { reportActiveAccountBalances } from "services/analytics/accountFunding";
 import { fetchBalances } from "services/backend";
 import { dataStorage } from "services/storage/storageFactory";
 
@@ -44,6 +45,10 @@ jest.mock("ducks/prices", () => ({
 
 jest.mock("services/blockaid/api", () => ({
   scanBulkTokens: jest.fn(),
+}));
+
+jest.mock("services/analytics/accountFunding", () => ({
+  reportActiveAccountBalances: jest.fn(),
 }));
 
 describe("balances duck", () => {
@@ -915,6 +920,122 @@ describe("balances duck", () => {
       expect(result.current.scanResults).toEqual(expectedScanResults);
       expect(Object.keys(result.current.scanResults)).toHaveLength(5);
       unmount();
+    });
+  });
+
+  describe("account.funded hook point", () => {
+    const mockReport = reportActiveAccountBalances as jest.Mock;
+
+    it("reports the priced balances, the raw isFunded and the hidden tokens after a fetch", async () => {
+      // A new account snapshot, so the duck applies the stored hidden list.
+      act(() => {
+        useBalancesStore.setState({
+          fetchedPublicKey: null,
+          fetchedNetwork: null,
+          hiddenTokenIds: [],
+        });
+      });
+      mockFetchBalances.mockResolvedValueOnce({
+        balances: mockBalances,
+        isFunded: true,
+      });
+      mockGetItem.mockImplementation((key: STORAGE_KEYS) =>
+        Promise.resolve(
+          key === STORAGE_KEYS.HIDDEN_TOKEN_LIST
+            ? JSON.stringify({
+                [mockParamsPubnet.publicKey]: {
+                  [NETWORKS.PUBLIC]: ["SPAM:GISSUER"],
+                },
+              })
+            : null,
+        ),
+      );
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({
+          prices: mockPrices,
+          fetchPricesForBalances: jest.fn().mockResolvedValue(true),
+        }),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+
+      expect(result.current.hiddenTokenIds).toEqual(["SPAM:GISSUER"]);
+      expect(mockReport).toHaveBeenCalledTimes(1);
+      expect(mockReport).toHaveBeenCalledWith({
+        publicKey: mockParamsPubnet.publicKey,
+        network: NETWORKS.PUBLIC,
+        isFunded: true,
+        pricedBalances: result.current.pricedBalances,
+        hiddenTokenIds: result.current.hiddenTokenIds,
+        pricesOk: true,
+      });
+      expect(
+        mockReport.mock.calls[0][0].pricedBalances.XLM.fiatTotal.toString(),
+      ).toBe("50.25");
+    });
+
+    it("reports the Horizon and Soroban errors of the response", async () => {
+      const balancesError = { horizon: null, soroban: { message: "rpc" } };
+      mockFetchBalances.mockResolvedValueOnce({
+        balances: mockBalances,
+        isFunded: true,
+        error: balancesError,
+      });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({
+          prices: mockPrices,
+          fetchPricesForBalances: jest.fn().mockResolvedValue(true),
+        }),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+
+      expect(mockReport).toHaveBeenCalledWith(
+        expect.objectContaining({ balancesError }),
+      );
+    });
+
+    it("reports pricesOk: false when the price fetch failed", async () => {
+      mockFetchBalances.mockResolvedValueOnce({
+        balances: mockBalances,
+        isFunded: true,
+      });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({
+          prices: mockPrices,
+          error: "Failed to fetch token prices",
+          fetchPricesForBalances: jest.fn().mockResolvedValue(false),
+        }),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+
+      expect(mockReport).toHaveBeenCalledWith(
+        expect.objectContaining({ pricesOk: false }),
+      );
+    });
+
+    it("does not report when the balance fetch failed", async () => {
+      mockFetchBalances.mockRejectedValueOnce(new Error("boom"));
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+
+      expect(mockReport).not.toHaveBeenCalled();
     });
   });
 

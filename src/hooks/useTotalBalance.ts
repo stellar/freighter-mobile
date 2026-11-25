@@ -1,7 +1,7 @@
 import { BigNumber } from "bignumber.js";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
-import { getTotalUsdLabel } from "helpers/balances";
+import { getTotalUsdLabel, sumVisibleFiatTotals } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
 import { useMemo } from "react";
 
@@ -50,17 +50,12 @@ export const useTotalBalance = (): TotalBalance => {
     .join(",");
 
   return useMemo(() => {
-    const rawBalance = visibleBalances.reduce(
-      (total, balance) => total.plus(balance.fiatTotal || 0),
-      new BigNumber(0),
-    );
-
-    // A total is only "real" when at least one held asset is priced;
+    // Same helper as the account.funded detection, so the two values cannot
+    // differ. A total is only "real" when at least one held asset is priced;
     // otherwise (e.g. testnet, where fiat is gated off, or before prices
     // load) the sum is a placeholder zero.
-    const hasFiatTotal = visibleBalances.some(
-      (balance) => balance.fiatTotal != null,
-    );
+    const { total: rawBalance, hasPrices: hasFiatTotal } =
+      sumVisibleFiatTotals(pricedBalances, hiddenTokenIds);
 
     return {
       totalLabel: getTotalUsdLabel({

@@ -3,8 +3,10 @@ import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
+import { isMainnet } from "helpers/networks";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useEffect, useRef } from "react";
+import { AppState } from "react-native";
 
 /**
  * Warms up the wallets-list USD totals in the background when the user lands
@@ -16,6 +18,11 @@ import { useEffect, useRef } from "react";
  * belong to the explicit triggers (pull-to-refresh, sheet open, account
  * switch), never the 30s balances poll. The active account is excluded: its
  * total is synced from the app's own balances.
+ *
+ * The cycle also feeds the `funded_account_count` analytics user property. So
+ * when the app returns to the foreground on mainnet, the hook starts the cycle
+ * again without `forceRefresh`. The store's 3-minute freshness check skips it
+ * when the last cycle is recent.
  */
 export const useWarmUpAccountsFiatTotals = () => {
   const network = useAuthenticationStore((state) => state.network);
@@ -69,4 +76,45 @@ export const useWarmUpAccountsFiatTotals = () => {
     account?.publicKey,
     fetchAccountsFiatTotals,
   ]);
+
+  // The AppState listener reads the latest values through this ref, so it
+  // does not subscribe again on each change.
+  const latest = useRef({ network, allAccounts, account });
+  latest.current = { network, allAccounts, account };
+
+  useEffect(() => {
+    let previousAppState = AppState.currentState;
+
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      const cameToForeground =
+        previousAppState !== "active" && nextState === "active";
+      previousAppState = nextState;
+
+      if (!cameToForeground) {
+        return;
+      }
+
+      const { current } = latest;
+
+      // Mainnet only. Wait for the first warm-up on this network, so the
+      // critical requests still go first after a network switch.
+      if (
+        !isMainnet(current.network) ||
+        warmedUpNetwork.current !== current.network ||
+        current.allAccounts.length === 0
+      ) {
+        return;
+      }
+
+      fetchAccountsFiatTotals({
+        publicKeys: current.allAccounts.map(
+          (walletAccount) => walletAccount.publicKey,
+        ),
+        network: current.network,
+        excludePublicKey: current.account?.publicKey,
+      });
+    });
+
+    return () => subscription.remove();
+  }, [fetchAccountsFiatTotals]);
 };

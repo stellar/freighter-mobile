@@ -643,3 +643,30 @@ export const getTotalUsdLabel = ({
 
   return formatFiatAmount(totalUsd ?? "0");
 };
+
+/**
+ * Sums `fiatTotal` over the priced balances that the user did not hide.
+ *
+ * The Home header total (`useTotalBalance`) and the `account.funded`
+ * detection both use this function, so the two values cannot differ.
+ *
+ * @param pricedBalances - The priced balances of one account
+ * @param hiddenTokenIds - The balance identifiers that the user hid
+ * @returns The USD total, and whether at least one visible balance has a price
+ */
+export const sumVisibleFiatTotals = (
+  pricedBalances: PricedBalanceMap,
+  hiddenTokenIds: string[] | undefined,
+): { total: BigNumber; hasPrices: boolean } => {
+  const visibleBalances = Object.values(
+    omitHiddenBalances(pricedBalances, hiddenTokenIds),
+  );
+
+  return {
+    total: visibleBalances.reduce(
+      (sum, balance) => sum.plus(balance.fiatTotal || 0),
+      new BigNumber(0),
+    ),
+    hasPrices: visibleBalances.some((balance) => balance.fiatTotal != null),
+  };
+};

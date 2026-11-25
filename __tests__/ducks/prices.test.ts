@@ -389,7 +389,7 @@ describe("prices duck", () => {
       const { result } = renderHook(() => usePricesStore());
       const resolveFetch = deferredPrices();
 
-      let pending: Promise<void> = Promise.resolve();
+      let pending: Promise<boolean> = Promise.resolve(false);
       act(() => {
         pending = result.current.fetchPricesForBalances(mockParams);
       });
