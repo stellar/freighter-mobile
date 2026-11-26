@@ -40,6 +40,7 @@ import {
 import {
   validateSignMessageContent,
   validateSignMessageLength,
+  validateSignXdrContent,
   validateSignAuthEntryContent,
   parseAuthEntryPreimage,
   validateAuthEntryNetwork,
@@ -761,6 +762,38 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   // ─────────────────────────────────────────────────────────────────────────────
 
   /**
+   * Validates the xdr param for sign_xdr and sign_and_submit_xdr requests.
+   * @returns the xdr string if valid, or null if invalid (rejection handled)
+   */
+  const prevalidateSignXdr = (
+    sessionRequest: WalletKitSessionRequest,
+  ): string | null => {
+    const xdrParam = (
+      sessionRequest.params as
+        | { request?: { params?: { xdr?: unknown } } }
+        | undefined
+    )?.request?.params?.xdr;
+
+    const result = validateSignXdrContent(xdrParam);
+    if (!result.valid) {
+      showToast({
+        title: t("walletKit.invalidRequestTitle"),
+        message: t(result.errorKey),
+        variant: "error",
+      });
+      rejectSessionRequest({
+        sessionRequest,
+        message: t(result.errorKey),
+      });
+      clearEvent();
+      isProcessingRequestRef.current = false;
+      return null;
+    }
+
+    return result.value;
+  };
+
+  /**
    * Validates the message param for sign_message requests.
    * @returns true if valid, false if invalid (rejection already handled)
    */
@@ -963,9 +996,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   };
 
   /**
-   * Handles SESSION_PROPOSAL events — validates auth, scans site, shows connection sheet.
+   * Processes SESSION_PROPOSAL events — validates auth, scans site, shows connection sheet.
+   * Called through handleSessionProposal, which rejects the proposal if this throws.
    */
-  const handleSessionProposal = (sessionProposal: WalletKitSessionProposal) => {
+  const processSessionProposal = (
+    sessionProposal: WalletKitSessionProposal,
+  ) => {
     // Check if user is not authenticated
     if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
       showToast({
@@ -1041,10 +1077,37 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   };
 
   /**
-   * Handles SESSION_REQUEST events — validates auth/session/origin, pre-validates
-   * request params, scans transactions, and shows the appropriate sheet.
+   * Handles SESSION_PROPOSAL events. A proposal comes from the dApp, so if
+   * processing it throws, the proposal is rejected and cleared instead of the
+   * error reaching React.
    */
-  const handleSessionRequest = (sessionRequest: WalletKitSessionRequest) => {
+  const handleSessionProposal = (sessionProposal: WalletKitSessionProposal) => {
+    try {
+      processSessionProposal(sessionProposal);
+    } catch (error) {
+      logger.error(
+        "WalletKitProvider",
+        "Failed to handle a session proposal",
+        error,
+      );
+      rejectSessionProposal({
+        sessionProposal,
+        message: t("walletKit.invalidRequestTitle"),
+      });
+      showToast({
+        title: t("walletKit.invalidRequestTitle"),
+        variant: "error",
+      });
+      handleClearDappConnection();
+    }
+  };
+
+  /**
+   * Processes SESSION_REQUEST events — validates auth/session/origin, pre-validates
+   * request params, scans transactions, and shows the appropriate sheet.
+   * Called through handleSessionRequest, which rejects the request if this throws.
+   */
+  const processSessionRequest = (sessionRequest: WalletKitSessionRequest) => {
     // Simple queue: if already processing a request, store this one as pending
     if (isProcessingRequestRef.current) {
       // Normal queue flow, not an error condition.
@@ -1191,17 +1254,19 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       "";
 
     const requestParams = sessionRequest.params as
-      | { request?: { method?: string; params?: { xdr?: string } } }
+      | { request?: { method?: string } }
       | undefined;
     const currentRequestMethod = requestParams?.request?.method;
-    const requestXdr = requestParams?.request?.params?.xdr;
 
     const isXdrRequest =
       currentRequestMethod === (StellarRpcMethods.SIGN_XDR as string) ||
       currentRequestMethod ===
         (StellarRpcMethods.SIGN_AND_SUBMIT_XDR as string);
 
-    if (isXdrRequest && requestXdr) {
+    if (isXdrRequest) {
+      const requestXdr = prevalidateSignXdr(sessionRequest);
+      if (requestXdr === null) return;
+
       // XDR-based requests: scan transaction first
       scanTransaction(requestXdr, dappDomain)
         .then((scanResult) => {
@@ -1245,6 +1310,44 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       }
 
       dappRequestBottomSheetModalRef.current?.present();
+    }
+  };
+
+  /**
+   * Handles SESSION_REQUEST events. A request comes from the dApp, so if
+   * processing it throws, the request is rejected, its sheet closes, and the
+   * deferred teardown moves on to the next queued request.
+   */
+  const handleSessionRequest = (sessionRequest: WalletKitSessionRequest) => {
+    try {
+      processSessionRequest(sessionRequest);
+    } catch (error) {
+      logger.error(
+        "WalletKitProvider",
+        "Failed to handle a session request",
+        error,
+      );
+      // Answered here, so the teardown below doesn't reject it a second time.
+      hasRespondedRef.current = true;
+      rejectSessionRequest({
+        sessionRequest,
+        message: t("walletKit.invalidRequestTitle"),
+      }).catch((rejectError: unknown) => {
+        logger.warn(
+          "WalletKitProvider",
+          "Failed to reject a session request",
+          rejectError,
+        );
+      });
+      showToast({
+        title: t("walletKit.invalidRequestTitle"),
+        variant: "error",
+      });
+      // Clear the event now, like the other reject paths: the teardown below
+      // clears it only after a delay, and a dependency change before then
+      // would hand this request to the dispatch effect again.
+      clearEvent();
+      handleClearDappRequest();
     }
   };
 
