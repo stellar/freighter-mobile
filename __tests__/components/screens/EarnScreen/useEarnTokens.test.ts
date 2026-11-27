@@ -1,28 +1,10 @@
 import BigNumber from "bignumber.js";
-import {
-  buildEarnTokenRows,
-  headlineApy,
-} from "components/screens/EarnScreen/hooks/useEarnTokens";
+import { buildEarnTokenRows } from "components/screens/EarnScreen/hooks/useEarnTokens";
 import { BLEND_FIXED_POOL_IDS } from "config/blend";
 import { NETWORKS } from "config/constants";
 
 const POOL_ID = BLEND_FIXED_POOL_IDS[NETWORKS.PUBLIC]!;
 const USDC_SAC = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
-
-describe("headlineApy", () => {
-  it("adds emissions to the supply rate", () => {
-    expect(headlineApy(0.05, 0.02)).toBeCloseTo(0.07);
-  });
-
-  it("is unknown when the supply rate is unavailable", () => {
-    // No fresh oracle price means the whole rate is unknown.
-    expect(headlineApy(null, 0.02)).toBeNull();
-  });
-
-  it("treats unpriceable emissions as zero rather than blanking a known rate", () => {
-    expect(headlineApy(0.05, null)).toBeCloseTo(0.05);
-  });
-});
 
 describe("buildEarnTokenRows", () => {
   const networkDetails = { network: NETWORKS.PUBLIC } as never;
@@ -42,6 +24,35 @@ describe("buildEarnTokenRows", () => {
       },
     ],
     ...overrides,
+  });
+
+  const offer = (overrides = {}) => ({
+    id: POOL_ID,
+    name: "Fixed",
+    supplyApy: 0.05,
+    emissionsSupplyApr: null,
+    suppliedUsd: 0,
+    ...overrides,
+  });
+
+  const rateOf = (pool: object) =>
+    buildEarnTokenRows({
+      options: [option({ pools: [pool] })],
+      poolId: POOL_ID,
+      balances: {} as never,
+      networkDetails,
+      findBalance: () => undefined,
+    }).supported[0].apy;
+
+  it("rates a token on supply interest alone, leaving emissions out", () => {
+    expect(rateOf(offer({ emissionsSupplyApr: 0.02 }))).toBe(0.05);
+  });
+
+  it("keeps the rate unknown when the supply rate is unavailable", () => {
+    // No fresh oracle price means the rate is unknown, not zero.
+    expect(
+      rateOf(offer({ supplyApy: null, emissionsSupplyApr: 0.02 })),
+    ).toBeNull();
   });
 
   it("puts a held asset in held and a zero-balance asset in supported", () => {

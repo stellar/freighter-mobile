@@ -27,7 +27,8 @@ export interface EarnTokenOption {
   /** Total in whole tokens, "0" when the account holds none. */
   total: string;
   /**
-   * Headline rate as a decimal fraction (0.1694 = 16.94%), or null when the
+   * Supply interest rate, without BLND emissions, as a decimal fraction
+   * (0.1694 = 16.94%), or null when the
    * pool oracle has no fresh price and the rate is genuinely unknown.
    */
   apy: number | null;
@@ -59,19 +60,6 @@ export interface EarnTokenOption {
    */
   balance?: PricedBalance;
 }
-
-/**
- * The earn headline is supply interest plus BLND emissions.
- *
- * A null `supplyApy` means no fresh oracle price, so the whole rate is unknown.
- * A null `emissionsSupplyApr` means the stream exists but cannot be priced —
- * treated as zero here, which understates rather than blanking an otherwise
- * known rate. The screen's "*APY is an estimate" footnote covers the gap.
- */
-export const headlineApy = (
-  supplyApy: number | null,
-  emissionsSupplyApr: number | null,
-) => (supplyApy === null ? null : supplyApy + (emissionsSupplyApr ?? 0));
 
 /**
  * Partitions the catalog into held and zero-balance rows.
@@ -129,7 +117,12 @@ export const buildEarnTokenRows = ({
       code,
       decimals: option.decimals ?? DEFAULT_DECIMALS,
       total: total ? total.toFixed() : "0",
-      apy: headlineApy(offer.supplyApy, offer.emissionsSupplyApr),
+      // Supply interest only. BLND emissions (`emissionsSupplyApr`) are left
+      // out on purpose: Blend's own app shows them apart from the interest
+      // rate, and not at all for v2.1 pools, whose emissions can't be claimed
+      // yet. Showing them would take a component of their own. Null means no
+      // fresh oracle price: unknown, not zero.
+      apy: offer.supplyApy,
       poolId: offer.id,
       canonicalId: option.name,
       isNative: option.assetId === nativeContractId,

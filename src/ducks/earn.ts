@@ -20,8 +20,8 @@ interface EarnState {
    */
   selectedAssetId: string;
   /**
-   * The chosen asset's headline rate (supply APY + emissions APR) as a decimal
-   * fraction, or null when the oracle has no fresh price. Carried from the token
+   * The chosen asset's rate (supply interest only, no BLND emissions) as a
+   * decimal fraction, or null when the oracle has no fresh price. Carried from the token
    * picker so the amount and review screens don't re-derive it — and so the rate
    * cannot shift under the user mid-entry.
    */
