@@ -875,6 +875,7 @@ describe("buildBlendDepositTransaction", () => {
 
   const baseParams = {
     senderAddress: SENDER,
+    poolId: POOL_ID,
     assetId: USDC_SAC,
     amount: "500",
     decimals: 7,
@@ -891,13 +892,33 @@ describe("buildBlendDepositTransaction", () => {
     });
   });
 
-  it("rejects a network with no allowlisted pool", async () => {
+  it("rejects a deposit with no pool chosen", async () => {
     await expect(
-      buildBlendDepositTransaction({
-        ...baseParams,
-        network: NETWORKS.FUTURENET,
-      }),
+      buildBlendDepositTransaction({ ...baseParams, poolId: "" }),
     ).rejects.toThrow(/not supported/i);
+  });
+
+  it("builds for the pool the flow chose, not a fixed one", async () => {
+    // Review names the chosen pool; the transaction must fund that same pool.
+    const OTHER_POOL =
+      "CAJJZSGMMM3PD7N33TAPHGBUGTB43OC73HVIK2L2G6BNGGGYOSSYBXBD";
+    const result = await buildBlendDepositTransaction({
+      ...baseParams,
+      poolId: OTHER_POOL,
+    });
+
+    const parsedTx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.PUBLIC,
+    ) as Transaction;
+    const operation = parsedTx.operations[0] as Operation.InvokeHostFunction;
+    const invocation = xdr.expectUnionVariant(
+      operation.func,
+      "hostFunctionTypeInvokeContract",
+    ).invokeContract;
+    expect(Address.fromScAddress(invocation.contractAddress).toString()).toBe(
+      OTHER_POOL,
+    );
   });
 
   it("scales the human amount by decimals into an integer string", () => {

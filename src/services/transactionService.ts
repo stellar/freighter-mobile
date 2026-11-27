@@ -11,7 +11,6 @@ import {
 } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
-import { getBlendPoolId } from "config/blend";
 import {
   DEFAULT_DECIMALS,
   MINIMUM_CREATE_ACCOUNT_XLM,
@@ -861,6 +860,12 @@ export const simulateCollectibleTransfer = async ({
 
 interface BuildBlendDepositParams {
   senderAddress: string;
+  /**
+   * The pool to deposit into: the one the flow chose and shows on Review,
+   * never re-derived here, so the transaction can't fund a pool other than
+   * the one the user was shown.
+   */
+  poolId: string;
   /** The reserve's asset contract address (a SAC for every current reserve). */
   assetId: string;
   /** Human-readable amount, e.g. "500.00". */
@@ -940,6 +945,7 @@ const getSimulateTxFailureReason = (error: unknown): string | null => {
  */
 export const buildBlendDepositTransaction = async ({
   senderAddress,
+  poolId,
   assetId,
   amount,
   decimals,
@@ -949,7 +955,6 @@ export const buildBlendDepositTransaction = async ({
 }: BuildBlendDepositParams): Promise<BuildBlendDepositTransactionResult> => {
   const networkDetails = mapNetworkToNetworkDetails(network);
 
-  const poolId = getBlendPoolId(networkDetails);
   if (!poolId) {
     throw new Error("Earn is not supported on this network");
   }

@@ -466,6 +466,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     }
     const freshSettings = useTransactionSettingsStore.getState();
     simulate({
+      // The pool Review names, the same one the "before" balance reads.
+      poolId: pool?.id ?? "",
       assetId,
       amount: reviewedAmount ?? tokenAmount,
       decimals: depositDecimals,
@@ -478,6 +480,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     isSimulating,
     account?.publicKey,
     simulate,
+    pool?.id,
     assetId,
     reviewedAmount,
     tokenAmount,
@@ -728,6 +731,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     let result: Awaited<ReturnType<typeof simulate>>;
     try {
       result = await simulate({
+        poolId: pool?.id ?? "",
         assetId,
         amount: amountToReview,
         decimals: depositDecimals,
@@ -826,6 +830,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     account?.publicKey,
     transactionFee,
     simulate,
+    pool?.id,
     assetId,
     tokenAmount,
     depositDecimals,

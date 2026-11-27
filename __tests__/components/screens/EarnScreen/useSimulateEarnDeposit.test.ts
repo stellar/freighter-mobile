@@ -39,6 +39,7 @@ jest.mock("hooks/useAppTranslation", () => ({
 const baseParams: Parameters<
   ReturnType<typeof useSimulateEarnDeposit>["simulate"]
 >[0] = {
+  poolId: "CPOOL",
   assetId: "CASSET",
   amount: "10",
   decimals: 7,

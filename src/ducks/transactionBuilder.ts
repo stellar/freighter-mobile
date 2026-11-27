@@ -154,6 +154,8 @@ interface TransactionBuilderState {
   }) => Promise<string | null>;
 
   buildBlendDepositTransaction: (params: {
+    /** The pool the flow chose; the deposit is built for it. */
+    poolId: string;
     assetId: string;
     amount: string;
     decimals: number;
@@ -610,6 +612,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       try {
         const built = await buildBlendDepositTransaction({
           senderAddress: params.senderAddress,
+          poolId: params.poolId,
           assetId: params.assetId,
           amount: params.amount,
           decimals: params.decimals,

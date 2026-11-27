@@ -7,6 +7,8 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useCallback, useState } from "react";
 
 export interface SimulateEarnDepositParams {
+  /** The pool the flow chose; the deposit is built for it. */
+  poolId: string;
   assetId: string;
   amount: string;
   decimals: number;
