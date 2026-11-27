@@ -57,6 +57,7 @@ describe("Earn funnel events", () => {
   it("earn.token_selected", () => {
     trackEarnTokenSelected({ assetCode: "USDC", poolId: POOL_ID, apy: 0.0257 });
     expect(track).toHaveBeenCalledWith("earn.token_selected", {
+      protocol: "blend",
       asset_code: "USDC",
       pool_id: POOL_ID,
       apy: 0.0257,
@@ -69,6 +70,7 @@ describe("Earn funnel events", () => {
       variant: "swap-or-transfer",
     });
     expect(track).toHaveBeenCalledWith("earn.balance_insufficient_shown", {
+      protocol: "blend",
       asset_code: "EURC",
       variant: "swap-or-transfer",
     });
@@ -77,6 +79,7 @@ describe("Earn funnel events", () => {
   it("earn.funding_action_selected", () => {
     trackEarnFundingActionSelected({ assetCode: "USDC", action: "transfer" });
     expect(track).toHaveBeenCalledWith("earn.funding_action_selected", {
+      protocol: "blend",
       asset_code: "USDC",
       action: "transfer",
     });
@@ -85,6 +88,7 @@ describe("Earn funnel events", () => {
   it("earn.pool_details_opened", () => {
     trackEarnPoolDetailsOpened({ poolId: POOL_ID });
     expect(track).toHaveBeenCalledWith("earn.pool_details_opened", {
+      protocol: "blend",
       pool_id: POOL_ID,
     });
   });
@@ -92,6 +96,7 @@ describe("Earn funnel events", () => {
   it("earn.max_amount_selected always reports 100 percent", () => {
     trackEarnMaxAmountSelected({ assetCode: "XLM" });
     expect(track).toHaveBeenCalledWith("earn.max_amount_selected", {
+      protocol: "blend",
       asset_code: "XLM",
       percent: 100,
     });
@@ -103,6 +108,7 @@ describe("Earn funnel events", () => {
       reason: "fee_not_covered",
     });
     expect(track).toHaveBeenCalledWith("earn.xlm_fee_insufficient_shown", {
+      protocol: "blend",
       asset_code: "USDC",
       reason: "fee_not_covered",
     });
@@ -114,6 +120,7 @@ describe("Earn funnel events", () => {
       message: `pool ${POOL_ID} is frozen`,
     });
     expect(track).toHaveBeenCalledWith("earn.simulation_failed", {
+      protocol: "blend",
       asset_code: "USDC",
       reason_code: "pool C*** is frozen",
     });
@@ -122,6 +129,7 @@ describe("Earn funnel events", () => {
   it("earn.simulation_failed falls back to unknown without a message", () => {
     trackEarnSimulationFailed({ assetCode: "USDC", message: "" });
     expect(track).toHaveBeenCalledWith("earn.simulation_failed", {
+      protocol: "blend",
       asset_code: "USDC",
       reason_code: "unknown",
     });
@@ -130,6 +138,7 @@ describe("Earn funnel events", () => {
   it("earn.deposit_processing_dismissed", () => {
     trackEarnDepositDismissed({ assetCode: "USDC", poolId: POOL_ID });
     expect(track).toHaveBeenCalledWith("earn.deposit_processing_dismissed", {
+      protocol: "blend",
       asset_code: "USDC",
       pool_id: POOL_ID,
     });
@@ -143,6 +152,7 @@ describe("Earn funnel events", () => {
       errorCode: "op_underfunded",
     });
     expect(track).toHaveBeenCalledWith("earn.deposit_failed", {
+      protocol: "blend",
       asset_code: "USDC",
       pool_id: POOL_ID,
       reason_code: "op_underfunded",
@@ -158,6 +168,7 @@ describe("Earn funnel events", () => {
       viaSwap: true,
     });
     expect(track).toHaveBeenCalledWith("earn.deposit_completed", {
+      protocol: "blend",
       asset_code: "USDC",
       pool_id: POOL_ID,
       apy: 0.0257,
@@ -192,6 +203,7 @@ describe("Earn deposit volume", () => {
     });
 
     expect(track).toHaveBeenCalledWith("earn.deposit_completed", {
+      protocol: "blend",
       asset_code: "USDC",
       asset_issuer: USDC_ISSUER,
       asset_type: "classic",
@@ -220,6 +232,7 @@ describe("Earn deposit volume", () => {
     });
 
     expect(track).toHaveBeenCalledWith("earn.deposit_failed", {
+      protocol: "blend",
       asset_code: "USDC",
       asset_issuer: USDC_ISSUER,
       asset_type: "classic",

@@ -10,6 +10,19 @@ import { track } from "services/analytics/core";
  * a payment's do.
  */
 
+/**
+ * The protocol every `earn.*` event is about, so a dashboard can split Earn by
+ * provider. Blend is the only one today; once a second provider exists this
+ * comes from the pool the flow chose. Same value as the extension's.
+ */
+export const EARN_PROTOCOL = "blend";
+
+/** Tracks an `earn.*` event, tagged with its protocol. */
+export const trackEarn = (
+  event: Parameters<typeof track>[0],
+  props: Record<string, unknown>,
+): void => track(event, { ...props, protocol: EARN_PROTOCOL });
+
 /** How the user chose to get a token they don't hold enough of. */
 export type EarnFundingAction = "buy" | "swap" | "transfer";
 
@@ -29,7 +42,7 @@ export const trackEarnTokenSelected = ({
   poolId: string;
   apy: number | null;
 }): void => {
-  track(AnalyticsEvent.EARN_TOKEN_SELECTED, {
+  trackEarn(AnalyticsEvent.EARN_TOKEN_SELECTED, {
     asset_code: assetCode,
     pool_id: poolId,
     apy,
@@ -47,7 +60,7 @@ export const trackEarnBalanceInsufficientShown = ({
   assetCode: string;
   variant: string;
 }): void => {
-  track(AnalyticsEvent.EARN_BALANCE_INSUFFICIENT_SHOWN, {
+  trackEarn(AnalyticsEvent.EARN_BALANCE_INSUFFICIENT_SHOWN, {
     asset_code: assetCode,
     variant,
   });
@@ -61,7 +74,7 @@ export const trackEarnFundingActionSelected = ({
   assetCode: string;
   action: EarnFundingAction;
 }): void => {
-  track(AnalyticsEvent.EARN_FUNDING_ACTION_SELECTED, {
+  trackEarn(AnalyticsEvent.EARN_FUNDING_ACTION_SELECTED, {
     asset_code: assetCode,
     action,
   });
@@ -72,7 +85,7 @@ export const trackEarnPoolDetailsOpened = ({
 }: {
   poolId: string;
 }): void => {
-  track(AnalyticsEvent.EARN_POOL_DETAILS_OPENED, { pool_id: poolId });
+  trackEarn(AnalyticsEvent.EARN_POOL_DETAILS_OPENED, { pool_id: poolId });
 };
 
 /** Max was tapped on the amount screen; 25% and 50% aren't reported. */
@@ -81,7 +94,7 @@ export const trackEarnMaxAmountSelected = ({
 }: {
   assetCode: string;
 }): void => {
-  track(AnalyticsEvent.EARN_MAX_AMOUNT_SELECTED, {
+  trackEarn(AnalyticsEvent.EARN_MAX_AMOUNT_SELECTED, {
     asset_code: assetCode,
     percent: 100,
   });
@@ -94,7 +107,7 @@ export const trackEarnXlmFeeInsufficientShown = ({
   assetCode: string;
   reason: EarnXlmFeeReason;
 }): void => {
-  track(AnalyticsEvent.EARN_XLM_FEE_INSUFFICIENT_SHOWN, {
+  trackEarn(AnalyticsEvent.EARN_XLM_FEE_INSUFFICIENT_SHOWN, {
     asset_code: assetCode,
     reason,
   });
@@ -112,7 +125,7 @@ export const trackEarnSimulationFailed = ({
   assetCode: string;
   message: string;
 }): void => {
-  track(AnalyticsEvent.EARN_SIMULATION_FAILED, {
+  trackEarn(AnalyticsEvent.EARN_SIMULATION_FAILED, {
     asset_code: assetCode,
     reason_code: scrubStrKeys(message) || "unknown",
   });
@@ -126,7 +139,7 @@ export const trackEarnDepositDismissed = ({
   assetCode: string;
   poolId: string;
 }): void => {
-  track(AnalyticsEvent.EARN_DEPOSIT_DISMISSED, {
+  trackEarn(AnalyticsEvent.EARN_DEPOSIT_DISMISSED, {
     asset_code: assetCode,
     pool_id: poolId,
   });

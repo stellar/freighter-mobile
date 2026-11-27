@@ -523,7 +523,11 @@ describe("EarnAmountScreen", () => {
       expect(mockSimulate).not.toHaveBeenCalled();
       expect(mockTrack).toHaveBeenCalledWith(
         "earn.xlm_fee_insufficient_shown",
-        { asset_code: "USDC", reason: "no_xlm" },
+        {
+          protocol: "blend",
+          asset_code: "USDC",
+          reason: "no_xlm",
+        },
       );
     });
 
@@ -690,7 +694,11 @@ describe("EarnAmountScreen", () => {
       expect(reviewSheet.present).not.toHaveBeenCalled();
       expect(mockTrack).toHaveBeenCalledWith(
         "earn.xlm_fee_insufficient_shown",
-        { asset_code: "USDC", reason: "fee_not_covered" },
+        {
+          protocol: "blend",
+          asset_code: "USDC",
+          reason: "fee_not_covered",
+        },
       );
       // The reduce-your-deposit toast is for XLM deposits only.
       expect(mockShowToast).not.toHaveBeenCalledWith(
@@ -848,6 +856,7 @@ describe("EarnAmountScreen", () => {
       renderScreen();
 
       expect(mockTrack).toHaveBeenCalledWith("earn.simulation_failed", {
+        protocol: "blend",
         asset_code: "USDC",
         reason_code: "HostError: Error(Contract, #1206)",
       });
@@ -868,6 +877,7 @@ describe("EarnAmountScreen", () => {
 
       fireEvent.press(getByTestId("percentage-100"));
       expect(mockTrack).toHaveBeenCalledWith("earn.max_amount_selected", {
+        protocol: "blend",
         asset_code: "USDC",
         percent: 100,
       });
@@ -879,6 +889,7 @@ describe("EarnAmountScreen", () => {
       fireEvent.press(getByTestId("earn-amount-pool-card-row"));
 
       expect(mockTrack).toHaveBeenCalledWith("earn.pool_details_opened", {
+        protocol: "blend",
         pool_id: POOL_ID,
       });
     });
@@ -891,7 +902,11 @@ describe("EarnAmountScreen", () => {
 
       expect(mockTrack).toHaveBeenCalledWith(
         "earn.deposit_processing_dismissed",
-        { asset_code: "USDC", pool_id: POOL_ID },
+        {
+          protocol: "blend",
+          asset_code: "USDC",
+          pool_id: POOL_ID,
+        },
       );
       expect(mockAbandonEarnTransaction).toHaveBeenCalled();
     });

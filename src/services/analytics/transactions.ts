@@ -7,6 +7,7 @@ import {
   LegUsdStatus,
 } from "helpers/usdVolume";
 import { track } from "services/analytics/core";
+import { trackEarn } from "services/analytics/earn";
 import { swapSourceProps } from "services/analytics/swapSource";
 import { TransactionOperationType } from "services/analytics/types";
 import type {
@@ -490,7 +491,7 @@ export const trackEarnDepositSuccess = (
   data: EarnDepositSuccessEvent,
 ): void => {
   const { volume } = data;
-  track(AnalyticsEvent.EARN_DEPOSIT_SUCCESS, {
+  trackEarn(AnalyticsEvent.EARN_DEPOSIT_SUCCESS, {
     asset_code: data.assetCode,
     pool_id: data.poolId,
     apy: data.apy,
@@ -507,7 +508,7 @@ export const trackEarnDepositSuccess = (
 // failure_category, as payment.failed does.
 export const trackEarnDepositFail = (data: EarnDepositErrorEvent): void => {
   const { volume } = data;
-  track(AnalyticsEvent.EARN_DEPOSIT_FAIL, {
+  trackEarn(AnalyticsEvent.EARN_DEPOSIT_FAIL, {
     asset_code: data.assetCode,
     pool_id: data.poolId,
     reason_code: volume?.reasonCode ?? data.errorCode ?? "unknown",

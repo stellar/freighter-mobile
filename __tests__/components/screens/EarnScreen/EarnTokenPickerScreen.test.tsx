@@ -526,6 +526,7 @@ describe("EarnTokenPickerScreen", () => {
       fireEvent.press(getByTestId("earn-token-option-XLM"));
 
       expect(mockTrack).toHaveBeenCalledWith("earn.token_selected", {
+        protocol: "blend",
         asset_code: "XLM",
         pool_id: "CPOOLFAKE",
         apy: 0.1694,
@@ -541,7 +542,11 @@ describe("EarnTokenPickerScreen", () => {
       // Testnet and nothing to swap from: Receive is the only way.
       expect(mockTrack).toHaveBeenCalledWith(
         "earn.balance_insufficient_shown",
-        { asset_code: "EURC", variant: "transfer-only" },
+        {
+          protocol: "blend",
+          asset_code: "EURC",
+          variant: "transfer-only",
+        },
       );
     });
 
@@ -554,6 +559,7 @@ describe("EarnTokenPickerScreen", () => {
         notEnoughSheetProps().onReceive();
       });
       expect(mockTrack).toHaveBeenCalledWith("earn.funding_action_selected", {
+        protocol: "blend",
         asset_code: "EURC",
         action: "transfer",
       });
@@ -562,6 +568,7 @@ describe("EarnTokenPickerScreen", () => {
         notEnoughSheetProps().onBuy();
       });
       expect(mockTrack).toHaveBeenCalledWith("earn.funding_action_selected", {
+        protocol: "blend",
         asset_code: "EURC",
         action: "buy",
       });
@@ -570,6 +577,7 @@ describe("EarnTokenPickerScreen", () => {
         notEnoughSheetProps().onSwap();
       });
       expect(mockTrack).toHaveBeenCalledWith("earn.funding_action_selected", {
+        protocol: "blend",
         asset_code: "EURC",
         action: "swap",
       });
@@ -600,7 +608,11 @@ describe("EarnTokenPickerScreen", () => {
 
         expect(mockTrack).toHaveBeenCalledWith(
           "earn.balance_insufficient_shown",
-          { asset_code: "EURC", variant: "swap-or-transfer" },
+          {
+            protocol: "blend",
+            asset_code: "EURC",
+            variant: "swap-or-transfer",
+          },
         );
       });
 
@@ -613,7 +625,11 @@ describe("EarnTokenPickerScreen", () => {
 
         expect(mockTrack).toHaveBeenCalledWith(
           "earn.balance_insufficient_shown",
-          { asset_code: "EURC", variant: "transfer-only" },
+          {
+            protocol: "blend",
+            asset_code: "EURC",
+            variant: "transfer-only",
+          },
         );
       });
     });
