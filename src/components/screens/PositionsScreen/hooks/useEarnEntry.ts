@@ -109,6 +109,7 @@ export const useEarnEntry = (navigation: RootNavigation) => {
         decimals: reserve?.decimals ?? row.decimals ?? DEFAULT_DECIMALS,
       });
       earn.setSource("position_row");
+      earn.setIsPrefilledEntry(true);
 
       navigation.navigate(ROOT_NAVIGATOR_ROUTES.EARN_STACK, {
         screen: EARN_ROUTES.EARN_AMOUNT_SCREEN,

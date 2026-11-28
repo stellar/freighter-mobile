@@ -39,15 +39,26 @@ jest.mock("services/analytics/earn", () => ({
 
 const navigation = {
   navigate: jest.fn(),
-  goBack: jest.fn(),
+  dispatch: jest.fn(),
+  getState: () => ({ key: "root-stack" }),
   setOptions: jest.fn(),
 };
+
+/** This screen closing itself, wherever it is in the stack. */
+const closedItself = () =>
+  expect(navigation.dispatch).toHaveBeenCalledWith(
+    expect.objectContaining({
+      type: "GO_BACK",
+      source: "pool-route",
+      target: "root-stack",
+    }),
+  );
 
 const renderScreen = () =>
   renderWithProviders(
     <PoolPositionScreen
       navigation={navigation as never}
-      route={{ params: { poolId: POOL_ID } } as never}
+      route={{ key: "pool-route", params: { poolId: POOL_ID } } as never}
     />,
   );
 
@@ -147,7 +158,7 @@ describe("PoolPositionScreen", () => {
 
     renderScreen();
 
-    expect(navigation.goBack).toHaveBeenCalled();
+    closedItself();
   });
 
   it("closes when Positions go away", () => {
@@ -156,7 +167,7 @@ describe("PoolPositionScreen", () => {
 
     renderScreen();
 
-    expect(navigation.goBack).toHaveBeenCalled();
+    closedItself();
   });
 
   it("stays open while this account's positions haven't loaded", () => {
@@ -164,6 +175,6 @@ describe("PoolPositionScreen", () => {
 
     renderScreen();
 
-    expect(navigation.goBack).not.toHaveBeenCalled();
+    expect(navigation.dispatch).not.toHaveBeenCalled();
   });
 });

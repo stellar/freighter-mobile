@@ -42,16 +42,30 @@ jest.mock("services/analytics/positions", () => ({
 
 const navigation = {
   navigate: jest.fn(),
-  goBack: jest.fn(),
+  dispatch: jest.fn(),
+  getState: () => ({ key: "root-stack" }),
   setOptions: jest.fn(),
 };
+
+/** This screen closing itself, wherever it is in the stack. */
+const closedItself = () =>
+  expect(navigation.dispatch).toHaveBeenCalledWith(
+    expect.objectContaining({
+      type: "GO_BACK",
+      source: "token-route",
+      target: "root-stack",
+    }),
+  );
 
 const renderScreen = (poolId = POOL_ID) =>
   renderWithProviders(
     <TokenPositionScreen
       navigation={navigation as never}
       route={
-        { params: { poolId, assetId: USDC_SAC, tokenCode: "USDC" } } as never
+        {
+          key: "token-route",
+          params: { poolId, assetId: USDC_SAC, tokenCode: "USDC" },
+        } as never
       }
     />,
   );
@@ -188,6 +202,8 @@ describe("TokenPositionScreen", () => {
       expect(earn.selectedAssetApy).toBe(0.1694);
       expect(earn.selectedAssetDecimals).toBe(7);
       expect(earn.source).toBe("position_row");
+      // The picker mounted under the amount screen skips the intro.
+      expect(earn.isPrefilledEntry).toBe(true);
       expect(navigation.navigate).toHaveBeenCalledWith(
         ROOT_NAVIGATOR_ROUTES.EARN_STACK,
         {
@@ -206,6 +222,8 @@ describe("TokenPositionScreen", () => {
       fireEvent.press(getByTestId("token-position-deposit"));
 
       expect(useEarnStore.getState().source).toBe("position_row");
+      // Opening on the picker is a visit like any other.
+      expect(useEarnStore.getState().isPrefilledEntry).toBe(false);
       expect(navigation.navigate).toHaveBeenCalledWith(
         ROOT_NAVIGATOR_ROUTES.EARN_STACK,
         { screen: EARN_ROUTES.EARN_TOKEN_PICKER_SCREEN },
@@ -258,15 +276,30 @@ describe("TokenPositionScreen", () => {
 
       renderScreen();
 
-      expect(navigation.goBack).toHaveBeenCalled();
+      closedItself();
     });
 
-    it("leaves a dropped pool to the pool screen under it", () => {
+    // The pool screen under it closes itself too.
+    it("closes when a refresh drops its pool", () => {
       setPositions([]);
 
       renderScreen();
 
-      expect(navigation.goBack).not.toHaveBeenCalled();
+      closedItself();
+    });
+
+    it("closes when Positions go away", () => {
+      useRemoteConfigStore.setState({ positions_enabled: false });
+
+      renderScreen();
+
+      closedItself();
+    });
+
+    it("stays open while the token is there", () => {
+      renderScreen();
+
+      expect(navigation.dispatch).not.toHaveBeenCalled();
     });
   });
 });

@@ -30,6 +30,7 @@ import {
   getPositionSummary,
 } from "components/screens/PositionsScreen/helpers/positionSummaries";
 import { useAccountPositions } from "components/screens/PositionsScreen/hooks/useAccountPositions";
+import { useCloseWhenGone } from "components/screens/PositionsScreen/hooks/useCloseWhenGone";
 import {
   useArePositionsAvailable,
   useIsEarnDepositAvailable,
@@ -55,7 +56,7 @@ import { NO_FIAT_VALUE } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useCallback, useEffect, useId, useMemo, useState } from "react";
+import React, { useCallback, useId, useMemo, useState } from "react";
 import { LayoutChangeEvent, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
@@ -140,14 +141,13 @@ export const TokenPositionScreen: React.FC<TokenPositionScreenProps> = ({
     [position, networkDetails, assetId],
   );
 
-  // A drained token closes this screen. A pool that's gone, or Positions
-  // going away, close the pool screen under it, which closes this one too.
-  const isRowGone = isAvailable && hasLoaded && !!position && !row;
-  useEffect(() => {
-    if (isRowGone) {
-      navigation.goBack();
-    }
-  }, [isRowGone, navigation]);
+  // A drained token, its pool gone, or Positions going away close this
+  // screen, and the pool screen under it closes itself when it's the pool.
+  useCloseWhenGone({
+    isGone: !isAvailable || (hasLoaded && !row),
+    navigation,
+    routeKey: route.key,
+  });
 
   const [tab, setTab] = useState<PositionTab>("your_position");
   const handleTabChange = useCallback(

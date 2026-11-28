@@ -22,6 +22,7 @@ import {
 } from "components/screens/PositionsScreen/helpers/positionRows";
 import { getPoolPositionSummary } from "components/screens/PositionsScreen/helpers/positionSummaries";
 import { useAccountPositions } from "components/screens/PositionsScreen/hooks/useAccountPositions";
+import { useCloseWhenGone } from "components/screens/PositionsScreen/hooks/useCloseWhenGone";
 import { useArePositionsAvailable } from "components/screens/PositionsScreen/hooks/useEarnAvailability";
 import { usePositionsRefresh } from "components/screens/PositionsScreen/hooks/usePositionsRefresh";
 import { Text } from "components/sds/Typography";
@@ -32,7 +33,7 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { ScrollView, View } from "react-native";
 import { trackEarnPoolDetailsOpened } from "services/analytics/earn";
 import { trackPositionsRowSelected } from "services/analytics/positions";
@@ -74,13 +75,12 @@ export const PoolPositionScreen: React.FC<PoolPositionScreenProps> = ({
     [position, networkDetails],
   );
 
-  // Closing from here also closes a token screen open over this one.
-  const isGone = !isAvailable || (hasLoaded && !position);
-  useEffect(() => {
-    if (isGone) {
-      navigation.goBack();
-    }
-  }, [isGone, navigation]);
+  // A token screen open over this one closes itself too.
+  useCloseWhenGone({
+    isGone: !isAvailable || (hasLoaded && !position),
+    navigation,
+    routeKey: route.key,
+  });
 
   const handleTokenPress = useCallback(
     (row: PositionTokenRow) => {
