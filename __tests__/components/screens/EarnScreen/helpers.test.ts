@@ -400,6 +400,9 @@ describe("hasSwappableBalance", () => {
       token: { type: "native", code: "XLM" },
     }) as never;
 
+  // Pays the swap's 0.00001 XLM fee and leaves nothing above the reserve.
+  const feeOnlyXlm = native("1.00001", "1");
+
   const check = (
     balances: Record<string, never>,
     {
@@ -427,15 +430,41 @@ describe("hasSwappableBalance", () => {
   // the "is this a classic token" check — a regression that inverted the
   // `issuer in balance.token` guard would have passed the whole suite.
   it("counts a held classic asset other than the target as swappable", () => {
-    expect(check({ "AQUA:GISSUER2": classic("AQUA", "GISSUER2", "100") })).toBe(
-      true,
-    );
+    expect(
+      check({
+        XLM: feeOnlyXlm,
+        "AQUA:GISSUER2": classic("AQUA", "GISSUER2", "100"),
+      }),
+    ).toBe(true);
+  });
+
+  // Whatever is swapped, the swap's fee is paid in XLM.
+  it("can't swap another token without the XLM to pay the fee", () => {
+    const aqua = classic("AQUA", "GISSUER2", "100");
+    expect(check({ "AQUA:GISSUER2": aqua })).toBe(false);
+    expect(check({ XLM: native("1", "1"), "AQUA:GISSUER2": aqua })).toBe(false);
+  });
+
+  // XLM held only as its reserve can't pay for a swap into more XLM.
+  it("can't swap into XLM when the account's XLM is all reserve", () => {
+    expect(
+      check(
+        {
+          XLM: native("1", "1"),
+          "USDC:GISSUER": classic("USDC", "GISSUER", "50"),
+        },
+        { targetIdentifier: "XLM" },
+      ),
+    ).toBe(false);
   });
 
   it("excludes the target asset itself so dust does not look swappable", () => {
-    expect(check({ "USDC:GISSUER": classic("USDC", "GISSUER", "0.001") })).toBe(
-      false,
-    );
+    expect(
+      check({
+        XLM: feeOnlyXlm,
+        "USDC:GISSUER": classic("USDC", "GISSUER", "0.001"),
+      }),
+    ).toBe(false);
   });
 
   it("excludes zero balances", () => {
@@ -469,7 +498,10 @@ describe("hasSwappableBalance", () => {
 
   it("counts a classic asset's available amount, not its total", () => {
     expect(
-      check({ "AQUA:GISSUER2": classic("AQUA", "GISSUER2", "100", "0") }),
+      check({
+        XLM: feeOnlyXlm,
+        "AQUA:GISSUER2": classic("AQUA", "GISSUER2", "100", "0"),
+      }),
     ).toBe(false);
   });
 
@@ -479,7 +511,7 @@ describe("hasSwappableBalance", () => {
       contractId: "CABC",
       token: { code: "ABC", issuer: { key: "CABC" } },
     } as never;
-    expect(check({ "ABC:CABC": soroban })).toBe(false);
+    expect(check({ XLM: feeOnlyXlm, "ABC:CABC": soroban })).toBe(false);
   });
 });
 

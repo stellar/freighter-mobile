@@ -583,6 +583,49 @@ describe("EarnTokenPickerScreen", () => {
       });
     });
 
+    // A swap's fee is paid in XLM, so XLM held only as its reserve can't
+    // pay for one, even from another token.
+    it("doesn't offer Swap for XLM held only as its reserve", () => {
+      useRemoteConfigStore.setState({ swap_enabled: true });
+      const reserveOnlyXlm = {
+        token: { type: "native", code: "XLM" },
+        total: new BigNumber("1"),
+        available: new BigNumber("0"),
+        minimumBalance: new BigNumber("1"),
+      };
+      mockPricedBalances.XLM = reserveOnlyXlm;
+      mockPricedBalances["USDC:GISSUER"] = {
+        token: { code: "USDC", issuer: { key: "GISSUER" } },
+        total: new BigNumber("50"),
+        available: new BigNumber("50"),
+      };
+      mockUseEarnTokens.supported = [
+        {
+          ...makeOption("XLM", "1"),
+          isNative: true,
+          balance: reserveOnlyXlm,
+        },
+      ];
+      try {
+        const { getByTestId } = renderScreen();
+
+        fireEvent.press(getByTestId("earn-token-option-XLM"));
+
+        // Testnet: no Buy either, so Receive is the only way.
+        expect(mockTrack).toHaveBeenCalledWith(
+          "earn.balance_insufficient_shown",
+          {
+            protocol: "blend",
+            asset_code: "XLM",
+            variant: "transfer-only",
+          },
+        );
+      } finally {
+        delete mockPricedBalances.XLM;
+        delete mockPricedBalances["USDC:GISSUER"];
+      }
+    });
+
     // Swap follows the `swap_enabled` flag, as Home's Swap button does.
     describe("with XLM to swap from", () => {
       beforeEach(() => {
