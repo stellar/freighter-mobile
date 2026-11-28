@@ -804,6 +804,27 @@ describe("EarnTokenPickerScreen", () => {
 
       expect(getByText(formatTokenForDisplay("50", "USDC"))).toBeTruthy();
     });
+
+    // XLM held only as its minimum balance is listed as not held.
+    it("shows 0 for XLM listed as not held, not its minimum balance", () => {
+      mockUseEarnTokens.supported = [
+        {
+          ...makeOption("XLM", "1.5"),
+          isNative: true,
+          balance: {
+            token: { type: "native", code: "XLM" },
+            total: new BigNumber("1.5"),
+            available: new BigNumber("0"),
+            minimumBalance: new BigNumber("1.5"),
+          },
+        },
+      ];
+
+      const { getByText, queryByText } = renderScreen();
+
+      expect(getByText("0 XLM")).toBeTruthy();
+      expect(queryByText(formatTokenForDisplay("1.5", "XLM"))).toBeNull();
+    });
   });
 
   // As on main Swap: a swap Blockaid couldn't scan opens the security sheet

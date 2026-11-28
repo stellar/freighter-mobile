@@ -11,7 +11,11 @@ import { PricedBalance, PricedBalanceMap } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useEarnStore } from "ducks/earn";
-import { getBalanceByContractId } from "helpers/balances";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import {
+  calculateSpendableAmount,
+  getBalanceByContractId,
+} from "helpers/balances";
 import { getBalanceInWholeUnits } from "helpers/formatAmount";
 import { getNativeContractDetails } from "helpers/soroban";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -54,15 +58,18 @@ export interface EarnTokenOption {
    */
   isNative: boolean;
   /**
-   * The held balance backing this row, when any. Carries the real Token
-   * shape so the row renders the exact icon instead of reconstructing one
-   * from catalog data alone. Undefined for zero-balance rows.
+   * The balance backing this row, when the account holds any. Carries the
+   * real Token shape so the row renders the exact icon instead of
+   * reconstructing one from catalog data alone. Undefined when the account
+   * holds none; XLM held only as its minimum balance keeps it, though its
+   * row is listed as not held.
    */
   balance?: PricedBalance;
 }
 
 /**
- * Partitions the catalog into held and zero-balance rows.
+ * Partitions the catalog into held rows, the ones with something to deposit,
+ * and the rest.
  *
  * Exported and dependency-injected (`findBalance`) so the partitioning rules
  * can be tested without a React tree or a network.
@@ -72,12 +79,18 @@ export const buildEarnTokenRows = ({
   poolId,
   balances,
   networkDetails,
+  subentryCount,
+  transactionFee,
   findBalance = getBalanceByContractId,
 }: {
   options: BlendEarnAssetOption[];
   poolId: string;
   balances: PricedBalanceMap;
   networkDetails: NetworkDetails;
+  /** For XLM's spendable amount, as the picker's row and the amount screen. */
+  subentryCount?: number;
+  /** For XLM's spendable amount, as the picker's row and the amount screen. */
+  transactionFee?: string;
   findBalance?: (
     contractId: string,
     balances: PricedBalanceMap,
@@ -129,7 +142,21 @@ export const buildEarnTokenRows = ({
       balance,
     };
 
-    if (total && total.gt(0)) {
+    // XLM's total includes the minimum balance, which can't be deposited, so
+    // XLM counts as held only when some of it is spendable: the amount its
+    // row shows and the amount screen offers. Held only as the reserve, it
+    // is listed with the tokens the account doesn't hold, whose tap offers
+    // ways to get more.
+    const isHeld =
+      row.isNative && balance
+        ? calculateSpendableAmount({
+            balance,
+            subentryCount,
+            transactionFee,
+          }).gt(0)
+        : !!total && total.gt(0);
+
+    if (isHeld) {
       held.push(row);
     } else {
       supported.push(row);
@@ -143,6 +170,9 @@ export const useEarnTokens = () => {
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { pricedBalances } = useBalancesStore();
+  const transactionFee = useTransactionSettingsStore(
+    (state) => state.transactionFee,
+  );
   const setPool = useEarnStore((state) => state.setPool);
 
   const networkDetails = useMemo(
@@ -218,8 +248,16 @@ export const useEarnTokens = () => {
       poolId: catalog.poolId,
       balances: pricedBalances,
       networkDetails,
+      subentryCount: account?.subentryCount ?? 0,
+      transactionFee,
     });
-  }, [catalog, pricedBalances, networkDetails]);
+  }, [
+    catalog,
+    pricedBalances,
+    networkDetails,
+    account?.subentryCount,
+    transactionFee,
+  ]);
 
   return {
     isLoading,

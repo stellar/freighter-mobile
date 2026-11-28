@@ -215,6 +215,47 @@ describe("buildEarnTokenRows", () => {
     expect(supported[0].isNative).toBe(true);
   });
 
+  // XLM's total includes the minimum balance, which can't be deposited.
+  describe("an XLM balance", () => {
+    const TESTNET_NATIVE_SAC =
+      "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+    const rowsFor = (total: string) => {
+      const balance = {
+        token: { type: "native", code: "XLM" },
+        total: new BigNumber(total),
+        available: new BigNumber(total).minus("1.5"),
+        minimumBalance: new BigNumber("1.5"),
+      } as never;
+      return buildEarnTokenRows({
+        options: [
+          option({ assetId: TESTNET_NATIVE_SAC, symbol: null, name: null }),
+        ],
+        poolId: POOL_ID,
+        balances: {} as never,
+        networkDetails: { network: NETWORKS.TESTNET } as never,
+        subentryCount: 1,
+        transactionFee: "0.00001",
+        findBalance: () => balance,
+      });
+    };
+
+    it("lists XLM held only as its minimum balance as not held", () => {
+      const { held, supported } = rowsFor("1.5");
+
+      expect(held).toHaveLength(0);
+      expect(supported).toHaveLength(1);
+      // Still carried, so the row's icon and amount come from it.
+      expect(supported[0].balance).toBeDefined();
+    });
+
+    it("lists XLM above its minimum balance as held", () => {
+      const { held, supported } = rowsFor("10");
+
+      expect(held).toHaveLength(1);
+      expect(supported).toHaveLength(0);
+    });
+  });
+
   it("does not flag a non-native reserve as native", () => {
     const { supported } = buildEarnTokenRows({
       options: [option()],

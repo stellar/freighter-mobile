@@ -888,9 +888,10 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
 
   // XLM's total includes the minimum balance the account can't spend, so
   // its row shows what the deposit screen will offer: the same calculation
-  // as that screen's "available".
+  // as that screen's "available". XLM held only as that reserve is listed
+  // as not held, and shows 0 there.
   const { transactionFee } = useTransactionSettingsStore();
-  const getHeldAmount = useCallback(
+  const getRowAmount = useCallback(
     (option: EarnTokenOption) =>
       option.isNative && option.balance
         ? calculateSpendableAmount({
@@ -1089,7 +1090,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
                     <EarnTokenRow
                       key={option.assetId}
                       option={option}
-                      amount={getHeldAmount(option)}
+                      amount={getRowAmount(option)}
                       testID={`earn-token-option-${option.code}`}
                       onPress={() => handleHeldTokenPress(option)}
                     />
@@ -1119,6 +1120,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
                     <EarnTokenRow
                       key={option.assetId}
                       option={option}
+                      amount={getRowAmount(option)}
                       testID={`earn-token-option-${option.code}`}
                       onPress={() => handleUnheldTokenPress(option)}
                     />
