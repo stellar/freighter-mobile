@@ -286,7 +286,15 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // on the processing sheet's "failed", go back to the swap sheet. Its
   // source and amount are kept, and the quote is refetched for them, as
   // main Swap does when it returns to its amount screen.
+  //
+  // A submit the user closed still settles, and still calls this. Closing
+  // cleared the swap, so its sheet would open empty: stay on the picker. The
+  // store is read rather than `swapOption`, since the submit holds the
+  // handler from before the close.
   const handleSwapQuoteExpired = useCallback(() => {
+    if (!useSwapStore.getState().destinationToken) {
+      return;
+    }
     swapProcessingBottomSheetModalRef.current?.dismiss();
     swapBottomSheetModalRef.current?.present();
   }, []);

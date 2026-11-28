@@ -638,18 +638,30 @@ describe("EarnTokenPickerScreen", () => {
   describe("an expired swap quote", () => {
     beforeEach(() => {
       usePreferencesStore.getState().setHasSeenEarnIntro(true);
+      useSwapStore.getState().resetSwap();
     });
+
+    const swapSheets = () => {
+      // eslint-disable-next-line no-underscore-dangle
+      const sheets = globalThis.__earnTokenPickerMockSheets;
+      return {
+        swapSheet: sheets.find(
+          ({ props }) => props.analyticsEvent === "swap_amount",
+        ),
+        processingSheet: sheets.find(
+          ({ props }) => props.enablePanDownToClose === false,
+        ),
+      };
+    };
 
     it("goes back to the swap sheet for a retry instead of ending on the processing sheet", () => {
       renderScreen();
-      // eslint-disable-next-line no-underscore-dangle
-      const sheets = globalThis.__earnTokenPickerMockSheets;
-      const swapSheet = sheets.find(
-        ({ props }) => props.analyticsEvent === "swap_amount",
-      );
-      const processingSheet = sheets.find(
-        ({ props }) => props.enablePanDownToClose === false,
-      );
+      const { swapSheet, processingSheet } = swapSheets();
+      // The swap is still in progress: its destination is still set.
+      useSwapStore.getState().setDestinationToken({
+        id: "EURC:GISSUER",
+        tokenCode: "EURC",
+      } as never);
 
       act(() => {
         mockEarnSwapParams.onQuoteExpired?.();
@@ -657,6 +669,19 @@ describe("EarnTokenPickerScreen", () => {
 
       expect(processingSheet?.ref.dismiss).toHaveBeenCalled();
       expect(swapSheet?.ref.present).toHaveBeenCalled();
+    });
+
+    // Closing the processing sheet clears the swap, so its sheet would
+    // open empty.
+    it("stays on the picker when the swap was closed before it expired", () => {
+      renderScreen();
+      const { swapSheet } = swapSheets();
+
+      act(() => {
+        mockEarnSwapParams.onQuoteExpired?.();
+      });
+
+      expect(swapSheet?.ref.present).not.toHaveBeenCalled();
     });
   });
 
