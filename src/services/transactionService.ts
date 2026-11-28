@@ -26,6 +26,11 @@ import {
   getNativeContractId,
 } from "helpers/assetIdentity";
 import { isLiquidityPool } from "helpers/balances";
+import {
+  BlendRequestType,
+  buildBlendRequestScVal,
+  buildBlendSubmitOp,
+} from "helpers/blend";
 import { getBalanceInWholeUnits, xlmToStroop } from "helpers/formatAmount";
 import {
   determineMuxedDestination,
@@ -45,6 +50,7 @@ import {
 import { t } from "i18next";
 import { analytics } from "services/analytics";
 import { SimulationTransactionType } from "services/analytics/types";
+import { isApiError } from "services/apiFactory";
 import { simulateTokenTransfer, simulateTransaction } from "services/backend";
 import { stellarSdkServer } from "services/stellar";
 
@@ -850,4 +856,174 @@ export const simulateCollectibleTransfer = async ({
     analytics.trackSimulationError(errorMessage, analyticsCategory);
     throw error;
   }
+};
+
+interface BuildBlendDepositParams {
+  senderAddress: string;
+  /**
+   * The pool to deposit into: the one the flow chose and shows on Review,
+   * never re-derived here, so the transaction can't fund a pool other than
+   * the one the user was shown.
+   */
+  poolId: string;
+  /** The reserve's asset contract address (a SAC for every current reserve). */
+  assetId: string;
+  /** Human-readable amount, e.g. "500.00". */
+  amount: string;
+  decimals: number;
+  network: NETWORKS;
+  /** Inclusion fee in XLM; the resource fee is added by the prepared tx. */
+  transactionFee: string;
+  transactionTimeout: number;
+}
+
+interface BuildBlendDepositTransactionResult {
+  xdr: string;
+  preparedXdr: string;
+  /**
+   * Resource fee in stroops reported by simulation, or `null` when the
+   * simulation response omits it. `SorobanSimulationResponse.minResourceFee`
+   * is optional; a missing value is left unknown here rather than coerced to
+   * "0" — a zero resource fee would understate the real cost and is
+   * indistinguishable from a genuine zero. Callers render this as "fee
+   * unavailable" rather than a real number.
+   */
+  minResourceFee: string | null;
+}
+
+/**
+ * The reason the v1 backend's `/simulate-tx` gave for rejecting a
+ * simulation, or null when the error carries no body to read.
+ *
+ * The backend replies 400 with plain text: `Error: <name> - <message>`, then
+ * the stack on the following lines. When the simulation itself failed (a
+ * frozen pool, a supply cap, a stale oracle), the message is the SDK's
+ * `simulation incorrect: <simulation JSON>`, whose `error` field opens with
+ * the host error, e.g. "HostError: Error(Contract, #1206)", followed by the
+ * event log. Only that first line is kept.
+ */
+const getSimulateTxFailureReason = (error: unknown): string | null => {
+  if (!isApiError(error) || typeof error.data !== "string") {
+    return null;
+  }
+
+  // JSON escapes its newlines, so the first real one starts the stack.
+  const [firstLine] = error.data.split("\n");
+  const message = firstLine.replace(/^Error: \w+ - /, "").trim();
+
+  const SIMULATION_PREFIX = "simulation incorrect: ";
+  if (message.startsWith(SIMULATION_PREFIX)) {
+    try {
+      const simulation: unknown = JSON.parse(
+        message.slice(SIMULATION_PREFIX.length),
+      );
+      const simulationError =
+        simulation && typeof simulation === "object" && "error" in simulation
+          ? simulation.error
+          : undefined;
+      if (typeof simulationError === "string" && simulationError.trim()) {
+        return simulationError.split("\n")[0].trim();
+      }
+    } catch {
+      // Not JSON after all: fall through to the message itself.
+    }
+  }
+
+  return message || null;
+};
+
+/**
+ * Builds and simulates a Blend deposit — `pool.submit` with one
+ * SupplyCollateral request.
+ *
+ * Returns the prepared (assembled) XDR ready to sign, plus `minResourceFee` so
+ * callers can render the fee breakdown.
+ *
+ * The account is loaded from Horizon rather than soroban-rpc: the app does not
+ * call Soroban RPC directly, which is why simulation goes through the v1
+ * backend's `/simulate-tx` proxy.
+ */
+export const buildBlendDepositTransaction = async ({
+  senderAddress,
+  poolId,
+  assetId,
+  amount,
+  decimals,
+  network,
+  transactionFee,
+  transactionTimeout,
+}: BuildBlendDepositParams): Promise<BuildBlendDepositTransactionResult> => {
+  const networkDetails = mapNetworkToNetworkDetails(network);
+
+  if (!poolId) {
+    throw new Error("Earn is not supported on this network");
+  }
+
+  // Simulation goes through the Soroban RPC endpoint, matching the other two
+  // simulateTransaction callers in this file (simulateContractTransfer,
+  // simulateCollectibleTransfer) — the Horizon URL used for loadAccount below
+  // is not the right URL for the RPC proxy.
+  if (!networkDetails.sorobanRpcUrl) {
+    throw new Error("Soroban RPC URL is not defined for this network");
+  }
+
+  const server = stellarSdkServer(networkDetails.networkUrl);
+  const sourceAccount = await server.loadAccount(senderAddress);
+
+  const request = buildBlendRequestScVal({
+    assetId,
+    // Blend takes the amount in the asset's smallest unit. toFixed(0) because
+    // an i128 cannot carry a fraction, and exponential notation would not parse.
+    amount: new BigNumber(amount).multipliedBy(10 ** decimals).toFixed(0),
+    requestType: BlendRequestType.SupplyCollateral,
+  });
+
+  const builtTx = new TransactionBuilder(sourceAccount, {
+    // Inclusion fee only — the prepared transaction carries the resource fee
+    // once simulation reports it.
+    fee: xlmToStroop(transactionFee).toString(),
+    // A finite expiry, so a deposit priced against a live APY expires rather
+    // than sitting signable. Taken from the server's clock, as the other
+    // builders do, so a phone whose clock is off can't skew it.
+    timebounds: await server.fetchTimebounds(transactionTimeout),
+    networkPassphrase: networkDetails.networkPassphrase,
+  })
+    .addOperation(
+      buildBlendSubmitOp({
+        poolId,
+        publicKey: senderAddress,
+        requests: [request],
+      }),
+    )
+    .build();
+
+  let simulation;
+  try {
+    simulation = await simulateTransaction({
+      xdr: builtTx.toXdr(),
+      network_url: networkDetails.sorobanRpcUrl,
+      network_passphrase: networkDetails.networkPassphrase,
+    });
+  } catch (error) {
+    // Without this the user saw only axios's "Request failed with status
+    // code 400", never why the pool refused the deposit.
+    const reason = getSimulateTxFailureReason(error);
+    if (reason) {
+      throw new Error(reason);
+    }
+    throw error;
+  }
+
+  if (!simulation?.preparedTransaction) {
+    // simulateTransaction throws on HTTP failure (it's an axios call), so
+    // this only guards a 200 response that lacks preparedTransaction.
+    // There is no `error` field on SimulateTransactionResponse to surface.
+    throw new Error("Failed to simulate the Blend deposit");
+  }
+
+  return {
+    xdr: builtTx.toXdr(),
+    preparedXdr: simulation.preparedTransaction,
+    minResourceFee: simulation.simulationResponse?.minResourceFee ?? null,
+  };
 };

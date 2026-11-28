@@ -31,6 +31,12 @@ describe("Analytics Configuration", () => {
       expect(processRouteForAnalytics("SettingsStack")).toBeNull();
     });
 
+    // The picker reports its own view once the first-run intro drawn in its
+    // place is out of the way.
+    it("leaves the Earn token picker's view to the screen", () => {
+      expect(processRouteForAnalytics("EarnTokenPickerScreen")).toBeNull();
+    });
+
     it("should automatically exclude stack routes", () => {
       expect(ROUTES_WITHOUT_ANALYTICS.has("MainTabStack")).toBe(true);
       expect(ROUTES_WITHOUT_ANALYTICS.has("AuthStack")).toBe(true);

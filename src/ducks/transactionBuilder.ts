@@ -20,6 +20,7 @@ import { isApiError } from "services/apiFactory";
 import { BuildSwapTxParams, buildSwapTx } from "services/backend";
 import { isHorizonError, signTransaction, submitTx } from "services/stellar";
 import {
+  buildBlendDepositTransaction,
   buildPaymentTransaction,
   buildSendCollectibleTransaction,
   simulateCollectibleTransfer,
@@ -76,6 +77,19 @@ export interface SubmitTransactionOutcome {
   /** Whether a failed submit carried a genuine Horizon problem+json body. */
   isProtocolAnswer: boolean;
 }
+
+/**
+ * A simulation's minimum resource fee, in XLM. Null when the simulation
+ * omits it or it doesn't parse: unknown, rather than "0", which would
+ * understate the real cost.
+ */
+const resourceFeeToXlm = (minResourceFee?: string | null): string | null => {
+  if (!minResourceFee) {
+    return null;
+  }
+  const resourceFeeBn = new BigNumber(minResourceFee);
+  return resourceFeeBn.isNaN() ? null : stroopToXlm(resourceFeeBn).toFixed(7);
+};
 
 const FAILED_SUBMIT_OUTCOME: SubmitTransactionOutcome = {
   hash: null,
@@ -139,6 +153,18 @@ interface TransactionBuilderState {
     senderAddress: string;
   }) => Promise<string | null>;
 
+  buildBlendDepositTransaction: (params: {
+    /** The pool the flow chose; the deposit is built for it. */
+    poolId: string;
+    assetId: string;
+    amount: string;
+    decimals: number;
+    transactionFee: string;
+    transactionTimeout: number;
+    network: NETWORKS;
+    senderAddress: string;
+  }) => Promise<string | null>;
+
   signTransaction: (params: {
     secretKey: string;
     network: NETWORKS;
@@ -156,6 +182,7 @@ const initialState: Omit<
   | "buildTransaction"
   | "buildSwapTransaction"
   | "buildSendCollectibleTransaction"
+  | "buildBlendDepositTransaction"
   | "signTransaction"
   | "submitTransaction"
   | "resetTransaction"
@@ -348,12 +375,9 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
 
           sorobanInclusionFeeXlm = params.transactionFee || MIN_TRANSACTION_FEE;
 
-          if (simulateResult.minResourceFee) {
-            const resourceFeeBn = new BigNumber(simulateResult.minResourceFee);
-            if (!resourceFeeBn.isNaN()) {
-              sorobanResourceFeeXlm = stroopToXlm(resourceFeeBn).toFixed(7);
-            }
-          }
+          sorobanResourceFeeXlm = resourceFeeToXlm(
+            simulateResult.minResourceFee,
+          );
         }
 
         // Only update store if this build request is still the latest one.
@@ -527,13 +551,9 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           );
         }
         const finalXdr = simulateResult.preparedTransaction;
-        let sorobanResourceFeeXlm: string | null = null;
-        if (simulateResult.minResourceFee) {
-          const resourceFeeBn = new BigNumber(simulateResult.minResourceFee);
-          if (!resourceFeeBn.isNaN()) {
-            sorobanResourceFeeXlm = stroopToXlm(resourceFeeBn).toFixed(7);
-          }
-        }
+        const sorobanResourceFeeXlm = resourceFeeToXlm(
+          simulateResult.minResourceFee,
+        );
         const sorobanInclusionFeeXlm =
           params.transactionFee || MIN_TRANSACTION_FEE;
 
@@ -568,6 +588,64 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             isBuilding: false,
             transactionXDR: null,
           });
+        }
+
+        return null;
+      }
+    },
+
+    buildBlendDepositTransaction: async (params) => {
+      const newRequestId = createRequestId();
+
+      // A Blend deposit is always a Soroban invoke, so the fee UI should show
+      // the inclusion/resource split from the start. Clear stale Soroban fees
+      // so the UI does not show outdated numbers mid-build.
+      set({
+        isBuilding: true,
+        error: null,
+        requestId: newRequestId,
+        isSoroban: true,
+        sorobanResourceFeeXlm: null,
+        sorobanInclusionFeeXlm: null,
+      });
+
+      try {
+        const built = await buildBlendDepositTransaction({
+          senderAddress: params.senderAddress,
+          poolId: params.poolId,
+          assetId: params.assetId,
+          amount: params.amount,
+          decimals: params.decimals,
+          network: params.network,
+          transactionFee: params.transactionFee,
+          transactionTimeout: params.transactionTimeout,
+        });
+
+        const sorobanResourceFeeXlm = resourceFeeToXlm(built.minResourceFee);
+
+        // Only update the store if this build is still the latest one.
+        if (get().requestId === newRequestId) {
+          set({
+            transactionXDR: built.preparedXdr,
+            isBuilding: false,
+            signedTransactionXDR: null,
+            transactionHash: null,
+            sorobanInclusionFeeXlm: params.transactionFee,
+            sorobanResourceFeeXlm,
+          });
+        }
+
+        return built.preparedXdr;
+      } catch (error) {
+        const errorMessage = extractErrorMessage(error);
+        logger.error(
+          "TransactionBuilderStore",
+          "Failed to build Blend deposit transaction",
+          error,
+        );
+
+        if (get().requestId === newRequestId) {
+          set({ error: errorMessage, isBuilding: false, transactionXDR: null });
         }
 
         return null;

@@ -1,7 +1,9 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { useTrendingTokenDetail } from "components/screens/SwapScreen/hooks/useTrendingTokenDetail";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
+import { analytics } from "services/analytics";
 
 const mockGetTokenDetails = jest.fn();
 jest.mock("services/backend", () => ({
@@ -45,6 +47,7 @@ describe("useTrendingTokenDetail", () => {
     const setDestinationToken = jest.fn();
     const { result } = renderHook(() =>
       useTrendingTokenDetail({
+        entrySource: "home",
         balanceItems: [],
         sourceTokenId: "XLM",
         setSourceToken: jest.fn(),
@@ -85,6 +88,7 @@ describe("useTrendingTokenDetail", () => {
     const setDestinationToken = jest.fn();
     const { result } = renderHook(() =>
       useTrendingTokenDetail({
+        entrySource: "home",
         balanceItems: [],
         sourceTokenId: "XLM",
         setSourceToken: jest.fn(),
@@ -125,6 +129,7 @@ describe("useTrendingTokenDetail", () => {
     const setDestinationToken = jest.fn();
     const { result } = renderHook(() =>
       useTrendingTokenDetail({
+        entrySource: "home",
         balanceItems: [],
         sourceTokenId: "XLM",
         setSourceToken: jest.fn(),
@@ -160,6 +165,7 @@ describe("useTrendingTokenDetail", () => {
     mockSwapState = { sourceTokenId: "XLM", destinationToken: null };
     const { result } = renderHook(() =>
       useTrendingTokenDetail({
+        entrySource: "home",
         balanceItems: [],
         sourceTokenId: "XLM",
         setSourceToken: jest.fn(),
@@ -193,6 +199,7 @@ describe("useTrendingTokenDetail", () => {
     const setDestinationToken = jest.fn();
     const { result } = renderHook(() =>
       useTrendingTokenDetail({
+        entrySource: "home",
         balanceItems: [held],
         sourceTokenId: "XLM",
         setSourceToken: jest.fn(),
@@ -213,5 +220,63 @@ describe("useTrendingTokenDetail", () => {
     expect(setDestinationToken).toHaveBeenCalledWith(
       expect.objectContaining({ id: `SYM:${CONTRACT}` }),
     );
+  });
+
+  describe("the swap's entry source on the trending events", () => {
+    const held = {
+      id: `TKN:${CONTRACT}`,
+      tokenCode: "TKN",
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      contractId: CONTRACT,
+      decimals: 7,
+    } as never;
+
+    const renderFromTokenDetails = () =>
+      renderHook(() =>
+        useTrendingTokenDetail({
+          entrySource: "token_details",
+          // Held, so the pick applies at once, without /token-details.
+          balanceItems: [held],
+          sourceTokenId: "XLM",
+          setSourceToken: jest.fn(),
+          setDestinationToken: jest.fn(),
+          publicKey: ACCOUNT,
+          network: NETWORKS.PUBLIC,
+        }),
+      );
+
+    beforeEach(() => {
+      (analytics.track as jest.Mock).mockClear();
+      mockSwapState = { sourceTokenId: "XLM", destinationToken: null };
+    });
+
+    it("tags swap.trending_token_tapped", () => {
+      const { result } = renderFromTokenDetails();
+
+      act(() => {
+        result.current.openTrendingDetail(record, 2);
+      });
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_TRENDING_TOKEN_TAPPED,
+        expect.objectContaining({ position: 2, source: "token_details" }),
+      );
+    });
+
+    it("tags swap.trending_swap_to_pressed", () => {
+      const { result } = renderFromTokenDetails();
+
+      act(() => {
+        result.current.openTrendingDetail(record, 0);
+      });
+      act(() => {
+        result.current.confirmTrendingSelection();
+      });
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_TRENDING_SWAP_TO_PRESSED,
+        expect.objectContaining({ tokenCode: "TKN", source: "token_details" }),
+      );
+    });
   });
 });

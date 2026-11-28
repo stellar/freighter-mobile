@@ -84,6 +84,18 @@ type AmountCardCommonProps = {
    *  back to a 2-letter avatar until the trustline is added. */
   pickerIconUrl?: string;
   onPickerPress: () => void;
+  /** Renders the picker chip as a static label -- no chevron, not tappable.
+   *  For surfaces where the token is fixed rather than chosen: the Earn swap
+   *  sheet's "You receive" side is locked to the asset being deposited into
+   *  (its chip has no chevron, unlike the "You sell" chip beside it).
+   *  Additive -- defaults to false, so every
+   *  existing Send/Swap caller is unchanged. */
+  isLocked?: boolean;
+  /** Ignores input for a while without changing how the card looks: the
+   *  amount can't be edited and the picker chip and $↔token toggle don't
+   *  respond. For while the screen builds the transaction for Review.
+   *  Additive -- defaults to false. */
+  disabled?: boolean;
   pickerTestID?: string;
   testID?: string;
   /** Shown on the right of the label row. Hidden when null/undefined. */
@@ -108,6 +120,10 @@ type AmountCardEditableProps = AmountCardCommonProps & {
   autoFocus?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  /** Renders the entered amount in the error color (e.g. the deposit exceeds
+   *  the spendable balance). Additive -- defaults to false, matching every
+   *  existing caller's (Send/Swap) behavior unchanged. */
+  isError?: boolean;
 };
 
 type AmountCardReadOnlyProps = AmountCardCommonProps & {
@@ -134,7 +150,7 @@ const CardShell: React.FC<{
   // 12px symmetric vertical padding, collapsing to 8px on xs screens.
   <View
     testID={testID}
-    className="rounded-[12px] gap-[12px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] bg-background-tertiary w-full"
+    className="rounded-[16px] gap-[12px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] bg-background-secondary w-full"
   >
     {children}
   </View>
@@ -150,7 +166,7 @@ const HeaderRow: React.FC<{
     </Text>
     {!!availableBalanceText && (
       <Text
-        medium
+        regular
         secondary
         numberOfLines={1}
         textAlign="right"
@@ -175,8 +191,19 @@ const PickerChip: React.FC<{
   securityLevel?: SecurityLevel;
   iconUrl?: string;
   onPress: () => void;
+  isLocked?: boolean;
+  disabled?: boolean;
   testID?: string;
-}> = ({ token, label, securityLevel, iconUrl, onPress, testID }) => {
+}> = ({
+  token,
+  label,
+  securityLevel,
+  iconUrl,
+  onPress,
+  isLocked,
+  disabled,
+  testID,
+}) => {
   const { themeColors } = useColors();
   // PricedBalance / Balance carry `tokenCode`; bare `Token` carries `code`.
   // Fall back to whichever exists so non-held descriptors still get a label.
@@ -186,10 +213,15 @@ const PickerChip: React.FC<{
   } else if (token && "code" in token) {
     fallbackLabel = token.code;
   }
+  // A locked chip is a label, not a control, so it renders as a plain View:
+  // suppressing only the chevron would leave an invisible tap target that
+  // still fires `onPress`.
+  const Container = isLocked ? View : TouchableOpacity;
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      className="flex-row items-center gap-[4px] rounded-full bg-background-secondary px-[10px] py-[8px]"
+    <Container
+      onPress={isLocked ? undefined : onPress}
+      disabled={disabled}
+      className="flex-row items-center gap-[4px] rounded-full bg-base-0 px-[10px] py-[4px]"
       testID={testID}
     >
       {token ? (
@@ -208,11 +240,13 @@ const PickerChip: React.FC<{
           singleLetterFallback
         />
       ) : null}
-      <Text md medium>
+      <Text md semiBold>
         {label ?? fallbackLabel ?? ""}
       </Text>
-      <Icon.ChevronDown size={16} color={themeColors.text.primary} />
-    </TouchableOpacity>
+      {!isLocked && (
+        <Icon.ChevronRight size={16} color={themeColors.foreground.primary} />
+      )}
+    </Container>
   );
 };
 
@@ -223,6 +257,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
   pickerSecurityLevel,
   pickerIconUrl,
   onPickerPress,
+  isLocked,
   pickerTestID,
   testID,
   availableBalanceText,
@@ -236,6 +271,8 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
   autoFocus,
   accessibilityLabel,
   accessibilityHint,
+  isError,
+  disabled,
 }) => {
   const { themeColors } = useColors();
 
@@ -260,6 +297,18 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
 
   const amountFontSize = getAmountFontSize(primaryText.length);
   // PickerChip resolves its own fallback when pickerLabel is undefined.
+
+  // `isError` takes precedence over the placeholder/value distinction --
+  // an over-balance amount is never empty, but keeping the check explicit
+  // avoids relying on that.
+  const amountTextColor = isError
+    ? themeColors.status.error
+    : themeColors.text.primary;
+  // The empty "0" reads in the primary color, like a value, as the designs
+  // draw it; the caret beside it marks it as a placeholder.
+  const amountPlaceholderColor = isError
+    ? themeColors.status.error
+    : themeColors.text.primary;
 
   // iOS focus-retry workaround: focus() can silently drop when the input is
   // hidden/animated; re-attempt on the next tick if isFocused() is still
@@ -313,6 +362,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
         <TouchableOpacity
           className="flex-1"
           onPressIn={focusInput}
+          disabled={disabled}
           activeOpacity={1}
           accessible={false}
           testID={focusTriggerTestID}
@@ -331,10 +381,8 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
                   fontFamily: AMOUNT_FONT_FAMILY,
                   fontSize: amountFontSize,
                   letterSpacing: AMOUNT_LETTER_SPACING,
-                  fontWeight: "500",
-                  color: isEmpty
-                    ? themeColors.text.secondary
-                    : themeColors.text.primary,
+                  fontWeight: "600",
+                  color: isEmpty ? amountPlaceholderColor : amountTextColor,
                   padding: 0,
                   includeFontPadding: false,
                 }}
@@ -352,7 +400,8 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
               autoFocus={autoFocus}
               value={isEmpty ? "" : primaryText}
               placeholder="0"
-              placeholderTextColor={themeColors.text.secondary}
+              placeholderTextColor={amountPlaceholderColor}
+              editable={!disabled}
               onChangeText={converter.setDisplayAmountFromText}
               onSubmitEditing={() => Keyboard.dismiss()}
               underlineColorAndroid="transparent"
@@ -361,8 +410,8 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
                 fontFamily: AMOUNT_FONT_FAMILY,
                 fontSize: amountFontSize,
                 letterSpacing: AMOUNT_LETTER_SPACING,
-                fontWeight: "500",
-                color: themeColors.text.primary,
+                fontWeight: "600",
+                color: amountTextColor,
                 padding: 0,
                 includeFontPadding: false,
               }}
@@ -376,6 +425,8 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
           securityLevel={pickerSecurityLevel}
           iconUrl={pickerIconUrl}
           onPress={onPickerPress}
+          isLocked={isLocked}
+          disabled={disabled}
           testID={pickerTestID}
         />
       </View>
@@ -399,9 +450,14 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
             onPress={() =>
               converter.setShowFiatAmount(!converter.showFiatAmount)
             }
+            disabled={disabled}
+            className="rounded-full bg-background-primary p-[2px]"
             testID={fiatToggleTestID}
           >
-            <Icon.RefreshCcw03 size={14} color={themeColors.text.secondary} />
+            <Icon.SwitchVertical01
+              size={12}
+              color={themeColors.foreground.primary}
+            />
           </TouchableOpacity>
         )}
       </View>
@@ -416,6 +472,8 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
   pickerSecurityLevel,
   pickerIconUrl,
   onPickerPress,
+  isLocked,
+  disabled,
   pickerTestID,
   testID,
   availableBalanceText,
@@ -451,7 +509,7 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
               fontSize: amountFontSize,
               lineHeight: pxValue(AMOUNT_LINE_HEIGHT),
               letterSpacing: AMOUNT_LETTER_SPACING,
-              fontWeight: "500",
+              fontWeight: "600",
               color: placeholderActive
                 ? themeColors.text.secondary
                 : themeColors.text.primary,
@@ -470,6 +528,8 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
           securityLevel={pickerSecurityLevel}
           iconUrl={pickerIconUrl}
           onPress={onPickerPress}
+          isLocked={isLocked}
+          disabled={disabled}
           testID={pickerTestID}
         />
       </View>

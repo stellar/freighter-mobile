@@ -3,10 +3,50 @@ import { BASE_RESERVE } from "config/constants";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { isNativeAssetId, isNativeBalance } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
+import { hasDecimals } from "helpers/formatAmount";
 
 type BalanceItem = PricedBalance & {
   id: string;
   tokenType: TokenTypeWithCustomToken;
+};
+
+/**
+ * What the source balance can actually put into a swap: its spendable amount
+ * (`calculateSpendableAmount`), in whole tokens, minus the BASE_RESERVE
+ * (0.5 XLM) a new trustline locks when XLM itself is swapped into a token
+ * without one. That keeps the reserve out of the percentage buttons and the
+ * insufficient-balance check. Below BASE_RESERVE nothing is deducted, and the
+ * reserve pre-flight below surfaces the shortfall instead.
+ *
+ * `transactionFee` is the swap's whole network fee in XLM, a Soroban route's
+ * resource fee included (`useSwapQuoteFees`'s `spendableFee`).
+ */
+export const getSwapSpendableAmount = ({
+  sourceBalance,
+  subentryCount,
+  transactionFee,
+  destinationRequiresTrustline,
+}: {
+  sourceBalance: PricedBalance & { id: string };
+  subentryCount: number;
+  transactionFee: string;
+  destinationRequiresTrustline: boolean;
+}): BigNumber => {
+  const rawSpendable = calculateSpendableAmount({
+    balance: sourceBalance,
+    subentryCount,
+    transactionFee,
+  });
+  // A Soroban balance is in the token's smallest unit.
+  const baseSpendable = hasDecimals(sourceBalance)
+    ? rawSpendable.shiftedBy(-sourceBalance.decimals)
+    : rawSpendable;
+  const swappingXlmToNewToken =
+    isNativeAssetId(sourceBalance.id) && destinationRequiresTrustline;
+  if (swappingXlmToNewToken && baseSpendable.gte(BASE_RESERVE)) {
+    return baseSpendable.minus(BASE_RESERVE);
+  }
+  return baseSpendable;
 };
 
 /**
@@ -75,3 +115,56 @@ export const shouldShowXlmReservePreflight = ({
   // ops), so the remaining spendable just needs to cover the trustline reserve.
   return xlmSpendable.lte(BASE_RESERVE);
 };
+
+/**
+ * The quote for the current inputs hasn't arrived yet. A failed quote stores
+ * its key too, so it settles; an amount error stops the request, so it never
+ * settles and must not count as pending.
+ */
+export const isSwapQuotePending = ({
+  currentQuoteKey,
+  sourceAmount,
+  amountError,
+  isQuoteCurrent,
+  pathErrorQuoteKey,
+}: {
+  currentQuoteKey: string | null;
+  sourceAmount: string;
+  amountError: string | null;
+  isQuoteCurrent: boolean;
+  pathErrorQuoteKey: string | null;
+}): boolean =>
+  !!currentQuoteKey &&
+  new BigNumber(sourceAmount || "0").gt(0) &&
+  !amountError &&
+  !isQuoteCurrent &&
+  pathErrorQuoteKey !== currentQuoteKey;
+
+/**
+ * The quote for the current inputs failed for a reason the amount screen
+ * explains in its "Quote unavailable" line.
+ */
+export const shouldShowSwapQuoteUnavailable = ({
+  isLoadingPath,
+  currentQuoteKey,
+  pathErrorQuoteKey,
+  isInsufficient,
+  amountError,
+  sourceAmount,
+  hasPathErrorReason,
+}: {
+  isLoadingPath: boolean;
+  currentQuoteKey: string | null;
+  pathErrorQuoteKey: string | null;
+  isInsufficient: boolean;
+  amountError: string | null;
+  sourceAmount: string;
+  hasPathErrorReason: boolean;
+}): boolean =>
+  !isLoadingPath &&
+  !!currentQuoteKey &&
+  pathErrorQuoteKey === currentQuoteKey &&
+  !isInsufficient &&
+  !amountError &&
+  new BigNumber(sourceAmount || "0").gt(0) &&
+  hasPathErrorReason;

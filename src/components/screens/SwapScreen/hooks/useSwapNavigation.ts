@@ -4,6 +4,7 @@ import { SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useCallback } from "react";
 import { analytics } from "services/analytics";
+import { swapSourceProps } from "services/analytics/swapSource";
 
 type SwapNavigation = NativeStackNavigationProp<
   SwapStackParamList,
@@ -13,9 +14,10 @@ type SwapNavigation = NativeStackNavigationProp<
 /**
  * Centralises the SwapAmountScreen's two "open the SwapToScreen picker"
  * navigation callbacks. Each emits the shared SWAP_PICKER_OPENED event
- * discriminated by `side` (to vs from) and tagged with the picker
- * entrypoint (cta vs dropdown via `source`), then routes to the same
- * SWAP_SCREEN with the corresponding selectionType.
+ * discriminated by `side` (to vs from), tagged with the picker entrypoint
+ * (cta vs dropdown, as `trigger`) and where the swap was opened from (as
+ * `source`), then routes to the same SWAP_SCREEN with the corresponding
+ * selectionType.
  *
  * Returns:
  *   - openDestinationPicker — defaults to DROPDOWN so call sites that
@@ -26,29 +28,33 @@ type SwapNavigation = NativeStackNavigationProp<
  *   - openSourcePicker — entrypoint is required so the missing-side CTA
  *     branch can pass CTA explicitly.
  *
- * The screen-side dep arrays only need to track `navigation` — every
- * other dep is module-stable.
+ * The screen-side dep arrays only need to track `navigation` and
+ * `entrySource` — every other dep is module-stable.
  */
 export const useSwapNavigation = ({
   navigation,
+  entrySource,
 }: {
   navigation: SwapNavigation;
+  /** Where the swap was opened from. */
+  entrySource: string;
 }): {
-  openDestinationPicker: (source?: SwapPickerEntrypoint) => void;
+  openDestinationPicker: (trigger?: SwapPickerEntrypoint) => void;
   openDestinationFromDropdown: () => void;
-  openSourcePicker: (source: SwapPickerEntrypoint) => void;
+  openSourcePicker: (trigger: SwapPickerEntrypoint) => void;
 } => {
   const openDestinationPicker = useCallback(
-    (source: SwapPickerEntrypoint = SwapPickerEntrypoint.DROPDOWN) => {
+    (trigger: SwapPickerEntrypoint = SwapPickerEntrypoint.DROPDOWN) => {
       analytics.track(AnalyticsEvent.SWAP_PICKER_OPENED, {
         side: "to",
-        source,
+        trigger,
+        ...swapSourceProps(entrySource),
       });
       navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
         selectionType: SWAP_SELECTION_TYPES.DESTINATION,
       });
     },
-    [navigation],
+    [navigation, entrySource],
   );
 
   const openDestinationFromDropdown = useCallback(() => {
@@ -56,16 +62,17 @@ export const useSwapNavigation = ({
   }, [openDestinationPicker]);
 
   const openSourcePicker = useCallback(
-    (source: SwapPickerEntrypoint) => {
+    (trigger: SwapPickerEntrypoint) => {
       analytics.track(AnalyticsEvent.SWAP_PICKER_OPENED, {
         side: "from",
-        source,
+        trigger,
+        ...swapSourceProps(entrySource),
       });
       navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
         selectionType: SWAP_SELECTION_TYPES.SOURCE,
       });
     },
-    [navigation],
+    [navigation, entrySource],
   );
 
   return {

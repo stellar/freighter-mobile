@@ -1074,6 +1074,143 @@ describe("useSwapTransaction", () => {
     });
   });
 
+  // Every swap event says where the swap was opened from, as the
+  // extension's do: the swap inside Earn reports "earn".
+  describe("the entry source on the swap's other events", () => {
+    beforeEach(() => {
+      act(() => {
+        useSwapStore.getState().setEntrySource("earn");
+      });
+    });
+
+    it("tags swap.trustline_added", async () => {
+      act(() => {
+        useSwapStore.setState({
+          destinationToken: {
+            id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            tokenCode: "USDC",
+            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            decimals: 7,
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+            requiresTrustline: true,
+          },
+        } as never);
+      });
+      // The built transaction decides whether it adds a trustline.
+      mockGetBuilderState.mockReturnValue({
+        swapReview: { addsTrustline: true },
+      });
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(submitOk());
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrack).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_TRUSTLINE_ADDED,
+        expect.objectContaining({ source: "earn" }),
+      );
+    });
+
+    it("tags swap.quote_expired and the swap.failed that goes with it", async () => {
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(
+        submitFailed({
+          error: "tx_failed",
+          resultCodes: {
+            transaction: "tx_failed",
+            operations: ["op_under_dest_min"],
+          },
+          httpStatus: 400,
+          isProtocolAnswer: true,
+        }),
+      );
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrack).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_QUOTE_EXPIRED,
+        expect.objectContaining({ source: "earn" }),
+      );
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({ source: "earn" }),
+      );
+    });
+
+    it("tags swap.failed for a rejected swap", async () => {
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(
+        submitFailed({
+          error: "tx_failed",
+          resultCodes: {
+            transaction: "tx_failed",
+            operations: ["op_underfunded"],
+          },
+          httpStatus: 400,
+          isProtocolAnswer: true,
+        }),
+      );
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({ source: "earn" }),
+      );
+    });
+
+    it("tags swap.failed when signing fails", async () => {
+      mockSignTransaction.mockReturnValue(null);
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({ source: "earn" }),
+      );
+    });
+
+    it("tags the swap.quote_expired sent when the quote moves during the Review build", async () => {
+      // The build answers 409: the quote moved before Review opened.
+      mockBuildSwapTransaction.mockRejectedValue({
+        message: "status 409",
+        status: 409,
+        isNetworkError: false,
+      });
+      const { findSwapPath: realFindSwapPath } = useSwapStore.getState();
+      act(() => {
+        useSwapStore.setState({ findSwapPath: jest.fn() });
+      });
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+      try {
+        await act(async () => {
+          await expect(
+            result.current.setupSwapTransaction(),
+          ).rejects.toBeInstanceOf(SwapSetupAnswerError);
+        });
+      } finally {
+        act(() => {
+          useSwapStore.setState({ findSwapPath: realFindSwapPath });
+        });
+      }
+
+      expect(mockTrack).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_QUOTE_EXPIRED,
+        expect.objectContaining({ result_code: "quote_moved", source: "earn" }),
+      );
+    });
+  });
+
   describe("SWAP_QUOTE_EXPIRED analytics", () => {
     it("fires SWAP_QUOTE_EXPIRED with the result code, AND also swap.failed with failure_category slippage, when the submit is rejected with op_under_dest_min", async () => {
       // The store no longer carries the failure classification — the hook
@@ -1168,6 +1305,60 @@ describe("useSwapTransaction", () => {
       expect(mockTrackTransactionError).toHaveBeenCalledWith(
         expect.objectContaining({ isSwap: true }),
       );
+    });
+  });
+
+  describe("onQuoteExpired", () => {
+    const quoteExpiredOutcome = () =>
+      submitFailed({
+        error: "tx_failed",
+        resultCodes: {
+          transaction: "tx_failed",
+          operations: ["op_under_dest_min"],
+        },
+        httpStatus: 400,
+        isProtocolAnswer: true,
+      });
+
+    it("is called when the quote expired at submit, so the caller can go back to the amount step", async () => {
+      const onQuoteExpired = jest.fn();
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(quoteExpiredOutcome());
+
+      const { result } = renderHook(() =>
+        useSwapTransaction({ ...baseParams, onQuoteExpired }),
+      );
+
+      await act(async () => {
+        await result.current.executeSwap().catch(() => {});
+      });
+
+      expect(onQuoteExpired).toHaveBeenCalledTimes(1);
+      expect(result.current.isProcessing).toBe(false);
+    });
+
+    it("is not called for any other failure", async () => {
+      const onQuoteExpired = jest.fn();
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(
+        submitFailed({
+          error: "tx_insufficient_balance",
+          resultCodes: {
+            transaction: "tx_failed",
+            operations: ["op_underfunded"],
+          },
+        }),
+      );
+
+      const { result } = renderHook(() =>
+        useSwapTransaction({ ...baseParams, onQuoteExpired }),
+      );
+
+      await act(async () => {
+        await result.current.executeSwap().catch(() => {});
+      });
+
+      expect(onQuoteExpired).not.toHaveBeenCalled();
     });
   });
 });

@@ -1526,6 +1526,11 @@ describe("auth duck", () => {
           useAuthenticationStore.getState().suppressBiometricAutoPrompt,
         ).toBe(true);
 
+        // Locking keeps the wallet, so the Earn intro stays seen
+        expect(usePreferencesStore.setState).not.toHaveBeenCalledWith({
+          hasSeenEarnIntro: false,
+        });
+
         // The lock screen is navigated to, not launched into, so it focuses
         // its password field
         expect(mockNavigationRef.resetRoot).toHaveBeenCalledWith({
@@ -1582,6 +1587,11 @@ describe("auth duck", () => {
         // the wiped wallet's timer
         expect(usePreferencesStore.setState).toHaveBeenCalledWith({
           autoLockTimer: DEFAULT_AUTO_LOCK_TIMER,
+        });
+
+        // The next wallet sees the Earn intro again
+        expect(usePreferencesStore.setState).toHaveBeenCalledWith({
+          hasSeenEarnIntro: false,
         });
       });
 

@@ -1,9 +1,11 @@
 import { descriptorFromBalance } from "components/screens/SwapScreen/helpers";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { useSwapStore } from "ducks/swap";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useCallback } from "react";
 import { analytics } from "services/analytics";
+import { swapSourceProps } from "services/analytics/swapSource";
 
 /**
  * Owns the chevron-toggle handler that swaps the Sell ↔ Receive sides on
@@ -47,10 +49,10 @@ export const useSwapDirectionToggle = ({
       previousDestinationTokenCode: destinationTokenDescriptor?.tokenCode ?? "",
       previousDestinationTokenIssuer: destinationTokenDescriptor?.issuer ?? "",
     };
-    analytics.track(
-      AnalyticsEvent.SWAP_DIRECTION_TOGGLED,
-      swapDirectionPayload,
-    );
+    analytics.track(AnalyticsEvent.SWAP_DIRECTION_TOGGLED, {
+      ...swapDirectionPayload,
+      ...swapSourceProps(useSwapStore.getState().entrySource),
+    });
     if (destinationBalance) {
       setSourceToken(
         destinationBalance.id,

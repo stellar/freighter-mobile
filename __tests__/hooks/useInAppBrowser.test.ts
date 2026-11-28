@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react-hooks";
 import { getThemeColors } from "config/colors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
-import { useColorScheme } from "react-native";
+import { Linking, useColorScheme } from "react-native";
 import { InAppBrowser } from "react-native-inappbrowser-reborn";
 
 jest.mock("react-native", () => ({
@@ -13,6 +13,7 @@ jest.mock("react-native-inappbrowser-reborn", () => ({
   InAppBrowser: {
     isAvailable: jest.fn(() => Promise.resolve(true)),
     open: jest.fn(() => Promise.resolve({ type: "dismiss" })),
+    closeAuth: jest.fn(),
   },
 }));
 
@@ -61,4 +62,56 @@ describe("useInAppBrowser", () => {
       );
     },
   );
+
+  // iOS keeps a flag for the browser it presented, cleared only when that
+  // browser reports closing. One that went away without reporting it leaves
+  // the flag set, and every later open fails while nothing is on screen.
+  describe("a browser session iOS still thinks is open", () => {
+    const staleSessionError = Object.assign(
+      new Error("Another InAppBrowser is already being presented."),
+      { code: "RNInAppBrowser" },
+    );
+
+    it("clears it and opens in the app, not in Safari", async () => {
+      mockUseColorScheme.mockReturnValue("light");
+      mockOpen.mockRejectedValueOnce(staleSessionError);
+
+      const { result } = renderHook(() => useInAppBrowser());
+      await result.current.open("https://mainnet.blend.capital/");
+
+      expect(InAppBrowser.closeAuth).toHaveBeenCalledTimes(1);
+      expect(mockOpen).toHaveBeenCalledTimes(2);
+      expect(mockOpen.mock.calls[1][0]).toBe("https://mainnet.blend.capital/");
+      expect(Linking.openURL).not.toHaveBeenCalled();
+    });
+
+    it("still falls back to Safari when the second open fails too", async () => {
+      mockUseColorScheme.mockReturnValue("light");
+      mockOpen
+        .mockRejectedValueOnce(staleSessionError)
+        .mockRejectedValueOnce(new Error("boom"));
+
+      const { result } = renderHook(() => useInAppBrowser());
+      await expect(
+        result.current.open("https://mainnet.blend.capital/"),
+      ).rejects.toThrow("boom");
+
+      expect(Linking.openURL).toHaveBeenCalledWith(
+        "https://mainnet.blend.capital/",
+      );
+    });
+  });
+
+  it("falls back to Safari on any other failure, without resetting", async () => {
+    mockUseColorScheme.mockReturnValue("light");
+    mockOpen.mockRejectedValueOnce(new Error("boom"));
+
+    const { result } = renderHook(() => useInAppBrowser());
+    await expect(result.current.open("https://example.com")).rejects.toThrow(
+      "boom",
+    );
+
+    expect(InAppBrowser.closeAuth).not.toHaveBeenCalled();
+    expect(Linking.openURL).toHaveBeenCalledWith("https://example.com");
+  });
 });

@@ -17,7 +17,8 @@ export enum TransactionType {
  * USD volume telemetry for a settled terminal event's source leg — the raw
  * materials `services/analytics/transactions.ts` flattens into the final
  * Amplitude properties (`amount_usd*`), shared across `payment.completed`,
- * `payment.failed`, `swap.completed`, and `swap.failed`. Optional on the
+ * `payment.failed`, `swap.completed`, `swap.failed`,
+ * `earn.deposit_completed`, and `earn.deposit_failed`. Optional on the
  * carrying event interfaces: a pre-submit failure never reaches a call site
  * that has this data, so its terminal event emits without volume properties.
  */
@@ -104,7 +105,7 @@ export interface SwapSuccessEvent {
   destAmount?: string;
   allowedSlippage?: string;
   isSwap: true;
-  /** Entry-point tag (e.g. "token_details"); omitted from the payload when absent */
+  /** Entry-point tag ("token_details" or "earn"); omitted from the payload when absent */
   source?: string;
   volume?: SwapVolume;
 }
@@ -118,6 +119,8 @@ export interface TransactionErrorEvent {
   destToken?: string;
   sourceAmount?: string;
   destAmount?: string;
+  /** A swap's entry-point tag, as on `SwapSuccessEvent`. */
+  source?: string;
   /** Absent for collectible-send failures (unpriced, out of scope) and any pre-submit failure. */
   volume?: FailureVolume;
 }
@@ -126,4 +129,24 @@ export interface QRScanEvent {
   context: QRCodeSource;
   timeToScan?: number;
   error?: string;
+}
+
+// Earn deposit (Blend). A deposit that reached the network carries its USD
+// volume, as a payment does on payment.completed / payment.failed.
+export interface EarnDepositSuccessEvent {
+  assetCode: string;
+  poolId?: string;
+  apy?: number | null;
+  /** Whether a swap finished earlier in this Earn session. */
+  viaSwap: boolean;
+  /** Absent when the deposited balance couldn't be found. */
+  volume?: PaymentVolume;
+}
+
+export interface EarnDepositErrorEvent {
+  assetCode: string;
+  poolId?: string;
+  errorCode?: string;
+  /** Absent for a failure before submission, and when the deposited balance couldn't be found. */
+  volume?: FailureVolume;
 }

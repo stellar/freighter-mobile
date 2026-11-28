@@ -1,0 +1,1176 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { NavigationProp, useNavigation } from "@react-navigation/native";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BigNumber from "bignumber.js";
+import { AmountCard } from "components/AmountCard";
+import BottomSheet from "components/BottomSheet";
+import {
+  PercentageButtons,
+  PercentageOption,
+} from "components/PercentageButtons";
+import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
+import { SecurityDetailBottomSheet } from "components/blockaid";
+import { BaseLayout } from "components/layout/BaseLayout";
+import { EarnReviewBottomSheet } from "components/screens/EarnScreen/components/EarnReviewBottomSheet";
+import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
+import { PoolCard } from "components/screens/EarnScreen/components/PoolCard";
+import { PoolDetailsBottomSheet } from "components/screens/EarnScreen/components/PoolDetailsBottomSheet";
+import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
+import {
+  EARN_TOAST_IDS,
+  NotEnoughVariant,
+  UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
+  getDepositDecimals,
+  getEarnCtaState,
+  getPercentageAmount,
+  getXlmFeeShortfall,
+  isInsufficientBalanceFailure,
+  isOnrampableAsset,
+  needsXlmForFee,
+} from "components/screens/EarnScreen/helpers";
+import { useEarnPosition } from "components/screens/EarnScreen/hooks/useEarnPosition";
+import { useEarnTransaction } from "components/screens/EarnScreen/hooks/useEarnTransaction";
+import { useSimulateEarnDeposit } from "components/screens/EarnScreen/hooks/useSimulateEarnDeposit";
+import { EarnProcessingScreen } from "components/screens/EarnScreen/screens";
+import { Button } from "components/sds/Button";
+import { AnalyticsEvent } from "config/analyticsConfig";
+import {
+  DEFAULT_DECIMALS,
+  NATIVE_TOKEN_CODE,
+  TransactionContext,
+  mapNetworkToNetworkDetails,
+} from "config/constants";
+import { logger } from "config/logger";
+import {
+  ADD_FUNDS_ROUTES,
+  EARN_ROUTES,
+  EarnStackParamList,
+  MAIN_TAB_ROUTES,
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+} from "config/routes";
+import { useAuthenticationStore } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
+import { useDebugStore } from "ducks/debug";
+import { useEarnStore } from "ducks/earn";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { isNativeBalance } from "helpers/assetIdentity";
+import {
+  calculateSpendableAmount,
+  getBalanceByContractId,
+} from "helpers/balances";
+import {
+  formatBigNumberForDisplay,
+  formatFiatInputDisplay,
+  formatTokenForDisplay,
+  hasDecimals,
+} from "helpers/formatAmount";
+import { waitForKeyboardDismiss } from "helpers/keyboard";
+import useAppTranslation from "hooks/useAppTranslation";
+import useBackHandler from "hooks/useBackHandler";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
+import { useNetworkFees } from "hooks/useNetworkFees";
+import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
+import { useToast } from "providers/ToastProvider";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Keyboard, TextInput, View } from "react-native";
+import { analytics } from "services/analytics";
+import {
+  trackEarnDepositDismissed,
+  trackEarnMaxAmountSelected,
+  trackEarnPoolDetailsOpened,
+  trackEarnSimulationFailed,
+  trackEarnXlmFeeInsufficientShown,
+} from "services/analytics/earn";
+import { getTransactionSecurity } from "services/blockaid/transactionSecurity";
+
+/** The network fee is paid in XLM, so the fee sheet shows XLM's icon. */
+const NATIVE_TOKEN = {
+  type: "native" as const,
+  code: NATIVE_TOKEN_CODE as "XLM",
+};
+
+/** Earn offers 25% / 50% / Max, without main Swap's 75%. */
+const EARN_PERCENTAGES: PercentageOption[] = [25, 50, 100];
+
+type EarnAmountScreenProps = NativeStackScreenProps<
+  EarnStackParamList,
+  typeof EARN_ROUTES.EARN_AMOUNT_SCREEN
+>;
+
+const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
+  route,
+  navigation,
+}) => {
+  const { assetId, tokenCode } = route.params;
+  const { t } = useAppTranslation();
+  const { account } = useGetActiveAccount();
+  const { network } = useAuthenticationStore();
+  const { pricedBalances } = useBalancesStore();
+  const isOnrampEnabled = useRemoteConfigStore((state) => state.onramp_enabled);
+  const { showToast, dismissToast } = useToast();
+
+  // Cross-stack navigation (Buy XLM lives outside EarnStack) needs the
+  // root-level param list — the screen's own `navigation` prop is typed to
+  // EarnStackParamList only. Same pattern as EarnTokenPickerScreen's Buy
+  // button.
+  const rootNavigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  const pool = useEarnStore((state) => state.pool);
+  const selectedAssetApy = useEarnStore((state) => state.selectedAssetApy);
+  const resetEarn = useEarnStore((state) => state.resetEarn);
+  const { overriddenBlockaidResponse } = useDebugStore();
+
+  const { resetTransaction } = useTransactionBuilderStore();
+  const isBuilding = useTransactionBuilderStore((state) => state.isBuilding);
+  const { transactionFee, transactionTimeout } = useTransactionSettingsStore();
+  const { recommendedFee, networkCongestion, feePresets } = useNetworkFees();
+
+  // Earn deposits are single-operation Soroban invokes — same shape as a
+  // classic Send, so this reuses the Send fee context (and its settings
+  // store) rather than introducing a dedicated Earn TransactionContext.
+  useInitialRecommendedFee(
+    recommendedFee,
+    TransactionContext.Send,
+    1,
+    networkCongestion,
+    feePresets,
+  );
+
+  const networkDetails = useMemo(
+    () => mapNetworkToNetworkDetails(network),
+    [network],
+  );
+
+  const depositBalance = useMemo(
+    () => getBalanceByContractId(assetId, pricedBalances, networkDetails),
+    [assetId, pricedBalances, networkDetails],
+  );
+
+  const isXlm = useMemo(
+    () => !!depositBalance && isNativeBalance(depositBalance),
+    [depositBalance],
+  );
+
+  // The precision the signed amount is scaled to, from the balance record
+  // rather than the backend catalog. Null without a usable record, in which
+  // case the deposit is never built.
+  const depositDecimals = useMemo(
+    () => getDepositDecimals(depositBalance),
+    [depositBalance],
+  );
+
+  const xlmBalance = pricedBalances[NATIVE_TOKEN_CODE];
+
+  // Fetches the "before" side of Review's before -> after row as soon as the
+  // pool/asset/account are known (well ahead of the user reaching Review),
+  // and writes it to the earn duck. A failed fetch is non-fatal by design —
+  // see the hook's own docs — so its return value is intentionally unused
+  // here; Review reads `currentPositionTokens` off the duck directly.
+  useEarnPosition({
+    poolId: pool?.id ?? "",
+    assetId,
+    publicKey: account?.publicKey ?? "",
+    networkDetails,
+  });
+
+  const amountInputRef = useRef<TextInput>(null);
+  const networkFeeBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const earnReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const transactionSecurityWarningBottomSheetModalRef =
+    useRef<BottomSheetModal>(null);
+  const poolDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const receiveFundsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  const converter = useTokenFiatConverter({
+    selectedBalance: depositBalance,
+    tokenDecimals: depositDecimals ?? DEFAULT_DECIMALS,
+  });
+  const {
+    tokenAmount,
+    fiatAmountDisplay,
+    showFiatAmount,
+    setTokenAmount,
+    updateFiatDisplay,
+  } = converter;
+
+  // Max/percentage buttons and the CTA's insufficient-funds guard work off
+  // the plain spendable balance — nothing is held back for a Blend submit's
+  // resource fee here. That fee is only known once simulation returns, and
+  // is checked post-simulation instead (see `handleCtaPress`, which lowers
+  // an XLM deposit at Max by it), rather than guessed at and reserved upfront.
+  // In whole tokens, the unit the user types in: a SEP-41 balance keeps its
+  // amounts in the token's smallest unit, so it's converted, as on Send.
+  const availableBalance = useMemo(() => {
+    if (!depositBalance) {
+      return "0";
+    }
+
+    const spendable = calculateSpendableAmount({
+      balance: depositBalance,
+      subentryCount: account?.subentryCount ?? 0,
+      transactionFee,
+    });
+    return (
+      hasDecimals(depositBalance)
+        ? spendable.shiftedBy(-depositBalance.decimals)
+        : spendable
+    ).toFixed();
+  }, [depositBalance, account?.subentryCount, transactionFee]);
+
+  const availableBalanceBn = useMemo(
+    () => new BigNumber(availableBalance),
+    [availableBalance],
+  );
+
+  // An amount above the spendable balance reads as it does on Swap: a toast
+  // with the maximum, and the CTA disabled as "Insufficient balance". The
+  // amount itself keeps its normal colour.
+  const isAmountTooHigh = useMemo(
+    () => new BigNumber(tokenAmount || "0").gt(availableBalanceBn),
+    [tokenAmount, availableBalanceBn],
+  );
+
+  const ctaState = useMemo(
+    () =>
+      getEarnCtaState({
+        availableBalanceIsZero: availableBalanceBn.lte(0),
+        amountIsZero: new BigNumber(tokenAmount || "0").lte(0),
+        isAmountTooHigh,
+      }),
+    [availableBalanceBn, tokenAmount, isAmountTooHigh],
+  );
+
+  const ctaLabelKeys: Record<typeof ctaState.labelKey, string> = {
+    enter: t("earnAmount.enterAmount"),
+    insufficient: t("swapScreen.cta.insufficientBalance"),
+    review: t("earnAmount.review"),
+  };
+
+  const {
+    simulate,
+    isSimulating,
+    error: simulateError,
+    scanResult,
+  } = useSimulateEarnDeposit();
+
+  // The amount the staged transaction was built with, recorded when Review
+  // opens. Review, a settings rebuild and the processing screen all use it,
+  // never the live field, which the user can keep editing while a build runs.
+  const [reviewedAmount, setReviewedAmount] = useState<string | null>(null);
+  // From the CTA tap until the deposit is built.
+  const [isBuildingReview, setIsBuildingReview] = useState(false);
+  const latestTokenAmountRef = useRef(tokenAmount);
+  useEffect(() => {
+    latestTokenAmountRef.current = tokenAmount;
+  }, [tokenAmount]);
+
+  // Counts the times this screen went away, so a deposit still being built
+  // when the user left shows nothing once it's ready.
+  const exitCountRef = useRef(0);
+
+  // `scanResult` is undefined both before any simulation has run and when the
+  // scan itself was unavailable (e.g. testnet, where Blockaid throws
+  // NETWORK_NOT_SUPPORTED) — `assessTransactionSecurity` already treats both
+  // the same way: "unable to scan", never a clean bill of health.
+  // The same assessment, warnings and severity Send shows: a deposit Blockaid
+  // couldn't scan lists an "Unable to scan" reason rather than none.
+  const {
+    transactionSecurityAssessment,
+    transactionSecurityWarnings: securityWarnings,
+    transactionSecuritySeverity: earnSecuritySeverity,
+  } = useMemo(
+    () => getTransactionSecurity(scanResult, overriddenBlockaidResponse),
+    [scanResult, overriddenBlockaidResponse],
+  );
+
+  // Surface the pool's own rejection (supply cap, frozen pool, stale oracle)
+  // reactively off the hook's error state — mirrors the established
+  // `transactionBuilderError` toast pattern in TransactionAmountScreen.
+  // Reading `error` synchronously right after `await simulate(...)` inside
+  // the CTA handler would see a stale pre-update value, since a `setState`
+  // scheduled inside `simulate` isn't reflected in the handler's own closure.
+  const previousSimulateErrorRef = useRef<string | null>(null);
+  useEffect(() => {
+    // A new simulation clears the error while it runs, so a retry that fails
+    // the same way still gets its toast.
+    if (!simulateError) {
+      previousSimulateErrorRef.current = null;
+      return;
+    }
+    if (simulateError !== previousSimulateErrorRef.current) {
+      previousSimulateErrorRef.current = simulateError;
+      trackEarnSimulationFailed({
+        assetCode: tokenCode,
+        message: simulateError,
+      });
+      // The raw error (a pool's host error, or a network failure) is already
+      // on Sentry (`useSimulateEarnDeposit` logs it); the user gets a plain
+      // reason instead. A balance rejection on an XLM deposit is the fee,
+      // not the amount: the CTA already gates anything above the spendable
+      // balance, so what is left is a deposit that cannot also pay for
+      // itself. On any other token it is that token's balance. Every other
+      // rejection — supply cap, frozen pool, stale oracle, network — is one
+      // to retry later.
+      let title = t("earnAmount.errors.depositUnavailable");
+      if (isInsufficientBalanceFailure(simulateError)) {
+        title = isXlm
+          ? t("earnAmount.errors.insufficientBalanceForFee")
+          : t("earnAmount.errors.insufficientTokenBalance", { tokenCode });
+      }
+      showToast({
+        variant: "error",
+        title,
+        toastId: EARN_TOAST_IDS.SIMULATE_FAILED,
+        duration: 0,
+      });
+    }
+  }, [simulateError, showToast, isXlm, t, tokenCode]);
+
+  // The error toasts stay up until dismissed (`duration: 0`). Both are
+  // about the amount that was just tried, so editing it, or leaving the
+  // screen, takes them down.
+  const dismissAmountErrorToasts = useCallback(() => {
+    dismissToast(EARN_TOAST_IDS.SIMULATE_FAILED);
+    dismissToast(EARN_TOAST_IDS.FEE_SHORTFALL);
+    dismissToast(EARN_TOAST_IDS.DEPOSIT_FAILED);
+  }, [dismissToast]);
+  useEffect(() => dismissAmountErrorToasts, [dismissAmountErrorToasts]);
+
+  // Clear the error toasts once the user edits the amount — but not on
+  // mount.
+  const previousTokenAmountRef = useRef(tokenAmount);
+  useEffect(() => {
+    if (tokenAmount !== previousTokenAmountRef.current) {
+      previousTokenAmountRef.current = tokenAmount;
+      dismissAmountErrorToasts();
+    }
+  }, [tokenAmount, dismissAmountErrorToasts]);
+
+  // Puts a token amount in the field, keeping the fiat line in step in fiat
+  // mode.
+  const applyTokenAmount = useCallback(
+    (amount: string) => {
+      const tokenPrice = depositBalance?.currentPrice;
+      if (showFiatAmount && tokenPrice && !tokenPrice.isZero()) {
+        updateFiatDisplay(
+          new BigNumber(amount).multipliedBy(tokenPrice).toFixed(2),
+        );
+      }
+      setTokenAmount(amount);
+    },
+    [showFiatAmount, depositBalance, updateFiatDisplay, setTokenAmount],
+  );
+
+  const handlePercentagePress = useCallback(
+    (percentage: number) => {
+      if (percentage === 100) {
+        trackEarnMaxAmountSelected({ assetCode: tokenCode });
+      }
+
+      applyTokenAmount(
+        getPercentageAmount({
+          maxAmount: availableBalance,
+          pct: percentage,
+          decimals: depositDecimals ?? DEFAULT_DECIMALS,
+        }),
+      );
+    },
+    [tokenCode, availableBalance, depositDecimals, applyTokenAmount],
+  );
+
+  // Every sheet on this screen opens over a dismissed keyboard: with the
+  // keypad up, the sheet rides above it and is pushed under the status bar.
+  // Waiting for the hide animation also lets it open at its final height.
+  const presentOverDismissedKeyboard = useCallback(
+    (modalRef: React.RefObject<BottomSheetModal | null>) => {
+      amountInputRef.current?.blur();
+      Keyboard.dismiss();
+      waitForKeyboardDismiss().then(() => {
+        modalRef.current?.present();
+      });
+    },
+    [],
+  );
+
+  // The XLM left to pay fees with at the given inclusion fee. No held XLM
+  // balance at all can't cover any fee.
+  const getSpendableXlm = useCallback(
+    (fee: string) =>
+      xlmBalance
+        ? calculateSpendableAmount({
+            balance: xlmBalance,
+            subentryCount: account?.subentryCount ?? 0,
+            transactionFee: fee,
+          })
+        : new BigNumber(0),
+    [xlmBalance, account?.subentryCount],
+  );
+
+  // How much XLM the deposit just built is short of its fees at `fee`, or
+  // "0". Called right after `simulate` resolves, when the duck's
+  // `sorobanResourceFeeXlm` is the REAL, measured resource fee (never a
+  // pre-simulation guess). An XLM deposit pays it from the same balance it
+  // deposits from; any other deposit leaves the XLM untouched, so its amount
+  // counts as 0 here.
+  const getBuiltDepositFeeShortfall = useCallback(
+    (amount: string, fee: string) => {
+      const { sorobanResourceFeeXlm } = useTransactionBuilderStore.getState();
+
+      // The backend omitted `minResourceFee` from this simulation, so the fee
+      // is genuinely UNKNOWN, not zero. For an XLM deposit the amount is
+      // already <= the spendable XLM by construction (the CTA's own
+      // `isAmountTooHigh` guard), so feeding "0" here would make
+      // `getXlmFeeShortfall` report "0" in every case that reaches this
+      // point — silently disabling the check rather than skipping it
+      // visibly, and reintroducing the exact failure this whole check exists
+      // to prevent: a deposit signing successfully and only failing at
+      // submission. Fall back to a conservative floor instead (see its doc
+      // for why "0.1" specifically) — this is logged too, since it is still
+      // a gap in what simulation told us, even though it is now covered
+      // rather than skipped.
+      if (sorobanResourceFeeXlm === null) {
+        logger.warn(
+          "EarnAmountScreen",
+          "sorobanResourceFeeXlm is null after a successful simulation; falling back to the unknown-fee floor for the shortfall check",
+        );
+      }
+      return getXlmFeeShortfall({
+        spendableXlm: getSpendableXlm(fee).toFixed(),
+        amount: isXlm ? amount || "0" : "0",
+        resourceFee: sorobanResourceFeeXlm ?? UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
+      });
+    },
+    [getSpendableXlm, isXlm],
+  );
+
+  const showFeeShortfall = useCallback(
+    (shortfall: string) => {
+      trackEarnXlmFeeInsufficientShown({
+        assetCode: tokenCode,
+        reason: "fee_not_covered",
+      });
+      if (isXlm) {
+        // Depositing less frees the XLM, so ask for a smaller amount.
+        showToast({
+          variant: "error",
+          title: t("earnAmount.errors.feeShortfall", {
+            amount: formatTokenForDisplay(shortfall),
+          }),
+          toastId: EARN_TOAST_IDS.FEE_SHORTFALL,
+          duration: 0,
+        });
+      } else {
+        // A smaller deposit wouldn't help: the account needs more XLM.
+        presentOverDismissedKeyboard(networkFeeBottomSheetModalRef);
+      }
+    },
+    [tokenCode, isXlm, showToast, t, presentOverDismissedKeyboard],
+  );
+
+  // True once the user confirms the deposit, so Review closing for the
+  // submit isn't reported as a rejection. Reset each time Review opens.
+  const hasApprovedDepositRef = useRef(false);
+
+  // Set when a fee saved in Review leaves the deposit short of its fees:
+  // Review closes, and the shortfall shows once it has. Reset each time
+  // Review opens.
+  const pendingFeeShortfallRef = useRef<string | null>(null);
+
+  const openReviewSheet = useCallback(() => {
+    hasApprovedDepositRef.current = false;
+    pendingFeeShortfallRef.current = null;
+    presentOverDismissedKeyboard(earnReviewBottomSheetModalRef);
+  }, [presentOverDismissedKeyboard]);
+
+  // Leaving Review without confirming is reported as a rejection, as Send and
+  // Swap report it. Keyed on the dismissal, since Cancel, a swipe down and a
+  // tap on the backdrop all close the sheet. Review closed over a fee
+  // shortfall was closed by the app, so it shows the shortfall instead.
+  const handleReviewDismiss = useCallback(() => {
+    const pendingShortfall = pendingFeeShortfallRef.current;
+    if (pendingShortfall) {
+      pendingFeeShortfallRef.current = null;
+      showFeeShortfall(pendingShortfall);
+      return;
+    }
+    if (hasApprovedDepositRef.current) {
+      return;
+    }
+    analytics.trackInternalSignedTransactionRejected();
+  }, [showFeeShortfall]);
+
+  // The pool card is the only route into `PoolDetailsBottomSheet`.
+  const handleOpenPoolDetails = useCallback(() => {
+    trackEarnPoolDetailsOpened({ poolId: pool?.id ?? "" });
+    presentOverDismissedKeyboard(poolDetailsBottomSheetModalRef);
+  }, [presentOverDismissedKeyboard, pool?.id]);
+
+  // Review sheet's footer gear -- same
+  // `TransactionSettingsBottomSheet`/`TransactionContext.Send` reuse as the
+  // fee/timeout context above, wired the same way Send/Swap's own review
+  // sheets open theirs (see `TransactionAmountScreen`'s
+  // `handleOpenSettingsFromReview`).
+  const openTransactionSettings = useCallback(() => {
+    transactionSettingsBottomSheetModalRef.current?.present();
+  }, []);
+
+  const handleCancelTransactionSettings = useCallback(() => {
+    transactionSettingsBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  const handleConfirmTransactionSettings = useCallback(() => {
+    transactionSettingsBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  // Rebuilds the staged deposit with the just-saved fee/timeout so Review's
+  // staged XDR keeps matching what Confirm will actually submit -- the same
+  // rebuild Send's own `handleSettingsChange` triggers after a fee/timeout
+  // save. Reads the settings store's value via `getState()` rather than the
+  // `transactionFee`/`transactionTimeout` closed over above: those are still
+  // the PRE-save values at the instant this fires, since
+  // `TransactionSettingsBottomSheet`'s `handleConfirm` calls
+  // `onSettingsChange` synchronously, before this screen re-renders with the
+  // just-saved store value (same reasoning as the `getState()` read in
+  // `handleCtaPress` above).
+  //
+  // A higher fee leaves less XLM, so the rebuilt deposit gets the same fee
+  // check the CTA ran before Review opened. On a shortfall Review closes,
+  // and `handleReviewDismiss` then shows what the CTA would have shown.
+  // `simulate` resolves to null on a failure, which its error toast covers,
+  // rather than rejecting.
+  const handleEarnSettingsChange = useCallback(() => {
+    if (isSimulating || !account?.publicKey || depositDecimals === null) {
+      return;
+    }
+    const freshSettings = useTransactionSettingsStore.getState();
+    const amount = reviewedAmount ?? tokenAmount;
+    simulate({
+      // The pool Review names, the same one the "before" balance reads.
+      poolId: pool?.id ?? "",
+      assetId,
+      amount,
+      decimals: depositDecimals,
+      transactionFee: freshSettings.transactionFee,
+      transactionTimeout: freshSettings.transactionTimeout,
+      network,
+      senderAddress: account.publicKey,
+    }).then((result) => {
+      if (!result) {
+        return;
+      }
+      const shortfall = getBuiltDepositFeeShortfall(
+        amount,
+        freshSettings.transactionFee,
+      );
+      if (new BigNumber(shortfall).gt(0)) {
+        pendingFeeShortfallRef.current = shortfall;
+        earnReviewBottomSheetModalRef.current?.dismiss();
+      }
+    });
+  }, [
+    isSimulating,
+    account?.publicKey,
+    simulate,
+    pool?.id,
+    assetId,
+    reviewedAmount,
+    tokenAmount,
+    depositDecimals,
+    network,
+    getBuiltDepositFeeShortfall,
+  ]);
+
+  // `EarnProcessingScreen` is rendered INLINE below (not a registered
+  // route — there is no `EARN_ROUTES.EARN_PROCESSING_SCREEN`), gated on
+  // `earnTransactionStatus` being "submitting" or "success". It is still
+  // this route, so going back would pop it from under the submit: see the
+  // back guards below. "error" deliberately falls through to the normal amount screen instead
+  // (see the auto-reset effect and render gate below) — the design has no
+  // failure step.
+  const {
+    status: earnTransactionStatus,
+    transactionHash: earnTransactionHash,
+    submit: submitEarnTransaction,
+    reset: resetEarnTransactionStatus,
+    abandon: abandonEarnTransaction,
+  } = useEarnTransaction({ account, network });
+
+  // Swap's toast and copy, re-shown as the user keeps typing past the
+  // maximum, and taken down once the amount fits. Not while a deposit is
+  // being processed or has landed: its own balance refresh then puts the
+  // amount above what's left, which isn't the user typing too much.
+  const isInsufficientBalanceToastShownRef = useRef(false);
+  useEffect(() => {
+    if (!isAmountTooHigh || earnTransactionStatus !== "idle") {
+      if (isInsufficientBalanceToastShownRef.current) {
+        isInsufficientBalanceToastShownRef.current = false;
+        dismissToast(EARN_TOAST_IDS.INSUFFICIENT_BALANCE);
+      }
+      return;
+    }
+    isInsufficientBalanceToastShownRef.current = true;
+    showToast({
+      variant: "error",
+      title: t("swapScreen.errors.insufficientBalance", {
+        amount: formatBigNumberForDisplay(availableBalanceBn, {
+          decimalPlaces: depositDecimals ?? DEFAULT_DECIMALS,
+        }),
+        symbol: tokenCode,
+      }),
+      toastId: EARN_TOAST_IDS.INSUFFICIENT_BALANCE,
+      duration: 3000,
+    });
+  }, [
+    isAmountTooHigh,
+    earnTransactionStatus,
+    tokenAmount,
+    availableBalanceBn,
+    depositDecimals,
+    tokenCode,
+    showToast,
+    dismissToast,
+    t,
+  ]);
+
+  /**
+   * Confirms the deposit from the review sheet. `submitEarnTransaction`
+   * flips `earnTransactionStatus` to "submitting" synchronously — which is
+   * what gates the inline `EarnProcessingScreen` render below — so calling
+   * it both sets the processing flag and kicks off the sign/submit work.
+   */
+  const handleConfirmDeposit = useCallback(() => {
+    // Every confirm path ends here. A build still running, or one that
+    // failed, leaves nothing that matches Review to sign, and one short of
+    // its fees would fail at submission.
+    const { isBuilding: isBuildingNow, transactionXDR } =
+      useTransactionBuilderStore.getState();
+    if (
+      isSimulating ||
+      isBuildingNow ||
+      !transactionXDR ||
+      pendingFeeShortfallRef.current
+    ) {
+      return;
+    }
+    hasApprovedDepositRef.current = true;
+    submitEarnTransaction({
+      amount: reviewedAmount ?? tokenAmount,
+      balance: depositBalance,
+    });
+  }, [
+    submitEarnTransaction,
+    isSimulating,
+    reviewedAmount,
+    tokenAmount,
+    depositBalance,
+  ]);
+
+  // Close during "submitting": returns Home WITHOUT waiting for the result.
+  // There is no background-submission infrastructure to show the outcome
+  // once this screen is gone — but closing does not just hope the abandoned
+  // submit is harmless: `abandonEarnTransaction()` marks it so, and
+  // `useEarnTransaction`'s request-id guard (see `abandon()`'s doc there)
+  // makes sure that when it eventually settles, it skips every write, so no
+  // failure toast surfaces after the user has left. This is intentional,
+  // matching the flow's spec, not an oversight.
+  const handleCloseEarnProcessingWhileSubmitting = useCallback(() => {
+    trackEarnDepositDismissed({
+      assetCode: tokenCode,
+      poolId: pool?.id ?? "",
+    });
+    abandonEarnTransaction();
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          // @ts-expect-error: Cross-stack navigation to MainTabStack with Home tab
+          name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
+          state: {
+            routes: [{ name: MAIN_TAB_ROUTES.TAB_HOME }],
+            index: 0,
+          },
+        },
+      ],
+    });
+  }, [navigation, abandonEarnTransaction, tokenCode, pool?.id]);
+
+  // Success's "Done" action: clear the earn duck (pool/asset selection) now
+  // that the flow completed, then return Home.
+  const handleEarnProcessingDone = useCallback(() => {
+    resetEarn();
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          // @ts-expect-error: Cross-stack navigation to MainTabStack with Home tab
+          name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
+          state: {
+            routes: [{ name: MAIN_TAB_ROUTES.TAB_HOME }],
+            index: 0,
+          },
+        },
+      ],
+    });
+  }, [navigation, resetEarn]);
+
+  // Drop back to this screen (no navigation). There is no dedicated failure
+  // screen to trigger this from a button -- the effect below calls it
+  // automatically as soon as `earnTransactionStatus` becomes "error".
+  const handleEarnProcessingBackToAmount = useCallback(() => {
+    resetEarnTransactionStatus();
+  }, [resetEarnTransactionStatus]);
+
+  // Failure returns AUTOMATICALLY to the amount screen, with an error toast
+  // (the app's pattern for errors) rather than a separate failure step. The
+  // raw failure is already on Sentry (`useEarnTransaction` logs it).
+  // `resetEarnTransactionStatus` drops `earnTransactionStatus` back to
+  // "idle" so the render gate below falls through to the normal amount
+  // screen.
+  useEffect(() => {
+    if (earnTransactionStatus === "error") {
+      showToast({
+        variant: "error",
+        title: t("earnAmount.errors.depositFailed"),
+        toastId: EARN_TOAST_IDS.DEPOSIT_FAILED,
+        duration: 0,
+      });
+      handleEarnProcessingBackToAmount();
+    }
+  }, [earnTransactionStatus, handleEarnProcessingBackToAmount, showToast, t]);
+
+  // The processing screen is drawn in place of this route, so going back
+  // would pop the route and drop the submit without a word. While it
+  // submits, iOS's swipe back is off and Android's back button does nothing;
+  // the processing screen's Close is the way out.
+  const isSubmittingDeposit = earnTransactionStatus === "submitting";
+  useEffect(() => {
+    navigation.setOptions({ gestureEnabled: !isSubmittingDeposit });
+  }, [navigation, isSubmittingDeposit]);
+  useBackHandler(() => true, isSubmittingDeposit);
+
+  const handleCancelSecurityWarning = useCallback(() => {
+    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  // Reached only via the review sheet's banner -> detail sheet path.
+  //
+  // On unable-to-scan, "Continue" only closes the detail sheet: Review is
+  // still open underneath, so its Confirm -- with its biometric prompt --
+  // stays the only way to sign, as in Send and Swap. On a Malicious or
+  // Suspicious verdict it confirms, matching Review's own "Confirm anyway".
+  const handleConfirmAnywayFromSecuritySheet = useCallback(() => {
+    if (
+      transactionSecurityAssessment.isUnableToScan &&
+      !transactionSecurityAssessment.isMalicious &&
+      !transactionSecurityAssessment.isSuspicious
+    ) {
+      transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+      return;
+    }
+    // Review first, then the sheet over it. Closing this sheet first would
+    // bring Review back, and gorhom ignores Review's own dismiss while that
+    // happens, leaving Review over the processing step.
+    earnReviewBottomSheetModalRef.current?.dismiss();
+    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+    handleConfirmDeposit();
+  }, [handleConfirmDeposit, transactionSecurityAssessment]);
+
+  const handleCtaPress = useCallback(async () => {
+    if (ctaState.disabled) {
+      return;
+    }
+
+    if (!account?.publicKey || depositDecimals === null) {
+      return;
+    }
+
+    // Checked AFTER the CTA's own insufficient-funds guard (above) so that
+    // when the deposit asset IS XLM, an unaffordable amount reads as
+    // insufficient funds on the button rather than as a fee problem.
+    const spendableXlm = getSpendableXlm(transactionFee);
+
+    // `transactionFee` is just the inclusion fee (~0.00001 XLM) — this gate
+    // only catches "no meaningful XLM headroom at all" (e.g. no XLM held at
+    // all). A Blend `submit`'s resource fee is far larger and only known once
+    // simulation returns, so it is NOT folded in here as a pre-simulation
+    // guess anymore — the `getXlmFeeShortfall` check below, after simulate
+    // resolves, is what catches "some XLM, but not enough for the measured
+    // fee": a toast asking for a smaller XLM deposit, or this same sheet for
+    // a deposit of any other asset.
+    if (
+      needsXlmForFee({
+        spendableXlm: spendableXlm.toFixed(),
+        fee: transactionFee,
+      })
+    ) {
+      trackEarnXlmFeeInsufficientShown({
+        assetCode: tokenCode,
+        reason: "no_xlm",
+      });
+      presentOverDismissedKeyboard(networkFeeBottomSheetModalRef);
+      return;
+    }
+
+    const exitCount = exitCountRef.current;
+    // Review shows the deposit as it is when it opens, so the field stays as
+    // it is while the deposit is built from it.
+    amountInputRef.current?.blur();
+    Keyboard.dismiss();
+
+    // Builds the deposit of `amount` and resolves how much XLM it is short
+    // of its fees ("0" when it fits), or null when the build can't be used.
+    const buildDeposit = async (amount: string): Promise<string | null> => {
+      setIsBuildingReview(true);
+      let result: Awaited<ReturnType<typeof simulate>>;
+      try {
+        result = await simulate({
+          poolId: pool?.id ?? "",
+          assetId,
+          amount,
+          decimals: depositDecimals,
+          transactionFee,
+          transactionTimeout,
+          network,
+          senderAddress: account.publicKey,
+        });
+      } finally {
+        setIsBuildingReview(false);
+      }
+
+      // The user left while the deposit was being built: no Review, and no
+      // fee toast over whatever screen they went to.
+      if (exitCountRef.current !== exitCount) {
+        return null;
+      }
+
+      if (!result) {
+        // On failure, the effect above surfaces `simulateError` as a toast —
+        // nothing further to do here.
+        return null;
+      }
+
+      // The field changed while the deposit was being built, so the build no
+      // longer matches it. Review stays closed; the CTA is back for the new
+      // amount.
+      if (latestTokenAmountRef.current !== amount) {
+        return null;
+      }
+
+      // Check that the spendable XLM covers the fee simulation measured.
+      return getBuiltDepositFeeShortfall(amount, transactionFee);
+    };
+
+    let amountToReview = tokenAmount;
+    let shortfall = await buildDeposit(amountToReview);
+    if (shortfall === null) {
+      return;
+    }
+
+    // Max fills the whole spendable XLM, which leaves nothing for the
+    // resource fee, known only now. So an XLM deposit at Max is lowered by
+    // the measured fee and built again, as main Swap applies Max again when
+    // its quote's fee is higher. Any other amount is the user's to change.
+    const maxAmount = getPercentageAmount({
+      maxAmount: availableBalance,
+      pct: 100,
+      decimals: depositDecimals,
+    });
+    if (
+      isXlm &&
+      new BigNumber(shortfall).gt(0) &&
+      new BigNumber(amountToReview).eq(maxAmount)
+    ) {
+      const fittedAmount = new BigNumber(amountToReview)
+        .minus(shortfall)
+        .decimalPlaces(depositDecimals, BigNumber.ROUND_DOWN);
+      if (fittedAmount.gt(0)) {
+        amountToReview = fittedAmount.toFixed();
+        latestTokenAmountRef.current = amountToReview;
+        applyTokenAmount(amountToReview);
+        shortfall = await buildDeposit(amountToReview);
+        if (shortfall === null) {
+          return;
+        }
+      }
+    }
+
+    // INVARIANT Review and Confirm rely on: the staged XDR in
+    // `transactionBuilder` was built with `reviewedAmount`, the amount Review
+    // shows. A shortfall blocks here: only Max's own amount is lowered, and
+    // then built again, so this branch either opens Review with the amount
+    // `simulate` was last called with, or doesn't open it at all. A fee
+    // saved in Review gets the same check (`handleEarnSettingsChange`).
+    if (new BigNumber(shortfall).gt(0)) {
+      showFeeShortfall(shortfall);
+      return;
+    }
+
+    setReviewedAmount(amountToReview);
+    openReviewSheet();
+  }, [
+    ctaState.disabled,
+    account?.publicKey,
+    getSpendableXlm,
+    transactionFee,
+    simulate,
+    pool?.id,
+    assetId,
+    tokenAmount,
+    depositDecimals,
+    transactionTimeout,
+    network,
+    getBuiltDepositFeeShortfall,
+    availableBalance,
+    isXlm,
+    applyTokenAmount,
+    showFeeShortfall,
+    openReviewSheet,
+    presentOverDismissedKeyboard,
+    tokenCode,
+  ]);
+
+  // Reset the builder's stale XDR/fee snapshot when the user backs out of
+  // this screen without depositing. Forward navigation to Review/Processing
+  // (Tasks 12/13) keeps this screen mounted underneath, so this only fires
+  // on a genuine exit, not on a successful hand-off.
+  useEffect(
+    () => () => {
+      exitCountRef.current += 1;
+      resetTransaction();
+    },
+    [resetTransaction],
+  );
+
+  // The fee-shortfall sheet's action: send the user to buy XLM rather than
+  // just telling them they need it. Same destination as
+  // EarnTokenPickerScreen's NotEnoughTokenBottomSheet Buy button.
+  const handleBuyXlmPress = useCallback(() => {
+    networkFeeBottomSheetModalRef.current?.dismiss();
+    rootNavigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
+      screen: ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN,
+      // The fee is paid in XLM, so Coinbase opens on XLM.
+      params: { isUnfunded: false, token: NATIVE_TOKEN_CODE },
+    });
+  }, [rootNavigation]);
+
+  const handleCloseNetworkFeeSheet = useCallback(() => {
+    networkFeeBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  // The fee-shortfall sheet's second action: an in-flow "Receive funds" QR
+  // sheet, presented ON TOP of the fee sheet rather than replacing it, the
+  // same pattern the review sheet's security-detail sheet uses. The user
+  // never leaves Earn.
+  const handleReceiveXlmPress = useCallback(() => {
+    receiveFundsBottomSheetModalRef.current?.present();
+  }, []);
+
+  // Back returns to the fee sheet underneath; X closes both.
+  const handleReceiveXlmBack = useCallback(() => {
+    receiveFundsBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  // The fee sheet underneath goes first: gorhom restores it as soon as the
+  // top sheet starts closing and ignores a dismiss that arrives in between.
+  const handleReceiveXlmClose = useCallback(() => {
+    networkFeeBottomSheetModalRef.current?.dismiss();
+    receiveFundsBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  // "error" deliberately falls through to the normal amount screen below
+  // (see the auto-reset effect above) rather than rendering
+  // `EarnProcessingScreen` — the design has no failure step for it to show.
+  if (
+    earnTransactionStatus === "submitting" ||
+    earnTransactionStatus === "success"
+  ) {
+    return (
+      <EarnProcessingScreen
+        status={earnTransactionStatus}
+        tokenAmount={reviewedAmount ?? tokenAmount}
+        transactionHash={earnTransactionHash}
+        onCloseWhileSubmitting={handleCloseEarnProcessingWhileSubmitting}
+        onDone={handleEarnProcessingDone}
+      />
+    );
+  }
+
+  const availableBalanceText = depositBalance
+    ? `${formatTokenForDisplay(availableBalanceBn, tokenCode)} ${t(
+        "common.available",
+      )}`
+    : null;
+
+  const hasUsdPrice =
+    !!depositBalance?.currentPrice && !depositBalance.currentPrice.isZero();
+
+  const secondaryAmountText = showFiatAmount
+    ? formatTokenForDisplay(tokenAmount || "0", tokenCode)
+    : formatFiatInputDisplay(fiatAmountDisplay || "0");
+
+  // With no amount yet, the bottom bar offers the 25% / 50% / Max
+  // shortcuts; once there is one, the CTA takes their place.
+  const hasAmount = new BigNumber(tokenAmount || "0").gt(0);
+
+  return (
+    <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
+      <View className="flex-1 gap-[12px]" testID="earn-amount-screen">
+        <AmountCard
+          mode="editable"
+          testID="earn-amount-card"
+          label={t("earnAmount.depositLabel")}
+          selectedToken={depositBalance}
+          pickerLabel={tokenCode}
+          onPickerPress={() => navigation.goBack()}
+          disabled={isBuildingReview}
+          pickerTestID="earn-amount-token-pill"
+          inputTestID="earn-amount-input"
+          focusTriggerTestID="earn-amount-focus-trigger"
+          fiatToggleTestID="earn-amount-fiat-toggle"
+          inputRef={amountInputRef}
+          autoFocus
+          accessibilityLabel={t("earnAmount.enterAmount")}
+          accessibilityHint={t("earnAmount.title")}
+          availableBalanceText={availableBalanceText}
+          converter={converter}
+          hasUsdPrice={hasUsdPrice}
+          secondaryAmountText={secondaryAmountText}
+        />
+
+        <PoolCard
+          pool={pool}
+          apy={selectedAssetApy}
+          onPress={handleOpenPoolDetails}
+          testID="earn-amount-pool-card"
+        />
+      </View>
+
+      <View className="w-full pt-[16px]">
+        {hasAmount ? (
+          <Button
+            secondary
+            xl
+            onPress={handleCtaPress}
+            disabled={ctaState.disabled}
+            isLoading={isSimulating || isBuildingReview}
+            testID="earn-amount-cta"
+          >
+            {ctaLabelKeys[ctaState.labelKey]}
+          </Button>
+        ) : (
+          <PercentageButtons
+            onPress={handlePercentagePress}
+            percentages={EARN_PERCENTAGES}
+            testID="earn-amount-percentage-buttons"
+          />
+        )}
+      </View>
+
+      <BottomSheet
+        modalRef={networkFeeBottomSheetModalRef}
+        customContent={
+          <NotEnoughTokenBottomSheet
+            variant={
+              isOnrampableAsset(
+                NATIVE_TOKEN_CODE,
+                networkDetails,
+                isOnrampEnabled,
+              )
+                ? NotEnoughVariant.BUY_OR_TRANSFER
+                : NotEnoughVariant.TRANSFER_ONLY
+            }
+            tokenCode={NATIVE_TOKEN_CODE}
+            token={NATIVE_TOKEN}
+            title={t("earnAmount.networkFeeSheet.title")}
+            body={t("earnAmount.networkFeeSheet.body")}
+            onBuy={handleBuyXlmPress}
+            onReceive={handleReceiveXlmPress}
+            onClose={handleCloseNetworkFeeSheet}
+          />
+        }
+      />
+
+      <BottomSheet
+        modalRef={earnReviewBottomSheetModalRef}
+        analyticsEvent={AnalyticsEvent.VIEW_EARN_REVIEW}
+        bottomSheetModalProps={{ onDismiss: handleReviewDismiss }}
+        customContent={
+          <EarnReviewBottomSheet
+            bottomSheetModalRef={earnReviewBottomSheetModalRef}
+            tokenAmount={reviewedAmount ?? tokenAmount}
+            isRebuilding={isSimulating || isBuilding}
+            transactionSecurityAssessment={transactionSecurityAssessment}
+            onSecurityWarningPress={() =>
+              transactionSecurityWarningBottomSheetModalRef.current?.present()
+            }
+            onConfirm={handleConfirmDeposit}
+            onSettingsPress={openTransactionSettings}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={transactionSettingsBottomSheetModalRef}
+        customContent={
+          <TransactionSettingsBottomSheet
+            context={TransactionContext.Send}
+            showMemo={false}
+            isSoroban
+            onCancel={handleCancelTransactionSettings}
+            onConfirm={handleConfirmTransactionSettings}
+            onSettingsChange={handleEarnSettingsChange}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={transactionSecurityWarningBottomSheetModalRef}
+        customContent={
+          <SecurityDetailBottomSheet
+            warnings={securityWarnings}
+            onCancel={handleCancelSecurityWarning}
+            onProceedAnyway={handleConfirmAnywayFromSecuritySheet}
+            onClose={handleCancelSecurityWarning}
+            severity={earnSecuritySeverity}
+            proceedAnywayText={
+              transactionSecurityAssessment.isUnableToScan
+                ? t("common.continue")
+                : t("transactionAmountScreen.confirmAnyway")
+            }
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={poolDetailsBottomSheetModalRef}
+        customContent={
+          <PoolDetailsBottomSheet
+            pool={pool}
+            apy={selectedAssetApy}
+            token={depositBalance}
+            bottomSheetModalRef={poolDetailsBottomSheetModalRef}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={receiveFundsBottomSheetModalRef}
+        customContent={
+          <ReceiveFundsBottomSheet
+            onBack={handleReceiveXlmBack}
+            onClose={handleReceiveXlmClose}
+          />
+        }
+      />
+    </BaseLayout>
+  );
+};
+
+export default EarnAmountScreen;

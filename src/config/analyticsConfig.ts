@@ -53,6 +53,8 @@ export enum AnalyticsEvent {
   VIEW_SEND_SUCCESS = "send_payment_success",
   VIEW_SWAP = "swap",
   VIEW_SWAP_AMOUNT = "swap_amount",
+  // The Earn swap's "Swap from" sheet, as the extension names its source step.
+  VIEW_SWAP_FROM_ASSET = "swap_from_asset",
   VIEW_SWAP_CONFIRM = "swap_confirm",
   VIEW_SWAP_TRANSACTION_DETAILS = "swap_transaction_details",
   VIEW_SWAP_PROCESSING = "swap_processing",
@@ -74,6 +76,22 @@ export enum AnalyticsEvent {
   VIEW_BUY_XLM = "add_fund",
   VIEW_SEARCH_TOKEN = "search_asset",
   VIEW_ADD_TOKEN_MANUALLY = "add_asset_manually",
+
+  // Earn (Blend deposit). Values match the extension's decided funnel
+  // (earn_intro -> earn_select_token -> earn_amount -> earn_review ->
+  // earn_processing -> earn_success) so the two platforms merge into one
+  // funnel in Amplitude. VIEW_EARN_INTRO/_REVIEW/_PROCESSING/_SUCCESS are
+  // fired manually (see SCREEN_CATALOG / call sites below) since none of the
+  // four is a registered route — the intro is a first-entry bottom sheet, not
+  // a screen. VIEW_EARN_TOKEN_PICKER is fired manually too, once the intro
+  // drawn in the picker's place is out of the way.
+  VIEW_EARN_INTRO = "earn_intro",
+  VIEW_EARN_TOKEN_PICKER = "earn_select_token",
+  VIEW_EARN_AMOUNT = "earn_amount",
+  VIEW_EARN_REVIEW = "earn_review",
+  VIEW_EARN_TRANSACTION_DETAILS = "earn_transaction_details",
+  VIEW_EARN_PROCESSING = "earn_processing",
+  VIEW_EARN_SUCCESS = "earn_success",
 
   // ---------------------------------------------------------------------------
   // Domain (action / outcome) events (#2883)
@@ -141,6 +159,29 @@ export enum AnalyticsEvent {
   SWAP_TRUSTLINE_ADDED = "swap.trustline_added",
   SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN = "swap.xlm_reserve_insufficient_shown",
   SWAP_QUOTE_EXPIRED = "swap.quote_expired",
+
+  // Earn deposit (Blend). No amounts/fiat on either event (product decision,
+  // non-negotiable) -- only asset_code, pool_id, apy, matching how
+  // payment.completed / swap.completed are shaped. Named earn.deposit_* to
+  // match the extension's event name exactly (it uses earn.deposit_completed
+  // / earn.deposit_failed) rather than mobile's usual <noun>_<verb> shape, so
+  // the two platforms land in the same Amplitude funnel instead of splitting
+  // it -- the VIEW_EARN_* events above already match the extension this way.
+  EARN_DEPOSIT_SUCCESS = "earn.deposit_completed",
+  // carries reason_code
+  EARN_DEPOSIT_FAIL = "earn.deposit_failed",
+  // Closing the processing screen before the deposit settled. The outcome
+  // is still reported as completed or failed.
+  EARN_DEPOSIT_DISMISSED = "earn.deposit_processing_dismissed",
+  // The rest of the extension's Earn funnel, by the same names
+  // (services/analytics/earn.ts).
+  EARN_TOKEN_SELECTED = "earn.token_selected",
+  EARN_BALANCE_INSUFFICIENT_SHOWN = "earn.balance_insufficient_shown",
+  EARN_FUNDING_ACTION_SELECTED = "earn.funding_action_selected",
+  EARN_POOL_DETAILS_OPENED = "earn.pool_details_opened",
+  EARN_MAX_AMOUNT_SELECTED = "earn.max_amount_selected",
+  EARN_XLM_FEE_INSUFFICIENT_SHOWN = "earn.xlm_fee_insufficient_shown",
+  EARN_SIMULATION_FAILED = "earn.simulation_failed",
 
   // Send collectible
   SEND_COLLECTIBLE_SUCCESS = "collectible_send.completed",
@@ -291,15 +332,15 @@ export enum AnalyticsEvent {
 
 /**
  * Tags how the user reached the Swap source / destination picker, carried as
- * the `source` property on the SWAP_PICKER_OPENED analytics event.
+ * the `trigger` property on the SWAP_PICKER_OPENED analytics event.
  *
  * - CTA: the missing-side prompt button (e.g. "Select a token" / "Sell")
  *   on SwapAmountScreen fired the navigation.
  * - DROPDOWN: the picker chip itself was tapped.
  *
- * Wire values match the historical inline string union so existing Amplitude
- * dashboards / funnels keyed on `source: "cta"` / `source: "dropdown"` keep
- * working unchanged.
+ * The property was `source` until `source` came to mean where the swap was
+ * opened from on every swap event, as in the extension; the values are
+ * unchanged.
  */
 export enum SwapPickerEntrypoint {
   CTA = "cta",
@@ -307,8 +348,10 @@ export enum SwapPickerEntrypoint {
 }
 
 /**
- * Tags which list bucket the user picked a swap token from. Wire values are
- * an Amplitude dashboard contract -- do not rename without coordinating with
+ * Tags which list bucket the user picked a swap token from, carried as `list`
+ * on SWAP_SOURCE_SELECTED / SWAP_DESTINATION_SELECTED (it was `source` until
+ * `source` came to mean where the swap was opened from). Wire values are an
+ * Amplitude dashboard contract -- do not rename without coordinating with
  * analytics.
  */
 export enum SwapSelectionSource {
@@ -335,6 +378,7 @@ export enum AnalyticsFlow {
   DISCOVERY = "discovery",
   SECURITY = "security",
   HISTORY = "history",
+  EARN = "earn",
 }
 
 /**
@@ -483,6 +527,9 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_SWAP_AMOUNT]: {
     flow: AnalyticsFlow.SWAP,
   },
+  [AnalyticsEvent.VIEW_SWAP_FROM_ASSET]: {
+    flow: AnalyticsFlow.SWAP,
+  },
   [AnalyticsEvent.VIEW_SWAP_CONFIRM]: {
     flow: AnalyticsFlow.SWAP,
     step: "confirm",
@@ -522,6 +569,35 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   },
   [AnalyticsEvent.VIEW_MANAGE_WALLETS]: {
     flow: AnalyticsFlow.SETTINGS,
+  },
+  // Earn (Blend deposit). VIEW_EARN_INTRO/_REVIEW/_PROCESSING/_SUCCESS are not
+  // routes -- they're retargeted to screen.viewed manually (BottomSheet's
+  // analyticsEvent prop for the intro and review sheets; a direct track()
+  // call for the inline processing/success screen), same mechanism as the
+  // Scan/Receive per-tab views above.
+  [AnalyticsEvent.VIEW_EARN_INTRO]: {
+    flow: AnalyticsFlow.EARN,
+  },
+  [AnalyticsEvent.VIEW_EARN_TOKEN_PICKER]: {
+    flow: AnalyticsFlow.EARN,
+  },
+  [AnalyticsEvent.VIEW_EARN_AMOUNT]: {
+    flow: AnalyticsFlow.EARN,
+  },
+  [AnalyticsEvent.VIEW_EARN_REVIEW]: {
+    flow: AnalyticsFlow.EARN,
+    step: "confirm",
+  },
+  [AnalyticsEvent.VIEW_EARN_TRANSACTION_DETAILS]: {
+    flow: AnalyticsFlow.EARN,
+  },
+  [AnalyticsEvent.VIEW_EARN_PROCESSING]: {
+    flow: AnalyticsFlow.EARN,
+    step: "processing",
+  },
+  [AnalyticsEvent.VIEW_EARN_SUCCESS]: {
+    flow: AnalyticsFlow.EARN,
+    step: "success",
   },
 };
 
@@ -588,6 +664,11 @@ const getRoutesWithoutAnalytics = (): Set<string> => {
   // (VIEW_SCAN_QR_CODE / VIEW_ACCOUNT_QR_CODE), so the route itself must not
   // auto-track a generic view event.
   excludedRoutes.add("ScanReceiveScreen");
+
+  // The Earn token picker draws the first-run intro in its place, so it
+  // reports its own view (VIEW_EARN_TOKEN_PICKER) once the picker is what
+  // shows, as the extension does after its intro.
+  excludedRoutes.add("EarnTokenPickerScreen");
 
   return excludedRoutes;
 };

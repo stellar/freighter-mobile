@@ -143,7 +143,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         />
       </View>
       <View className="rounded-[16px] p-[16px] gap-[16px] bg-background-tertiary">
-        <Text lg medium>
+        <Text md medium primary>
           {t("swapScreen.review.title")}
         </Text>
 
@@ -158,10 +158,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           />
 
           <View className="w-[40px] flex items-center">
-            <Icon.ChevronDownDouble
-              size={16}
-              color={themeColors.foreground.secondary}
-            />
+            <Icon.ArrowDown size={16} color={themeColors.foreground.primary} />
           </View>
 
           <SwapReviewTokenRow
@@ -272,11 +269,11 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
       />
 
       <TouchableOpacity
-        className="flex-row items-center gap-[8px] rounded-[16px] bg-background-tertiary px-[16px] py-[12px] mt-[16px]"
+        className="flex-row items-center gap-[4px] rounded-[16px] border border-gray-5 bg-background-primary px-[16px] py-[12px] mt-[16px]"
         onPress={handleOpenTransactionDetails}
       >
-        <Icon.List size={16} themeColor="lilac" />
-        <Text color={themeColors.lilac[11]}>
+        <Icon.List size={16} color={themeColors.foreground.primary} />
+        <Text md semiBold primary>
           {t("dappRequestBottomSheetContent.transactionDetails")}
         </Text>
       </TouchableOpacity>
@@ -319,6 +316,7 @@ type SwapReviewFooterProps = {
 export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
   (props) => {
     const { t } = useAppTranslation();
+    const { themeColors } = useColors();
 
     const {
       isMalicious,
@@ -359,7 +357,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
             width: pxValue(BUTTON_THEME.height.xl),
           }}
         >
-          <Icon.Settings04 size={24} themeColor="gray" />
+          <Icon.Settings04 size={18} color={themeColors.foreground.primary} />
         </TouchableOpacity>
       );
 
@@ -409,10 +407,11 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
 
     return (
       <View
-        className={`${isTrusted ? "flex-row" : "flex-col"} bg-background-primary w-full gap-[12px] px-6 pt-[24px]`}
+        className={`${isTrusted ? "flex-row" : "flex-col"} bg-background-primary w-full pt-[24px]`}
         style={{
+          paddingHorizontal: pxValue(DEFAULT_PADDING),
           paddingBottom: pxValue(DEFAULT_PADDING),
-          gap: pxValue(12),
+          gap: pxValue(isTrusted ? 8 : 12),
         }}
       >
         {renderButtons()}

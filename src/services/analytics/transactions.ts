@@ -7,6 +7,8 @@ import {
   LegUsdStatus,
 } from "helpers/usdVolume";
 import { track } from "services/analytics/core";
+import { trackEarn } from "services/analytics/earn";
+import { swapSourceProps } from "services/analytics/swapSource";
 import { TransactionOperationType } from "services/analytics/types";
 import type {
   SignedTransactionEvent,
@@ -15,6 +17,9 @@ import type {
   TransactionSuccessEvent,
   SwapSuccessEvent,
   TransactionErrorEvent,
+  EarnDepositSuccessEvent,
+  EarnDepositErrorEvent,
+  PaymentVolume,
 } from "services/analytics/types";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
@@ -265,9 +270,8 @@ export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
   track(AnalyticsEvent.SWAP_SUCCESS, {
     from_asset_code: data.sourceToken,
     to_asset_code: data.destToken,
-    // Entry tag (design §7.5): swaps entered from the token detail view carry
-    // source: "token_details"; other entries keep the historical shape.
-    ...(data.source ? { source: data.source } : {}),
+    // Where the swap was opened from: "token_details" or "earn".
+    ...swapSourceProps(data.source),
     ...(volume
       ? {
           ...assetIdentityProps("from_", volume.identity),
@@ -339,6 +343,7 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
       from_asset_code: data.sourceToken,
       to_asset_code: data.destToken,
       reason_code: reasonCode,
+      ...swapSourceProps(data.source),
       ...(volume
         ? {
             ...assetIdentityProps("from_", volume.identity),
@@ -461,6 +466,58 @@ export const trackGrantAccessBlocked = (
   track(AnalyticsEvent.GRANT_DAPP_ACCESS_BLOCKED, {
     ...originProps(domain),
     reason_code: reason,
+  });
+};
+
+// A deposit's USD volume, under the names payment.completed uses for a
+// payment's, so a SUM(amount_usd) covers deposits too.
+const depositVolumeProps = (
+  volume: PaymentVolume,
+): Record<string, unknown> => ({
+  ...assetIdentityProps("", volume.identity),
+  amount: volume.amount,
+  ...buildSourceLegUsdProps(
+    volume.sourceLeg,
+    volume.priceSource,
+    volume.priceFreshness,
+  ),
+});
+
+// earn.deposit_completed carries asset_code + pool_id + apy + via_swap, and
+// the deposit's USD volume. Named earn.deposit_completed (not
+// earn_deposit.completed) to match the extension's event name -- the two
+// platforms must land in the same Amplitude funnel.
+export const trackEarnDepositSuccess = (
+  data: EarnDepositSuccessEvent,
+): void => {
+  const { volume } = data;
+  trackEarn(AnalyticsEvent.EARN_DEPOSIT_SUCCESS, {
+    asset_code: data.assetCode,
+    pool_id: data.poolId,
+    apy: data.apy,
+    via_swap: data.viaSwap,
+    ...(volume ? depositVolumeProps(volume) : {}),
+  });
+};
+
+// earn.deposit_failed carries asset_code + pool_id plus reason_code, without
+// the APY, as in the extension. Like trackTransactionError, reason_code is the
+// machine-readable Horizon result code (falling back to "unknown") -- never
+// the free-text error message, to avoid unbounded reason_code cardinality.
+// A deposit that reached the network also carries its USD volume and
+// failure_category, as payment.failed does.
+export const trackEarnDepositFail = (data: EarnDepositErrorEvent): void => {
+  const { volume } = data;
+  trackEarn(AnalyticsEvent.EARN_DEPOSIT_FAIL, {
+    asset_code: data.assetCode,
+    pool_id: data.poolId,
+    reason_code: volume?.reasonCode ?? data.errorCode ?? "unknown",
+    ...(volume
+      ? {
+          ...depositVolumeProps(volume),
+          failure_category: volume.failureCategory,
+        }
+      : {}),
   });
 };
 

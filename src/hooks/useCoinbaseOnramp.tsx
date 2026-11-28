@@ -66,18 +66,27 @@ function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
 
     setIsLoading(true);
 
+    let url: string;
     try {
       const data = await fetchData();
-      const url = getCoinbaseUrl({ sessionToken: data.token, token });
+      url = getCoinbaseUrl({ sessionToken: data.token, token });
 
       // `asset` matches the extension's onramp.coinbase_opened { asset }
       // (undefined when no asset was preselected, same as extension).
       analytics.track(AnalyticsEvent.COINBASE_ONRAMP_OPENED, { asset: token });
+    } catch (error) {
+      logger.error("useCoinbaseOnramp", "Failed to fetch onramp token", error);
+      setIsLoading(false);
+      // Nothing has opened, so the caller tells the user.
+      throw error;
+    }
 
+    try {
       await openInAppBrowser(url);
     } catch (error) {
+      // useInAppBrowser has already handed the page to the system browser,
+      // so Coinbase is open: not a failure for the caller to report.
       logger.error("useCoinbaseOnramp", "Failed to open Coinbase URL", error);
-      throw error;
     } finally {
       setIsLoading(false);
     }

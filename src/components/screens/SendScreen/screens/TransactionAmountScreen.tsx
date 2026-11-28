@@ -232,6 +232,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<string | null>(null);
+  // From the Review tap until Review or the security sheet opens, or the
+  // build fails. Review shows the send as it is when it opens, so nothing
+  // may change while the transaction is built.
+  const [isPreparingReview, setIsPreparingReview] = useState(false);
   const { showToast } = useToast();
 
   const handleCloseSendFlow = useCallback(() => {
@@ -287,14 +291,17 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useRightHeaderButton({
     icon: Icon.Settings04,
     testID: "send-settings-button",
-    onPress: () => {
-      amountInputRef.current?.blur();
-      // Wait for the keyboard's hide animation before presenting the sheet so
-      // it opens at its final height instead of jumping down.
-      waitForKeyboardDismiss().then(() => {
-        transactionSettingsBottomSheetModalRef.current?.present();
-      });
-    },
+    // A right header button without onPress is disabled.
+    onPress: isPreparingReview
+      ? undefined
+      : () => {
+          amountInputRef.current?.blur();
+          // Wait for the keyboard's hide animation before presenting the
+          // sheet so it opens at its final height instead of jumping down.
+          waitForKeyboardDismiss().then(() => {
+            transactionSettingsBottomSheetModalRef.current?.present();
+          });
+        },
   });
 
   const focusAmountInput = useCallback(() => {
@@ -860,8 +867,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
         if (!finalXDR) return;
 
-        // Always scan the transaction to keep the hook updated
-        scanTransaction(finalXDR, "internal")
+        // Always scan the transaction to keep the hook updated. Awaited so
+        // a caller knows when Review has opened.
+        await scanTransaction(finalXDR, "internal")
           .then((scanResult) =>
             handleTransactionScanSuccess(scanResult, shouldOpenReview),
           )
@@ -1232,17 +1240,21 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   ]);
 
   const handleConfirmAnyway = useCallback(() => {
-    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
-
     const isUnableToScan =
       !transactionScanResult || transactionSecurityAssessment.isUnableToScan;
 
     if (isUnableToScan) {
+      transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
       amountInputRef.current?.blur();
       Keyboard.dismiss();
       reviewBottomSheetModalRef.current?.present();
     } else {
+      // Review first (the confirm closes it), then this sheet over it.
+      // Closing this sheet first would bring Review back, and gorhom ignores
+      // Review's own dismiss while that happens, leaving Review open over
+      // the processing step.
       handleTransactionConfirmation();
+      transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
     }
   }, [
     handleTransactionConfirmation,
@@ -1310,7 +1322,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     );
   }
 
-  const handleContinueButtonPress = () => {
+  const handleContinueButtonPress = async () => {
     if (!recipientAddress) {
       navigateToSelectContactScreen();
       return;
@@ -1318,7 +1330,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
     amountInputRef.current?.blur();
     Keyboard.dismiss();
-    prepareTransaction(true);
+    setIsPreparingReview(true);
+    try {
+      await prepareTransaction(true);
+    } finally {
+      setIsPreparingReview(false);
+    }
   };
 
   const getContinueButtonText = () => {
@@ -1374,7 +1391,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             <ContactRow
               isSingleRow
               hasDarkBackground
-              onPress={navigateToSelectContactScreen}
+              onPress={
+                isPreparingReview ? undefined : navigateToSelectContactScreen
+              }
               address={recipientAddress}
               name={recipientDisplayName}
               testID="send-recipient-row"
@@ -1394,6 +1413,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             label={t("transactionAmountScreen.sendingLabel")}
             selectedToken={selectedBalance}
             onPickerPress={navigateToSelectTokenScreen}
+            disabled={isPreparingReview}
             pickerTestID="send-token-row"
             inputTestID="amount-text-input"
             focusTriggerTestID="send-amount-focus-trigger"
@@ -1413,7 +1433,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             would cover them. */}
         {!isSendBlocked && (
           <View className="flex-1 items-center mt-[24px] gap-[24px]">
-            <PercentageButtons onPress={handlePercentagePress} />
+            <PercentageButtons
+              onPress={handlePercentagePress}
+              disabled={isPreparingReview}
+            />
           </View>
         )}
       </View>
@@ -1436,6 +1459,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           xl
           onPress={handleContinueButtonPress}
           disabled={isContinueButtonDisabled}
+          isLoading={isPreparingReview}
           testID="send-continue-button"
         >
           {getContinueButtonText()}

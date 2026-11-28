@@ -7,6 +7,7 @@ import {
   Address,
   Transaction,
   Operation,
+  XdrLargeInt,
   xdr,
 } from "@stellar/stellar-sdk";
 import {
@@ -14,11 +15,15 @@ import {
   MUXED_CONTRACT_ID_1234,
 } from "__tests__/support/muxedContractFixtures";
 import { BigNumber } from "bignumber.js";
+import { BLEND_FIXED_POOL_IDS } from "config/blend";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { TokenTypeWithCustomToken, type PricedBalance } from "config/types";
+import { BlendRequestType } from "helpers/blend";
 import { analytics } from "services/analytics";
 import * as backend from "services/backend";
+import { stellarSdkServer } from "services/stellar";
 import {
+  buildBlendDepositTransaction,
   buildPaymentTransaction,
   buildSendCollectibleTransaction,
   BuildSendCollectibleParams,
@@ -859,5 +864,216 @@ describe("validateSwapTransactionParams", () => {
       "transaction.errors.insufficientBalanceForSwap",
     );
     expect(validateSwapTransactionParams(params("5"))).toBeNull();
+  });
+});
+
+describe("buildBlendDepositTransaction", () => {
+  const USDC_SAC = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+  const SENDER = "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H";
+  const POOL_ID = BLEND_FIXED_POOL_IDS[NETWORKS.PUBLIC]!;
+  const mockPreparedXdr = "mock_prepared_blend_xdr";
+
+  const baseParams = {
+    senderAddress: SENDER,
+    poolId: POOL_ID,
+    assetId: USDC_SAC,
+    amount: "500",
+    decimals: 7,
+    network: NETWORKS.PUBLIC,
+    transactionFee: "0.00001",
+    transactionTimeout: 180,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (backend.simulateTransaction as jest.Mock).mockResolvedValue({
+      preparedTransaction: mockPreparedXdr,
+      simulationResponse: { minResourceFee: "546395" },
+    });
+  });
+
+  it("rejects a deposit with no pool chosen", async () => {
+    await expect(
+      buildBlendDepositTransaction({ ...baseParams, poolId: "" }),
+    ).rejects.toThrow(/not supported/i);
+  });
+
+  it("builds for the pool the flow chose, not a fixed one", async () => {
+    // Review names the chosen pool; the transaction must fund that same pool.
+    const OTHER_POOL =
+      "CAJJZSGMMM3PD7N33TAPHGBUGTB43OC73HVIK2L2G6BNGGGYOSSYBXBD";
+    const result = await buildBlendDepositTransaction({
+      ...baseParams,
+      poolId: OTHER_POOL,
+    });
+
+    const parsedTx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.PUBLIC,
+    ) as Transaction;
+    const operation = parsedTx.operations[0] as Operation.InvokeHostFunction;
+    const invocation = xdr.expectUnionVariant(
+      operation.func,
+      "hostFunctionTypeInvokeContract",
+    ).invokeContract;
+    expect(Address.fromScAddress(invocation.contractAddress).toString()).toBe(
+      OTHER_POOL,
+    );
+  });
+
+  it("scales the human amount by decimals into an integer string", () => {
+    // 500 USDC at 7 decimals is 5_000_000_000 stroops-equivalent. An i128
+    // cannot carry a fraction and exponential notation would not parse, so the
+    // scaled value must be a plain integer string.
+    const scaled = new BigNumber("500")
+      .multipliedBy(new BigNumber(10).pow(7))
+      .toFixed(0);
+    expect(scaled).toBe("5000000000");
+    expect(scaled).not.toMatch(/[.e+]/);
+  });
+
+  it("submits a SupplyCollateral request against the allowlisted pool with the scaled amount", async () => {
+    const result = await buildBlendDepositTransaction(baseParams);
+
+    expect(result.preparedXdr).toBe(mockPreparedXdr);
+    expect(result.minResourceFee).toBe("546395");
+
+    const parsedTx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.PUBLIC,
+    ) as Transaction;
+
+    expect(parsedTx.operations).toHaveLength(1);
+
+    const operation = parsedTx.operations[0] as Operation.InvokeHostFunction;
+    const hostFunction = operation.func;
+    expect(hostFunction.type).toBe("hostFunctionTypeInvokeContract");
+
+    const invocation = xdr.expectUnionVariant(
+      hostFunction,
+      "hostFunctionTypeInvokeContract",
+    ).invokeContract;
+    expect(invocation.functionName.toString()).toBe("submit");
+    expect(Address.fromScAddress(invocation.contractAddress).toString()).toBe(
+      POOL_ID,
+    );
+
+    // submit(from, spender, to, requests) — requests is a vec of one Request map.
+    const requestScVal = xdr.expectUnionVariant(invocation.args[3], "scvVec")
+      .vec![0];
+    const requestEntries = xdr.expectUnionVariant(requestScVal, "scvMap").map!;
+    const byKey = (name: string) =>
+      requestEntries.find(
+        (e) =>
+          xdr.expectUnionVariant(e.key, "scvSymbol").sym.toString() === name,
+      )!.val;
+
+    expect(xdr.expectUnionVariant(byKey("request_type"), "scvU32").u32).toBe(
+      BlendRequestType.SupplyCollateral,
+    );
+    expect(byKey("amount").toXdr("base64")).toBe(
+      new XdrLargeInt("i128", "5000000000").toI128().toXdr("base64"),
+    );
+
+    // transactionFee is the INCLUSION fee only: 0.00001 XLM = 100 stroops.
+    expect(parsedTx.fee).toBe("100");
+  });
+
+  describe("when the backend rejects the simulation", () => {
+    // v1 /simulate-tx replies 400 with plain text: the thrown error's name
+    // and message, then its stack.
+    const rejectWithBody = (body: unknown) =>
+      (backend.simulateTransaction as jest.Mock).mockRejectedValue({
+        message: "Request failed with status code 400",
+        status: 400,
+        data: body,
+        isNetworkError: false,
+      });
+
+    it("surfaces the pool's own error, not the HTTP status", async () => {
+      const simulation = {
+        id: "1",
+        latestLedger: 65517476,
+        events: [],
+        _parsed: true,
+        error: `HostError: Error(Contract, #1206)\n\nEvent log (newest first):\n   0: [Diagnostic Event] contract:${POOL_ID}, topics:[error, Error(Contract, #1206)]`,
+      };
+      rejectWithBody(
+        `Error: Error - simulation incorrect: ${JSON.stringify(simulation)}\n    at assembleTransaction (/app/node_modules/@stellar/stellar-sdk/lib/rpc/transaction.js:41:11)`,
+      );
+
+      await expect(buildBlendDepositTransaction(baseParams)).rejects.toThrow(
+        new Error("HostError: Error(Contract, #1206)"),
+      );
+    });
+
+    it("keeps any other backend error in its own words, without the stack", async () => {
+      rejectWithBody(
+        "Error: Error - Unknown network passphrase: Test\n    at route (/app/src/route/index.ts:1344:21)",
+      );
+
+      await expect(buildBlendDepositTransaction(baseParams)).rejects.toThrow(
+        new Error("Unknown network passphrase: Test"),
+      );
+    });
+
+    it("rethrows the original error when there is no body to read", async () => {
+      rejectWithBody(undefined);
+
+      await expect(
+        buildBlendDepositTransaction(baseParams),
+      ).rejects.toMatchObject({
+        message: "Request failed with status code 400",
+      });
+    });
+  });
+
+  // The other builders take their expiry from the server's clock, so a phone
+  // whose clock is off doesn't sign a deposit that has already expired, or
+  // one that stays valid too long.
+  it("expires on the server's time, not the phone's", async () => {
+    const serverMaxTime = 1700000180;
+    (stellarSdkServer as jest.Mock).mockReturnValueOnce({
+      loadAccount: mockLoadAccount,
+      fetchTimebounds: jest.fn((timeout: number) =>
+        Promise.resolve({
+          minTime: 0,
+          maxTime: serverMaxTime - 180 + timeout,
+        }),
+      ),
+    });
+
+    const result = await buildBlendDepositTransaction(baseParams);
+
+    const parsedTx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.PUBLIC,
+    ) as Transaction;
+    expect(parsedTx.timeBounds?.maxTime).toBe(String(serverMaxTime));
+  });
+
+  it("returns minResourceFee as null when the simulation response omits it", async () => {
+    (backend.simulateTransaction as jest.Mock).mockResolvedValue({
+      preparedTransaction: mockPreparedXdr,
+      simulationResponse: {},
+    });
+
+    const result = await buildBlendDepositTransaction(baseParams);
+
+    // A missing minResourceFee is left unknown (null), never coerced to "0" —
+    // a zero resource fee would understate the real cost and is
+    // indistinguishable from a genuine zero.
+    expect(result.minResourceFee).toBeNull();
+  });
+
+  it("throws a plain error when simulation succeeds with no prepared transaction", async () => {
+    (backend.simulateTransaction as jest.Mock).mockResolvedValue({
+      preparedTransaction: undefined,
+      simulationResponse: {},
+    });
+
+    await expect(buildBlendDepositTransaction(baseParams)).rejects.toThrow(
+      /simulate/i,
+    );
   });
 });

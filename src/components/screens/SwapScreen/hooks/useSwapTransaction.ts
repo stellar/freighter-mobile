@@ -9,6 +9,7 @@ import {
   swapQuoteErrorReason,
 } from "components/screens/SwapScreen/helpers";
 import { SwapTxMismatchError } from "components/screens/SwapScreen/helpers/decodeSwapTx";
+import { SWAP_TOAST_IDS } from "components/screens/SwapScreen/hooks/useSwapAmountError";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
@@ -66,6 +67,7 @@ import { isWalletUnlocked } from "hooks/useGetActiveAccount";
 import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "services/analytics";
+import { swapSourceProps } from "services/analytics/swapSource";
 import { FailureVolume } from "services/analytics/types";
 import { isApiError } from "services/apiFactory";
 
@@ -90,10 +92,33 @@ interface SwapTransactionParams {
   network: NETWORKS;
   /** Per-op network recommendation; "" while unknown */
   recommendedFee: string;
-  navigation: NativeStackNavigationProp<
+  /**
+   * Optional because swap-within-Earn drives this hook from a bottom sheet
+   * rather than a `SWAP_STACK` route, and supplies `onProcessingClose`
+   * instead. Every route-based caller still passes it.
+   */
+  navigation?: NativeStackNavigationProp<
     SwapStackParamList,
     typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN
   >;
+  /**
+   * Where to go when the processing screen is closed. Defaults to resetting
+   * onto the History tab, which is right for a standalone swap.
+   *
+   * Swap-within-Earn overrides it: there the swap exists only to obtain the
+   * asset the user was already trying to deposit, so dumping them on History
+   * strands them away from the flow they were in. History is still refreshed
+   * either way -- only the destination changes.
+   */
+  onProcessingClose?: () => void;
+  /**
+   * Called when the submit was rejected because the quote expired, after
+   * the toast and the fresh path request. A standalone swap needs nothing
+   * more: its processing screen goes away with `isProcessing` and the amount
+   * screen is back. Swap-within-Earn shows its processing step in a sheet,
+   * so it uses this to return to the swap sheet for a retry.
+   */
+  onQuoteExpired?: () => void;
 }
 
 interface UseSwapTransactionResult {
@@ -131,6 +156,8 @@ export const useSwapTransaction = ({
   network,
   recommendedFee,
   navigation,
+  onProcessingClose,
+  onQuoteExpired,
 }: SwapTransactionParams): UseSwapTransactionResult => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [scan, setScan] = useState<{
@@ -252,6 +279,7 @@ export const useSwapTransaction = ({
           from_asset_code: sourceBalance.tokenCode,
           to_asset_code: destinationTokenInput.tokenCode,
           result_code: "quote_moved",
+          ...swapSourceProps(useSwapStore.getState().entrySource),
         });
         requote();
         throw new SwapSetupAnswerError(t("swapScreen.errors.quoteExpired"));
@@ -312,10 +340,10 @@ export const useSwapTransaction = ({
       throw new Error("Destination token is required for swap transaction");
     }
 
-    // Entry tag stamped by SwapAmountScreen (e.g. "token_details") so
-    // swap.completed can be broken down by entry point (design §7.5).
-    // Captured HERE, into the submission closure, like every other payload
-    // field: SwapAmountScreen's unmount cleanup calls resetSwap(), so
+    // Where the swap was opened from ("token_details", stamped by
+    // SwapAmountScreen, or "earn", by the Earn swap), carried on every swap
+    // event. Captured HERE, into the submission closure, like every other
+    // payload field: SwapAmountScreen's unmount cleanup calls resetSwap(), so
     // navigating away during submission would clear it before success.
     const { entrySource } = useSwapStore.getState();
 
@@ -567,6 +595,7 @@ export const useSwapTransaction = ({
         analytics.track(AnalyticsEvent.SWAP_TRUSTLINE_ADDED, {
           asset_code: destinationTokenInput.tokenCode,
           asset_issuer: swappedDestination?.issuer ?? "",
+          ...swapSourceProps(entrySource),
         });
       }
     } catch (error) {
@@ -638,6 +667,7 @@ export const useSwapTransaction = ({
           from_asset_code: sourceBalance?.tokenCode,
           to_asset_code: destinationTokenInput?.tokenCode,
           result_code: quoteExpiredCodes.join(", "),
+          ...swapSourceProps(entrySource),
         });
 
         // A quote expiry rejected at submit also counts as a failed swap for
@@ -653,18 +683,20 @@ export const useSwapTransaction = ({
           isSwap: true,
           sourceToken: sourceBalance?.tokenCode,
           destToken: destinationTokenInput?.tokenCode,
+          source: entrySource ?? undefined,
           volume,
         });
 
         showToast({
           variant: "error",
           title: t("swapScreen.errors.quoteExpired"),
-          toastId: "swap-quote-expired",
+          toastId: SWAP_TOAST_IDS.QUOTE_EXPIRED,
           duration: 0,
         });
 
         requote();
 
+        onQuoteExpired?.();
         return;
       }
 
@@ -676,6 +708,7 @@ export const useSwapTransaction = ({
         destToken: destinationTokenInput?.tokenCode,
         sourceAmount,
         destAmount: pathResult?.destinationAmount,
+        source: entrySource ?? undefined,
         volume,
       });
 
@@ -709,6 +742,7 @@ export const useSwapTransaction = ({
     requote,
     t,
     showToast,
+    onQuoteExpired,
   ]);
 
   const handleProcessingScreenClose = () => {
@@ -723,7 +757,12 @@ export const useSwapTransaction = ({
       });
     }
 
-    navigation.reset({
+    if (onProcessingClose) {
+      onProcessingClose();
+      return;
+    }
+
+    navigation?.reset({
       index: 0,
       routes: [
         {

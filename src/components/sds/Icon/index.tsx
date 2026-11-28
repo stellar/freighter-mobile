@@ -421,6 +421,7 @@ import Droplets01 from "assets/icons/droplets-01.svg";
 import Droplets02 from "assets/icons/droplets-02.svg";
 import Droplets03 from "assets/icons/droplets-03.svg";
 import Dropper from "assets/icons/dropper.svg";
+import Earn from "assets/icons/earn.svg";
 import Edit01 from "assets/icons/edit-01.svg";
 import Edit02 from "assets/icons/edit-02.svg";
 import Edit03 from "assets/icons/edit-03.svg";
@@ -1616,6 +1617,7 @@ export const Icons = {
   Droplets02,
   Droplets03,
   Dropper,
+  Earn,
   Edit01,
   Edit02,
   Edit03,

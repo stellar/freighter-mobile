@@ -22,3 +22,5 @@ export { useSwapForXlmReserve } from "./useSwapForXlmReserve";
 export { useReviewTokens } from "./useReviewTokens";
 export { useStableConversionRate } from "./useStableConversionRate";
 export { useSwapRouteView } from "./useSwapRouteView";
+export { useSwapQuoteFees } from "./useSwapQuoteFees";
+export { useSwapFeeShortfall } from "./useSwapFeeShortfall";

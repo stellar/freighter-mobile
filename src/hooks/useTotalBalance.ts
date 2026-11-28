@@ -54,8 +54,10 @@ export const useTotalBalance = (): TotalBalance => {
     // differ. A total is only "real" when at least one held asset is priced;
     // otherwise (e.g. testnet, where fiat is gated off, or before prices
     // load) the sum is a placeholder zero.
-    const { total: rawBalance, hasPrices: hasFiatTotal } =
-      sumVisibleFiatTotals(pricedBalances, hiddenTokenIds);
+    const { total: rawBalance, hasPrices: hasFiatTotal } = sumVisibleFiatTotals(
+      pricedBalances,
+      hiddenTokenIds,
+    );
 
     return {
       totalLabel: getTotalUsdLabel({

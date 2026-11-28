@@ -18,7 +18,12 @@ export {
   type SwapToListItem,
 } from "./recordPredicates";
 export * from "./swapDisplayStrings";
-export { shouldShowXlmReservePreflight } from "./swapPreflight";
+export {
+  getSwapSpendableAmount,
+  isSwapQuotePending,
+  shouldShowSwapQuoteUnavailable,
+  shouldShowXlmReservePreflight,
+} from "./swapPreflight";
 export {
   QUOTE_EXPIRED_OPERATION_CODES,
   SwapSetupAnswerError,

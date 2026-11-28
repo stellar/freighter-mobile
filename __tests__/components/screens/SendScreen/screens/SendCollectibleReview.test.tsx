@@ -1446,6 +1446,43 @@ describe("SendCollectibleReview - muxed recipients (W and M)", () => {
       ).toContain("max-xs:hidden");
     });
   });
+
+  // Review shows the send as it is when it opens.
+  describe("while Review is being built", () => {
+    it("locks the settings, and unlocks them once Review opens", async () => {
+      const { getByTestId, buildSendCollectibleTransaction } =
+        await renderWithRecipient(G_ACCOUNT);
+      let finishBuild: (xdr: string) => void = () => {};
+      (buildSendCollectibleTransaction as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise<string>((resolve) => {
+            finishBuild = resolve;
+          }),
+      );
+      const { useRightHeaderButton } = jest.requireMock("hooks/useRightHeader");
+
+      await act(() => {
+        fireEvent.press(getByTestId(continueButtonTestId));
+        return Promise.resolve();
+      });
+
+      // A right header button without onPress is disabled.
+      expect(useRightHeaderButton).toHaveBeenLastCalledWith(
+        expect.objectContaining({ onPress: undefined }),
+      );
+
+      await act(async () => {
+        finishBuild("mockXDR");
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 0);
+        });
+      });
+
+      expect(useRightHeaderButton).toHaveBeenLastCalledWith(
+        expect.objectContaining({ onPress: expect.any(Function) }),
+      );
+    });
+  });
 });
 
 describe("SendCollectibleReview - build errors", () => {

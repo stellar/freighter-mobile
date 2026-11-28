@@ -47,6 +47,7 @@ import {
   View,
 } from "react-native";
 import { analytics } from "services/analytics";
+import { swapSourceProps } from "services/analytics/swapSource";
 
 type SwapToScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -73,6 +74,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     setDestinationToken,
     sourceTokenId,
     destinationToken,
+    entrySource,
   } = useSwapStore();
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
@@ -169,7 +171,8 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       analytics.track(AnalyticsEvent.SWAP_SOURCE_SELECTED, {
         asset_code: balance.tokenCode ?? "",
         asset_issuer: descriptor.issuer ?? "",
-        source: sourceSource,
+        list: sourceSource,
+        ...swapSourceProps(entrySource),
       });
       dismissThenApply(() => {
         // If the new source equals the current destination, clear destination
@@ -187,7 +190,8 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         asset_code: balance.tokenCode ?? "",
         asset_issuer: descriptor.issuer ?? "",
         requires_trustline: descriptor.requiresTrustline,
-        source,
+        list: source,
+        ...swapSourceProps(entrySource),
       });
       dismissThenApply(() => {
         // If the new destination equals the current source, clear source so
@@ -212,7 +216,8 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       asset_code: record.tokenCode,
       asset_issuer: descriptor.issuer ?? "",
       requires_trustline: descriptor.requiresTrustline,
-      source,
+      list: source,
+      ...swapSourceProps(entrySource),
     });
     dismissThenApply(() => {
       // If the new destination equals the current source, clear source.
