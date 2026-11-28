@@ -555,13 +555,12 @@ describe("EarnAmountScreen", () => {
   });
 
   describe("post-simulation fee shortfall", () => {
-    it("blocks Review and surfaces the reduce-by amount when the deposit does not leave enough XLM for the measured fee", async () => {
-      // The whole spendable balance is offered (no buffer held back), so
-      // depositing all of it leaves nothing for the resource fee simulation
-      // is about to report.
+    it("blocks Review and surfaces the reduce-by amount when a typed deposit does not leave enough XLM for the measured fee", async () => {
+      // 0.01 XLM left over, less than the resource fee simulation is about
+      // to report. Typed, not Max, so the amount is left to the user.
       mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
       setSpendable({ deposit: "100", xlm: "100" });
-      setTokenAmount("100");
+      setTokenAmount("99.99");
 
       mockSimulate.mockImplementation(() => {
         useTransactionBuilderStore.setState({
@@ -586,6 +585,116 @@ describe("EarnAmountScreen", () => {
           toastId: "earn-fee-shortfall",
         }),
       );
+    });
+
+    // Max fills the whole spendable XLM, which leaves nothing for the
+    // resource fee, known only once simulation returns. The deposit is
+    // lowered by that fee and built again, as main Swap applies Max again
+    // when its quote's fee is higher.
+    describe("a Max XLM deposit", () => {
+      const reviewedTokenAmount = () => {
+        // eslint-disable-next-line no-underscore-dangle
+        const contents = [...globalThis.__earnAmountMockSheetContents];
+        const review = contents
+          .reverse()
+          .find((content) => "onSettingsPress" in (content.props as object));
+        return (review?.props as { tokenAmount?: string } | undefined)
+          ?.tokenAmount;
+      };
+
+      const pressReview = async () => {
+        const utils = renderScreen();
+        await act(async () => {
+          fireEvent.press(utils.getByTestId("earn-amount-cta"));
+          await Promise.resolve();
+        });
+        await act(async () => {
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        return utils;
+      };
+
+      let mockSetTokenAmount: jest.Mock;
+      beforeEach(() => {
+        mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
+        setSpendable({ deposit: "100", xlm: "100" });
+        mockSetTokenAmount = jest.fn();
+        setTokenAmount("100", { setTokenAmount: mockSetTokenAmount });
+      });
+
+      const measureFees = (...fees: string[]) => {
+        fees.forEach((fee) => {
+          mockSimulate.mockImplementationOnce(() => {
+            useTransactionBuilderStore.setState({ sorobanResourceFeeXlm: fee });
+            return Promise.resolve({
+              preparedXdr: "prepared-xdr",
+              scanResult: undefined,
+            });
+          });
+        });
+      };
+
+      it("is lowered by the measured fee and built again", async () => {
+        measureFees("0.0546395", "0.0546395");
+
+        await pressReview();
+
+        expect(mockSimulate).toHaveBeenCalledTimes(2);
+        expect(mockSimulate).toHaveBeenLastCalledWith(
+          expect.objectContaining({ amount: "99.9453605" }),
+        );
+        expect(mockSetTokenAmount).toHaveBeenCalledWith("99.9453605");
+      });
+
+      it("opens Review with the lowered amount, and no toast", async () => {
+        measureFees("0.0546395", "0.0546395");
+
+        await pressReview();
+
+        // eslint-disable-next-line no-underscore-dangle
+        const [, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+        expect(reviewSheet.present).toHaveBeenCalledTimes(1);
+        expect(reviewedTokenAmount()).toBe("99.9453605");
+        expect(mockShowToast).not.toHaveBeenCalledWith(
+          expect.objectContaining({ toastId: "earn-fee-shortfall" }),
+        );
+      });
+
+      it("keeps the fiat line in step in fiat mode", async () => {
+        mockGetBalanceByContractId.mockReturnValue({
+          ...(XLM_BALANCE as object),
+          currentPrice: new BigNumber("0.5"),
+        });
+        const mockUpdateFiatDisplay = jest.fn();
+        setTokenAmount("100", {
+          setTokenAmount: mockSetTokenAmount,
+          showFiatAmount: true,
+          updateFiatDisplay: mockUpdateFiatDisplay,
+        });
+        measureFees("0.0546395", "0.0546395");
+
+        await pressReview();
+
+        // 99.9453605 XLM at $0.50.
+        expect(mockUpdateFiatDisplay).toHaveBeenCalledWith("49.97");
+        expect(mockSetTokenAmount).toHaveBeenCalledWith("99.9453605");
+      });
+
+      it("asks for a smaller deposit when the lowered one is still short", async () => {
+        // The second build measures a higher fee than the first.
+        measureFees("0.05", "0.06");
+
+        await pressReview();
+
+        // eslint-disable-next-line no-underscore-dangle
+        const [, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+        expect(mockSimulate).toHaveBeenCalledTimes(2);
+        expect(reviewSheet.present).not.toHaveBeenCalled();
+        expect(mockShowToast).toHaveBeenCalledWith(
+          expect.objectContaining({ toastId: "earn-fee-shortfall" }),
+        );
+      });
     });
 
     // Review shows the deposit as it is when it opens.

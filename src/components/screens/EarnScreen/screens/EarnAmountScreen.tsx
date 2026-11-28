@@ -207,8 +207,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   // Max/percentage buttons and the CTA's insufficient-funds guard work off
   // the plain spendable balance — nothing is held back for a Blend submit's
   // resource fee here. That fee is only known once simulation returns, and
-  // is checked post-simulation instead (see `handleCtaPress`'s
-  // `getXlmFeeShortfall` call), rather than guessed at and reserved upfront.
+  // is checked post-simulation instead (see `handleCtaPress`, which lowers
+  // an XLM deposit at Max by it), rather than guessed at and reserved upfront.
   // In whole tokens, the unit the user types in: a SEP-41 balance keeps its
   // amounts in the token's smallest unit, so it's converted, as on Send.
   const availableBalance = useMemo(() => {
@@ -357,41 +357,36 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     }
   }, [tokenAmount, dismissAmountErrorToasts]);
 
+  // Puts a token amount in the field, keeping the fiat line in step in fiat
+  // mode.
+  const applyTokenAmount = useCallback(
+    (amount: string) => {
+      const tokenPrice = depositBalance?.currentPrice;
+      if (showFiatAmount && tokenPrice && !tokenPrice.isZero()) {
+        updateFiatDisplay(
+          new BigNumber(amount).multipliedBy(tokenPrice).toFixed(2),
+        );
+      }
+      setTokenAmount(amount);
+    },
+    [showFiatAmount, depositBalance, updateFiatDisplay, setTokenAmount],
+  );
+
   const handlePercentagePress = useCallback(
     (percentage: number) => {
       if (percentage === 100) {
         trackEarnMaxAmountSelected({ assetCode: tokenCode });
       }
 
-      const targetAmount = getPercentageAmount({
-        maxAmount: availableBalance,
-        pct: percentage,
-        decimals: depositDecimals ?? DEFAULT_DECIMALS,
-      });
-
-      if (showFiatAmount && depositBalance?.currentPrice) {
-        const tokenPrice = depositBalance.currentPrice;
-        if (!tokenPrice.isZero()) {
-          const fiatAmount = new BigNumber(targetAmount)
-            .multipliedBy(tokenPrice)
-            .toFixed(2);
-          updateFiatDisplay(fiatAmount);
-          setTokenAmount(targetAmount);
-          return;
-        }
-      }
-
-      setTokenAmount(targetAmount);
+      applyTokenAmount(
+        getPercentageAmount({
+          maxAmount: availableBalance,
+          pct: percentage,
+          decimals: depositDecimals ?? DEFAULT_DECIMALS,
+        }),
+      );
     },
-    [
-      tokenCode,
-      availableBalance,
-      depositDecimals,
-      showFiatAmount,
-      depositBalance,
-      updateFiatDisplay,
-      setTokenAmount,
-    ],
+    [tokenCode, availableBalance, depositDecimals, applyTokenAmount],
   );
 
   // Every sheet on this screen opens over a dismissed keyboard: with the
@@ -827,61 +822,95 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       return;
     }
 
-    const amountToReview = tokenAmount;
     const exitCount = exitCountRef.current;
     // Review shows the deposit as it is when it opens, so the field stays as
     // it is while the deposit is built from it.
     amountInputRef.current?.blur();
     Keyboard.dismiss();
-    setIsBuildingReview(true);
-    let result: Awaited<ReturnType<typeof simulate>>;
-    try {
-      result = await simulate({
-        poolId: pool?.id ?? "",
-        assetId,
-        amount: amountToReview,
-        decimals: depositDecimals,
-        transactionFee,
-        transactionTimeout,
-        network,
-        senderAddress: account.publicKey,
-      });
-    } finally {
-      setIsBuildingReview(false);
-    }
 
-    // The user left while the deposit was being built: no Review, and no
-    // fee toast over whatever screen they went to.
-    if (exitCountRef.current !== exitCount) {
+    // Builds the deposit of `amount` and resolves how much XLM it is short
+    // of its fees ("0" when it fits), or null when the build can't be used.
+    const buildDeposit = async (amount: string): Promise<string | null> => {
+      setIsBuildingReview(true);
+      let result: Awaited<ReturnType<typeof simulate>>;
+      try {
+        result = await simulate({
+          poolId: pool?.id ?? "",
+          assetId,
+          amount,
+          decimals: depositDecimals,
+          transactionFee,
+          transactionTimeout,
+          network,
+          senderAddress: account.publicKey,
+        });
+      } finally {
+        setIsBuildingReview(false);
+      }
+
+      // The user left while the deposit was being built: no Review, and no
+      // fee toast over whatever screen they went to.
+      if (exitCountRef.current !== exitCount) {
+        return null;
+      }
+
+      if (!result) {
+        // On failure, the effect above surfaces `simulateError` as a toast —
+        // nothing further to do here.
+        return null;
+      }
+
+      // The field changed while the deposit was being built, so the build no
+      // longer matches it. Review stays closed; the CTA is back for the new
+      // amount.
+      if (latestTokenAmountRef.current !== amount) {
+        return null;
+      }
+
+      // Check that the spendable XLM covers the fee simulation measured.
+      return getBuiltDepositFeeShortfall(amount, transactionFee);
+    };
+
+    let amountToReview = tokenAmount;
+    let shortfall = await buildDeposit(amountToReview);
+    if (shortfall === null) {
       return;
     }
 
-    if (!result) {
-      // On failure, the effect above surfaces `simulateError` as a toast —
-      // nothing further to do here.
-      return;
+    // Max fills the whole spendable XLM, which leaves nothing for the
+    // resource fee, known only now. So an XLM deposit at Max is lowered by
+    // the measured fee and built again, as main Swap applies Max again when
+    // its quote's fee is higher. Any other amount is the user's to change.
+    const maxAmount = getPercentageAmount({
+      maxAmount: availableBalance,
+      pct: 100,
+      decimals: depositDecimals,
+    });
+    if (
+      isXlm &&
+      new BigNumber(shortfall).gt(0) &&
+      new BigNumber(amountToReview).eq(maxAmount)
+    ) {
+      const fittedAmount = new BigNumber(amountToReview)
+        .minus(shortfall)
+        .decimalPlaces(depositDecimals, BigNumber.ROUND_DOWN);
+      if (fittedAmount.gt(0)) {
+        amountToReview = fittedAmount.toFixed();
+        latestTokenAmountRef.current = amountToReview;
+        applyTokenAmount(amountToReview);
+        shortfall = await buildDeposit(amountToReview);
+        if (shortfall === null) {
+          return;
+        }
+      }
     }
-
-    // The field changed while the deposit was being built, so the build no
-    // longer matches it. Review stays closed; the CTA is back for the new
-    // amount.
-    if (latestTokenAmountRef.current !== amountToReview) {
-      return;
-    }
-
-    // Check that the spendable XLM covers the fee simulation measured.
-    const shortfall = getBuiltDepositFeeShortfall(
-      amountToReview,
-      transactionFee,
-    );
 
     // INVARIANT Review and Confirm rely on: the staged XDR in
     // `transactionBuilder` was built with `reviewedAmount`, the amount Review
-    // shows. This check never adjusts the amount — on a shortfall it blocks
-    // here, rather than correcting the amount and re-simulating (as an
-    // earlier design did). So this branch either opens Review with the
-    // amount `simulate` was just called with, or doesn't open it at all.
-    // A fee saved in Review gets the same check (`handleEarnSettingsChange`).
+    // shows. A shortfall blocks here: only Max's own amount is lowered, and
+    // then built again, so this branch either opens Review with the amount
+    // `simulate` was last called with, or doesn't open it at all. A fee
+    // saved in Review gets the same check (`handleEarnSettingsChange`).
     if (new BigNumber(shortfall).gt(0)) {
       showFeeShortfall(shortfall);
       return;
@@ -902,6 +931,9 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     transactionTimeout,
     network,
     getBuiltDepositFeeShortfall,
+    availableBalance,
+    isXlm,
+    applyTokenAmount,
     showFeeShortfall,
     openReviewSheet,
     presentOverDismissedKeyboard,
