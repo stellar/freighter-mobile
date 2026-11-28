@@ -63,6 +63,17 @@ describe("EmptyState", () => {
     expect(screen.queryByText(/appear here/)).toBeNull();
   });
 
+  // The Positions card's "Earn up to" row sits between the text and the
+  // button, 12pt under the description.
+  it("puts the details 12pt under the text, above the action", () => {
+    renderCard({ details: <RN.Text>Earn up to</RN.Text> });
+
+    const details = screen.getByText("Earn up to");
+    const block = hostParentOf(details);
+    expect(styleOf(block)).toMatchObject({ gap: 12 });
+    expect(screen.getByText("Activate your wallet")).toBeTruthy();
+  });
+
   // Figma's Empty card (?node-id=208-13041): 280pt tall, 16pt above and below
   // its contents, 24pt corners, and 16pt between the top block and the button.
   // The height is a minimum, so larger accessibility text grows the card

@@ -4,6 +4,7 @@ import { freighterBackendV2 } from "services/backend";
 import {
   getBlendEarnOptions,
   getBlendPools,
+  getBlendPositions,
   getBlendSuppliedTokens,
 } from "services/blend";
 
@@ -164,5 +165,164 @@ describe("getBlendSuppliedTokens", () => {
       { addresses: ["GABC"] },
       { params: { network: NETWORKS.PUBLIC } },
     );
+  });
+});
+
+describe("getBlendPositions", () => {
+  const supplyRow = {
+    asset_id: USDC_SAC,
+    symbol: "USDC",
+    name: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    decimals: 7,
+    supplied_tokens: "0",
+    collateral_tokens: "5001223000",
+    total_tokens: "5001223000",
+    usd_value: 500.12,
+    apy: 0.1694,
+    emissions_apr: null,
+    interest_earned: "1234000",
+    interest_earned_usd: 0.12,
+    claimable_blnd: "0",
+    claimable_usd: null,
+    price_usd: 1,
+  };
+
+  it("maps each pool and its supplied tokens, keeping nulls as nulls", async () => {
+    mockPost.mockResolvedValue({
+      data: {
+        data: [
+          {
+            address: "GABC",
+            total_value_usd: 500.12,
+            net_apy: 0.1694,
+            positions: [
+              {
+                protocol: "blend",
+                id: POOL_ID,
+                name: "Fixed v2.1",
+                net_usd: 500.12,
+                supplied_usd: 500.12,
+                borrowed_usd: 0,
+                net_apy: null,
+                blend: { supply: [supplyRow], borrow: [] },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const result = await getBlendPositions({
+      publicKey: "GABC",
+      networkDetails,
+    });
+
+    expect(result.totalValueUsd).toBe(500.12);
+    expect(result.positions).toHaveLength(1);
+    const [pool] = result.positions;
+    expect(pool.poolId).toBe(POOL_ID);
+    expect(pool.name).toBe("Fixed v2.1");
+    expect(pool.suppliedUsd).toBe(500.12);
+    // null means unavailable; 0 is a real zero. Neither may become the other.
+    expect(pool.netApy).toBeNull();
+    expect(pool.supply).toEqual([
+      {
+        assetId: USDC_SAC,
+        symbol: "USDC",
+        name: supplyRow.name,
+        decimals: 7,
+        totalTokens: "5001223000",
+        usdValue: 500.12,
+        apy: 0.1694,
+        emissionsApr: null,
+        interestEarned: "1234000",
+        interestEarnedUsd: 0.12,
+        priceUsd: 1,
+      },
+    ]);
+  });
+
+  it("posts the address as a single-element batch", async () => {
+    mockPost.mockResolvedValue({ data: { data: [] } });
+    await getBlendPositions({ publicKey: "GABC", networkDetails });
+    expect(mockPost).toHaveBeenCalledWith(
+      "/accounts/positions",
+      { addresses: ["GABC"] },
+      { params: { network: NETWORKS.PUBLIC } },
+    );
+  });
+
+  it("returns no positions for an account the indexer doesn't know", async () => {
+    mockPost.mockResolvedValue({ data: { data: [] } });
+    await expect(
+      getBlendPositions({ publicKey: "GABC", networkDetails }),
+    ).resolves.toEqual({ totalValueUsd: null, positions: [] });
+  });
+
+  const accountWith = (positions: unknown[]) => ({
+    data: {
+      data: [
+        { address: "GABC", total_value_usd: null, net_apy: null, positions },
+      ],
+    },
+  });
+
+  // Unknown, which is not the same as none: a pool with no detail keeps its
+  // card, and its interest reads as unknown rather than zero.
+  it("keeps a pool without Blend detail, with its tokens unknown", async () => {
+    mockPost.mockResolvedValue(
+      accountWith([{ protocol: "blend", id: POOL_ID, name: null }]),
+    );
+    const { positions } = await getBlendPositions({
+      publicKey: "GABC",
+      networkDetails,
+    });
+    expect(positions).toHaveLength(1);
+    expect(positions[0].supply).toBeNull();
+    expect(positions[0].protocol).toBe("blend");
+  });
+
+  it("drops a pool the account has fully left", async () => {
+    mockPost.mockResolvedValue(
+      accountWith([
+        {
+          protocol: "blend",
+          id: POOL_ID,
+          name: "Fixed v2.1",
+          blend: { supply: [], borrow: [] },
+        },
+      ]),
+    );
+    const { positions } = await getBlendPositions({
+      publicKey: "GABC",
+      networkDetails,
+    });
+    expect(positions).toEqual([]);
+  });
+
+  it("keeps a pool that holds only a borrow", async () => {
+    mockPost.mockResolvedValue(
+      accountWith([
+        {
+          protocol: "blend",
+          id: POOL_ID,
+          name: "Fixed v2.1",
+          blend: { supply: [], borrow: [{ asset_id: USDC_SAC }] },
+        },
+      ]),
+    );
+    const { positions } = await getBlendPositions({
+      publicKey: "GABC",
+      networkDetails,
+    });
+    expect(positions).toHaveLength(1);
+    expect(positions[0].supply).toEqual([]);
+  });
+
+  it("throws when the payload has no data envelope", async () => {
+    mockPost.mockResolvedValue({ data: {} });
+    await expect(
+      getBlendPositions({ publicKey: "GABC", networkDetails }),
+    ).rejects.toThrow("Failed to fetch Blend positions");
   });
 });

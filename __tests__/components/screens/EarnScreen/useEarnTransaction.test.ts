@@ -6,6 +6,7 @@ import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import type { PricedBalance } from "config/types";
 import type { ActiveAccount } from "ducks/auth";
+import { usePositionsStore } from "ducks/positions";
 import type { SubmitTransactionOutcome } from "ducks/transactionBuilder";
 
 const mockSignTransaction = jest.fn();
@@ -119,10 +120,16 @@ describe("useEarnTransaction", () => {
     mockGetBuilderState.mockReturnValue({ error: "Store error message" });
     mockGetEarnState.mockReturnValue({
       pool: { id: "pool-1" },
+      selectedAssetId: "CUSDC",
       selectedAssetCode: "USDC",
       selectedAssetApy: 0.05,
+      selectedAssetDecimals: 7,
+      // 100 USDC already deposited, in raw units.
+      currentPositionTokens: "1000000000",
       didSwapInFlow: false,
+      source: "home",
     });
+    usePositionsStore.getState().reset();
   });
 
   it("starts idle", () => {
@@ -185,11 +192,73 @@ describe("useEarnTransaction", () => {
       expect.objectContaining({
         assetCode: "USDC",
         poolId: "pool-1",
+        source: "home",
         apy: 0.05,
         viaSwap: false,
       }),
     );
     expect(mockTrackEarnDepositFail).not.toHaveBeenCalled();
+  });
+
+  it("has Home's Positions wait for the landed deposit: the balance before it plus half the amount", async () => {
+    const nowSpy = jest.spyOn(Date, "now").mockReturnValue(1_000_000);
+    mockSignTransaction.mockReturnValue("signed-xdr");
+    mockSubmitTransaction.mockResolvedValue(submitOutcome({ hash: "tx-hash" }));
+
+    const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+    await act(async () => {
+      await result.current.submit(deposit);
+    });
+
+    // 100 USDC held before, 10 deposited: the row must reach 105.
+    expect(usePositionsStore.getState().awaitedDeposit).toEqual({
+      publicKey: account.publicKey,
+      network: NETWORKS.TESTNET,
+      poolId: "pool-1",
+      assetId: "CUSDC",
+      minTokens: "105",
+      expiresAt: 1_000_000 + 30_000,
+    });
+    nowSpy.mockRestore();
+  });
+
+  it("waits for no deposit when the submit fails", async () => {
+    mockSignTransaction.mockReturnValue("signed-xdr");
+    mockSubmitTransaction.mockResolvedValue(
+      submitOutcome({ error: "op_underfunded" }),
+    );
+
+    const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+    await act(async () => {
+      await result.current.submit(deposit);
+    });
+
+    expect(result.current.status).toBe("error");
+    expect(usePositionsStore.getState().awaitedDeposit).toBeNull();
+  });
+
+  it("still reports a landed deposit as a success when the wait can't be recorded", async () => {
+    // A position figure that isn't a number can't give the wait a target.
+    mockGetEarnState.mockReturnValue({
+      ...mockGetEarnState(),
+      selectedAssetDecimals: undefined,
+    });
+    const errorSpy = jest.spyOn(logger, "error").mockImplementation(() => {});
+    mockSignTransaction.mockReturnValue("signed-xdr");
+    mockSubmitTransaction.mockResolvedValue(submitOutcome({ hash: "tx-hash" }));
+
+    const { result } = renderHook(() => useEarnTransaction(baseParams));
+
+    await act(async () => {
+      await result.current.submit(deposit);
+    });
+
+    expect(result.current.status).toBe("success");
+    expect(mockTrackEarnDepositFail).not.toHaveBeenCalled();
+    expect(usePositionsStore.getState().awaitedDeposit).toBeNull();
+    errorSpy.mockRestore();
   });
 
   it("sets status to error, sourcing the message from the store, when signTransaction returns null", async () => {
@@ -272,6 +341,7 @@ describe("useEarnTransaction", () => {
       expect.objectContaining({
         assetCode: "USDC",
         poolId: "pool-1",
+        source: "home",
         errorCode: "op_underfunded",
       }),
     );
@@ -457,6 +527,7 @@ describe("useEarnTransaction", () => {
       expect(mockTrackEarnDepositFail).toHaveBeenCalledWith({
         assetCode: "USDC",
         poolId: "pool-1",
+        source: "home",
         errorCode: "op_underfunded",
         volume: {
           identity: usdcIdentity,
@@ -533,9 +604,13 @@ describe("useEarnTransaction", () => {
     it("does NOT write status when a submit resolves successfully AFTER being abandoned", async () => {
       mockGetEarnState.mockReturnValue({
         pool: { id: "pool-1" },
+        selectedAssetId: "CUSDC",
         selectedAssetCode: "USDC",
         selectedAssetApy: 0.05,
+        selectedAssetDecimals: 7,
+        currentPositionTokens: "0",
         didSwapInFlow: true,
+        source: "position_row",
       });
       mockSignTransaction.mockReturnValue("signed-xdr");
       let resolveSubmit: (outcome: SubmitTransactionOutcome) => void = () => {};
@@ -564,9 +639,13 @@ describe("useEarnTransaction", () => {
       });
       mockGetEarnState.mockReturnValue({
         pool: null,
+        selectedAssetId: "",
         selectedAssetCode: "",
         selectedAssetApy: null,
+        selectedAssetDecimals: 7,
+        currentPositionTokens: "0",
         didSwapInFlow: false,
+        source: "home",
       });
 
       await act(async () => {
@@ -582,10 +661,19 @@ describe("useEarnTransaction", () => {
       expect(mockTrackEarnDepositSuccess).toHaveBeenCalledWith({
         assetCode: "USDC",
         poolId: "pool-1",
+        source: "position_row",
         apy: 0.05,
         viaSwap: true,
         volume: expect.objectContaining({ amount: 10 }),
       });
+      // Closing away is when Home needs to wait for the deposit most.
+      expect(usePositionsStore.getState().awaitedDeposit).toEqual(
+        expect.objectContaining({
+          poolId: "pool-1",
+          assetId: "CUSDC",
+          minTokens: "5",
+        }),
+      );
     });
 
     it("does NOT write status when a submit rejects AFTER being abandoned", async () => {

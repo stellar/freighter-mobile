@@ -1545,7 +1545,10 @@
     "title": "Deposited {{tokenCode}}",
     "to": "To",
     "deposited": "Deposited",
-    "fee": "Fee"
+    "fee": "Fee",
+    "withdrawTitle": "Withdrew {{tokenCode}}",
+    "from": "From",
+    "withdrew": "Withdrew"
   },
   "earnSwapProcessing": {
     "inProgress": "Swap in progress",
@@ -1554,5 +1557,54 @@
   "earnSwap": {
     "swappedToast": "{{sourceCode}} swapped to {{destination}}",
     "settings": "Swap settings"
+  },
+  "positions": {
+    "tab": "Positions",
+    "error": {
+      "title": "Failed to fetch your positions.",
+      "description": "Your positions could not be fetched at this time."
+    },
+    "empty": {
+      "title": "Start earning",
+      "description": "Put your tokens to work and earn rewards while keeping track of your positions.",
+      "earnUpTo": "Earn up to",
+      "perYear": "year on your tokens",
+      "startEarning": "Start Earning"
+    },
+    "netApy": "{{rate}} Net APY",
+    "apy": "{{rate}} APY",
+    "deposit": "Deposit",
+    "unnamedPool": "Blend pool",
+    "poolScreen": {
+      "title": "Position details",
+      "suppliedTokens": "Supplied tokens"
+    },
+    "tokenScreen": {
+      "title": "{{tokenCode}} position",
+      "yourPosition": "Your position",
+      "overview": "Overview",
+      "yourDeposits": "Your deposits",
+      "yourEarnings": "Your earnings",
+      "depositApy": "{{rate}} Deposit APY",
+      "estMonthlyEarnings": "Est. monthly earnings",
+      "estYearlyEarnings": "Est. yearly earnings",
+      "activity": "Activity"
+    },
+    "overview": {
+      "aboutPool": "About this pool",
+      "aboutPoolBody": "Deposit supported tokens into Blend's {{pool}} to earn variable yield from lending. APY may change over time based on market conditions.",
+      "provider": "Provider",
+      "fundsManaged": "How funds are managed",
+      "fundsManagedBody": "Your tokens are supplied to Blend's lending pool, where borrowers can access liquidity by providing collateral. Interest earned depends on borrowing activity and pool utilization.",
+      "risks": "Risks",
+      "risksBody": "Depositing tokens involves smart contract, liquidation, and liquidity risks. Returns are not guaranteed, and withdrawals depend on available pool liquidity.",
+      "links": "Links",
+      "viewPoolOnBlend": "View pool on Blend",
+      "viewContract": "View contract on Stellar Expert"
+    },
+    "activity": {
+      "deposit": "Deposit",
+      "withdraw": "Withdraw"
+    }
   }
 }

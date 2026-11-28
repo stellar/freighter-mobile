@@ -151,6 +151,10 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   const setHasSeenEarnIntro = usePreferencesStore(
     (state) => state.setHasSeenEarnIntro,
   );
+  // A visit prefilled from a token's position never shows the intro (see
+  // `useEarnStore.isPrefilledEntry`).
+  const isPrefilledEntry = useEarnStore((state) => state.isPrefilledEntry);
+  const shouldShowIntro = !hasSeenEarnIntro && !isPrefilledEntry;
 
   // The route reports no view of its own (see `analyticsConfig`): the intro
   // is drawn in the picker's place on a first visit, and the funnel's
@@ -159,14 +163,14 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // route's view was.
   useFocusEffect(
     useCallback(() => {
-      if (!hasSeenEarnIntro) {
+      if (shouldShowIntro) {
         return;
       }
       track(
         AnalyticsEvent.SCREEN_VIEWED,
         buildScreenViewedProps(AnalyticsEvent.VIEW_EARN_TOKEN_PICKER),
       );
-    }, [hasSeenEarnIntro]),
+    }, [shouldShowIntro]),
   );
   const notEnoughBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const receiveFundsBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -960,7 +964,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // shows immediately on entry, with the token fetch resolving behind it --
   // the pitch does not depend on the token list, and gating it on the fetch
   // would flash a spinner before the first thing a new user ever sees.
-  if (!hasSeenEarnIntro) {
+  if (shouldShowIntro) {
     return (
       <EarnIntroScreen
         onContinue={handleContinueEarnIntro}

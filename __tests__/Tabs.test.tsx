@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import Tabs from "components/sds/Tabs";
+import { getThemeColors } from "config/colors";
+import { DEFAULT_COLOR_SCHEME } from "config/theme";
 import React from "react";
+import { StyleSheet } from "react-native";
 
 const OPTIONS = [
   { label: "Receive", value: "receive" },
@@ -18,6 +21,55 @@ describe("Tabs Component", () => {
     );
     expect(screen.getByText("Receive")).toBeTruthy();
     expect(screen.getByText("Scan")).toBeTruthy();
+  });
+
+  describe("small", () => {
+    // A token position's tabs: 14pt labels, the selected one blue on a light
+    // blue pill.
+    it("sets both labels in Text/SM/600 on a 20pt line, the selected one blue", () => {
+      render(
+        <Tabs
+          size="sm"
+          sizing="fill"
+          options={OPTIONS}
+          selectedValue="receive"
+          onValueChange={jest.fn()}
+        />,
+      );
+
+      const selected = StyleSheet.flatten(
+        screen.getByText("Receive").props.style,
+      );
+      const other = StyleSheet.flatten(screen.getByText("Scan").props.style);
+      expect(selected).toMatchObject({
+        fontSize: 14,
+        lineHeight: 20,
+        fontWeight: "600",
+        color: getThemeColors(DEFAULT_COLOR_SCHEME).lilac[9],
+      });
+      expect(other).toMatchObject({
+        fontSize: 14,
+        fontWeight: "600",
+        color: getThemeColors(DEFAULT_COLOR_SCHEME).text.secondary,
+      });
+    });
+
+    it("gives each tab a test id under the control's", () => {
+      const onValueChange = jest.fn();
+      render(
+        <Tabs
+          testID="tabs"
+          size="sm"
+          options={OPTIONS}
+          selectedValue="receive"
+          onValueChange={onValueChange}
+        />,
+      );
+
+      fireEvent.press(screen.getByTestId("tabs-scan"));
+
+      expect(onValueChange).toHaveBeenCalledWith("scan");
+    });
   });
 
   it("fires onValueChange with the pressed option value", () => {

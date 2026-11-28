@@ -16,6 +16,7 @@ import { mapNetworkToNetworkDetails } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useEarnStore } from "ducks/earn";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { getBalanceByContractId } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay } from "helpers/formatAmount";
@@ -103,6 +104,9 @@ const EarnProcessingScreen: React.FC<EarnProcessingScreenProps> = ({
   const selectedAssetId = useEarnStore((state) => state.selectedAssetId);
   const selectedAssetCode = useEarnStore((state) => state.selectedAssetCode);
   const pool = useEarnStore((state) => state.pool);
+  const transactionXDR = useTransactionBuilderStore(
+    (state) => state.transactionXDR,
+  );
   const hasEmittedSuccessView = useRef(false);
 
   const networkDetails = useMemo(
@@ -279,8 +283,13 @@ const EarnProcessingScreen: React.FC<EarnProcessingScreenProps> = ({
         modalRef={depositDetailsSheetRef}
         customContent={
           <EarnDepositDetailsBottomSheet
-            tokenAmount={tokenAmount}
+            tokenAmount={tokenAmount || "0"}
+            tokenCode={selectedAssetCode}
+            token={depositBalance}
+            poolName={pool?.name ?? null}
             transactionHash={transactionHash}
+            // The envelope this deposit submitted.
+            transactionXdr={transactionXDR}
             onClose={handleCloseDepositDetails}
           />
         }

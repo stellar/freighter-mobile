@@ -1,9 +1,18 @@
 import { HeaderHeightContext } from "@react-navigation/elements";
 import { fireEvent, act, within } from "@testing-library/react-native";
+import { POOL_ID, poolPosition } from "__tests__/support/positionFixtures";
+import BigNumber from "bignumber.js";
 import { getFloatingTabBarClearance } from "components/FloatingTabBar/geometry";
 import { getNavigationHeaderHeight } from "components/layout/CustomNavigationHeader";
 import HomeScreen from "components/screens/HomeScreen";
-import { MANAGE_TOKENS_ROUTES, ROOT_NAVIGATOR_ROUTES } from "config/routes";
+import {
+  EARN_ROUTES,
+  MANAGE_TOKENS_ROUTES,
+  ROOT_NAVIGATOR_ROUTES,
+} from "config/routes";
+import { useEarnStore } from "ducks/earn";
+import { TabType, useHomeTabsStore } from "ducks/homeTabs";
+import { positionsKeyFor, usePositionsStore } from "ducks/positions";
 import { hostParentOf, renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import * as RN from "react-native";
@@ -130,10 +139,13 @@ let mockIsLoadingBalances = false;
 // Drives the tokens tab's empty state, which decides both tabs' button style.
 let mockIsFunded = true;
 
+// Empty by default; a test that needs Send, Swap or Earn enabled holds some.
+let mockBalances: Record<string, unknown> = {};
+
 jest.mock("ducks/balances", () => ({
   useBalancesStore: jest.fn((selector) => {
     const mockState = {
-      balances: {},
+      balances: mockBalances,
       pricedBalances: {},
       isLoading: mockIsLoadingBalances,
       isFunded: mockIsFunded,
@@ -324,6 +336,25 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
   setItem: jest.fn().mockResolvedValue(undefined),
 }));
 
+// Positions refresh on focus, which needs a navigator; their own tests cover
+// them (usePositionsRefresh.test).
+jest.mock(
+  "components/screens/PositionsScreen/hooks/usePositionsRefresh",
+  () => ({
+    usePositionsRefresh: jest.fn(),
+    useAwaitedDepositFollow: jest.fn(),
+  }),
+);
+
+const mockTrackPoolSelected = jest.fn();
+const mockTrackEmptyCtaSelected = jest.fn();
+jest.mock("services/analytics/positions", () => ({
+  trackPositionsPoolSelected: (...args: unknown[]) =>
+    mockTrackPoolSelected(...args),
+  trackPositionsEmptyCtaSelected: (...args: unknown[]) =>
+    mockTrackEmptyCtaSelected(...args),
+}));
+
 // NativeWind doesn't turn classes into styles in tests, so a view's classes
 // are read off its `className`. They are arbitrary values on purpose: with its
 // rem at 14, `px-6` comes out at 21pt, not Figma's 24.
@@ -354,6 +385,9 @@ describe("HomeScreen", () => {
     mockIsCollectiblesLoading = false;
     mockBottomInset = 0;
     mockRemoteConfig = defaultMockRemoteConfig();
+    mockBalances = {};
+    // Home's open tab outlives Home, so a test must not inherit the last's.
+    useHomeTabsStore.setState({ activeTab: TabType.TOKENS });
   });
 
   const buildProps = () => ({
@@ -958,6 +992,119 @@ describe("HomeScreen", () => {
       expect(
         getByTestId("home-add-collectible-button").props.accessibilityState,
       ).toEqual(expect.objectContaining({ disabled: false }));
+    });
+  });
+  describe("Positions", () => {
+    const positionsConfig = () => ({
+      ...defaultMockRemoteConfig(),
+      positions_enabled: true,
+    });
+
+    const loadPositions = (positions = [poolPosition()]) =>
+      usePositionsStore.setState({
+        fetchedKey: positionsKeyFor("test-public-key", mockNetwork as never),
+        positions,
+        hasLoaded: true,
+      });
+
+    beforeEach(() => {
+      usePositionsStore.getState().reset();
+      useEarnStore.getState().resetEarn();
+    });
+
+    it("shows the tab once its flag is on", () => {
+      const { queryByTestId, rerender } = renderHomeScreen();
+      expect(queryByTestId("tab-positions")).toBeNull();
+
+      mockRemoteConfig = positionsConfig();
+      rerender(<HomeScreen {...buildProps()} />);
+
+      expect(queryByTestId("tab-positions")).toBeTruthy();
+    });
+
+    it("opens a pool's position from its card, reporting it", () => {
+      mockRemoteConfig = positionsConfig();
+      loadPositions();
+      useHomeTabsStore.setState({ activeTab: TabType.POSITIONS });
+      const props = buildProps();
+
+      const { getByTestId } = renderWithProviders(<HomeScreen {...props} />);
+      fireEvent.press(getByTestId(`pool-card-${POOL_ID}`));
+
+      expect(mockTrackPoolSelected).toHaveBeenCalledWith({
+        poolId: POOL_ID,
+        protocol: "blend",
+      });
+      expect(
+        (props.navigation as unknown as { navigate: jest.Mock }).navigate,
+      ).toHaveBeenCalledWith(ROOT_NAVIGATOR_ROUTES.POOL_POSITION_SCREEN, {
+        poolId: POOL_ID,
+      });
+    });
+
+    it("starts Earn from the empty tab, tagged as such and reported", () => {
+      mockRemoteConfig = positionsConfig();
+      loadPositions([]);
+      useHomeTabsStore.setState({ activeTab: TabType.POSITIONS });
+      const props = buildProps();
+
+      const { getByTestId } = renderWithProviders(<HomeScreen {...props} />);
+      fireEvent.press(getByTestId("positions-start-earning-button"));
+
+      expect(mockTrackEmptyCtaSelected).toHaveBeenCalled();
+      expect(useEarnStore.getState().source).toBe("positions_empty");
+      expect(
+        (props.navigation as unknown as { navigate: jest.Mock }).navigate,
+      ).toHaveBeenCalledWith(ROOT_NAVIGATOR_ROUTES.EARN_STACK, {
+        screen: EARN_ROUTES.EARN_TOKEN_PICKER_SCREEN,
+      });
+    });
+
+    it("tags the tab's Deposit button's Earn session", () => {
+      mockRemoteConfig = positionsConfig();
+      loadPositions();
+      useHomeTabsStore.setState({ activeTab: TabType.POSITIONS });
+
+      const { getByTestId } = renderHomeScreen();
+      fireEvent.press(getByTestId("positions-deposit-button"));
+
+      expect(useEarnStore.getState().source).toBe("positions_pill");
+    });
+
+    it("tags the Earn button's session as Home's", () => {
+      mockBalances = { XLM: { total: new BigNumber(10) } };
+      useEarnStore.getState().setSource("positions_pill");
+
+      const { getByTestId } = renderHomeScreen();
+      fireEvent.press(getByTestId("icon-button-earn"));
+
+      expect(useEarnStore.getState().source).toBe("home");
+    });
+
+    it("goes back to Tokens when Positions go away", () => {
+      useHomeTabsStore.setState({ activeTab: TabType.POSITIONS });
+
+      renderHomeScreen();
+
+      expect(useHomeTabsStore.getState().activeTab).toBe(TabType.TOKENS);
+    });
+
+    it("refreshes positions on a pull to refresh", async () => {
+      mockRemoteConfig = positionsConfig();
+      const fetchPositions = jest.fn().mockResolvedValue(null);
+      usePositionsStore.setState({ fetchPositions });
+
+      const { getByTestId } = renderHomeScreen();
+      await act(async () => {
+        await getByTestId(
+          "home-screen-scrollview",
+        ).props.refreshControl.props.onRefresh();
+      });
+
+      expect(fetchPositions).toHaveBeenCalledWith({
+        publicKey: "test-public-key",
+        network: "TESTNET",
+      });
     });
   });
 });

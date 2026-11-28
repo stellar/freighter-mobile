@@ -1000,6 +1000,7 @@ describe("EarnAmountScreen", () => {
       expect(mockTrack).toHaveBeenCalledWith("earn.pool_details_opened", {
         protocol: "blend",
         pool_id: POOL_ID,
+        source: "earn_amount",
       });
     });
 

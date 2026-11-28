@@ -496,6 +496,7 @@ export const trackEarnDepositSuccess = (
     pool_id: data.poolId,
     apy: data.apy,
     via_swap: data.viaSwap,
+    source: data.source,
     ...(volume ? depositVolumeProps(volume) : {}),
   });
 };
@@ -511,6 +512,7 @@ export const trackEarnDepositFail = (data: EarnDepositErrorEvent): void => {
   trackEarn(AnalyticsEvent.EARN_DEPOSIT_FAIL, {
     asset_code: data.assetCode,
     pool_id: data.poolId,
+    source: data.source,
     reason_code: volume?.reasonCode ?? data.errorCode ?? "unknown",
     ...(volume
       ? {

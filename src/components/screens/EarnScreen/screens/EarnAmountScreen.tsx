@@ -512,7 +512,10 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
 
   // The pool card is the only route into `PoolDetailsBottomSheet`.
   const handleOpenPoolDetails = useCallback(() => {
-    trackEarnPoolDetailsOpened({ poolId: pool?.id ?? "" });
+    trackEarnPoolDetailsOpened({
+      poolId: pool?.id ?? "",
+      source: "earn_amount",
+    });
     presentOverDismissedKeyboard(poolDetailsBottomSheetModalRef);
   }, [presentOverDismissedKeyboard, pool?.id]);
 

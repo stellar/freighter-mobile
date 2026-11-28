@@ -27,6 +27,9 @@ const BOOLEAN_FLAGS = [
   // Earn's Home entry point. OFF in production until Amplitude turns it on;
   // ON in dev builds, which can't fetch flags.
   "earn_deposit",
+  // Home's Positions tab, the extension's flag of the same name. OFF in
+  // production until Amplitude turns it on; ON in dev builds.
+  "positions_enabled",
 ] as const;
 
 const VERSION_FLAGS = ["required_app_version", "latest_app_version"] as const;
@@ -85,6 +88,7 @@ const INITIAL_REMOTE_CONFIG_STATE =
         // without a release.
         use_balances_v2: false,
         earn_deposit: true,
+        positions_enabled: true,
         required_app_version: currentAppVersion,
         latest_app_version: currentAppVersion,
         app_update_banner_text: {
@@ -116,6 +120,8 @@ const INITIAL_REMOTE_CONFIG_STATE =
         use_balances_v2: false,
         // OFF until Amplitude turns Earn on.
         earn_deposit: false,
+        // OFF until Amplitude turns Positions on.
+        positions_enabled: false,
         required_app_version: currentAppVersion,
         latest_app_version: currentAppVersion,
         app_update_banner_text: {

@@ -1,9 +1,12 @@
 import BigNumber from "bignumber.js";
+import { AWAITED_DEPOSIT_MS } from "components/screens/PositionsScreen/helpers/awaitedDeposit";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
+import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useEarnStore } from "ducks/earn";
+import { usePositionsStore } from "ducks/positions";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { formatTokenIdentifier, getTokenIdentifier } from "helpers/balances";
 import { startConfirmationPriceSnapshot } from "helpers/confirmationPriceSnapshot";
@@ -207,11 +210,20 @@ export const useEarnTransaction = ({
       // The outcome is reported even when the user closes before it settles,
       // and leaving Earn resets the earn duck, so read what the deposit is
       // about now.
-      const { pool, selectedAssetCode, selectedAssetApy, didSwapInFlow } =
-        useEarnStore.getState();
+      const {
+        pool,
+        selectedAssetId,
+        selectedAssetCode,
+        selectedAssetApy,
+        selectedAssetDecimals,
+        currentPositionTokens,
+        didSwapInFlow,
+        source,
+      } = useEarnStore.getState();
       const depositIdentifiers = {
         assetCode: selectedAssetCode,
         poolId: pool?.id,
+        source,
       };
 
       setStatus("submitting");
@@ -298,6 +310,32 @@ export const useEarnTransaction = ({
           viaSwap: didSwapInFlow,
           volume,
         });
+
+        // The positions indexer can lag a landed deposit, so Home's Positions
+        // re-reads until the row shows it (see AwaitedDeposit). Recorded even
+        // when the user closed away, which is when Home needs it most, and
+        // never allowed to turn a landed deposit into a failure.
+        if (pool) {
+          try {
+            usePositionsStore.getState().setAwaitedDeposit({
+              publicKey: account.publicKey,
+              network,
+              poolId: pool.id,
+              assetId: selectedAssetId,
+              minTokens: new BigNumber(currentPositionTokens || "0")
+                .shiftedBy(-selectedAssetDecimals)
+                .plus(new BigNumber(submission.amount).dividedBy(2))
+                .toFixed(),
+              expiresAt: Date.now() + AWAITED_DEPOSIT_MS,
+            });
+          } catch (awaitError) {
+            logger.error(
+              "useEarnTransaction",
+              "Failed to record the awaited deposit",
+              awaitError,
+            );
+          }
+        }
 
         // The `await` above is the abandonment window: the user may have
         // closed away from this submit (or, in principle, started another)

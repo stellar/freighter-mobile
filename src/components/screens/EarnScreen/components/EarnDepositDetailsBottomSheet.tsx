@@ -6,7 +6,7 @@ import {
   EarnDetailsCard,
   EarnDetailsRow,
 } from "components/screens/EarnScreen/components/EarnDetailsCard";
-import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
+import { getPositionPoolName } from "components/screens/PositionsScreen/helpers/positionFigures";
 import SignTransactionDetailsBottomSheet, {
   SignTransactionDetailsHeader,
 } from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
@@ -15,72 +15,88 @@ import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import {
-  NATIVE_TOKEN_CODE,
-  mapNetworkToNetworkDetails,
-} from "config/constants";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { logger } from "config/logger";
+import { Balance, Token } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { useBalancesStore } from "ducks/balances";
-import { useEarnStore } from "ducks/earn";
-import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { getBalanceByContractId } from "helpers/balances";
 import { formatTransactionDate } from "helpers/date";
-import { formatTokenForDisplay, stroopToXlm } from "helpers/formatAmount";
+import {
+  NO_FIAT_VALUE,
+  formatTokenForDisplay,
+  stroopToXlm,
+} from "helpers/formatAmount";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { getTransactionDetails, TransactionDetail } from "services/stellar";
 
+/** Which way the money moved. */
+export type EarnDetailsType = "deposit" | "withdraw";
+
+/** What can be tapped inside the sheet, for the caller's analytics. */
+export type EarnDetailsAction = "transaction_details" | "explorer";
+
 export interface EarnDepositDetailsBottomSheetProps {
-  /** The deposited amount, in display (non-raw) units. */
-  tokenAmount: string;
-  /** The submitted deposit's hash. */
+  /** Deposit (the default) or withdrawal. */
+  type?: EarnDetailsType;
+  /** The amount moved, in display units and unsigned; null reads "--". */
+  tokenAmount: string | null;
+  tokenCode: string;
+  /** The token, for its icon; none leaves the icon out. */
+  token?: Token | Balance;
+  /** The pool's name as the backend sent it. */
+  poolName: string | null;
+  /** The transaction's hash; until it's known the date and fee read "--". */
   transactionHash: string | null;
+  /** The envelope "Transaction details" decodes; without it there is none. */
+  transactionXdr: string | null;
+  /** When it happened, if the caller knows: shown until the network's date. */
+  occurredAt?: string;
   onClose: () => void;
+  /**
+   * Called when Transaction details or the explorer link is tapped. Position
+   * Activity passes it; the deposit flow doesn't.
+   */
+  onAction?: (action: EarnDetailsAction) => void;
 }
 
 /**
- * The receipt for a completed deposit, opened from "View transaction" on the
- * success screen: where it went, how much, its status and the fee actually
- * charged, with the full decoded transaction one tap away and a link to
- * stellar.expert.
+ * The record of a deposit or withdrawal: where the money went or came from,
+ * how much, its status and the fee actually charged, with the full decoded
+ * transaction one tap away and a link to stellar.expert. Opened from "View
+ * transaction" on the deposit's success screen, and from a position's
+ * Activity rows.
+ *
+ * The amount carries no sign: the title already says which way it moved, so
+ * the sheet reads the same from either entry point, as in the extension.
  *
  * The date and fee come from the network once the hash is known; until then
- * they read "--".
+ * they read "--", the date unless the caller knows it.
  */
 export const EarnDepositDetailsBottomSheet: React.FC<
   EarnDepositDetailsBottomSheetProps
-> = ({ tokenAmount, transactionHash, onClose }) => {
+> = ({
+  type = "deposit",
+  tokenAmount,
+  tokenCode,
+  token,
+  poolName,
+  transactionHash,
+  transactionXdr,
+  occurredAt,
+  onClose,
+  onAction,
+}) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { network } = useAuthenticationStore();
-  const { pricedBalances } = useBalancesStore();
   const { open: openInAppBrowser } = useInAppBrowser();
-
-  const selectedAssetId = useEarnStore((state) => state.selectedAssetId);
-  const selectedAssetCode = useEarnStore((state) => state.selectedAssetCode);
-  const pool = useEarnStore((state) => state.pool);
-
-  const networkDetails = useMemo(
-    () => mapNetworkToNetworkDetails(network),
-    [network],
-  );
-
-  const depositBalance = useMemo(
-    () =>
-      getBalanceByContractId(selectedAssetId, pricedBalances, networkDetails),
-    [selectedAssetId, pricedBalances, networkDetails],
-  );
+  const isWithdraw = type === "withdraw";
+  // Deposits keep the ids they always had.
+  const testIDPrefix = `earn-${type}-details`;
 
   const [onChainDetails, setOnChainDetails] =
     useState<TransactionDetail | null>(null);
@@ -98,16 +114,15 @@ export const EarnDepositDetailsBottomSheet: React.FC<
       .catch((error) => {
         logger.error(
           "EarnDepositDetailsBottomSheet",
-          "Failed to get the deposit's details",
+          "Failed to get the transaction's details",
           error,
         );
       });
   }, [transactionHash, network]);
 
   // The full decoded transaction, the same sheet the review offers.
-  const { transactionXDR } = useTransactionBuilderStore();
   const transactionDetails = useSignTransactionDetails({
-    xdr: transactionXDR || "",
+    xdr: transactionXdr || "",
   });
   const transactionDetailsSheetRef = useRef<BottomSheetModal>(null);
 
@@ -124,10 +139,16 @@ export const EarnDepositDetailsBottomSheet: React.FC<
     [handleDismissTransactionDetails],
   );
 
+  const handleViewTransactionDetails = useCallback(() => {
+    onAction?.("transaction_details");
+    transactionDetailsSheetRef.current?.present();
+  }, [onAction]);
+
   const handleViewOnExplorer = useCallback(() => {
     if (!transactionHash) {
       return;
     }
+    onAction?.("explorer");
     const explorerUrl = `${getStellarExpertUrl(network)}/tx/${transactionHash}`;
     openInAppBrowser(explorerUrl).catch((err) =>
       logger.error(
@@ -136,15 +157,19 @@ export const EarnDepositDetailsBottomSheet: React.FC<
         err,
       ),
     );
-  }, [transactionHash, network, openInAppBrowser]);
+  }, [transactionHash, network, openInAppBrowser, onAction]);
+
+  const date = onChainDetails?.createdAt ?? occurredAt;
 
   const destinationRows: EarnDetailsRow[] = [
     {
-      key: "to",
-      label: t("earnDepositDetails.to"),
+      key: "pool",
+      label: isWithdraw
+        ? t("earnDepositDetails.from")
+        : t("earnDepositDetails.to"),
       value: (
-        <Text md medium primary testID="earn-deposit-details-pool">
-          {pool?.name ? getPoolDisplayName(pool.name, t) : "--"}
+        <Text md medium primary testID={`${testIDPrefix}-pool`}>
+          {getPositionPoolName(poolName, t)}
           <Text md medium secondary>
             {` · ${t("earnTokenPicker.protocolName")}`}
           </Text>
@@ -152,10 +177,15 @@ export const EarnDepositDetailsBottomSheet: React.FC<
       ),
     },
     {
-      key: "deposited",
-      label: t("earnDepositDetails.deposited"),
-      value: `-${formatTokenForDisplay(tokenAmount || "0", selectedAssetCode)}`,
-      testID: "earn-deposit-details-amount",
+      key: "amount",
+      label: isWithdraw
+        ? t("earnDepositDetails.withdrew")
+        : t("earnDepositDetails.deposited"),
+      value:
+        tokenAmount === null
+          ? NO_FIAT_VALUE
+          : formatTokenForDisplay(tokenAmount, tokenCode),
+      testID: `${testIDPrefix}-amount`,
     },
   ];
 
@@ -164,7 +194,7 @@ export const EarnDepositDetailsBottomSheet: React.FC<
       key: "status",
       label: t("transactionDetailsBottomSheet.status"),
       value: t("transactionDetailsBottomSheet.statusSuccess"),
-      testID: "earn-deposit-details-status",
+      testID: `${testIDPrefix}-status`,
     },
     {
       key: "fee",
@@ -174,30 +204,30 @@ export const EarnDepositDetailsBottomSheet: React.FC<
             stroopToXlm(onChainDetails.fee).toString(),
             NATIVE_TOKEN_CODE,
           )
-        : "--",
-      testID: "earn-deposit-details-fee",
+        : NO_FIAT_VALUE,
+      testID: `${testIDPrefix}-fee`,
     },
   ];
 
   return (
-    <View className="gap-[24px]" testID="earn-deposit-details-sheet">
+    <View className="gap-[24px]" testID={`${testIDPrefix}-sheet`}>
       <View className="flex-row items-start justify-between">
         <View className="flex-1 flex-row items-center gap-[16px]">
-          {depositBalance && <TokenIcon token={depositBalance} size="lg" />}
+          {token && <TokenIcon token={token} size="lg" />}
           <View className="flex-1">
             <Text lg semiBold primary numberOfLines={1}>
-              {t("earnDepositDetails.title", { tokenCode: selectedAssetCode })}
+              {isWithdraw
+                ? t("earnDepositDetails.withdrawTitle", { tokenCode })
+                : t("earnDepositDetails.title", { tokenCode })}
             </Text>
-            <Text sm medium secondary>
-              {onChainDetails
-                ? formatTransactionDate(onChainDetails.createdAt)
-                : "--"}
+            <Text sm medium secondary testID={`${testIDPrefix}-date`}>
+              {date ? formatTransactionDate(date) : NO_FIAT_VALUE}
             </Text>
           </View>
         </View>
         <BottomSheetCloseButton
           onPress={onClose}
-          testID="earn-deposit-details-close"
+          testID={`${testIDPrefix}-close`}
         />
       </View>
 
@@ -207,9 +237,9 @@ export const EarnDepositDetailsBottomSheet: React.FC<
 
         {transactionDetails && (
           <TouchableOpacity
-            onPress={() => transactionDetailsSheetRef.current?.present()}
+            onPress={handleViewTransactionDetails}
             className="flex-row items-center gap-[4px] rounded-[16px] border border-gray-5 bg-background-primary px-[16px] py-[12px]"
-            testID="earn-deposit-details-transaction-details"
+            testID={`${testIDPrefix}-transaction-details`}
           >
             <Icon.List size={16} color={themeColors.foreground.primary} />
             <Text md semiBold primary>
@@ -226,7 +256,7 @@ export const EarnDepositDetailsBottomSheet: React.FC<
           onPress={handleViewOnExplorer}
           icon={<Icon.LinkExternal01 size={18} />}
           iconPosition={IconPosition.RIGHT}
-          testID="earn-deposit-details-view-on-explorer"
+          testID={`${testIDPrefix}-view-on-explorer`}
         >
           {t("transactionDetailsBottomSheet.viewOnExpert")}
         </Button>

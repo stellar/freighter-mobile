@@ -13,6 +13,7 @@ import EarnTokenPickerScreen from "components/screens/EarnScreen/screens/EarnTok
 import { SwapDetailsBottomSheet } from "components/screens/SwapScreen/components";
 import { NETWORKS } from "config/constants";
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
+import { useEarnStore } from "ducks/earn";
 import { usePreferencesStore } from "ducks/preferences";
 import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
@@ -312,6 +313,26 @@ describe("EarnTokenPickerScreen", () => {
       expect(mockTrack.mock.calls.filter(isPickerView)).toEqual([
         ["screen.viewed", { screen_name: "earn_select_token", flow: "earn" }],
       ]);
+    });
+
+    // A token's Deposit on its position opens Earn on the amount screen,
+    // with the picker mounted under it for Back. The intro there would report
+    // a view nobody saw, and Back would land on it, so that visit skips it,
+    // as the extension's does. It isn't marked as seen.
+    it("skips the intro for a visit prefilled from a position", () => {
+      const { track: mockTrack } = jest.requireMock("services/analytics/core");
+      usePreferencesStore.getState().setHasSeenEarnIntro(false);
+      useEarnStore.getState().setIsPrefilledEntry(true);
+
+      const { queryByTestId } = renderScreen();
+
+      expect(queryByTestId("earn-intro-screen")).toBeNull();
+      expect(mockTrack).not.toHaveBeenCalledWith(
+        "screen.viewed",
+        expect.objectContaining({ screen_name: "earn_intro" }),
+      );
+      expect(usePreferencesStore.getState().hasSeenEarnIntro).toBe(false);
+      useEarnStore.getState().resetEarn();
     });
 
     it("reports earn_select_token when it opens on the picker", () => {

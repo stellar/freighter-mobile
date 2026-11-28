@@ -40,6 +40,18 @@ interface EarnState {
    * the session, whichever token is deposited.
    */
   didSwapInFlow: boolean;
+  /**
+   * Where this Earn session was opened from, carried on its deposit events
+   * as `source`, as in the extension.
+   */
+  source: EarnSource;
+  /**
+   * This session opened on the amount screen, prefilled from a token's
+   * position, with the token picker mounted under it for Back. The picker
+   * then skips the first-visit intro, as the extension's prefilled entry
+   * does: it would report a view nobody saw, and Back would land on it.
+   */
+  isPrefilledEntry: boolean;
 
   setPool: (pool: BlendCatalogPool | null) => void;
   selectAsset: (params: {
@@ -50,8 +62,20 @@ interface EarnState {
   }) => void;
   setCurrentPositionTokens: (tokens: string) => void;
   setDidSwapInFlow: (didSwap: boolean) => void;
+  setSource: (source: EarnSource) => void;
+  setIsPrefilledEntry: (isPrefilledEntry: boolean) => void;
   resetEarn: () => void;
 }
+
+/**
+ * Where an Earn session starts: Home's Earn tile, a token's Deposit on its
+ * position screen, the Positions tab's Deposit button, or its empty state.
+ */
+export type EarnSource =
+  | "home"
+  | "position_row"
+  | "positions_pill"
+  | "positions_empty";
 
 const initialState = {
   pool: null,
@@ -61,6 +85,8 @@ const initialState = {
   selectedAssetDecimals: DEFAULT_DECIMALS,
   currentPositionTokens: "0",
   didSwapInFlow: false,
+  source: "home" as EarnSource,
+  isPrefilledEntry: false,
 };
 
 export const useEarnStore = create<EarnState>((set) => ({
@@ -87,6 +113,10 @@ export const useEarnStore = create<EarnState>((set) => ({
     set({ currentPositionTokens }),
 
   setDidSwapInFlow: (didSwapInFlow) => set({ didSwapInFlow }),
+
+  setSource: (source) => set({ source }),
+
+  setIsPrefilledEntry: (isPrefilledEntry) => set({ isPrefilledEntry }),
 
   resetEarn: () => set({ ...initialState }),
 }));

@@ -182,6 +182,16 @@ export enum AnalyticsEvent {
   EARN_MAX_AMOUNT_SELECTED = "earn.max_amount_selected",
   EARN_XLM_FEE_INSUFFICIENT_SHOWN = "earn.xlm_fee_insufficient_shown",
   EARN_SIMULATION_FAILED = "earn.simulation_failed",
+  // A token position's "Your position" / "Overview" tab changed.
+  EARN_POOL_DETAILS_TAB_SELECTED = "earn.pool_details_tab_selected",
+
+  // Home's Positions tab (services/analytics/positions.ts), named as the
+  // extension's events are.
+  POSITIONS_POOL_SELECTED = "positions.pool_selected",
+  POSITIONS_ROW_SELECTED = "positions.row_selected",
+  POSITIONS_EMPTY_CTA_SELECTED = "positions.empty_cta_selected",
+  POSITIONS_ACTIVITY_ROW_SELECTED = "positions.activity_row_selected",
+  POSITIONS_ACTIVITY_DETAILS_ACTION_SELECTED = "positions.activity_details_action_selected",
 
   // Send collectible
   SEND_COLLECTIBLE_SUCCESS = "collectible_send.completed",
@@ -669,6 +679,12 @@ const getRoutesWithoutAnalytics = (): Set<string> => {
   // reports its own view (VIEW_EARN_TOKEN_PICKER) once the picker is what
   // shows, as the extension does after its intro.
   excludedRoutes.add("EarnTokenPickerScreen");
+
+  // A position's screens report no views, as in the extension, whose are
+  // sheets over Home: opening them is `positions.pool_selected` and
+  // `positions.row_selected`.
+  excludedRoutes.add("PoolPositionScreen");
+  excludedRoutes.add("TokenPositionScreen");
 
   return excludedRoutes;
 };

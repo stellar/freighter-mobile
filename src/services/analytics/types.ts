@@ -1,5 +1,6 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { QRCodeSource } from "config/constants";
+import type { EarnSource } from "ducks/earn";
 import { PriceFreshness, PriceSource } from "helpers/confirmationPriceSnapshot";
 import {
   AssetIdentity,
@@ -139,6 +140,8 @@ export interface EarnDepositSuccessEvent {
   apy?: number | null;
   /** Whether a swap finished earlier in this Earn session. */
   viaSwap: boolean;
+  /** Where the Earn session was opened from. */
+  source: EarnSource;
   /** Absent when the deposited balance couldn't be found. */
   volume?: PaymentVolume;
 }
@@ -146,6 +149,8 @@ export interface EarnDepositSuccessEvent {
 export interface EarnDepositErrorEvent {
   assetCode: string;
   poolId?: string;
+  /** Where the Earn session was opened from. */
+  source: EarnSource;
   errorCode?: string;
   /** Absent for a failure before submission, and when the deposited balance couldn't be found. */
   volume?: FailureVolume;

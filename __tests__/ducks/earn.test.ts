@@ -77,6 +77,8 @@ describe("earn duck", () => {
       .getState()
       .selectAsset({ assetId: USDC_SAC, apy: 0.1, code: "USDC", decimals: 7 });
     useEarnStore.getState().setCurrentPositionTokens("5000000000");
+    useEarnStore.getState().setSource("position_row");
+    useEarnStore.getState().setIsPrefilledEntry(true);
 
     useEarnStore.getState().resetEarn();
 
@@ -84,5 +86,8 @@ describe("earn duck", () => {
     expect(state.pool).toBeNull();
     expect(state.selectedAssetId).toBe("");
     expect(state.currentPositionTokens).toBe("0");
+    // The next visit starts from Home's Earn button unless told otherwise.
+    expect(state.source).toBe("home");
+    expect(state.isPrefilledEntry).toBe(false);
   });
 });

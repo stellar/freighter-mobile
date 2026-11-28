@@ -1,7 +1,22 @@
 import { Text } from "components/sds/Typography";
+import { DEFAULT_COLOR_SCHEME } from "config/theme";
+import { fsValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import React, { useEffect, useState } from "react";
-import { LayoutChangeEvent, TouchableOpacity, View } from "react-native";
+import {
+  LayoutChangeEvent,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from "react-native";
+
+/**
+ * The small tabs' track in light mode, a raw hex in Figma as Home's empty
+ * card is. Dark mode uses the tertiary background.
+ */
+const SMALL_LIGHT_TRACK = "#F5F7F9";
+/** Figma's Text/SM is 14/20; `TEXT_SIZES.sm` stays 14/22 for the rest. */
+const SMALL_LINE_HEIGHT = 20;
 
 interface TabOption {
   label: string;
@@ -20,6 +35,11 @@ interface TabsProps {
   sizing?: "hug" | "fill";
   /** Fixed total width in px. Overrides `sizing`; tabs fill it equally. */
   width?: number;
+  /**
+   * "md" (default), or "sm": the compact pill switch a token's position
+   * uses, with 14pt labels on a light track and the selected tab in blue.
+   */
+  size?: "md" | "sm";
   disabled?: boolean;
   testID?: string;
 }
@@ -38,10 +58,13 @@ const Tabs: React.FC<TabsProps> = ({
   onValueChange,
   sizing = "hug",
   width,
+  size = "md",
   disabled = false,
   testID,
 }) => {
   const { themeColors } = useColors();
+  const isLight = (useColorScheme() ?? DEFAULT_COLOR_SCHEME) === "light";
+  const isSmall = size === "sm";
 
   const hasFixedWidth = typeof width === "number";
   // Fixed width and fill both stretch tabs equally via flex-1; only "hug" sizes
@@ -79,12 +102,32 @@ const Tabs: React.FC<TabsProps> = ({
     return sizing === "fill" ? "w-full" : "self-start";
   })();
 
+  // The small variant's geometry is Figma's in points: arbitrary values,
+  // because NativeWind's rem is 14 here.
+  const containerClass = isSmall
+    ? "rounded-full p-[6px] flex-row gap-[8px]"
+    : "bg-background-tertiary rounded-3xl p-2 flex-row gap-2";
+  const smallTrackStyle = isSmall
+    ? {
+        backgroundColor: isLight
+          ? SMALL_LIGHT_TRACK
+          : themeColors.background.tertiary,
+      }
+    : undefined;
+  const tabShapeClass = isSmall
+    ? "rounded-full py-[6px] px-[10px]"
+    : "rounded-2xl py-2 px-4";
+  const selectedTabClass = isSmall ? "bg-lilac-3" : "bg-lilac-4";
+  const selectedLabelColor = isSmall
+    ? themeColors.lilac[9]
+    : themeColors.lilac[11];
+
   return (
     <View
       testID={testID}
       accessibilityRole="tablist"
-      style={hasFixedWidth ? { width } : undefined}
-      className={`bg-background-tertiary rounded-3xl p-2 flex-row gap-2 ${containerWidthClass} ${
+      style={[hasFixedWidth ? { width } : undefined, smallTrackStyle]}
+      className={`${containerClass} ${containerWidthClass} ${
         isMeasured ? "" : "opacity-0"
       }`}
     >
@@ -102,21 +145,36 @@ const Tabs: React.FC<TabsProps> = ({
             style={
               isHug && maxTabWidth > 0 ? { minWidth: maxTabWidth } : undefined
             }
-            className={`rounded-2xl py-2 px-4 items-center justify-center ${
+            className={`${tabShapeClass} items-center justify-center ${
               tabsFill ? "flex-1" : ""
-            } ${isSelected ? "bg-lilac-4" : ""}`}
+            } ${isSelected ? selectedTabClass : ""}`}
+            testID={testID ? `${testID}-${option.value}` : undefined}
           >
-            <Text
-              md
-              semiBold={isSelected}
-              medium={!isSelected}
-              textAlign="center"
-              color={
-                isSelected ? themeColors.lilac[11] : themeColors.text.secondary
-              }
-            >
-              {option.label}
-            </Text>
+            {isSmall ? (
+              <Text
+                sm
+                semiBold
+                textAlign="center"
+                color={
+                  isSelected ? selectedLabelColor : themeColors.text.secondary
+                }
+                style={{ lineHeight: fsValue(SMALL_LINE_HEIGHT) }}
+              >
+                {option.label}
+              </Text>
+            ) : (
+              <Text
+                md
+                semiBold={isSelected}
+                medium={!isSelected}
+                textAlign="center"
+                color={
+                  isSelected ? selectedLabelColor : themeColors.text.secondary
+                }
+              >
+                {option.label}
+              </Text>
+            )}
           </TouchableOpacity>
         );
       })}

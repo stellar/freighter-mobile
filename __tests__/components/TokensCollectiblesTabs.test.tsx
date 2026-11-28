@@ -454,4 +454,53 @@ describe("TokensCollectiblesTabs", () => {
       expect(screen.queryByTestId("home-add-collectible-button")).toBeNull();
     });
   });
+  describe("Positions tab", () => {
+    const positions = <MockView testID="positions-content" />;
+
+    it("shows between Tokens and Collectibles only when given its contents", () => {
+      const { rerender } = renderTabs();
+      expect(screen.queryByTestId("tab-positions")).toBeNull();
+
+      rerender(tabs({ positionsContent: positions }));
+
+      const order = screen
+        .UNSAFE_getAllByType(TouchableOpacity)
+        .map(({ props }) => props.testID)
+        .filter((id) => /^tab-/.test(id));
+      expect(order).toEqual([
+        "tab-tokens",
+        "tab-positions",
+        "tab-collectibles",
+      ]);
+    });
+
+    it("shows its contents when selected", async () => {
+      const onTabChange = jest.fn();
+      renderTabs({ positionsContent: positions, onTabChange });
+
+      await userEvent.press(screen.getByTestId("tab-positions"));
+
+      expect(screen.getByTestId("positions-content")).toBeTruthy();
+      expect(screen.queryByTestId("balances-list")).toBeNull();
+      expect(onTabChange).toHaveBeenCalledWith(TabType.POSITIONS);
+    });
+
+    it("follows the tab its caller keeps", () => {
+      renderTabs({
+        positionsContent: positions,
+        activeTab: TabType.POSITIONS,
+      });
+
+      expect(screen.getByTestId("positions-content")).toBeTruthy();
+    });
+
+    it("shows Tokens for a Positions selection without its contents", () => {
+      renderTabs({ activeTab: TabType.POSITIONS });
+
+      expect(screen.getByTestId("balances-list")).toBeTruthy();
+      expect(screen.getByTestId("tab-tokens").props.accessibilityState).toEqual(
+        expect.objectContaining({ selected: true }),
+      );
+    });
+  });
 });
