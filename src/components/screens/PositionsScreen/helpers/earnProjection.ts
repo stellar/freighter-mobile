@@ -4,7 +4,7 @@ import { BlendEarnAssetOption } from "config/blendTypes";
 import { NetworkDetails } from "config/constants";
 import { PricedBalanceMap } from "config/types";
 import { getBalanceByContractId } from "helpers/balances";
-import { getBalanceInWholeUnits } from "helpers/formatAmount";
+import { hasDecimals } from "helpers/formatAmount";
 
 /**
  * One catalog option's rate in the pool Earn deposits into: its supply APY,
@@ -71,11 +71,15 @@ export const projectAnnualEarnings = ({
 
     // What could actually be deposited: XLM's total includes the minimum
     // balance the account must keep, and `available` leaves it out. In whole
-    // tokens, as prices are: a Soroban token's balance is in raw units.
-    const spendable =
+    // tokens, as prices are: a Soroban token's balance, `available` included,
+    // is in its smallest unit.
+    const depositable =
       "available" in balance && balance.available
         ? balance.available
-        : getBalanceInWholeUnits(balance);
+        : balance.total;
+    const spendable = hasDecimals(balance)
+      ? depositable.shiftedBy(-balance.decimals)
+      : depositable;
     const price = balance.currentPrice;
     if (spendable.lte(0) || !price || price.isZero()) {
       return;

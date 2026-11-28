@@ -55,6 +55,14 @@ describe("EarnDepositDetailsBottomSheet", () => {
     );
   });
 
+  it("names a pool the backend sent no name for as the positions do", () => {
+    const { getByTestId } = renderSheet({ poolName: null });
+
+    expect(getByTestId("earn-deposit-details-pool")).toHaveTextContent(
+      "Blend pool · Blend",
+    );
+  });
+
   it("reads an unknown amount and a date not yet fetched as --", () => {
     const { getByTestId } = renderSheet({ tokenAmount: null });
 

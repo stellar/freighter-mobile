@@ -99,6 +99,19 @@ describe("usePositionsRefresh", () => {
     expect(mockGetBlendPositions).toHaveBeenCalledTimes(1);
   });
 
+  it("never waits longer than the interval, even when the clock went back", async () => {
+    usePositionsStore.setState({
+      fetchedKey: positionsKeyFor(PUBLIC_KEY, NETWORKS.PUBLIC),
+      // A read stamped an hour ahead of the device's clock.
+      lastReadStartedAt: Date.now() + 60 * 60 * 1000,
+    });
+
+    renderHook(() => usePositionsRefresh(params));
+    await advance(POSITIONS_REFRESH_MS);
+
+    expect(mockGetBlendPositions).toHaveBeenCalledTimes(1);
+  });
+
   it("reads nothing while Positions are unavailable", async () => {
     renderHook(() => usePositionsRefresh({ ...params, isAvailable: false }));
     await advance(POSITIONS_REFRESH_MS * 2);

@@ -148,6 +148,30 @@ describe("projectAnnualEarnings", () => {
     expect(result).toEqual({ usd: "20.00", bestApy: 0.1 });
   });
 
+  // A Soroban-only token's balance, `available` included, is in its smallest
+  // unit.
+  it("values a contract token's balance in whole tokens", () => {
+    const FOO_CONTRACT =
+      "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+    const result = projectAnnualEarnings({
+      options: [option(FOO_CONTRACT, 0.05)],
+      balances: {
+        [`FOO:${FOO_CONTRACT}`]: {
+          token: { code: "FOO", issuer: { key: FOO_CONTRACT } },
+          contractId: FOO_CONTRACT,
+          total: new BigNumber("1000000000"),
+          available: new BigNumber("1000000000"),
+          decimals: 7,
+          currentPrice: new BigNumber("1"),
+        },
+      } as never,
+      networkDetails,
+    });
+
+    // 100 FOO × $1 × 5%.
+    expect(result.usd).toBe("5.00");
+  });
+
   it("leaves out a token Earn's pool doesn't take", () => {
     const result = projectAnnualEarnings({
       options: [

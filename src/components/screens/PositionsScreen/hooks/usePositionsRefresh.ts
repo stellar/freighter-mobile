@@ -63,7 +63,12 @@ export const usePositionsRefresh = ({
         usePositionsStore.getState();
       const lastReadAt =
         lastKey === positionsKeyFor(publicKey, network) ? lastReadStartedAt : 0;
-      const wait = Math.max(0, lastReadAt + POSITIONS_REFRESH_MS - Date.now());
+      // Never longer than the interval, even after the device's clock went
+      // back past the last read.
+      const wait = Math.min(
+        POSITIONS_REFRESH_MS,
+        Math.max(0, lastReadAt + POSITIONS_REFRESH_MS - Date.now()),
+      );
 
       let intervalId: ReturnType<typeof setInterval> | undefined;
       const timeoutId = setTimeout(() => {
