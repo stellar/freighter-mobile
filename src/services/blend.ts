@@ -6,10 +6,15 @@ import {
   ApiBlendEarnOptionsCatalog,
   ApiBlendEarnPool,
   ApiBlendPoolsCatalog,
+  ApiBlendSupplyRow,
+  ApiPoolPosition,
+  BlendAccountPositions,
   BlendCatalogPool,
   BlendCatalogReserve,
   BlendEarnAssetOption,
   BlendEarnPool,
+  BlendPoolPosition,
+  BlendSupplyPosition,
 } from "config/blendTypes";
 import { NetworkDetails } from "config/constants";
 import { logger } from "config/logger";
@@ -134,13 +139,83 @@ export const getBlendPools = async ({
   return (data.data.pools || []).map(mapCatalogPool);
 };
 
+const mapSupplyPosition = (row: ApiBlendSupplyRow): BlendSupplyPosition => ({
+  assetId: row.asset_id,
+  symbol: row.symbol,
+  name: row.name,
+  decimals: row.decimals,
+  // Plain supply plus collateral: deposits use SupplyCollateral, so the
+  // balance lands in `collateral_tokens` and `supplied_tokens` reads zero.
+  totalTokens: row.total_tokens || "0",
+  usdValue: row.usd_value,
+  apy: row.apy,
+  emissionsApr: row.emissions_apr,
+  interestEarned: row.interest_earned || "0",
+  interestEarnedUsd: row.interest_earned_usd,
+  priceUsd: row.price_usd,
+});
+
+const mapPoolPosition = (position: ApiPoolPosition): BlendPoolPosition => ({
+  protocol: position.protocol,
+  poolId: position.id,
+  name: position.name ?? null,
+  netUsd: position.net_usd ?? null,
+  suppliedUsd: position.supplied_usd ?? null,
+  netApy: position.net_apy ?? null,
+  supply: position.blend
+    ? (position.blend.supply || []).map(mapSupplyPosition)
+    : null,
+});
+
+/**
+ * A pool the account has fully left: the backend still lists it, with
+ * nothing supplied and nothing borrowed. A pool with no detail at all stays,
+ * since its holdings are unknown rather than empty.
+ */
+const isFullyLeft = (position: ApiPoolPosition) =>
+  !!position.blend &&
+  !position.blend.supply?.length &&
+  !position.blend.borrow?.length;
+
+/**
+ * The account's positions in every Blend pool, with each pool's supplied
+ * tokens. An account with none, or one the indexer doesn't know, gets an
+ * empty list: the endpoint can't tell the two apart.
+ */
+export const getBlendPositions = async ({
+  publicKey,
+  networkDetails,
+}: {
+  publicKey: string;
+  networkDetails: NetworkDetails;
+}): Promise<BlendAccountPositions> => {
+  const { data } = await freighterBackendV2.post<{
+    data?: ApiAccountPositions[];
+  }>(
+    "/accounts/positions",
+    { addresses: [publicKey] },
+    { params: { network: networkDetails.network } },
+  );
+
+  if (!data?.data) {
+    logger.warn("getBlendPositions", "Missing data envelope");
+    throw new Error("Failed to fetch Blend positions");
+  }
+
+  // The endpoint is a batch: `data` holds one entry per requested address,
+  // so unwrap the single one asked for.
+  const account = data.data[0];
+  return {
+    totalValueUsd: account?.total_value_usd ?? null,
+    positions: (account?.positions || [])
+      .filter((position) => !isFullyLeft(position))
+      .map(mapPoolPosition),
+  };
+};
+
 /**
  * The account's existing supplied balance for one (pool, asset), in raw token
  * units. This is the "before" side of the Review screen's `0.00 -> 500.00`.
- *
- * Reads `total_tokens` — the sum of the plain-supply and collateral buckets.
- * Deposits use SupplyCollateral, so the balance lands in `collateral_tokens` and
- * reading `supplied_tokens` would always report zero.
  *
  * Returns "0" for an account with no position, which is indistinguishable by
  * design from an account unknown to the indexer.
@@ -159,24 +234,11 @@ export const getBlendSuppliedTokens = async ({
   assetId: string;
   networkDetails: NetworkDetails;
 }): Promise<string> => {
-  const { data } = await freighterBackendV2.post<{
-    data?: ApiAccountPositions[];
-  }>(
-    "/accounts/positions",
-    { addresses: [publicKey] },
-    { params: { network: networkDetails.network } },
-  );
+  const { positions } = await getBlendPositions({ publicKey, networkDetails });
 
-  if (!data?.data) {
-    logger.warn("getBlendSuppliedTokens", "Missing data envelope");
-    throw new Error("Failed to fetch Blend positions");
-  }
+  const supplied = positions
+    .find((position) => position.poolId === poolId)
+    ?.supply?.find((row) => row.assetId === assetId);
 
-  // The endpoint is a batch: `data` is an array with one entry per requested
-  // address, so unwrap the single element we asked for.
-  const supplyRow = data.data[0]?.positions
-    ?.find((position) => position.id === poolId)
-    ?.blend?.supply?.find((row) => row.asset_id === assetId);
-
-  return supplyRow?.total_tokens || "0";
+  return supplied?.totalTokens || "0";
 };

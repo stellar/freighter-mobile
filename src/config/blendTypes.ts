@@ -174,3 +174,49 @@ export interface ApiAccountPositions {
   /** Always non-nil; empty for accounts with no positions or unknown upstream. */
   positions: ApiPoolPosition[];
 }
+
+/** One supplied token in a pool, as the app uses it. */
+export interface BlendSupplyPosition {
+  assetId: string;
+  symbol: string | null;
+  name: string | null;
+  decimals: number | null;
+  /**
+   * Plain supply plus collateral, in raw units. Deposits use SupplyCollateral,
+   * so the plain-supply bucket alone would read zero.
+   */
+  totalTokens: string;
+  /** Null when the token has no fresh price: unknown, not zero. */
+  usdValue: number | null;
+  /** Supply interest rate, without emissions; null when unavailable. */
+  apy: number | null;
+  emissionsApr: number | null;
+  /** Interest accrued on the position, in raw units. */
+  interestEarned: string;
+  interestEarnedUsd: number | null;
+  priceUsd: number | null;
+}
+
+/** The account's position in one pool. */
+export interface BlendPoolPosition {
+  /** Always "blend" today. */
+  protocol: string;
+  /** The pool's contract address. */
+  poolId: string;
+  name: string | null;
+  netUsd: number | null;
+  suppliedUsd: number | null;
+  /** As the backend reports it, BLND emissions included. */
+  netApy: number | null;
+  /**
+   * Null when the backend sent no Blend detail for the pool: unknown, which
+   * is not the same as an empty list.
+   */
+  supply: BlendSupplyPosition[] | null;
+}
+
+export interface BlendAccountPositions {
+  totalValueUsd: number | null;
+  /** Empty for an account with no positions, or one the indexer doesn't know. */
+  positions: BlendPoolPosition[];
+}

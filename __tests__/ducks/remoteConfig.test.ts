@@ -72,6 +72,8 @@ describe("production defaults", () => {
         expect(store.getState().use_token_price_history).toBe(true);
         // Earn ships OFF until Amplitude turns it on.
         expect(store.getState().earn_deposit).toBe(false);
+        // So does Home's Positions tab.
+        expect(store.getState().positions_enabled).toBe(false);
         // Proves the production branch was read: swap is ON in dev and
         // follows isAndroid (mocked false) in production.
         expect(store.getState().swap_enabled).toBe(false);
@@ -277,6 +279,25 @@ describe("remoteConfig duck", () => {
       });
 
       expect(result.current.earn_deposit).toBe(false);
+    });
+
+    it("turns positions_enabled on when the variant is on", async () => {
+      act(() => {
+        useRemoteConfigStore.setState({ positions_enabled: false });
+      });
+      const mockClient = createMockExperimentClient();
+      mockClient.all.mockReturnValue({
+        positions_enabled: { value: "on" },
+      });
+      mockGetExperimentClient.mockReturnValue(mockClient);
+
+      const { result } = renderHook(() => useRemoteConfigStore());
+
+      await act(async () => {
+        await result.current.fetchFeatureFlags();
+      });
+
+      expect(result.current.positions_enabled).toBe(true);
     });
 
     it("should update only specific flags when variants are returned", async () => {
