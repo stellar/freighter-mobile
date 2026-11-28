@@ -114,6 +114,62 @@ describe("projectAnnualEarnings", () => {
       projectAnnualEarnings({ options: null, balances, networkDetails }),
     ).toEqual({ usd: null, bestApy: null });
   });
+
+  // Start Earning leads into Earn, which deposits into one pool, so "Earn up
+  // to" never promises another pool's better rate.
+  it("rates each token at the pool Earn deposits into, not another pool's better rate", () => {
+    const result = projectAnnualEarnings({
+      options: [
+        option(USDC_SAC, 0.1, {
+          name: `USDC:${USDC_ISSUER}`,
+          pools: [
+            {
+              id: "COTHERPOOL",
+              name: "Other",
+              supplyApy: 0.3,
+              emissionsSupplyApr: null,
+              suppliedUsd: 1,
+            },
+            {
+              id: POOL_ID,
+              name: "Fixed v2.1",
+              supplyApy: 0.1,
+              emissionsSupplyApr: null,
+              suppliedUsd: 1,
+            },
+          ],
+        }),
+      ],
+      balances,
+      networkDetails,
+    });
+
+    // 200 USDC × $1 × 10%.
+    expect(result).toEqual({ usd: "20.00", bestApy: 0.1 });
+  });
+
+  it("leaves out a token Earn's pool doesn't take", () => {
+    const result = projectAnnualEarnings({
+      options: [
+        option(USDC_SAC, 0.1, {
+          name: `USDC:${USDC_ISSUER}`,
+          pools: [
+            {
+              id: "COTHERPOOL",
+              name: "Other",
+              supplyApy: 0.3,
+              emissionsSupplyApr: null,
+              suppliedUsd: 1,
+            },
+          ],
+        }),
+      ],
+      balances,
+      networkDetails,
+    });
+
+    expect(result).toEqual({ usd: null, bestApy: null });
+  });
 });
 
 describe("getBlendActivityFromHistory", () => {

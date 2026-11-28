@@ -1,4 +1,5 @@
 import BigNumber from "bignumber.js";
+import { getBlendPoolId } from "config/blend";
 import { BlendEarnAssetOption } from "config/blendTypes";
 import { NetworkDetails } from "config/constants";
 import { PricedBalanceMap } from "config/types";
@@ -6,27 +7,27 @@ import { getBalanceByContractId } from "helpers/balances";
 import { getBalanceInWholeUnits } from "helpers/formatAmount";
 
 /**
- * One catalog option's rate: its best pool's supply APY, interest only (BLND
- * emissions are left out, as everywhere in Earn). A pool with no fresh price
- * is skipped rather than counted as zero. Null when no pool has a rate.
+ * One catalog option's rate in the pool Earn deposits into: its supply APY,
+ * interest only (BLND emissions are left out, as everywhere in Earn). Null
+ * when that pool doesn't take the token or has no fresh price for it.
+ *
+ * Only that pool counts, as in the token picker: Start Earning leads there,
+ * so "Earn up to" must never promise another pool's better rate.
  */
-const bestApyForOption = (option: BlendEarnAssetOption): number | null =>
-  option.pools.reduce<number | null>((best, pool) => {
-    const rate = pool.supplyApy;
-    if (rate === null) {
-      return best;
-    }
-    return best === null || rate > best ? rate : best;
-  }, null);
+const earnPoolApyForOption = (
+  option: BlendEarnAssetOption,
+  poolId: string | undefined,
+): number | null =>
+  option.pools.find((pool) => pool.id === poolId)?.supplyApy ?? null;
 
 /**
  * What the account could earn in a year by depositing what it already holds:
  * the empty Positions tab's "Earn up to".
  *
- * Each held, priced, depositable token is valued at ITS OWN best rate and
- * the results summed: one blended rate over a mixed basket would credit a
- * low-rate token with the wrong figure. Tokens no pool accepts, and tokens
- * with no price, are skipped rather than counted at zero.
+ * Each held, priced, depositable token is valued at ITS OWN rate and the
+ * results summed: one blended rate over a mixed basket would credit a
+ * low-rate token with the wrong figure. Tokens Earn's pool doesn't take, and
+ * tokens with no price, are skipped rather than counted at zero.
  *
  * `usd` is null when there is nothing to total (no catalog, or nothing
  * depositable held). The empty state then shows `bestApy` alone, a ceiling
@@ -45,12 +46,13 @@ export const projectAnnualEarnings = ({
     return { usd: null, bestApy: null };
   }
 
+  const poolId = getBlendPoolId(networkDetails);
   let bestApy: number | null = null;
   let total = new BigNumber(0);
   let counted = 0;
 
   options.forEach((option) => {
-    const apy = bestApyForOption(option);
+    const apy = earnPoolApyForOption(option, poolId);
     if (apy === null) {
       return;
     }
