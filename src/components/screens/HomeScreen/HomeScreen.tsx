@@ -14,13 +14,20 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { getNavigationHeaderHeight } from "components/layout/CustomNavigationHeader";
 import ConnectedApps from "components/screens/HomeScreen/ConnectedApps";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
+import { PositionsTab } from "components/screens/PositionsScreen/components/PositionsTab";
+import {
+  useArePositionsAvailable,
+  useIsEarnDepositAvailable,
+} from "components/screens/PositionsScreen/hooks/useEarnAvailability";
+import { useEarnEntry } from "components/screens/PositionsScreen/hooks/useEarnEntry";
+import {
+  useAwaitedDepositFollow,
+  usePositionsRefresh,
+} from "components/screens/PositionsScreen/hooks/usePositionsRefresh";
 import Icon from "components/sds/Icon";
 import { Display, DISPLAY_SIZES } from "components/sds/Typography";
-import { isEarnSupportedNetwork } from "config/blend";
-import {
-  NATIVE_TOKEN_CODE,
-  mapNetworkToNetworkDetails,
-} from "config/constants";
+import { BlendPoolPosition } from "config/blendTypes";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
@@ -30,13 +37,14 @@ import {
   ADD_FUNDS_ROUTES,
   SEND_PAYMENT_ROUTES,
   SWAP_ROUTES,
-  EARN_ROUTES,
 } from "config/routes";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
+import { TabType, useHomeTabsStore } from "ducks/homeTabs";
+import { usePositionsStore } from "ducks/positions";
 import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
@@ -68,6 +76,10 @@ import {
   RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  trackPositionsEmptyCtaSelected,
+  trackPositionsPoolSelected,
+} from "services/analytics/positions";
 
 // Figma's Display/LG/600, which the fiat hero is set in: Inter SemiBold 48/56
 // (Typography's DISPLAY_SIZES.lg) with -4% letter spacing. React Native takes
@@ -166,15 +178,46 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       !isCollectiblesLoading && !isCollectiblesGridEmpty && !collectiblesError;
 
     // Earn needs an allowlisted Blend pool on this network and the
-    // `earn_deposit` flag. The flag is read only once the flags have
-    // loaded, so the button never shows before Amplitude could turn it off;
-    // a failed fetch also counts as loaded, so it can't stay hidden forever.
-    const isEarnFlagOn = useRemoteConfigStore(
-      (state) => state.isInitialized && state.earn_deposit,
+    // `earn_deposit` flag (see `useIsEarnDepositAvailable`).
+    const earnEnabled = useIsEarnDepositAvailable();
+
+    // The Positions tab waits on its own flag, on the same networks.
+    const arePositionsAvailable = useArePositionsAvailable();
+    const isRemoteConfigInitialized = useRemoteConfigStore(
+      (state) => state.isInitialized,
     );
-    const earnEnabled =
-      isEarnFlagOn &&
-      isEarnSupportedNetwork(mapNetworkToNetworkDetails(network));
+    const activeTab = useHomeTabsStore((state) => state.activeTab);
+    const setActiveTab = useHomeTabsStore((state) => state.setActiveTab);
+    const fetchPositions = usePositionsStore((state) => state.fetchPositions);
+    const { openEarn } = useEarnEntry(navigation);
+
+    usePositionsRefresh({
+      publicKey: account?.publicKey,
+      network,
+      isAvailable: arePositionsAvailable,
+    });
+    useAwaitedDepositFollow({
+      publicKey: account?.publicKey,
+      network,
+      isAvailable: arePositionsAvailable,
+    });
+
+    // Switching to a network without Earn, or the flag going off, while
+    // Positions is open leaves Home on Tokens, as in the extension.
+    useEffect(() => {
+      if (
+        isRemoteConfigInitialized &&
+        !arePositionsAvailable &&
+        activeTab === TabType.POSITIONS
+      ) {
+        setActiveTab(TabType.TOKENS);
+      }
+    }, [
+      isRemoteConfigInitialized,
+      arePositionsAvailable,
+      activeTab,
+      setActiveTab,
+    ]);
 
     const handleManageAccountsPress = useCallback(() => {
       manageAccountsBottomSheetRef.current?.present();
@@ -278,10 +321,49 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     }, [navigation]);
 
     const handleEarnPress = useCallback(() => {
-      navigation.navigate(ROOT_NAVIGATOR_ROUTES.EARN_STACK, {
-        screen: EARN_ROUTES.EARN_TOKEN_PICKER_SCREEN,
-      });
-    }, [navigation]);
+      openEarn("home");
+    }, [openEarn]);
+
+    const handlePoolPress = useCallback(
+      (position: BlendPoolPosition) => {
+        trackPositionsPoolSelected({
+          poolId: position.poolId,
+          protocol: position.protocol,
+        });
+        navigation.navigate(ROOT_NAVIGATOR_ROUTES.POOL_POSITION_SCREEN, {
+          poolId: position.poolId,
+        });
+      },
+      [navigation],
+    );
+
+    const handlePositionsDepositPress = useCallback(() => {
+      openEarn("positions_pill");
+    }, [openEarn]);
+
+    const handleStartEarningPress = useCallback(() => {
+      trackPositionsEmptyCtaSelected();
+      openEarn("positions_empty");
+    }, [openEarn]);
+
+    const positionsContent = useMemo(
+      () =>
+        arePositionsAvailable ? (
+          <PositionsTab
+            canDeposit={earnEnabled}
+            onPoolPress={handlePoolPress}
+            onDepositPress={handlePositionsDepositPress}
+            onStartEarningPress={handleStartEarningPress}
+          />
+        ) : undefined,
+      [
+        arePositionsAvailable,
+        earnEnabled,
+        handlePoolPress,
+        handlePositionsDepositPress,
+        handleStartEarningPress,
+      ],
+    );
 
     const handleAddTokenPress = useCallback(() => {
       navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK, {
@@ -321,6 +403,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             publicKey: account.publicKey,
             network,
           }),
+          arePositionsAvailable
+            ? fetchPositions({ publicKey: account.publicKey, network })
+            : Promise.resolve(),
           Promise.resolve(fetchActiveSessions(account.publicKey, network)),
           // Refresh the manage-accounts sheet's per-account USD totals too,
           // so a pull-to-refresh reflects transfers between own accounts.
@@ -345,6 +430,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       network,
       fetchAccountBalances,
       fetchCollectibles,
+      arePositionsAvailable,
+      fetchPositions,
       fetchActiveSessions,
       fetchAccountsFiatTotals,
       allAccounts,
@@ -463,6 +550,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           <TokensCollectiblesTabs
             // Should disable inner scrolling here since the whole Home screen is scrollable
             disableInnerScrolling
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            positionsContent={positionsContent}
             publicKey={account?.publicKey ?? ""}
             network={network}
             onTokenPress={handleTokenPress}

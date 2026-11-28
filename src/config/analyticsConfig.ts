@@ -680,6 +680,12 @@ const getRoutesWithoutAnalytics = (): Set<string> => {
   // shows, as the extension does after its intro.
   excludedRoutes.add("EarnTokenPickerScreen");
 
+  // A position's screens report no views, as in the extension, whose are
+  // sheets over Home: opening them is `positions.pool_selected` and
+  // `positions.row_selected`.
+  excludedRoutes.add("PoolPositionScreen");
+  excludedRoutes.add("TokenPositionScreen");
+
   return excludedRoutes;
 };
 

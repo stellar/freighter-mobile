@@ -38,6 +38,8 @@ const ICON_PADDING = 8;
 const ICON_RADIUS = 1000;
 /** Between the title and the description. */
 const TEXT_GAP = 4;
+/** Between the text and the details under it. */
+const DETAILS_GAP = 12;
 /**
  * Figma's Text/SM is 14/20. `TEXT_SIZES.sm` stays 14/22 for the rest of the
  * app, so the description sets its line height itself, as the token rows do.
@@ -56,6 +58,11 @@ const SPARKLE_CANVAS_LEFT = -0.1148 * SPARKLE_BOX.width;
 interface EmptyStateProps {
   title: string;
   description?: string;
+  /**
+   * More content under the text and above the action, 12pt below the
+   * description, as the Positions card's "Earn up to" row.
+   */
+  details?: React.ReactNode;
   /** The action under the text (e.g. a fund button), in the card itself. */
   children?: React.ReactNode;
   /**
@@ -78,6 +85,7 @@ interface EmptyStateProps {
 export const EmptyState: React.FC<EmptyStateProps> = ({
   title,
   description,
+  details,
   children,
   contentPaddingHorizontal = DEFAULT_CONTENT_PADDING_HORIZONTAL,
   style,
@@ -146,20 +154,23 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           </View>
         </View>
 
-        <View style={{ alignSelf: "stretch", gap: pxValue(TEXT_GAP) }}>
-          <Text md semiBold primary textAlign="center">
-            {title}
-          </Text>
-          {description ? (
-            <Text
-              sm
-              secondary
-              textAlign="center"
-              style={{ lineHeight: fsValue(DESCRIPTION_LINE_HEIGHT) }}
-            >
-              {description}
+        <View style={{ alignSelf: "stretch", gap: pxValue(DETAILS_GAP) }}>
+          <View style={{ alignSelf: "stretch", gap: pxValue(TEXT_GAP) }}>
+            <Text md semiBold primary textAlign="center">
+              {title}
             </Text>
-          ) : null}
+            {description ? (
+              <Text
+                sm
+                secondary
+                textAlign="center"
+                style={{ lineHeight: fsValue(DESCRIPTION_LINE_HEIGHT) }}
+              >
+                {description}
+              </Text>
+            ) : null}
+          </View>
+          {details}
         </View>
       </View>
       {children}

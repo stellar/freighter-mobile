@@ -68,6 +68,9 @@ export const ROOT_NAVIGATOR_ROUTES = {
   COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
   ADD_COLLECTIBLE_SCREEN: "AddCollectibleScreen",
   ETHENA_LAUNCH_SCREEN: "EthenaLaunchScreen",
+  // Home's Positions tab: a pool's position, and one supplied token's in it.
+  POOL_POSITION_SCREEN: "PoolPositionScreen",
+  TOKEN_POSITION_SCREEN: "TokenPositionScreen",
 } as const;
 
 export const AUTH_STACK_ROUTES = {
@@ -190,6 +193,17 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.ETHENA_LAUNCH_SCREEN]: {
     source: EthenaLaunchPromoSource;
+  };
+  [ROOT_NAVIGATOR_ROUTES.POOL_POSITION_SCREEN]: {
+    /** The pool's contract. */
+    poolId: string;
+  };
+  [ROOT_NAVIGATOR_ROUTES.TOKEN_POSITION_SCREEN]: {
+    poolId: string;
+    /** The supplied token's contract. */
+    assetId: string;
+    /** For the title, before the positions resolve the row. */
+    tokenCode: string;
   };
 };
 

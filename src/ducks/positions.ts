@@ -19,7 +19,18 @@ import { create } from "zustand";
  */
 let positionsReadId = 0;
 
-const keyFor = (publicKey: string, network: NETWORKS) =>
+/**
+ * The network each catalog read in flight is for, so the screens that all
+ * keep Positions fresh (Home, and a pool or token screen over it) never
+ * request the same catalog twice at once.
+ */
+const catalogReadsInFlight: {
+  pools: NETWORKS | null;
+  earnOptions: NETWORKS | null;
+} = { pools: null, earnOptions: null };
+
+/** The account and network a positions read belongs to. */
+export const positionsKeyFor = (publicKey: string, network: NETWORKS) =>
   `${publicKey}:${network}`;
 
 interface PositionsState {
@@ -29,6 +40,12 @@ interface PositionsState {
   /** A read for `fetchedKey` has succeeded at least once. */
   hasLoaded: boolean;
   isLoading: boolean;
+  /**
+   * When the last read for `fetchedKey` started, in epoch ms; 0 before any.
+   * Refreshes time themselves from it, so coming back to a screen never
+   * reads again sooner than the refresh interval.
+   */
+  lastReadStartedAt: number;
   /**
    * Set only while nothing good is there to show: a failed refresh keeps the
    * last positions on screen instead.
@@ -58,6 +75,7 @@ const initialState = {
   positions: [],
   hasLoaded: false,
   isLoading: false,
+  lastReadStartedAt: 0,
   error: null,
   pools: null,
   poolsNetwork: null,
@@ -76,14 +94,14 @@ export const usePositionsStore = create<PositionsState>()((set, get) => ({
   fetchPositions: async ({ publicKey, network }) => {
     positionsReadId += 1;
     const readId = positionsReadId;
-    const key = keyFor(publicKey, network);
+    const key = positionsKeyFor(publicKey, network);
 
     // Another account's, or another network's, positions must never show
     // while this one's load.
     if (get().fetchedKey !== key) {
       set({ fetchedKey: key, positions: [], hasLoaded: false, error: null });
     }
-    set({ isLoading: true });
+    set({ isLoading: true, lastReadStartedAt: Date.now() });
 
     try {
       const { positions } = await getBlendPositions({
@@ -110,6 +128,10 @@ export const usePositionsStore = create<PositionsState>()((set, get) => ({
   },
 
   fetchPools: async (network) => {
+    if (catalogReadsInFlight.pools === network) {
+      return;
+    }
+    catalogReadsInFlight.pools = network;
     try {
       const pools = await getBlendPools({
         networkDetails: mapNetworkToNetworkDetails(network),
@@ -117,10 +139,18 @@ export const usePositionsStore = create<PositionsState>()((set, get) => ({
       set({ pools, poolsNetwork: network });
     } catch (error) {
       logger.error("usePositionsStore", "Failed to fetch pools", error);
+    } finally {
+      if (catalogReadsInFlight.pools === network) {
+        catalogReadsInFlight.pools = null;
+      }
     }
   },
 
   fetchEarnOptions: async (network) => {
+    if (catalogReadsInFlight.earnOptions === network) {
+      return;
+    }
+    catalogReadsInFlight.earnOptions = network;
     try {
       const earnOptions = await getBlendEarnOptions({
         networkDetails: mapNetworkToNetworkDetails(network),
@@ -128,6 +158,10 @@ export const usePositionsStore = create<PositionsState>()((set, get) => ({
       set({ earnOptions, earnOptionsNetwork: network });
     } catch (error) {
       logger.error("usePositionsStore", "Failed to fetch earn options", error);
+    } finally {
+      if (catalogReadsInFlight.earnOptions === network) {
+        catalogReadsInFlight.earnOptions = null;
+      }
     }
   },
 
@@ -135,6 +169,8 @@ export const usePositionsStore = create<PositionsState>()((set, get) => ({
 
   reset: () => {
     positionsReadId += 1;
+    catalogReadsInFlight.pools = null;
+    catalogReadsInFlight.earnOptions = null;
     set({ ...initialState });
   },
 }));

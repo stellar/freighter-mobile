@@ -1,9 +1,29 @@
+import BigNumber from "bignumber.js";
 import { formatRate } from "components/screens/EarnScreen/helpers";
+import { getPoolDisplayName } from "components/screens/EarnScreen/helpers/poolDisplayName";
 import {
   NO_FIAT_VALUE,
   formatFiatAmount,
   formatTokenForDisplay,
 } from "helpers/formatAmount";
+import { TFunction } from "i18next";
+
+/**
+ * A position's pool as the app names pools, e.g. "Fixed v2 Pool", or "Blend
+ * pool" when the backend sent no name.
+ */
+export const getPositionPoolName = (
+  name: string | null,
+  t: TFunction<"translations", undefined>,
+): string =>
+  name?.trim() ? getPoolDisplayName(name, t) : t("positions.unnamedPool");
+
+/**
+ * A position's USD figure, "$800.12", or "--" when it's unknown: no fresh
+ * price is never a zero.
+ */
+export const formatPositionUsd = (value: number | null): string =>
+  value === null ? NO_FIAT_VALUE : formatFiatAmount(new BigNumber(value));
 
 /**
  * A token amount with its code, "1,218.6488 USDC", or "--" when the amount is

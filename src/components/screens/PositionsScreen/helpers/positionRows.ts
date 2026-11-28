@@ -7,6 +7,7 @@ import {
   NATIVE_TOKEN_CODE,
   NetworkDetails,
 } from "config/constants";
+import { Token } from "config/types";
 import { getNativeContractDetails, getTokenSacAddress } from "helpers/soroban";
 
 /** One supplied token on a pool's position screen. */
@@ -105,6 +106,27 @@ export const toDisplayTokens = (
   raw === null || decimals === null
     ? null
     : new BigNumber(raw).shiftedBy(-decimals).toFixed();
+
+/**
+ * The token a row's icon draws, keyed as the icon cache keys a held one:
+ * native XLM, a classic token by its code and issuer, and a Soroban-only
+ * token by its contract. Positions can hold a token the wallet no longer
+ * does, so this never needs a balance.
+ */
+export const getPositionRowToken = (
+  row: Pick<PositionTokenRow, "assetId" | "code" | "issuer" | "isNative">,
+): Token =>
+  row.isNative
+    ? { type: "native" as const, code: NATIVE_TOKEN_CODE as "XLM" }
+    : { code: row.code, issuer: { key: row.issuer ?? row.assetId } };
+
+/**
+ * A row's primary line: "Stellar Lumens" for native XLM and the code for
+ * anything else, as the wallet's own token rows name them.
+ */
+export const getPositionRowName = (
+  row: Pick<PositionTokenRow, "code" | "isNative">,
+): string => (row.isNative ? "Stellar Lumens" : row.code);
 
 /** The supplied tokens of one pool, one row each, carrying the pool they're in. */
 export const toPositionTokenRows = ({

@@ -13,6 +13,10 @@ import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScree
 import { ForceUpdateScreen } from "components/screens/ForceUpdateScreen/ForceUpdateScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import { MaintenanceScreen } from "components/screens/MaintenanceScreen/MaintenanceScreen";
+import {
+  PoolPositionScreen,
+  TokenPositionScreen,
+} from "components/screens/PositionsScreen";
 import { RebrandAnnouncementScreen } from "components/screens/RebrandAnnouncementScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import ScanReceiveScreen from "components/screens/ScanReceiveScreen";
@@ -40,6 +44,7 @@ import {
   getScreenOptionsNoHeader,
   getScreenBottomNavigateOptions,
   getScanQRCodeScreenOptions,
+  resetNestedNavigationOptions,
 } from "helpers/navigationOptions";
 import { triggerFaceIdOnboarding } from "helpers/postOnboardingBiometrics";
 import {
@@ -370,6 +375,26 @@ export const RootNavigator = () => {
                   options={getScreenBottomNavigateOptions(
                     t("addCollectibleScreen.title"),
                   )}
+                />
+                {/* A pool's position pushes with a back arrow; a token's in
+                    it slides up over it with an X. */}
+                <RootStack.Screen
+                  name={ROOT_NAVIGATOR_ROUTES.POOL_POSITION_SCREEN}
+                  component={PoolPositionScreen}
+                  options={resetNestedNavigationOptions(
+                    t("positions.poolScreen.title"),
+                  )}
+                />
+                <RootStack.Screen
+                  name={ROOT_NAVIGATOR_ROUTES.TOKEN_POSITION_SCREEN}
+                  component={TokenPositionScreen}
+                  options={({ route }) =>
+                    getScreenBottomNavigateOptions(
+                      t("positions.tokenScreen.title", {
+                        tokenCode: route.params.tokenCode,
+                      }),
+                    )
+                  }
                 />
                 <RootStack.Screen
                   name={AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN}

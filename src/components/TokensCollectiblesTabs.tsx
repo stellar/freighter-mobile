@@ -7,21 +7,14 @@ import {
   NETWORKS,
   TransactionContext,
 } from "config/constants";
+import { TabType } from "ducks/homeTabs";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState, useCallback, useMemo } from "react";
 import { TouchableOpacity, View } from "react-native";
 
-/**
- * Available tab types for the TokensCollectiblesTabs component
- */
-export enum TabType {
-  /** Display tokens/balances list */
-  TOKENS = "tokens",
-  /** Display collectibles grid */
-  COLLECTIBLES = "collectibles",
-}
+export { TabType };
 
 /**
  * Props for the TokensCollectiblesTabs component
@@ -29,8 +22,19 @@ export enum TabType {
 interface Props {
   /** The default active tab when the component mounts */
   defaultTab?: TabType;
+  /**
+   * The open tab, for a caller that keeps it itself (Home keeps it across
+   * remounts); otherwise the component keeps its own, from `defaultTab`.
+   */
+  activeTab?: TabType;
   /** Callback function triggered when tab changes */
   onTabChange?: (tab: TabType) => void;
+  /**
+   * The Positions tab's contents. The tab shows, between Tokens and
+   * Collectibles, only when given; while it isn't, a Positions selection
+   * shows Tokens.
+   */
+  positionsContent?: React.ReactNode;
   /** The public key of the wallet to display data for */
   publicKey: string;
   /** The network to fetch data from */
@@ -96,7 +100,9 @@ interface Props {
 export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
   ({
     defaultTab = TabType.TOKENS,
+    activeTab: controlledTab,
     onTabChange,
+    positionsContent,
     publicKey,
     network,
     onTokenPress,
@@ -113,7 +119,15 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
 
-    const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
+    const [ownTab, setOwnTab] = useState<TabType>(defaultTab);
+    const selectedTab = controlledTab ?? ownTab;
+    const hasPositions = positionsContent !== undefined;
+    // Positions without its contents (the flag off, or a network without
+    // Earn) shows Tokens.
+    const activeTab =
+      selectedTab === TabType.POSITIONS && !hasPositions
+        ? TabType.TOKENS
+        : selectedTab;
 
     /**
      * Handles tab switching and triggers the optional onTabChange callback
@@ -121,7 +135,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
      */
     const handleTabChange = useCallback(
       (tab: TabType) => {
-        setActiveTab(tab);
+        setOwnTab(tab);
         onTabChange?.(tab);
       },
       [onTabChange],
@@ -221,8 +235,18 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
         return renderTokensContent;
       }
 
+      if (activeTab === TabType.POSITIONS) {
+        // Positions draws its own padding and states (PositionsTab).
+        return <View className="flex-1">{positionsContent}</View>;
+      }
+
       return renderCollectiblesContent;
-    }, [activeTab, renderTokensContent, renderCollectiblesContent]);
+    }, [
+      activeTab,
+      renderTokensContent,
+      renderCollectiblesContent,
+      positionsContent,
+    ]);
 
     // Text/LG/600 labels: primary when active, Colors/Gray/9 when not
     const tabLabelColor = (tab: TabType) =>
@@ -249,6 +273,22 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
               {t("balancesList.title")}
             </Text>
           </TouchableOpacity>
+
+          {hasPositions ? (
+            <TouchableOpacity
+              className="py-[8px]"
+              onPress={() => handleTabChange(TabType.POSITIONS)}
+              accessibilityRole="tab"
+              accessibilityState={{
+                selected: activeTab === TabType.POSITIONS,
+              }}
+              testID="tab-positions"
+            >
+              <Text lg semiBold color={tabLabelColor(TabType.POSITIONS)}>
+                {t("positions.tab")}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
 
           <TouchableOpacity
             className="py-[8px]"

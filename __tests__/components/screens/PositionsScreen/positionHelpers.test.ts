@@ -1,4 +1,13 @@
 import {
+  FOO_CONTRACT,
+  NATIVE_SAC,
+  POOL_ID,
+  USDC_ISSUER,
+  USDC_SAC,
+  poolPosition,
+  supplyRow,
+} from "__tests__/support/positionFixtures";
+import {
   formatGainBadge,
   formatPositionGain,
   formatPositionTokens,
@@ -14,46 +23,10 @@ import {
   getPoolPositionSummary,
   getPositionSummary,
 } from "components/screens/PositionsScreen/helpers/positionSummaries";
-import { BlendPoolPosition, BlendSupplyPosition } from "config/blendTypes";
+import { BlendSupplyPosition } from "config/blendTypes";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 
 const networkDetails = mapNetworkToNetworkDetails(NETWORKS.PUBLIC);
-const POOL_ID = "CBAKAZUEJBAFA2DCGBRS2WKJT3FNIMJBHTFL76AY7XMAVEINQNNIQWAO";
-const USDC_ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
-const USDC_SAC = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
-const NATIVE_SAC = "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
-// A Soroban-only token: no classic asset behind it.
-const FOO_CONTRACT = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
-
-const supplyRow = (
-  overrides: Partial<BlendSupplyPosition> = {},
-): BlendSupplyPosition => ({
-  assetId: USDC_SAC,
-  symbol: "USDC",
-  name: `USDC:${USDC_ISSUER}`,
-  decimals: 7,
-  totalTokens: "5001223000",
-  usdValue: 500.12,
-  apy: 0.1694,
-  emissionsApr: 0.02,
-  interestEarned: "1234000",
-  interestEarnedUsd: 0.12,
-  priceUsd: 1,
-  ...overrides,
-});
-
-const poolPosition = (
-  overrides: Partial<BlendPoolPosition> = {},
-): BlendPoolPosition => ({
-  protocol: "blend",
-  poolId: POOL_ID,
-  name: "Fixed v2.1",
-  netUsd: 800.12,
-  suppliedUsd: 800.12,
-  netApy: 0.1132,
-  supply: [supplyRow()],
-  ...overrides,
-});
 
 describe("getSupplyRowIdentity", () => {
   it("names native XLM, which the backend reports with no symbol or name", () => {
