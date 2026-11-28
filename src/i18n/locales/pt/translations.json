@@ -1545,7 +1545,10 @@
     "title": "{{tokenCode}} depositado",
     "to": "Para",
     "deposited": "Depositado",
-    "fee": "Taxa"
+    "fee": "Taxa",
+    "withdrawTitle": "{{tokenCode}} sacado",
+    "from": "De",
+    "withdrew": "Sacado"
   },
   "earnSwapProcessing": {
     "inProgress": "Troca em andamento",
@@ -1554,5 +1557,54 @@
   "earnSwap": {
     "swappedToast": "{{sourceCode}} trocado por {{destination}}",
     "settings": "Configurações da troca"
+  },
+  "positions": {
+    "tab": "Posições",
+    "error": {
+      "title": "Falha ao buscar suas posições.",
+      "description": "Suas posições não puderam ser buscadas neste momento."
+    },
+    "empty": {
+      "title": "Comece a ganhar",
+      "description": "Coloque seus tokens para trabalhar e obtenha recompensas enquanto acompanha suas posições.",
+      "earnUpTo": "Ganhe até",
+      "perYear": "ano com seus tokens",
+      "startEarning": "Começar a ganhar"
+    },
+    "netApy": "{{rate}} APY líquida",
+    "apy": "{{rate}} APY",
+    "deposit": "Depositar",
+    "unnamedPool": "Pool da Blend",
+    "poolScreen": {
+      "title": "Detalhes da posição",
+      "suppliedTokens": "Tokens fornecidos"
+    },
+    "tokenScreen": {
+      "title": "Posição em {{tokenCode}}",
+      "yourPosition": "Sua posição",
+      "overview": "Visão geral",
+      "yourDeposits": "Seus depósitos",
+      "yourEarnings": "Seus ganhos",
+      "depositApy": "{{rate}} APY de depósito",
+      "estMonthlyEarnings": "Ganhos mensais (est.)",
+      "estYearlyEarnings": "Ganhos anuais (est.)",
+      "activity": "Atividade"
+    },
+    "overview": {
+      "aboutPool": "Sobre este pool",
+      "aboutPoolBody": "Deposite tokens compatíveis no {{pool}} da Blend para gerar rendimento variável com empréstimos. A APY pode mudar ao longo do tempo conforme as condições de mercado.",
+      "provider": "Provedor",
+      "fundsManaged": "Como os fundos são administrados",
+      "fundsManagedBody": "Seus tokens são fornecidos ao pool de empréstimos da Blend, onde tomadores podem acessar liquidez oferecendo garantias. Os juros ganhos dependem da atividade de empréstimos e da utilização do pool.",
+      "risks": "Riscos",
+      "risksBody": "Depositar tokens envolve riscos de contrato inteligente, de liquidação e de liquidez. Os rendimentos não são garantidos, e os saques dependem da liquidez disponível no pool.",
+      "links": "Links",
+      "viewPoolOnBlend": "Ver pool na Blend",
+      "viewContract": "Ver contrato no Stellar Expert"
+    },
+    "activity": {
+      "deposit": "Depositar",
+      "withdraw": "Sacar"
+    }
   }
 }

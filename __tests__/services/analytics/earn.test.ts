@@ -86,10 +86,11 @@ describe("Earn funnel events", () => {
   });
 
   it("earn.pool_details_opened", () => {
-    trackEarnPoolDetailsOpened({ poolId: POOL_ID });
+    trackEarnPoolDetailsOpened({ poolId: POOL_ID, source: "earn_amount" });
     expect(track).toHaveBeenCalledWith("earn.pool_details_opened", {
       protocol: "blend",
       pool_id: POOL_ID,
+      source: "earn_amount",
     });
   });
 
@@ -149,12 +150,14 @@ describe("Earn funnel events", () => {
     trackEarnDepositFail({
       assetCode: "USDC",
       poolId: POOL_ID,
+      source: "position_row",
       errorCode: "op_underfunded",
     });
     expect(track).toHaveBeenCalledWith("earn.deposit_failed", {
       protocol: "blend",
       asset_code: "USDC",
       pool_id: POOL_ID,
+      source: "position_row",
       reason_code: "op_underfunded",
     });
     expect(track.mock.calls[0][1]).not.toHaveProperty("apy");
@@ -164,6 +167,7 @@ describe("Earn funnel events", () => {
     trackEarnDepositSuccess({
       assetCode: "USDC",
       poolId: POOL_ID,
+      source: "home",
       apy: 0.0257,
       viaSwap: true,
     });
@@ -171,6 +175,7 @@ describe("Earn funnel events", () => {
       protocol: "blend",
       asset_code: "USDC",
       pool_id: POOL_ID,
+      source: "home",
       apy: 0.0257,
       via_swap: true,
     });
@@ -197,6 +202,7 @@ describe("Earn deposit volume", () => {
     trackEarnDepositSuccess({
       assetCode: "USDC",
       poolId: POOL_ID,
+      source: "home",
       apy: 0.0257,
       viaSwap: false,
       volume,
@@ -208,6 +214,7 @@ describe("Earn deposit volume", () => {
       asset_issuer: USDC_ISSUER,
       asset_type: "classic",
       pool_id: POOL_ID,
+      source: "home",
       apy: 0.0257,
       via_swap: false,
       amount: 10,
@@ -223,6 +230,7 @@ describe("Earn deposit volume", () => {
     trackEarnDepositFail({
       assetCode: "USDC",
       poolId: POOL_ID,
+      source: "home",
       errorCode: "op_underfunded",
       volume: {
         ...volume,
@@ -237,6 +245,7 @@ describe("Earn deposit volume", () => {
       asset_issuer: USDC_ISSUER,
       asset_type: "classic",
       pool_id: POOL_ID,
+      source: "home",
       reason_code: "op_underfunded",
       failure_category: "balance",
       amount: 10,
@@ -252,6 +261,7 @@ describe("Earn deposit volume", () => {
     trackEarnDepositSuccess({
       assetCode: "USDC",
       poolId: POOL_ID,
+      source: "home",
       apy: 0.0257,
       viaSwap: false,
       volume: { ...volume, sourceLeg: deriveLegUsd("10", null) },
@@ -268,6 +278,7 @@ describe("Earn deposit volume", () => {
     trackEarnDepositSuccess({
       assetCode: "XLM",
       poolId: POOL_ID,
+      source: "home",
       apy: 0.0257,
       viaSwap: false,
       volume: { ...volume, identity: { code: "XLM", type: AssetKind.NATIVE } },

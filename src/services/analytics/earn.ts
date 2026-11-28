@@ -80,12 +80,21 @@ export const trackEarnFundingActionSelected = ({
   });
 };
 
+/**
+ * A pool's details opened: from the amount screen's pool card, or a token
+ * on a Positions pool screen, which opens that token's position.
+ */
 export const trackEarnPoolDetailsOpened = ({
   poolId,
+  source,
 }: {
   poolId: string;
+  source: "earn_amount" | "position_row";
 }): void => {
-  trackEarn(AnalyticsEvent.EARN_POOL_DETAILS_OPENED, { pool_id: poolId });
+  trackEarn(AnalyticsEvent.EARN_POOL_DETAILS_OPENED, {
+    pool_id: poolId,
+    source,
+  });
 };
 
 /** Max was tapped on the amount screen; 25% and 50% aren't reported. */

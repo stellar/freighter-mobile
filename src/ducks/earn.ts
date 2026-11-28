@@ -40,6 +40,11 @@ interface EarnState {
    * the session, whichever token is deposited.
    */
   didSwapInFlow: boolean;
+  /**
+   * Where this Earn session was opened from, carried on its deposit events
+   * as `source`, as in the extension.
+   */
+  source: EarnSource;
 
   setPool: (pool: BlendCatalogPool | null) => void;
   selectAsset: (params: {
@@ -50,8 +55,19 @@ interface EarnState {
   }) => void;
   setCurrentPositionTokens: (tokens: string) => void;
   setDidSwapInFlow: (didSwap: boolean) => void;
+  setSource: (source: EarnSource) => void;
   resetEarn: () => void;
 }
+
+/**
+ * Where an Earn session starts: Home's Earn tile, a token's Deposit on its
+ * position screen, the Positions tab's Deposit button, or its empty state.
+ */
+export type EarnSource =
+  | "home"
+  | "position_row"
+  | "positions_pill"
+  | "positions_empty";
 
 const initialState = {
   pool: null,
@@ -61,6 +77,7 @@ const initialState = {
   selectedAssetDecimals: DEFAULT_DECIMALS,
   currentPositionTokens: "0",
   didSwapInFlow: false,
+  source: "home" as EarnSource,
 };
 
 export const useEarnStore = create<EarnState>((set) => ({
@@ -87,6 +104,8 @@ export const useEarnStore = create<EarnState>((set) => ({
     set({ currentPositionTokens }),
 
   setDidSwapInFlow: (didSwapInFlow) => set({ didSwapInFlow }),
+
+  setSource: (source) => set({ source }),
 
   resetEarn: () => set({ ...initialState }),
 }));
