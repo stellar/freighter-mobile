@@ -408,24 +408,112 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     [],
   );
 
+  // The XLM left to pay fees with at the given inclusion fee. No held XLM
+  // balance at all can't cover any fee.
+  const getSpendableXlm = useCallback(
+    (fee: string) =>
+      xlmBalance
+        ? calculateSpendableAmount({
+            balance: xlmBalance,
+            subentryCount: account?.subentryCount ?? 0,
+            transactionFee: fee,
+          })
+        : new BigNumber(0),
+    [xlmBalance, account?.subentryCount],
+  );
+
+  // How much XLM the deposit just built is short of its fees at `fee`, or
+  // "0". Called right after `simulate` resolves, when the duck's
+  // `sorobanResourceFeeXlm` is the REAL, measured resource fee (never a
+  // pre-simulation guess). An XLM deposit pays it from the same balance it
+  // deposits from; any other deposit leaves the XLM untouched, so its amount
+  // counts as 0 here.
+  const getBuiltDepositFeeShortfall = useCallback(
+    (amount: string, fee: string) => {
+      const { sorobanResourceFeeXlm } = useTransactionBuilderStore.getState();
+
+      // The backend omitted `minResourceFee` from this simulation, so the fee
+      // is genuinely UNKNOWN, not zero. For an XLM deposit the amount is
+      // already <= the spendable XLM by construction (the CTA's own
+      // `isAmountTooHigh` guard), so feeding "0" here would make
+      // `getXlmFeeShortfall` report "0" in every case that reaches this
+      // point — silently disabling the check rather than skipping it
+      // visibly, and reintroducing the exact failure this whole check exists
+      // to prevent: a deposit signing successfully and only failing at
+      // submission. Fall back to a conservative floor instead (see its doc
+      // for why "0.1" specifically) — this is logged too, since it is still
+      // a gap in what simulation told us, even though it is now covered
+      // rather than skipped.
+      if (sorobanResourceFeeXlm === null) {
+        logger.warn(
+          "EarnAmountScreen",
+          "sorobanResourceFeeXlm is null after a successful simulation; falling back to the unknown-fee floor for the shortfall check",
+        );
+      }
+      return getXlmFeeShortfall({
+        spendableXlm: getSpendableXlm(fee).toFixed(),
+        amount: isXlm ? amount || "0" : "0",
+        resourceFee: sorobanResourceFeeXlm ?? UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
+      });
+    },
+    [getSpendableXlm, isXlm],
+  );
+
+  const showFeeShortfall = useCallback(
+    (shortfall: string) => {
+      trackEarnXlmFeeInsufficientShown({
+        assetCode: tokenCode,
+        reason: "fee_not_covered",
+      });
+      if (isXlm) {
+        // Depositing less frees the XLM, so ask for a smaller amount.
+        showToast({
+          variant: "error",
+          title: t("earnAmount.errors.feeShortfall", {
+            amount: formatTokenForDisplay(shortfall),
+          }),
+          toastId: EARN_TOAST_IDS.FEE_SHORTFALL,
+          duration: 0,
+        });
+      } else {
+        // A smaller deposit wouldn't help: the account needs more XLM.
+        presentOverDismissedKeyboard(networkFeeBottomSheetModalRef);
+      }
+    },
+    [tokenCode, isXlm, showToast, t, presentOverDismissedKeyboard],
+  );
+
   // True once the user confirms the deposit, so Review closing for the
   // submit isn't reported as a rejection. Reset each time Review opens.
   const hasApprovedDepositRef = useRef(false);
 
+  // Set when a fee saved in Review leaves the deposit short of its fees:
+  // Review closes, and the shortfall shows once it has. Reset each time
+  // Review opens.
+  const pendingFeeShortfallRef = useRef<string | null>(null);
+
   const openReviewSheet = useCallback(() => {
     hasApprovedDepositRef.current = false;
+    pendingFeeShortfallRef.current = null;
     presentOverDismissedKeyboard(earnReviewBottomSheetModalRef);
   }, [presentOverDismissedKeyboard]);
 
   // Leaving Review without confirming is reported as a rejection, as Send and
   // Swap report it. Keyed on the dismissal, since Cancel, a swipe down and a
-  // tap on the backdrop all close the sheet.
+  // tap on the backdrop all close the sheet. Review closed over a fee
+  // shortfall was closed by the app, so it shows the shortfall instead.
   const handleReviewDismiss = useCallback(() => {
+    const pendingShortfall = pendingFeeShortfallRef.current;
+    if (pendingShortfall) {
+      pendingFeeShortfallRef.current = null;
+      showFeeShortfall(pendingShortfall);
+      return;
+    }
     if (hasApprovedDepositRef.current) {
       return;
     }
     analytics.trackInternalSignedTransactionRejected();
-  }, []);
+  }, [showFeeShortfall]);
 
   // The pool card is the only route into `PoolDetailsBottomSheet`.
   const handleOpenPoolDetails = useCallback(() => {
@@ -460,21 +548,40 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   // `onSettingsChange` synchronously, before this screen re-renders with the
   // just-saved store value (same reasoning as the `getState()` read in
   // `handleCtaPress` above).
+  //
+  // A higher fee leaves less XLM, so the rebuilt deposit gets the same fee
+  // check the CTA ran before Review opened. On a shortfall Review closes,
+  // and `handleReviewDismiss` then shows what the CTA would have shown.
+  // `simulate` resolves to null on a failure, which its error toast covers,
+  // rather than rejecting.
   const handleEarnSettingsChange = useCallback(() => {
     if (isSimulating || !account?.publicKey || depositDecimals === null) {
       return;
     }
     const freshSettings = useTransactionSettingsStore.getState();
+    const amount = reviewedAmount ?? tokenAmount;
     simulate({
       // The pool Review names, the same one the "before" balance reads.
       poolId: pool?.id ?? "",
       assetId,
-      amount: reviewedAmount ?? tokenAmount,
+      amount,
       decimals: depositDecimals,
       transactionFee: freshSettings.transactionFee,
       transactionTimeout: freshSettings.transactionTimeout,
       network,
       senderAddress: account.publicKey,
+    }).then((result) => {
+      if (!result) {
+        return;
+      }
+      const shortfall = getBuiltDepositFeeShortfall(
+        amount,
+        freshSettings.transactionFee,
+      );
+      if (new BigNumber(shortfall).gt(0)) {
+        pendingFeeShortfallRef.current = shortfall;
+        earnReviewBottomSheetModalRef.current?.dismiss();
+      }
     });
   }, [
     isSimulating,
@@ -486,6 +593,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     tokenAmount,
     depositDecimals,
     network,
+    getBuiltDepositFeeShortfall,
   ]);
 
   // `EarnProcessingScreen` is rendered INLINE below (not a registered
@@ -548,10 +656,16 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
    */
   const handleConfirmDeposit = useCallback(() => {
     // Every confirm path ends here. A build still running, or one that
-    // failed, leaves nothing that matches Review to sign.
+    // failed, leaves nothing that matches Review to sign, and one short of
+    // its fees would fail at submission.
     const { isBuilding: isBuildingNow, transactionXDR } =
       useTransactionBuilderStore.getState();
-    if (isSimulating || isBuildingNow || !transactionXDR) {
+    if (
+      isSimulating ||
+      isBuildingNow ||
+      !transactionXDR ||
+      pendingFeeShortfallRef.current
+    ) {
       return;
     }
     hasApprovedDepositRef.current = true;
@@ -688,16 +802,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
 
     // Checked AFTER the CTA's own insufficient-funds guard (above) so that
     // when the deposit asset IS XLM, an unaffordable amount reads as
-    // insufficient funds on the button rather than as a fee problem. No held
-    // XLM balance at all can't cover any fee, so treat that the same as
-    // needing more XLM.
-    const spendableXlm = xlmBalance
-      ? calculateSpendableAmount({
-          balance: xlmBalance,
-          subentryCount: account.subentryCount,
-          transactionFee,
-        })
-      : new BigNumber(0);
+    // insufficient funds on the button rather than as a fee problem.
+    const spendableXlm = getSpendableXlm(transactionFee);
 
     // `transactionFee` is just the inclusion fee (~0.00001 XLM) — this gate
     // only catches "no meaningful XLM headroom at all" (e.g. no XLM held at
@@ -763,35 +869,11 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       return;
     }
 
-    // `simulate` just resolved, so the duck's `sorobanResourceFeeXlm` is now
-    // the REAL, measured resource fee (never a pre-simulation guess). Check
-    // that the spendable XLM covers it. An XLM deposit pays it from the same
-    // balance it deposits from; any other deposit leaves the XLM untouched,
-    // so its amount counts as 0 here.
-    const { sorobanResourceFeeXlm } = useTransactionBuilderStore.getState();
-
-    // The backend omitted `minResourceFee` from this simulation, so the fee
-    // is genuinely UNKNOWN, not zero. For an XLM deposit `tokenAmount` is
-    // already <= `spendableXlm` by construction (the CTA's own
-    // `isAmountTooHigh` guard), so feeding "0" here would make
-    // `getXlmFeeShortfall` report "0" in every case that reaches this point —
-    // silently disabling the check rather than skipping it visibly, and
-    // reintroducing the exact failure this whole check exists to prevent: a
-    // deposit signing successfully and only failing at submission. Fall back
-    // to a conservative floor instead (see its doc for why "0.1"
-    // specifically) — this is logged too, since it is still a gap in what
-    // simulation told us, even though it is now covered rather than skipped.
-    if (sorobanResourceFeeXlm === null) {
-      logger.warn(
-        "EarnAmountScreen",
-        "sorobanResourceFeeXlm is null after a successful simulation; falling back to the unknown-fee floor for the shortfall check",
-      );
-    }
-    const shortfall = getXlmFeeShortfall({
-      spendableXlm: spendableXlm.toFixed(),
-      amount: isXlm ? amountToReview || "0" : "0",
-      resourceFee: sorobanResourceFeeXlm ?? UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
-    });
+    // Check that the spendable XLM covers the fee simulation measured.
+    const shortfall = getBuiltDepositFeeShortfall(
+      amountToReview,
+      transactionFee,
+    );
 
     // INVARIANT Review and Confirm rely on: the staged XDR in
     // `transactionBuilder` was built with `reviewedAmount`, the amount Review
@@ -799,25 +881,9 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     // here, rather than correcting the amount and re-simulating (as an
     // earlier design did). So this branch either opens Review with the
     // amount `simulate` was just called with, or doesn't open it at all.
+    // A fee saved in Review gets the same check (`handleEarnSettingsChange`).
     if (new BigNumber(shortfall).gt(0)) {
-      trackEarnXlmFeeInsufficientShown({
-        assetCode: tokenCode,
-        reason: "fee_not_covered",
-      });
-      if (isXlm) {
-        // Depositing less frees the XLM, so ask for a smaller amount.
-        showToast({
-          variant: "error",
-          title: t("earnAmount.errors.feeShortfall", {
-            amount: formatTokenForDisplay(shortfall),
-          }),
-          toastId: EARN_TOAST_IDS.FEE_SHORTFALL,
-          duration: 0,
-        });
-      } else {
-        // A smaller deposit wouldn't help: the account needs more XLM.
-        presentOverDismissedKeyboard(networkFeeBottomSheetModalRef);
-      }
+      showFeeShortfall(shortfall);
       return;
     }
 
@@ -825,9 +891,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     openReviewSheet();
   }, [
     ctaState.disabled,
-    xlmBalance,
-    account?.subentryCount,
     account?.publicKey,
+    getSpendableXlm,
     transactionFee,
     simulate,
     pool?.id,
@@ -836,9 +901,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     depositDecimals,
     transactionTimeout,
     network,
-    isXlm,
-    showToast,
-    t,
+    getBuiltDepositFeeShortfall,
+    showFeeShortfall,
     openReviewSheet,
     presentOverDismissedKeyboard,
     tokenCode,

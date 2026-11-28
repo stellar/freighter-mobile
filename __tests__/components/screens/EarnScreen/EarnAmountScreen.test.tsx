@@ -1441,6 +1441,172 @@ describe("EarnAmountScreen", () => {
     });
   });
 
+  // A higher fee leaves less XLM, so the deposit Review shows may no longer
+  // cover its own fees once the user saves one.
+  describe("a fee change in Review", () => {
+    const { analytics: mockAnalytics } = jest.requireMock("services/analytics");
+    const latestSheetContent = (propName: string) =>
+      // eslint-disable-next-line no-underscore-dangle
+      [...globalThis.__earnAmountMockSheetContents]
+        .reverse()
+        .find((content) => propName in (content.props as object)) as
+        | React.ReactElement<Record<string, unknown>>
+        | undefined;
+    const reviewSheetDismiss = () => {
+      // eslint-disable-next-line no-underscore-dangle
+      const reviewProps = [...globalThis.__earnAmountMockSheetProps]
+        .reverse()
+        .find(
+          (props) => props.analyticsEvent === AnalyticsEvent.VIEW_EARN_REVIEW,
+        ) as { bottomSheetModalProps?: { onDismiss?: () => void } };
+      return reviewProps.bottomSheetModalProps?.onDismiss;
+    };
+
+    // The spendable XLM drops by the inclusion fee, as in
+    // `calculateSpendableAmount`.
+    const setXlmBeforeFee = (xlm: string) => {
+      mockCalculateSpendableAmount.mockImplementation(
+        ({
+          balance,
+          transactionFee,
+        }: {
+          balance: unknown;
+          transactionFee: string;
+        }) =>
+          balance === XLM_BALANCE
+            ? new BigNumber(xlm).minus(transactionFee)
+            : new BigNumber("1000"),
+      );
+    };
+
+    const openReviewAndSaveFee = async (fee: string) => {
+      const utils = renderScreen();
+      await fireEvent.press(utils.getByTestId("earn-amount-cta"));
+      await Promise.resolve();
+      await Promise.resolve();
+      // eslint-disable-next-line no-underscore-dangle
+      const [, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+      expect(reviewSheet.present).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        useTransactionSettingsStore.setState({ transactionFee: fee });
+      });
+      await act(async () => {
+        (
+          latestSheetContent("onSettingsChange")?.props
+            .onSettingsChange as () => void
+        )();
+        await Promise.resolve();
+      });
+      return utils;
+    };
+
+    beforeEach(() => {
+      mockSimulate.mockImplementation(() => {
+        useTransactionBuilderStore.setState({
+          sorobanResourceFeeXlm: "0.05",
+        });
+        return Promise.resolve({
+          preparedXdr: "prepared-xdr",
+          scanResult: undefined,
+        });
+      });
+    });
+
+    describe("on an XLM deposit", () => {
+      beforeEach(() => {
+        mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
+        // 0.1 XLM left over at the default fee, enough for the 0.05 fee.
+        setXlmBeforeFee("100");
+        setTokenAmount("99.9");
+      });
+
+      it("closes Review when the new fee leaves the deposit short", async () => {
+        await openReviewAndSaveFee("0.1");
+
+        // eslint-disable-next-line no-underscore-dangle
+        const [, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+        expect(reviewSheet.dismiss).toHaveBeenCalled();
+      });
+
+      it("asks for a smaller deposit once Review has closed", async () => {
+        await openReviewAndSaveFee("0.1");
+        expect(mockShowToast).not.toHaveBeenCalledWith(
+          expect.objectContaining({ toastId: "earn-fee-shortfall" }),
+        );
+
+        act(() => {
+          reviewSheetDismiss()?.();
+        });
+
+        expect(mockShowToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            variant: "error",
+            toastId: "earn-fee-shortfall",
+          }),
+        );
+      });
+
+      it("doesn't report Review closing for the fee as a rejection", async () => {
+        await openReviewAndSaveFee("0.1");
+
+        act(() => {
+          reviewSheetDismiss()?.();
+        });
+
+        expect(
+          mockAnalytics.trackInternalSignedTransactionRejected,
+        ).not.toHaveBeenCalled();
+      });
+
+      it("doesn't confirm the deposit while Review closes", async () => {
+        await openReviewAndSaveFee("0.1");
+        act(() => {
+          useTransactionBuilderStore.setState({
+            transactionXDR: "prepared-xdr",
+            isBuilding: false,
+          });
+        });
+
+        act(() => {
+          (
+            latestSheetContent("onSettingsPress")?.props.onConfirm as () => void
+          )();
+        });
+
+        expect(mockSubmitEarnTransaction).not.toHaveBeenCalled();
+      });
+
+      it("keeps Review open when the new fee still fits", async () => {
+        await openReviewAndSaveFee("0.01");
+
+        // eslint-disable-next-line no-underscore-dangle
+        const [, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+        expect(reviewSheet.dismiss).not.toHaveBeenCalled();
+      });
+    });
+
+    it("opens the XLM fee sheet once Review has closed on a non-XLM deposit", async () => {
+      // 0.06 XLM covers the 0.05 fee at the default fee, not at 0.02.
+      setXlmBeforeFee("0.06");
+      await openReviewAndSaveFee("0.02");
+
+      // eslint-disable-next-line no-underscore-dangle
+      const [feeSheet, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+      expect(reviewSheet.dismiss).toHaveBeenCalled();
+
+      await act(async () => {
+        reviewSheetDismiss()?.();
+        await Promise.resolve();
+      });
+
+      expect(feeSheet.present).toHaveBeenCalledTimes(1);
+      expect(mockShowToast).not.toHaveBeenCalledWith(
+        expect.objectContaining({ toastId: "earn-fee-shortfall" }),
+      );
+    });
+  });
+
   describe("security sheet over Review", () => {
     const pressSecuritySheetContinue = () => {
       // eslint-disable-next-line no-underscore-dangle
